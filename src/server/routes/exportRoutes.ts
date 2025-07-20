@@ -110,64 +110,61 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         const items: ExportableItem[] = [];
 
         // Add brainstorm input if exists
-        if (canonicalContext.brainstormInput) {
+        if (canonicalContext.canonicalBrainstormInput) {
             items.push({
                 id: 'brainstorm-input-editor',
                 name: '创意输入',
-                content: canonicalContext.brainstormInput,
+                content: canonicalContext.canonicalBrainstormInput,
                 type: 'brainstorm_input'
             });
         }
 
-        // Add effective brainstorm ideas as idea collection
-        if (canonicalContext.effectiveBrainstormIdeas.length > 0) {
+        // Add brainstorm collection if exists
+        if (canonicalContext.canonicalBrainstormCollection) {
             items.push({
                 id: 'idea-collection',
                 name: '创意集合',
-                content: canonicalContext.effectiveBrainstormIdeas,
+                content: canonicalContext.canonicalBrainstormCollection,
                 type: 'idea_collection'
             });
         }
 
-        // Add chosen brainstorm idea if exists
-        if (canonicalContext.chosenBrainstormIdea) {
-            const chosenIdeaJsondoc = jsondocs.find((j: any) => j.id === canonicalContext.chosenBrainstormIdea!.jsondocId);
-            if (chosenIdeaJsondoc) {
-                items.push({
-                    id: 'single-idea-editor',
-                    name: '选定创意',
-                    content: chosenIdeaJsondoc,
-                    type: 'chosen_idea'
-                });
-            }
+        // Add brainstorm idea if exists
+        if (canonicalContext.canonicalBrainstormIdea) {
+            items.push({
+                id: 'single-idea-editor',
+                name: '选定创意',
+                content: canonicalContext.canonicalBrainstormIdea,
+                type: 'chosen_idea'
+            });
         }
 
         // Add outline settings if exists
-        if (canonicalContext.latestOutlineSettings) {
+        if (canonicalContext.canonicalOutlineSettings) {
             items.push({
                 id: 'outline-settings-display',
                 name: '大纲设置',
-                content: canonicalContext.latestOutlineSettings,
+                content: canonicalContext.canonicalOutlineSettings,
                 type: 'outline_settings'
             });
         }
 
         // Add chronicles if exists
-        if (canonicalContext.latestChronicles) {
+        if (canonicalContext.canonicalChronicles) {
             items.push({
                 id: 'chronicles-display',
                 name: '时间顺序大纲',
-                content: canonicalContext.latestChronicles,
+                content: canonicalContext.canonicalChronicles,
                 type: 'chronicles'
             });
         }
 
         // Add episode planning if exists
-        if (canonicalContext.latestEpisodePlanning) {
+        if (canonicalContext.canonicalEpisodePlanning) {
             items.push({
                 id: 'episode-planning-display',
                 name: '剧集规划',
-                content: canonicalContext.latestEpisodePlanning,
+                content: canonicalContext.canonicalEpisodePlanning,
                 type: 'episode_planning'
             });
         }

@@ -69,7 +69,7 @@ describe('actionComputation', () => {
 
             const result = computeActionsFromLineage(fakeLineageGraph, fakeJsondocs, fakeTransforms, fakeHumanTransforms, fakeInputs, fakeOutputs);
 
-            expect(result.actionContext.latestOutlineSettings?.id).toBe('outline2');
+            expect(result.actionContext.canonicalOutlineSettings?.id).toBe('outline2');
             const hasChroniclesAction = result.actions.some((action: { id: string }) => action.id === 'chronicles_generation');
             expect(hasChroniclesAction).toBe(true);
         });
@@ -98,7 +98,7 @@ describe('actionComputation', () => {
 
         const result = computeActionsFromLineage(fakeLineageGraph, fakeJsondocs, fakeTransforms, fakeHumanTransforms, fakeInputs, fakeOutputs);
 
-        expect(result.actionContext.latestOutlineSettings?.id).toBe('outline2'); // prefers user_input over newer ai
+        expect(result.actionContext.canonicalOutlineSettings?.id).toBe('outline2'); // prefers user_input over newer ai
         const hasChroniclesAction = result.actions.some((action: { id: string }) => action.id === 'chronicles_generation');
         expect(hasChroniclesAction).toBe(true);
     });
@@ -157,8 +157,8 @@ describe('actionComputation', () => {
         const result = computeActionsFromLineage(fakeLineageGraph, fakeJsondocs, fakeTransforms, fakeHumanTransforms, fakeInputs, fakeOutputs);
 
         // Should have existing ideas and outline
-        expect(result.actionContext.effectiveBrainstormIdeas.length).toBeGreaterThan(0);
-        expect(result.actionContext.latestOutlineSettings?.id).toBe('outline1');
+        expect(result.actionContext.canonicalBrainstormIdea?.id).toBe('idea1');
+        expect(result.actionContext.canonicalOutlineSettings?.id).toBe('outline1');
 
         // Should NOT have brainstorm_creation action
         const hasBrainstormCreationAction = result.actions.some((action: { id: string }) => action.id === 'brainstorm_creation');

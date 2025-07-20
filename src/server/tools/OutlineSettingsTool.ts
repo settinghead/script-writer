@@ -92,7 +92,7 @@ async function extractSourceOutlineSettingsData(
     );
 
     // Get the canonical outline settings
-    const canonicalOutlineSettings = canonicalContext.latestOutlineSettings;
+    const canonicalOutlineSettings = canonicalContext.canonicalOutlineSettings;
 
     if (!canonicalOutlineSettings) {
         throw new Error('No canonical outline settings found in project');

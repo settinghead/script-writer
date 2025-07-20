@@ -245,7 +245,7 @@ export class AgentService {
             const result = await streamText({
                 model: model,
                 tools: tools,
-                maxSteps: 5, // Allow more steps for complex editing workflows
+                maxSteps: 25, // Allow more steps for complex editing workflows
                 prompt: completePrompt,
                 // Pass AI SDK options directly
                 ...(seed && { seed }),

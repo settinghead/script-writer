@@ -77,49 +77,34 @@ export async function buildContextForRequestType(
         contextLines.push('');
     };
 
-    // Brainstorm input - same as tools
-    if (canonicalContext.brainstormInput) {
-        formatJsondocForContext(canonicalContext.brainstormInput, 'brainstorm_input');
+    // Brainstorm input
+    if (canonicalContext.canonicalBrainstormInput) {
+        formatJsondocForContext(canonicalContext.canonicalBrainstormInput, 'brainstorm_input');
     }
 
-    // Chosen idea - same as tools
-    if (canonicalContext.chosenBrainstormIdea) {
-        const chosenIdeaJsondoc = jsondocs.find(j => j.id === canonicalContext.chosenBrainstormIdea!.jsondocId);
-        if (chosenIdeaJsondoc) {
-            formatJsondocForContext(chosenIdeaJsondoc, 'chosen_idea');
-        }
+    // Brainstorm idea
+    if (canonicalContext.canonicalBrainstormIdea) {
+        formatJsondocForContext(canonicalContext.canonicalBrainstormIdea, 'brainstorm_idea');
     }
 
-    // Brainstorm collection - same as tools
-    if (!canonicalContext.chosenBrainstormIdea && canonicalContext.effectiveBrainstormIdeas.length > 0) {
-        const collectionIds = new Set(
-            canonicalContext.effectiveBrainstormIdeas
-                .filter(idea => idea.isFromCollection)
-                .map(idea => idea.jsondocId)
-        );
-
-        if (collectionIds.size === 1) {
-            const collectionId = Array.from(collectionIds)[0];
-            const collectionJsondoc = jsondocs.find(j => j.id === collectionId);
-            if (collectionJsondoc) {
-                formatJsondocForContext(collectionJsondoc, 'brainstorm_collection');
-            }
-        }
+    // Brainstorm collection
+    if (canonicalContext.canonicalBrainstormCollection) {
+        formatJsondocForContext(canonicalContext.canonicalBrainstormCollection, 'brainstorm_collection');
     }
 
-    // Outline settings - same as tools
-    if (canonicalContext.latestOutlineSettings) {
-        formatJsondocForContext(canonicalContext.latestOutlineSettings, 'outline_settings');
+    // Outline settings
+    if (canonicalContext.canonicalOutlineSettings) {
+        formatJsondocForContext(canonicalContext.canonicalOutlineSettings, 'outline_settings');
     }
 
-    // Chronicles - same as tools
-    if (canonicalContext.latestChronicles) {
-        formatJsondocForContext(canonicalContext.latestChronicles, 'chronicles');
+    // Chronicles
+    if (canonicalContext.canonicalChronicles) {
+        formatJsondocForContext(canonicalContext.canonicalChronicles, 'chronicles');
     }
 
-    // Episode planning - same as tools
-    if (canonicalContext.latestEpisodePlanning) {
-        formatJsondocForContext(canonicalContext.latestEpisodePlanning, 'episode_planning');
+    // Episode planning
+    if (canonicalContext.canonicalEpisodePlanning) {
+        formatJsondocForContext(canonicalContext.canonicalEpisodePlanning, 'episode_planning');
     }
 
     // Join all context lines - same format as tools

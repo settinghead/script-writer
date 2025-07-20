@@ -1,7 +1,6 @@
 import React from 'react';
 import {
     LineageGraph,
-    type EffectiveBrainstormIdea,
     type WorkflowNode
 } from '../../common/transform-jsondoc-framework/lineageResolution';
 import type {
@@ -43,12 +42,13 @@ export interface ActionComponentProps {
     onSuccess?: (result?: any) => void;
     onError?: (error: Error) => void;
 
-    // Resolved jsondocs (no more parsing needed)
+    // Canonical jsondocs (no more parsing needed)
     jsondocs: {
-        brainstormIdeas?: EffectiveBrainstormIdea[];
-        chosenIdea?: EffectiveBrainstormIdea;
+        brainstormIdea?: ElectricJsondoc;
+        brainstormCollection?: ElectricJsondoc;
         outlineSettings?: ElectricJsondoc;
         chronicles?: ElectricJsondoc;
+        episodePlanning?: ElectricJsondoc;
         brainstormInput?: ElectricJsondoc;
     };
 
@@ -120,7 +120,7 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
     const actions: ActionItem[] = [];
 
     // Add brainstorm creation actions only if no input and no existing ideas
-    if (!context.brainstormInput && context.effectiveBrainstormIdeas.length === 0) {
+    if (!context.canonicalBrainstormInput && !context.canonicalBrainstormIdea && !context.canonicalBrainstormCollection) {
         actions.push({
             id: 'brainstorm_creation',
             type: 'button',
@@ -129,11 +129,12 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
             component: BrainstormCreationActions,
             props: {
                 jsondocs: {
-                    brainstormIdeas: context.effectiveBrainstormIdeas,
-                    chosenIdea: context.chosenBrainstormIdea,
-                    outlineSettings: context.latestOutlineSettings,
-                    chronicles: context.latestChronicles,
-                    brainstormInput: context.brainstormInput
+                    brainstormIdea: context.canonicalBrainstormIdea,
+                    brainstormCollection: context.canonicalBrainstormCollection,
+                    outlineSettings: context.canonicalOutlineSettings,
+                    chronicles: context.canonicalChronicles,
+                    episodePlanning: context.canonicalEpisodePlanning,
+                    brainstormInput: context.canonicalBrainstormInput
                 },
                 workflowContext: {
                     hasActiveTransforms: context.hasActiveTransforms,
@@ -145,8 +146,8 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
         });
     }
 
-    // Add brainstorm idea selection if we have multiple ideas but no chosen one
-    if (context.effectiveBrainstormIdeas.length > 1 && !context.chosenBrainstormIdea) {
+    // Add brainstorm idea selection if we have a collection but no individual idea
+    if (context.canonicalBrainstormCollection && !context.canonicalBrainstormIdea) {
         actions.push({
             id: 'brainstorm_idea_selection',
             type: 'selection',
@@ -155,11 +156,12 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
             component: BrainstormIdeaSelection,
             props: {
                 jsondocs: {
-                    brainstormIdeas: context.effectiveBrainstormIdeas,
-                    chosenIdea: context.chosenBrainstormIdea,
-                    outlineSettings: context.latestOutlineSettings,
-                    chronicles: context.latestChronicles,
-                    brainstormInput: context.brainstormInput
+                    brainstormIdea: context.canonicalBrainstormIdea,
+                    brainstormCollection: context.canonicalBrainstormCollection,
+                    outlineSettings: context.canonicalOutlineSettings,
+                    chronicles: context.canonicalChronicles,
+                    episodePlanning: context.canonicalEpisodePlanning,
+                    brainstormInput: context.canonicalBrainstormInput
                 },
                 workflowContext: {
                     hasActiveTransforms: context.hasActiveTransforms,
@@ -171,8 +173,8 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
         });
     }
 
-    // Add outline generation if we have a chosen idea but no outline
-    if (context.chosenBrainstormIdea && !context.latestOutlineSettings) {
+    // Add outline generation if we have a brainstorm idea but no outline
+    if (context.canonicalBrainstormIdea && !context.canonicalOutlineSettings) {
         actions.push({
             id: 'outline_generation',
             type: 'form',
@@ -181,11 +183,12 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
             component: OutlineGenerationForm,
             props: {
                 jsondocs: {
-                    brainstormIdeas: context.effectiveBrainstormIdeas,
-                    chosenIdea: context.chosenBrainstormIdea,
-                    outlineSettings: context.latestOutlineSettings,
-                    chronicles: context.latestChronicles,
-                    brainstormInput: context.brainstormInput
+                    brainstormIdea: context.canonicalBrainstormIdea,
+                    brainstormCollection: context.canonicalBrainstormCollection,
+                    outlineSettings: context.canonicalOutlineSettings,
+                    chronicles: context.canonicalChronicles,
+                    episodePlanning: context.canonicalEpisodePlanning,
+                    brainstormInput: context.canonicalBrainstormInput
                 },
                 workflowContext: {
                     hasActiveTransforms: context.hasActiveTransforms,
@@ -198,7 +201,7 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
     }
 
     // Add chronicles generation if we have outline but no chronicles
-    if (context.latestOutlineSettings && !context.latestChronicles) {
+    if (context.canonicalOutlineSettings && !context.canonicalChronicles) {
         actions.push({
             id: 'chronicles_generation',
             type: 'button',
@@ -207,11 +210,12 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
             component: ChroniclesGenerationAction,
             props: {
                 jsondocs: {
-                    brainstormIdeas: context.effectiveBrainstormIdeas,
-                    chosenIdea: context.chosenBrainstormIdea,
-                    outlineSettings: context.latestOutlineSettings,
-                    chronicles: context.latestChronicles,
-                    brainstormInput: context.brainstormInput
+                    brainstormIdea: context.canonicalBrainstormIdea,
+                    brainstormCollection: context.canonicalBrainstormCollection,
+                    outlineSettings: context.canonicalOutlineSettings,
+                    chronicles: context.canonicalChronicles,
+                    episodePlanning: context.canonicalEpisodePlanning,
+                    brainstormInput: context.canonicalBrainstormInput
                 },
                 workflowContext: {
                     hasActiveTransforms: context.hasActiveTransforms,
@@ -224,7 +228,7 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
     }
 
     // Add episode planning generation if we have chronicles but no episode planning
-    if (context.latestChronicles && !context.latestEpisodePlanning) {
+    if (context.canonicalChronicles && !context.canonicalEpisodePlanning) {
         actions.push({
             id: 'episode_planning_generation',
             type: 'form',
@@ -233,12 +237,12 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
             component: EpisodePlanningAction,
             props: {
                 jsondocs: {
-                    brainstormIdeas: context.effectiveBrainstormIdeas,
-                    chosenIdea: context.chosenBrainstormIdea,
-                    outlineSettings: context.latestOutlineSettings,
-                    chronicles: context.latestChronicles,
-                    episodePlanning: context.latestEpisodePlanning,
-                    brainstormInput: context.brainstormInput
+                    brainstormIdea: context.canonicalBrainstormIdea,
+                    brainstormCollection: context.canonicalBrainstormCollection,
+                    outlineSettings: context.canonicalOutlineSettings,
+                    chronicles: context.canonicalChronicles,
+                    episodePlanning: context.canonicalEpisodePlanning,
+                    brainstormInput: context.canonicalBrainstormInput
                 },
                 workflowContext: {
                     hasActiveTransforms: context.hasActiveTransforms,
@@ -251,7 +255,7 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
     }
 
     // If episode planning but no episode synopsis, add EpisodeGenerationAction
-    const shouldShowEpisodeGeneration = context.latestEpisodePlanning && !context.latestChronicles?.schema_type.includes('episode_synopsis');
+    const shouldShowEpisodeGeneration = context.canonicalEpisodePlanning && !context.canonicalChronicles?.schema_type.includes('episode_synopsis');
     if (shouldShowEpisodeGeneration) {
         actions.push({
             id: 'episode_synopsis_generation',
@@ -261,12 +265,12 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
             component: EpisodeGenerationAction,
             props: {
                 jsondocs: {
-                    brainstormIdeas: context.effectiveBrainstormIdeas,
-                    chosenIdea: context.chosenBrainstormIdea,
-                    outlineSettings: context.latestOutlineSettings,
-                    chronicles: context.latestChronicles,
-                    episodePlanning: context.latestEpisodePlanning,
-                    brainstormInput: context.brainstormInput
+                    brainstormIdea: context.canonicalBrainstormIdea,
+                    brainstormCollection: context.canonicalBrainstormCollection,
+                    outlineSettings: context.canonicalOutlineSettings,
+                    chronicles: context.canonicalChronicles,
+                    episodePlanning: context.canonicalEpisodePlanning,
+                    brainstormInput: context.canonicalBrainstormInput
                 },
                 workflowContext: {
                     hasActiveTransforms: context.hasActiveTransforms,

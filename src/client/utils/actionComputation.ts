@@ -280,16 +280,45 @@ function computeUnifiedContext(
         a.schema_type === 'brainstorm_input_params'
     );
 
-    // This properly extracts individual ideas from collections
-    const brainstormIdeas = lineageResult.actionContext.effectiveBrainstormIdeas;
+    // Extract brainstorm ideas from canonical context
+    const brainstormIdeas: any[] = [];
 
-    // Convert EffectiveBrainstormIdea[] to IdeaWithTitle[] format for components
-    const brainstormIdeasWithTitle = brainstormIdeas ?
-        convertEffectiveIdeasToIdeaWithTitle(brainstormIdeas, projectData.jsondocs) :
-        [];
+    // If we have a canonical brainstorm collection, extract ideas from it
+    if (lineageResult.actionContext.canonicalBrainstormCollection) {
+        try {
+            const collectionData = JSON.parse(lineageResult.actionContext.canonicalBrainstormCollection.data);
+            if (collectionData.ideas && Array.isArray(collectionData.ideas)) {
+                brainstormIdeas.push(...collectionData.ideas.map((idea: any, index: number) => ({
+                    title: idea.title || `创意 ${index + 1}`,
+                    body: idea.body || idea.description || '',
+                    jsondocId: lineageResult.actionContext.canonicalBrainstormCollection!.id,
+                    ideaIndex: index
+                })));
+            }
+        } catch (error) {
+            console.warn('Failed to parse brainstorm collection data:', error);
+        }
+    }
+
+    // If we have a canonical brainstorm idea, add it as well
+    if (lineageResult.actionContext.canonicalBrainstormIdea) {
+        try {
+            const ideaData = JSON.parse(lineageResult.actionContext.canonicalBrainstormIdea.data);
+            brainstormIdeas.push({
+                title: ideaData.title || '创意',
+                body: ideaData.body || ideaData.description || '',
+                jsondocId: lineageResult.actionContext.canonicalBrainstormIdea.id,
+                ideaIndex: 0
+            });
+        } catch (error) {
+            console.warn('Failed to parse brainstorm idea data:', error);
+        }
+    }
+
+    const brainstormIdeasWithTitle = brainstormIdeas;
 
     // Find chosen idea using lineage computation result
-    let chosenIdea = lineageResult.actionContext.chosenBrainstormIdea;
+    let chosenIdea = lineageResult.actionContext.canonicalBrainstormIdea;
 
     // Process outline settings with priority logic
     let outlineSettings = null;
@@ -456,7 +485,10 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             component: getComponentById('single-idea-editor'),
             mode: context.hasActiveTransforms ? 'readonly' : 'editable',
             props: {
-                brainstormIdea: context.chosenIdea, // Fixed: use brainstormIdea instead of idea
+                brainstormIdea: {
+                    jsondocId: context.chosenIdea.id,
+                    ...JSON.parse(context.chosenIdea.data)
+                },
                 isEditable: isIdeaEditable,
                 currentStage: 'idea_editing' // This will be removed from UnifiedWorkflowState
             },

@@ -236,16 +236,35 @@ export function createBrainstormEditToolDefinition(
                     throw new Error('Patches were rejected by user');
                 }
 
-                console.log(`[BrainstormEditTool] Patches approved, applying changes`);
+                console.log(`[BrainstormEditTool] Patches approved, finding derived jsondoc`);
 
-                // Get the final jsondoc to extract the edited idea
-                const finalJsondoc = await jsondocRepo.getJsondoc(result.outputJsondocId);
+                // Find the human_patch_approval transform that was created for this ai_patch transform
+                const allTransforms = await jsondocRepo.getAllProjectTransformsForLineage(projectId);
+                const approvalTransform = allTransforms.find((t: any) =>
+                    t.type === 'human_patch_approval' &&
+                    t.execution_context?.original_ai_patch_transform_id === result.transformId
+                );
+
+                if (!approvalTransform) {
+                    throw new Error('Could not find human_patch_approval transform');
+                }
+
+                // Get the derived jsondoc created by the approval transform
+                const approvalOutputs = await transformRepo.getTransformOutputs(approvalTransform.id);
+                const derivedJsondocId = approvalOutputs.find(output => output.output_role === 'approved_result')?.jsondoc_id;
+
+                if (!derivedJsondocId) {
+                    throw new Error('Could not find derived jsondoc from approval transform');
+                }
+
+                // Get the final derived jsondoc to extract the edited idea
+                const finalJsondoc = await jsondocRepo.getJsondoc(derivedJsondocId);
                 const editedIdea = finalJsondoc?.data || originalIdea;
 
-                console.log(`[BrainstormEditTool] Successfully completed unified patch edit with jsondoc ${result.outputJsondocId}`);
+                console.log(`[BrainstormEditTool] Successfully completed unified patch edit with derived jsondoc ${derivedJsondocId}`);
 
                 return {
-                    outputJsondocId: result.outputJsondocId,
+                    outputJsondocId: derivedJsondocId, // Return the derived jsondoc, not the original AI patch jsondoc
                     finishReason: result.finishReason,
                     originalIdea,
                     editedIdea: {

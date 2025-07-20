@@ -7,6 +7,7 @@ import { useProjectData } from '../contexts/ProjectDataContext';
 import { AppColors, ColorUtils } from '../../common/theme/colors';
 import 'reactflow/dist/style.css';
 import { ElectricJsondoc } from '@/common/types';
+import { computeCanonicalJsondocsFromLineage, extractCanonicalJsondocIds } from '../../common/canonicalJsondocLogic';
 
 const { Text } = Typography;
 
@@ -67,11 +68,11 @@ const deleteJsondoc = async (jsondocId: string) => {
 const JsondocNode: React.FC<{
     data: {
         jsondoc: ElectricJsondoc,
-        isLatest: boolean,
+        isCanonical: boolean,
         originType: string
     }
 }> = ({ data }) => {
-    const { jsondoc, isLatest, originType } = data;
+    const { jsondoc, isCanonical, originType } = data;
 
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -83,8 +84,8 @@ const JsondocNode: React.FC<{
     };
 
     const typeColor = getTypeColor(jsondoc.schema_type, originType);
-    const borderColor = isLatest ? AppColors.status.latest : typeColor;
-    const borderWidth = isLatest ? 3 : 2;
+    const borderColor = isCanonical ? AppColors.status.latest : typeColor;
+    const borderWidth = isCanonical ? 3 : 2;
 
     let parsedData;
     try {
@@ -197,7 +198,7 @@ const JsondocNode: React.FC<{
                         <Text style={{ color: AppColors.text.white, fontWeight: 'bold', fontSize: '12px' }}>
                             {jsondoc.schema_type}
                         </Text>
-                        {isLatest && (
+                        {isCanonical && (
                             <span style={{
                                 background: AppColors.status.latest,
                                 color: '#000',
@@ -206,7 +207,7 @@ const JsondocNode: React.FC<{
                                 fontSize: '10px',
                                 fontWeight: 'bold'
                             }}>
-                                LATEST
+                                CANONICAL
                             </span>
                         )}
                     </div>
@@ -495,15 +496,25 @@ const RawGraphVisualization: React.FC = () => {
         // Use the globally shared lineage graph from context
         const lineageGraph = projectData.lineageGraph;
 
+        // Compute canonical jsondocs using the canonical logic
+        const canonicalContext = computeCanonicalJsondocsFromLineage(
+            lineageGraph,
+            projectData.jsondocs,
+            projectData.transforms,
+            projectData.humanTransforms,
+            projectData.transformInputs,
+            projectData.transformOutputs
+        );
+        const canonicalJsondocIds = extractCanonicalJsondocIds(canonicalContext);
+
         const nodes: Node[] = [];
         const edges: Edge[] = [];
 
         // Create jsondoc nodes
         if (showJsondocs && Array.isArray(projectData.jsondocs)) {
             projectData.jsondocs.forEach((jsondoc) => {
-                // Check if this is the latest version in a lineage chain
-                const lineageNode = lineageGraph.nodes?.get(jsondoc.id);
-                const isLatest = lineageNode?.isLeaf || false;
+                // Check if this jsondoc is canonical using the canonical logic
+                const isCanonical = canonicalJsondocIds.has(jsondoc.id);
 
                 // Determine origin type by checking which transforms created this jsondoc
                 let originType: string | undefined;
@@ -528,7 +539,7 @@ const RawGraphVisualization: React.FC = () => {
                 nodes.push({
                     id: jsondoc.id,
                     type: 'jsondoc',
-                    data: { jsondoc, isLatest, originType },
+                    data: { jsondoc, isCanonical, originType },
                     position: { x: 0, y: 0 }, // Will be set by layout
                 });
             });
