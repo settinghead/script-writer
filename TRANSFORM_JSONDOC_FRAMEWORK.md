@@ -3620,6 +3620,284 @@ const CollaborativeJsondocEditor = ({ jsondocId, field }) => {
 
 The Transform Jsondoc Framework provides a complete foundation for sophisticated data transformation applications with intelligent agent orchestration, immutable jsondoc management, real-time collaboration via YJS, and enterprise-grade development tooling. Applications built on this framework benefit from automatic lineage tracking, type-safe operations, advanced caching, and seamless real-time collaborative editing while maintaining focus on domain-specific business logic.
 
+## Canonical Jsondoc Logic and Patch Approval Workflow
+
+The framework implements a sophisticated **canonical jsondoc resolution system** that enables intelligent patch approval workflows. This system provides human oversight for AI-generated content modifications while maintaining complete lineage tracking and immutability principles.
+
+### Core Concepts
+
+#### **Canonical Jsondocs**
+Canonical jsondocs represent the "current authoritative version" of content within complex editing workflows. The framework automatically identifies canonical jsondocs using lineage graph traversal:
+
+**Definition Rules**:
+- **User Input Priority**: `user_input` jsondocs are always canonical over `ai_generated` jsondocs
+- **Leaf Node Priority**: Among same origin types, the most recent (leaf) jsondoc is canonical
+- **Human Edit Precedence**: Human-edited content takes precedence over AI-generated alternatives
+
+**Algorithm**:
+```typescript
+// Canonical jsondoc resolution algorithm
+function findCanonicalJsondocs(lineageGraph: LineageGraph, schemaType: string): ElectricJsondoc[] {
+    // 1. Find all jsondocs of the target schema type
+    const targetJsondocs = lineageGraph.jsondocs.filter(j => j.schema_type === schemaType);
+    
+    // 2. Group by lineage chains (connected components)
+    const lineageChains = groupByLineageChains(targetJsondocs, lineageGraph);
+    
+    // 3. For each chain, find the canonical jsondoc
+    return lineageChains.map(chain => {
+        // Prioritize user_input over ai_generated
+        const userInputs = chain.filter(j => j.origin_type === 'user_input');
+        if (userInputs.length > 0) {
+            // Return the most recent user_input (leaf node)
+            return findLeafNode(userInputs, lineageGraph);
+        }
+        
+        // Fallback to most recent ai_generated
+        return findLeafNode(chain, lineageGraph);
+    });
+}
+```
+
+#### **Canonical Patches**
+Canonical patches are the approved, human-edited modifications that should be applied to create derived content:
+
+**Identification Rules**:
+- **Origin Type**: Must be `user_input` (human-edited patches)
+- **Leaf Status**: Must be leaf nodes in the lineage graph (no further edits)
+- **Schema Type**: Must be JSON patch jsondocs (`json_patch:v1`)
+- **Lineage Connection**: Must trace back to AI-generated patch proposals
+
+### Patch Approval Workflow Implementation
+
+#### **Complete Workflow Stages**
+
+**1. AI Patch Generation**
+```typescript
+// AI generates patch proposals instead of direct edits
+const aiPatchTransform = {
+    type: 'llm',
+    transform_name: 'brainstorm_edit_patch',
+    inputs: [originalJsondoc, userRequest],
+    outputs: [aiPatchJsondoc] // Contains JSON Patch operations
+};
+```
+
+**2. Human Review and Editing**
+```typescript
+// User reviews and potentially modifies AI patches
+const humanPatchTransform = {
+    type: 'human',
+    transform_name: 'patch_edit',
+    inputs: [aiPatchJsondoc],
+    outputs: [editedPatchJsondoc] // User-modified patches
+};
+```
+
+**3. Patch Approval**
+```typescript
+// System applies canonical patches to create derived content
+const approvalTransform = {
+    type: 'human',
+    transform_name: 'human_patch_approval',
+    inputs: [...canonicalPatches, originalJsondoc],
+    outputs: [derivedJsondoc] // Original + applied patches
+};
+```
+
+#### **Canonical Logic Integration**
+
+**Patch Application Algorithm**:
+```typescript
+export function applyCanonicalPatches(
+    originalJsondocData: any,
+    canonicalPatches: ElectricJsondoc[]
+): any {
+    let derivedData = deepClone(originalJsondocData);
+
+    // Sort patches by index and creation time
+    const sortedPatches = canonicalPatches.sort((a, b) => {
+        const aPatchIndex = (a.data as any)?.patchIndex ?? 0;
+        const bPatchIndex = (b.data as any)?.patchIndex ?? 0;
+        
+        if (aPatchIndex !== bPatchIndex) {
+            return aPatchIndex - bPatchIndex;
+        }
+        
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    });
+
+    // Apply each canonical patch in sequence
+    for (const patchJsondoc of sortedPatches) {
+        // Handle both string and object formats for patch data
+        let patchData = patchJsondoc.data as any;
+        if (typeof patchData === 'string') {
+            patchData = JSON.parse(patchData);
+        }
+
+        if (patchData.patches && Array.isArray(patchData.patches)) {
+            const patchResult = applyPatch(derivedData, patchData.patches, true);
+            if (patchResult.newDocument) {
+                derivedData = patchResult.newDocument;
+            }
+        }
+    }
+
+    return derivedData;
+}
+```
+
+#### **API Implementation**
+
+**Approval Endpoint**:
+```typescript
+// POST /api/transforms/:transformId/approve
+app.post('/api/transforms/:transformId/approve', requireAuth, async (req, res) => {
+    const { transformId } = req.params;
+    const userId = req.user.id;
+
+    // 1. Validate the AI patch transform
+    const aiPatchTransform = await transformRepo.getTransform(transformId);
+    if (!aiPatchTransform || aiPatchTransform.transform_name !== 'brainstorm_edit_patch') {
+        return res.status(400).json({ error: 'Invalid transform for approval' });
+    }
+
+    // 2. Fetch complete project lineage
+    const projectLineage = await jsondocRepo.getProjectLineageData(aiPatchTransform.project_id);
+    const lineageGraph = buildLineageGraph(projectLineage);
+
+    // 3. Find canonical patches using canonical logic
+    const canonicalPatches = findCanonicalJsondocs(lineageGraph, 'json_patch:v1');
+
+    // 4. Find original jsondoc to apply patches to
+    const originalJsondoc = findOriginalJsondoc(lineageGraph, canonicalPatches);
+
+    // 5. Apply canonical patches to create derived content
+    const derivedData = applyCanonicalPatches(originalJsondoc.data, canonicalPatches);
+
+    // 6. Create approval transform and derived jsondoc
+    const approvalTransform = await createApprovalTransform({
+        userId,
+        projectId: aiPatchTransform.project_id,
+        canonicalPatches,
+        originalJsondoc,
+        derivedData
+    });
+
+    // 7. Notify waiting tools via event bus
+    PatchApprovalEventBus.getInstance().notifyApproval(transformId, {
+        approved: true,
+        derivedJsondocId: approvalTransform.outputs[0].id
+    });
+
+    res.json({ success: true, approvalTransformId: approvalTransform.id });
+});
+```
+
+### Key Rules and Principles
+
+#### **Immutability Preservation**
+- **Original Content Preserved**: All original jsondocs remain unchanged
+- **Patch History Maintained**: Complete audit trail of AI proposals vs human decisions
+- **Reversible Operations**: Any approval can be traced back to original content
+
+#### **Canonical Resolution Rules**
+1. **User Input Priority**: Human-edited content always takes precedence over AI-generated
+2. **Leaf Node Selection**: Most recent version within same origin type is canonical
+3. **Lineage Tracing**: Canonical patches must trace back to AI patch proposals
+4. **Schema Validation**: All operations use proper Zod schema validation
+
+#### **Patch Application Rules**
+1. **Sequential Application**: Patches applied in order of `patchIndex` then creation time
+2. **Error Handling**: Failed patches are logged but don't stop the process
+3. **Data Format Flexibility**: Handles both JSON string and object patch data
+4. **Validation Required**: All patch operations validated before application
+
+#### **Event-Driven Coordination**
+- **PostgreSQL LISTEN/NOTIFY**: Real-time coordination between tools and approval system
+- **Timeout Handling**: 10-day timeout for patch approval requests
+- **Status Tracking**: Complete status tracking through approval workflow
+
+### Usage Examples
+
+#### **Tool Integration**
+```typescript
+// Tool waits for patch approval
+class BrainstormEditTool extends BaseTool {
+    async execute(input: any): Promise<any> {
+        // Generate AI patch
+        const patchTransform = await this.generatePatch(input);
+        
+        // Wait for human approval
+        const approval = await PatchApprovalEventBus.getInstance()
+            .waitForApproval(patchTransform.id, 864000000); // 10 days
+        
+        if (approval.approved) {
+            // Fetch and return approved content
+            const derivedJsondoc = await this.jsondocRepo.getJsondoc(approval.derivedJsondocId);
+            return derivedJsondoc.data;
+        } else {
+            throw new Error('Patch approval was rejected');
+        }
+    }
+}
+```
+
+#### **Frontend Integration**
+```typescript
+// Approval modal with canonical patch editing
+const PatchApprovalEditor = ({ transformId }) => {
+    const [canonicalPatches, setCanonicalPatches] = useState([]);
+    const [originalData, setOriginalData] = useState(null);
+    
+    // Load canonical patches and original data
+    useEffect(() => {
+        loadCanonicalPatchesForTransform(transformId)
+            .then(({ patches, original }) => {
+                setCanonicalPatches(patches);
+                setOriginalData(original);
+            });
+    }, [transformId]);
+    
+    // Apply patches and show preview
+    const previewData = useMemo(() => {
+        return applyCanonicalPatches(originalData, canonicalPatches);
+    }, [originalData, canonicalPatches]);
+    
+    return (
+        <div className="patch-approval-editor">
+            <div className="editor-panel">
+                {canonicalPatches.map(patch => (
+                    <PatchEditor key={patch.id} patch={patch} />
+                ))}
+            </div>
+            <div className="preview-panel">
+                <JsonDiff original={originalData} modified={previewData} />
+            </div>
+        </div>
+    );
+};
+```
+
+### Benefits and Applications
+
+#### **Human-AI Collaboration**
+- **Intelligent Oversight**: Humans review and refine AI suggestions before application
+- **Granular Control**: Individual patches can be approved, rejected, or modified
+- **Context Preservation**: Complete project context maintained throughout approval process
+
+#### **Content Quality Assurance**
+- **Review Workflow**: Systematic review of AI-generated modifications
+- **Iterative Refinement**: Multiple rounds of AI suggestion → human review → approval
+- **Audit Trail**: Complete history of who approved what changes and when
+
+#### **Framework Flexibility**
+- **General Algorithm**: Works with any jsondoc schema type and patch structure
+- **Tool Integration**: Any tool can use patch approval workflow
+- **Event-Driven**: Loosely coupled components communicate via event bus
+
+This canonical jsondoc logic and patch approval system demonstrates the Transform Jsondoc Framework's ability to handle sophisticated human-AI collaboration workflows while maintaining the core principles of immutability, traceability, and type safety.
+
 ### Patch Approval System - Complete Implementation
 
 The framework includes a fully implemented **patch approval system** that provides human oversight for AI-generated content modifications. This sophisticated system demonstrates the framework's flexibility and power in handling complex human-AI collaboration workflows.
@@ -3635,6 +3913,7 @@ The framework includes a fully implemented **patch approval system** that provid
 - **Particle System Integration** - Automatic exclusion of patch jsondocs from search/embedding
 - **Complete Lineage Tracking** - Full audit trail of AI proposals vs. human decisions
 - **API Endpoints** - Approval/rejection processing with proper transform creation
+- **Canonical Logic Integration** - Automatic identification and application of human-edited patches
 
 **Key Achievements**:
 - **Non-Destructive Workflow** - Original content preserved throughout approval process
@@ -3643,5 +3922,6 @@ The framework includes a fully implemented **patch approval system** that provid
 - **Real-Time Synchronization** - Electric SQL integration for instant cross-client updates
 - **Complete Type Safety** - Zod schema validation for all patch operations
 - **Event-Driven Architecture** - Tools wait for approval via PostgreSQL LISTEN/NOTIFY
+- **General Algorithm** - Works with any jsondoc schema type using canonical resolution logic
 
 This implementation showcases how the Transform Jsondoc Framework enables sophisticated workflows that would be complex to implement from scratch, while maintaining the core principles of immutability, traceability, and real-time collaboration. 

@@ -77,6 +77,39 @@ When users request AI edits (e.g., "让这些故事更现代一些，加入一�
 - **Revert Functionality** - Reset to original AI suggestions
 - **Complete Audit Trail** - Track both AI proposals and human decisions
 
+### 🧠 Intelligent Content Version Management
+
+觅光助创 uses an advanced **canonical jsondoc resolution system** that automatically manages complex editing workflows. When you make multiple edits to AI-generated content, the system always knows which version represents your "current authoritative content."
+
+#### **How It Works for Users**
+
+**Real-World Example**:
+```
+1. AI generates brainstorm idea: "觉醒吧，南京赛亚人！"
+2. You edit the title: "觉醒吧，南京赛亚人！——男人的热血逆袭"  
+3. You edit the body to add character details
+4. You ask AI: "让这些故事更现代一些，加入一些科技元素"
+5. AI proposes changes, you review and approve
+6. System intelligently applies AI changes to YOUR edited version
+```
+
+**Key Benefits**:
+- **🎯 No Version Conflicts** - System automatically merges your edits with AI suggestions
+- **🔍 Complete Control** - Review and modify AI suggestions before they're applied
+- **⚡ Flexible Workflow** - Edit manually, use AI help, or combine both approaches
+- **🛡️ Safety First** - Original content never lost, all changes require your approval
+
+#### **Patch Approval Interface**
+
+When you request AI edits, you get a full-screen review interface:
+- **Side-by-side comparison** of current content vs. AI suggestions
+- **Interactive editing** - modify AI suggestions before approval
+- **Granular control** - approve some changes, reject others
+- **Real-time preview** - see exactly how changes will look
+- **Complete history** - track all edits and approvals
+
+> **Technical Details**: For complete documentation of the canonical jsondoc algorithm, patch application logic, and API implementation, see the [Canonical Jsondoc Logic section](./TRANSFORM_JSONDOC_FRAMEWORK.md#canonical-jsondoc-logic-and-patch-approval-workflow) in the Transform Jsondoc Framework documentation.
+
 **Template System Benefits**:
 - **70% Boilerplate Reduction** - Adding new parameters requires only schema changes
 - **YAML-Formatted Variables** - Human-readable template variables (%%jsondocs%%, %%params%%)
