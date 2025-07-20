@@ -87,8 +87,6 @@ vi.mock('../lineageBasedActionComputation', () => ({
                 actionContext: {
                     currentStage,
                     hasActiveTransforms: false,
-                    effectiveBrainstormIdeas: [],
-                    chosenBrainstormIdea: null,
                     latestOutlineSettings: null,
                     latestChronicles: null,
                     brainstormInput: null,
@@ -107,8 +105,6 @@ vi.mock('../lineageBasedActionComputation', () => ({
             actionContext: {
                 currentStage: 'initial',
                 hasActiveTransforms: false,
-                effectiveBrainstormIdeas: [],
-                chosenBrainstormIdea: null,
                 latestOutlineSettings: null,
                 latestChronicles: null,
                 brainstormInput: null,

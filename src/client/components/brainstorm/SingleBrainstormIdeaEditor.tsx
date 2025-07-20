@@ -76,7 +76,39 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                     <JsondocDisplayWrapper
                         jsondoc={effectiveJsondoc}
                         isEditable={isEditable}
-                        title="选中的创意"
+                        title={(() => {
+                            // Debug logging
+                            console.log('[SingleBrainstormIdeaEditor] Debug info:', {
+                                jsondocId: effectiveJsondoc.id,
+                                schema_type: effectiveJsondoc.schema_type,
+                                origin_type: effectiveJsondoc.origin_type,
+                                metadata: effectiveJsondoc.metadata,
+                                hasOriginalJsondocId: effectiveJsondoc.metadata && typeof effectiveJsondoc.metadata === 'object' && 'original_jsondoc_id' in effectiveJsondoc.metadata,
+                                metadataKeys: effectiveJsondoc.metadata ? Object.keys(effectiveJsondoc.metadata) : 'no metadata'
+                            });
+
+                            // Parse metadata if it's a string
+                            let parsedMetadata;
+                            try {
+                                parsedMetadata = typeof effectiveJsondoc.metadata === 'string'
+                                    ? JSON.parse(effectiveJsondoc.metadata)
+                                    : effectiveJsondoc.metadata;
+                            } catch (e) {
+                                parsedMetadata = effectiveJsondoc.metadata;
+                            }
+
+                            // Determine title based on jsondoc context
+                            if (parsedMetadata && typeof parsedMetadata === 'object' && 'original_jsondoc_id' in parsedMetadata) {
+                                console.log('[SingleBrainstormIdeaEditor] Title: 故事创意 (has original_jsondoc_id)');
+                                return '故事创意';
+                            }
+                            if (!parsedMetadata || Object.keys(parsedMetadata).length === 0) {
+                                console.log('[SingleBrainstormIdeaEditor] Title: 故事创意 (no metadata)');
+                                return '故事创意';
+                            }
+                            console.log('[SingleBrainstormIdeaEditor] Title: 选中的创意 (has metadata but no original_jsondoc_id)');
+                            return '选中的创意';
+                        })()}
                         icon="💡"
                         editableComponent={EditableBrainstormForm}
                         schemaType="brainstorm_idea"

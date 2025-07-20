@@ -4,7 +4,7 @@ import { useProjectData } from '../contexts/ProjectDataContext';
 import { useActionItemsStore } from '../stores/actionItemsStore';
 import { computeUnifiedWorkflowState } from '../utils/actionComputation';
 import ActionItemRenderer from './actions/ActionItemRenderer';
-import { WorkflowSteps } from './WorkflowSteps';
+// import { WorkflowSteps } from './WorkflowSteps';
 
 const { Text, Title } = Typography;
 
@@ -127,7 +127,6 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                                     action={action}
                                     projectId={projectId}
                                     hasActiveTransforms={hasActiveTransforms}
-                                    workflowSteps={[]} // Don't pass steps here since we show them above
                                     onSuccess={() => {
                                         // Action completed successfully
                                     }}

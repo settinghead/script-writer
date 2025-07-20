@@ -22,25 +22,29 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
     const [isGenerating, setIsGenerating] = useState(false);
 
     // Get chosen idea from props (new way) or null (old way - will show nothing to do)
-    const chosenIdea = 'jsondocs' in props ? props.jsondocs.chosenIdea : null;
+    const chosenIdea = 'jsondocs' in props ? props.jsondocs.brainstormIdea : null;
     const chosenIdeaLoading = false; // No longer needed with resolved props
 
     // Get the chosen brainstorm idea data (simplified with resolved props)
     const { sourceJsondocId, ideaData } = useMemo(() => {
         if (!chosenIdea) return { sourceJsondocId: null, ideaData: null };
 
-        // EffectiveBrainstormIdea has jsondocId property
-        const jsondocId = chosenIdea.jsondocId;
+        // chosenIdea is now an ElectricJsondoc, so use its id directly
+        const jsondocId = chosenIdea.id;
 
-        // For new ActionComponentProps with resolved data, we need to get the actual idea data
-        // This will be handled by the parent component that resolves the lineage
-        // For now, provide a placeholder that will work with the existing form
-        const ideaData = {
-            title: '选中的创意',
-            body: '创意详情将在此显示'
-        };
+        // Parse the jsondoc data to get the actual idea content
+        let parsedIdeaData;
+        try {
+            parsedIdeaData = JSON.parse(chosenIdea.data);
+        } catch (error) {
+            console.warn('Failed to parse brainstorm idea data:', error);
+            parsedIdeaData = {
+                title: '选中的创意',
+                body: '创意详情将在此显示'
+            };
+        }
 
-        return { sourceJsondocId: jsondocId, ideaData };
+        return { sourceJsondocId: jsondocId, ideaData: parsedIdeaData };
     }, [chosenIdea]);
 
     // Handle outline generation

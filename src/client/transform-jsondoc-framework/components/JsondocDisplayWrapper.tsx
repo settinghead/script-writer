@@ -163,7 +163,50 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                                 {icon} {title}
                             </Title>
                             <Text type="secondary" style={{ fontSize: '12px' }}>
-                                {jsondoc.origin_type === 'user_input' ? '用户创建' : '可编辑'}
+                                {(() => {
+                                    // Debug logging
+                                    console.log('[JsondocDisplayWrapper] Debug info:', {
+                                        jsondocId: jsondoc.id,
+                                        schema_type: jsondoc.schema_type,
+                                        origin_type: jsondoc.origin_type,
+                                        metadata: jsondoc.metadata,
+                                        hasOriginalJsondocId: jsondoc.metadata && typeof jsondoc.metadata === 'object' && 'original_jsondoc_id' in jsondoc.metadata,
+                                        metadataKeys: jsondoc.metadata ? Object.keys(jsondoc.metadata) : 'no metadata'
+                                    });
+
+                                    // Parse metadata if it's a string
+                                    let parsedMetadata;
+                                    try {
+                                        parsedMetadata = typeof jsondoc.metadata === 'string'
+                                            ? JSON.parse(jsondoc.metadata)
+                                            : jsondoc.metadata;
+                                    } catch (e) {
+                                        parsedMetadata = jsondoc.metadata;
+                                    }
+
+                                    if (jsondoc.origin_type === 'user_input') {
+                                        // For brainstorm ideas, check if it came from a collection or was directly created
+                                        if (jsondoc.schema_type === 'brainstorm_idea') {
+                                            // If it has original_jsondoc_id in metadata, it's an edited version
+                                            if (parsedMetadata && typeof parsedMetadata === 'object' && 'original_jsondoc_id' in parsedMetadata) {
+                                                console.log('[JsondocDisplayWrapper] Subtitle: 已编辑 (has original_jsondoc_id)');
+                                                return '已编辑';
+                                            }
+                                            // If it has no metadata or empty metadata, it was directly created
+                                            if (!parsedMetadata || Object.keys(parsedMetadata).length === 0) {
+                                                console.log('[JsondocDisplayWrapper] Subtitle: 故事创意 (no metadata)');
+                                                return '故事创意';
+                                            }
+                                            // If it has metadata but no original_jsondoc_id, it might be from collection selection
+                                            console.log('[JsondocDisplayWrapper] Subtitle: 选中的创意 (has metadata but no original_jsondoc_id)');
+                                            return '选中的创意';
+                                        }
+                                        console.log('[JsondocDisplayWrapper] Subtitle: 用户创建 (not brainstorm_idea)');
+                                        return '用户创建';
+                                    }
+                                    console.log('[JsondocDisplayWrapper] Subtitle: 可编辑 (not user_input)');
+                                    return '可编辑';
+                                })()}
                             </Text>
                         </div>
                     </div>

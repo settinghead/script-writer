@@ -41,8 +41,6 @@ export interface DisplayComponent {
 export interface WorkflowParameters {
     projectId: string;
     hasActiveTransforms: boolean;
-    effectiveBrainstormIdeas: any[];
-    chosenBrainstormIdea: any;
     latestOutlineSettings: any;
     latestChronicles: any;
     brainstormInput: any;

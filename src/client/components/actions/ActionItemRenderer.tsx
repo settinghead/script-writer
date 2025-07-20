@@ -21,7 +21,6 @@ const ActionItemRenderer: React.FC<ActionItemRendererProps> = ({
     stageDescription = '',
 }) => {
 
-
     const Component = action.component;
 
     if (!Component) {

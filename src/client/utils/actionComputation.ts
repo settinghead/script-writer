@@ -4,7 +4,6 @@ import {
     computeActionsFromLineage,
     type ActionItem,
 } from './lineageBasedActionComputation';
-import { convertEffectiveIdeasToIdeaWithTitle } from '../../common/transform-jsondoc-framework/lineageResolution';
 import {
     UnifiedWorkflowState,
     DisplayComponent,
@@ -458,7 +457,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         });
     }
 
-    if (context.brainstormIdeas.length > 0) {
+    // Only show idea collection if we have a brainstorm collection (not individual ideas)
+    if (context.canonicalContext.canonicalBrainstormCollection && context.brainstormIdeas.length > 0) {
         components.push({
             id: 'idea-collection',
             component: getComponentById('idea-collection'),
@@ -570,8 +570,6 @@ function computeWorkflowParametersFromContext(
     return {
         projectId,
         hasActiveTransforms: context.hasActiveTransforms,
-        effectiveBrainstormIdeas: context.canonicalBrainstormJsondocs,
-        chosenBrainstormIdea: context.chosenIdea,
         latestOutlineSettings: context.outlineSettings,
         latestChronicles: context.canonicalChronicles,
         brainstormInput: context.brainstormInput
@@ -675,8 +673,6 @@ export const computeWorkflowParameters = (
         return {
             projectId,
             hasActiveTransforms: false,
-            effectiveBrainstormIdeas: [],
-            chosenBrainstormIdea: null,
             latestOutlineSettings: null,
             latestChronicles: null,
             brainstormInput: null
@@ -704,8 +700,6 @@ export const computeUnifiedWorkflowState = (
             parameters: {
                 projectId,
                 hasActiveTransforms: false,
-                effectiveBrainstormIdeas: [],
-                chosenBrainstormIdea: null,
                 latestOutlineSettings: null,
                 latestChronicles: null,
                 brainstormInput: null
