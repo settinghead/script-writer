@@ -331,8 +331,13 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
             }
             open={modalVisible}
             onCancel={() => setModalVisible(false)}
-            width={800}
-            style={{ top: 20 }}
+            width="100vw"
+            style={{ top: 0, paddingBottom: 0, maxWidth: 'none', height: '100vh' }}
+            styles={{
+                body: { height: 'calc(100vh - 110px)', padding: 0, maxHeight: 'none' },
+                content: { height: '100vh', maxHeight: 'none' },
+                mask: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh' }
+            }}
             footer={
                 <Space>
                     <Checkbox
@@ -385,7 +390,7 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
             )}
 
             {patches && patches.length > 0 && (
-                <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '0 4px' }}>
+                <div style={{ height: '100%', overflowY: 'auto', padding: '20px' }}>
                     {patches.map((patchItem, index) => (
                         <PatchCard
                             key={patchItem.patchJsondoc.id}
