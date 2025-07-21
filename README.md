@@ -8,6 +8,7 @@ A collaborative Chinese short drama script writing application built on the [Tra
 
 **Key Features**:
 - **AI-Powered Script Creation** - From initial brainstorming to complete episode scripts
+- **Intelligent Tool Filtering** - Context-aware agent that only offers relevant tools based on workflow state
 - **Chinese Short Drama Focus** - Specialized for 抖音, 快手, and other Chinese platforms
 - **去脸谱化 Content** - Emphasizes modern, non-stereotypical characters and plots
 - **Real-time Collaboration** - YJS-powered collaborative editing with conflict resolution
@@ -117,6 +118,7 @@ When you request AI edits, you get a full-screen review interface:
 - **Custom Override Support** - Complex tools maintain custom logic while leveraging defaults
 
 **Agent Capabilities**:
+- **Intelligent Tool Filtering** - Only offers tools relevant to current workflow state to prevent confusion
 - **Dual-Mode Operation** - Automatically detects generation vs editing requests
 - **Natural Language Interface** - ChatGPT-style conversation with bilingual support (English/Chinese)
 - **Context Enrichment** - Maintains complete project context for AI operations

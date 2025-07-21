@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { computeCanonicalJsondocsFromLineage } from '../../common/canonicalJsondocLogic';
+import { computeCanonicalJsondocsFromLineage, type CanonicalJsondocContext } from '../../common/canonicalJsondocLogic';
 import { buildLineageGraph } from '../../common/transform-jsondoc-framework/lineageResolution';
 import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTools';
 import { createOutlineSettingsToolDefinition, createOutlineSettingsEditToolDefinition } from '../tools/OutlineSettingsTool';
@@ -322,10 +322,20 @@ ${context}
 现在，请开始分析请求、审视上下文，并执行必要的工具调用序列，在每个中间和最后步骤输出JSON格式响应。`;
 }
 
+
+
 /**
- * Builds all available tool definitions
+ * Compute available tools based on canonical jsondoc context
+ * This is the core logic that filters tools based on the current workflow state
+ * 
+ * Filtering rules:
+ * 1. Never show generate tools if the corresponding jsondoc already exists
+ * 2. Only show edit tools if the corresponding jsondoc exists
+ * 3. Show next-stage generate tools only when prerequisites are met
+ * 4. generate_episode_synopsis is special - can be used multiple times
  */
-export function buildToolsForRequestType(
+export function computeAvailableToolsFromCanonicalContext(
+    context: CanonicalJsondocContext,
     transformRepo: TransformRepository,
     jsondocRepo: JsondocRepository,
     projectId: string,
@@ -338,22 +348,81 @@ export function buildToolsForRequestType(
         maxTokens?: number;
     }
 ): StreamingToolDefinition<any, any>[] {
-    // Always provide all available tools
-    return [
-        createBrainstormToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
-        createBrainstormEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
-        createOutlineSettingsToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
-        createOutlineSettingsEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
-        createChroniclesToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
-        createChroniclesEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
-        createEpisodePlanningToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
-        createEpisodePlanningEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions),
-        createEpisodeSynopsisToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions)
-    ];
+    const availableTools: StreamingToolDefinition<any, any>[] = [];
+
+    // Helper function to add tool if it doesn't exist
+    const addTool = (toolFactory: () => StreamingToolDefinition<any, any>) => {
+        availableTools.push(toolFactory());
+    };
+
+    // Check what canonical jsondocs exist
+    const hasBrainstormInput = !!context.canonicalBrainstormInput;
+    const hasBrainstormCollection = !!context.canonicalBrainstormCollection;
+    const hasBrainstormIdea = !!context.canonicalBrainstormIdea;
+    const hasOutlineSettings = !!context.canonicalOutlineSettings;
+    const hasChronicles = !!context.canonicalChronicles;
+    const hasEpisodePlanning = !!context.canonicalEpisodePlanning;
+    const hasEpisodeSynopsis = context.canonicalEpisodeSynopsisList.length > 0;
+
+    // Check if any brainstorm result exists (collection or idea)
+    const hasBrainstormResult = hasBrainstormCollection || hasBrainstormIdea;
+
+    // === BRAINSTORM STAGE ===
+    // generate_brainstorm_ideas: Only if no brainstorm result exists yet
+    if (!hasBrainstormResult) {
+        addTool(() => createBrainstormToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+    }
+
+    // edit_brainstorm_idea: If we have any brainstorm result (collection or single idea)
+    if (hasBrainstormResult) {
+        addTool(() => createBrainstormEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+    }
+
+    // === OUTLINE SETTINGS STAGE ===
+    // generate_outline_settings: Only if we have brainstorm idea but no outline settings yet
+    if (hasBrainstormIdea && !hasOutlineSettings) {
+        addTool(() => createOutlineSettingsToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+    }
+
+    // edit_outline_settings: If outline settings exist
+    if (hasOutlineSettings) {
+        addTool(() => createOutlineSettingsEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+    }
+
+    // === CHRONICLES STAGE ===
+    // generate_chronicles: Only if we have outline settings but no chronicles yet
+    if (hasOutlineSettings && !hasChronicles) {
+        addTool(() => createChroniclesToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+    }
+
+    // edit_chronicles: If chronicles exist
+    if (hasChronicles) {
+        addTool(() => createChroniclesEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+    }
+
+    // === EPISODE PLANNING STAGE ===
+    // generate_episode_planning: Only if we have chronicles but no episode planning yet
+    if (hasChronicles && !hasEpisodePlanning) {
+        addTool(() => createEpisodePlanningToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+    }
+
+    // edit_episode_planning: If episode planning exists
+    if (hasEpisodePlanning) {
+        addTool(() => createEpisodePlanningEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+    }
+
+    // === EPISODE SYNOPSIS STAGE ===
+    // generate_episode_synopsis: If we have episode planning (can generate multiple groups)
+    if (hasEpisodePlanning) {
+        addTool(() => createEpisodeSynopsisToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+    }
+
+    return availableTools;
 }
 
 /**
  * Main function to build complete agent configuration based on user request
+ * Uses canonical jsondoc context to filter available tools based on workflow state
  */
 export async function buildAgentConfiguration(
     request: GeneralAgentRequest,
@@ -382,9 +451,43 @@ export async function buildAgentConfiguration(
     const prompt = buildPromptForRequestType(request.userRequest, context);
     console.log(`[AgentConfigBuilder] Built prompt (${prompt.length} chars)`);
 
-    // Build all available tools
-    const tools = buildToolsForRequestType(transformRepo, jsondocRepo, projectId, userId, cachingOptions);
-    console.log(`[AgentConfigBuilder] Built ${tools.length} tools for request type`);
+    // Compute canonical context for tool filtering
+    const jsondocs = await jsondocRepo.getAllProjectJsondocsForLineage(projectId);
+    const transforms = await jsondocRepo.getAllProjectTransformsForLineage(projectId);
+    const humanTransforms = await jsondocRepo.getAllProjectHumanTransformsForLineage(projectId);
+    const transformInputs = await jsondocRepo.getAllProjectTransformInputsForLineage(projectId);
+    const transformOutputs = await jsondocRepo.getAllProjectTransformOutputsForLineage(projectId);
+
+    // Build lineage graph for canonical context computation
+    const lineageGraph = buildLineageGraph(
+        jsondocs,
+        transforms,
+        humanTransforms,
+        transformInputs,
+        transformOutputs
+    );
+
+    // Compute canonical jsondocs context
+    const canonicalContext = computeCanonicalJsondocsFromLineage(
+        lineageGraph,
+        jsondocs,
+        transforms,
+        humanTransforms,
+        transformInputs,
+        transformOutputs
+    );
+
+    // Build filtered tools based on canonical context
+    const tools = computeAvailableToolsFromCanonicalContext(
+        canonicalContext,
+        transformRepo,
+        jsondocRepo,
+        projectId,
+        userId,
+        cachingOptions
+    );
+    console.log(`[AgentConfigBuilder] Built ${tools.length} filtered tools based on canonical context`);
+    console.log(`[AgentConfigBuilder] Available tools: ${tools.map(t => t.name).join(', ')}`);
 
     const config = {
         requestType,

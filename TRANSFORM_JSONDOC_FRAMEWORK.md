@@ -575,10 +575,11 @@ All major operations flow through a context-aware agent framework:
 - **Natural Language Interface** - Conversational interaction with intelligent routing
 - **Context Enrichment** - Maintains project context and provides comprehensive background
 - **Dual-Mode Operation** - Automatically detects generation vs editing requests
+- **Intelligent Tool Filtering** - Only offers relevant tools based on current workflow state
 
 **Agent Workflow**:
 ```
-User Request → Agent Analysis → Context Enrichment → Tool Selection → Execution → Jsondoc Creation
+User Request → Agent Analysis → Context Enrichment → Canonical Context Analysis → Tool Filtering → Tool Selection → Execution → Jsondoc Creation
 ```
 
 ### 3. Lineage Resolution & Type System
@@ -3619,6 +3620,230 @@ const CollaborativeJsondocEditor = ({ jsondocId, field }) => {
 ## Summary
 
 The Transform Jsondoc Framework provides a complete foundation for sophisticated data transformation applications with intelligent agent orchestration, immutable jsondoc management, real-time collaboration via YJS, and enterprise-grade development tooling. Applications built on this framework benefit from automatic lineage tracking, type-safe operations, advanced caching, and seamless real-time collaborative editing while maintaining focus on domain-specific business logic.
+
+## Intelligent Tool Filtering System
+
+The framework implements a **context-aware tool filtering system** that dynamically determines which agent tools should be available based on the current workflow state. This prevents agent confusion and ensures users only see relevant actions at each stage of their project.
+
+### Core Concept
+
+**Problem Solved**: Traditional agent systems offer all available tools regardless of context, leading to:
+- **Agent Confusion** - AI tries to use inappropriate tools for the current workflow state
+- **User Confusion** - Too many irrelevant options presented to users
+- **Workflow Violations** - Agents might skip required steps or repeat completed ones
+
+**Solution**: The tool filtering system uses **canonical jsondoc context** to intelligently filter available tools based on the current project state.
+
+### Tool Filtering Logic
+
+The system follows strict workflow progression rules:
+
+#### **Stage-Based Tool Availability**
+
+**Empty Project** → Only `generate_brainstorm_ideas`
+```typescript
+// No jsondocs exist yet
+availableTools = ['generate_brainstorm_ideas']
+```
+
+**Has brainstorm_collection** → Only `edit_brainstorm_idea`
+```typescript  
+// Multiple ideas generated, user needs to select/edit one
+availableTools = ['edit_brainstorm_idea']
+```
+
+**Has brainstorm_idea** → `edit_brainstorm_idea` + `generate_outline_settings`
+```typescript
+// Single idea exists, can edit it or proceed to next stage
+availableTools = ['edit_brainstorm_idea', 'generate_outline_settings']
+```
+
+**Has outline_settings** → Edit tools for previous stages + `generate_chronicles`
+```typescript
+// Outline exists, can edit previous work or proceed
+availableTools = [
+  'edit_brainstorm_idea', 
+  'edit_outline_settings', 
+  'generate_chronicles'
+]
+```
+
+**Has chronicles** → Edit tools for previous stages + `generate_episode_planning`
+```typescript
+// Chronicles exist, can edit previous work or proceed
+availableTools = [
+  'edit_brainstorm_idea',
+  'edit_outline_settings', 
+  'edit_chronicles',
+  'generate_episode_planning'
+]
+```
+
+**Has episode_planning** → All edit tools + `generate_episode_synopsis`
+```typescript
+// Episode planning exists, can edit any stage or generate episodes
+availableTools = [
+  'edit_brainstorm_idea',
+  'edit_outline_settings',
+  'edit_chronicles', 
+  'edit_episode_planning',
+  'generate_episode_synopsis'
+]
+```
+
+#### **Core Filtering Rules**
+
+1. **Never show generate tools** if the corresponding jsondoc already exists
+2. **Only show edit tools** if the corresponding jsondoc exists
+3. **Show next-stage generate tools** only when prerequisites are met
+4. **Special handling** for `generate_episode_synopsis` (can be used multiple times)
+
+### Technical Implementation
+
+#### **Canonical Context Analysis**
+
+```typescript
+/**
+ * Compute available tools based on canonical jsondoc context
+ * This is the core logic that filters tools based on workflow state
+ */
+export function computeAvailableToolsFromCanonicalContext(
+    context: CanonicalJsondocContext,
+    transformRepo: TransformRepository,
+    jsondocRepo: JsondocRepository,
+    projectId: string,
+    userId: string,
+    cachingOptions?: CachingOptions
+): StreamingToolDefinition<any, any>[] {
+    const availableTools: StreamingToolDefinition<any, any>[] = [];
+
+    // Check what canonical jsondocs exist
+    const hasBrainstormResult = context.canonicalBrainstormCollection || context.canonicalBrainstormIdea;
+    const hasOutlineSettings = !!context.canonicalOutlineSettings;
+    const hasChronicles = !!context.canonicalChronicles;
+    const hasEpisodePlanning = !!context.canonicalEpisodePlanning;
+
+    // Apply filtering rules
+    if (!hasBrainstormResult) {
+        availableTools.push(createBrainstormToolDefinition(...));
+    }
+    
+    if (hasBrainstormResult) {
+        availableTools.push(createBrainstormEditToolDefinition(...));
+    }
+    
+    if (context.canonicalBrainstormIdea && !hasOutlineSettings) {
+        availableTools.push(createOutlineSettingsToolDefinition(...));
+    }
+    
+    // ... additional filtering logic
+    
+    return availableTools;
+}
+```
+
+#### **Agent Configuration Integration**
+
+```typescript
+/**
+ * buildAgentConfiguration now uses filtered tools
+ */
+export async function buildAgentConfiguration(
+    request: GeneralAgentRequest,
+    projectId: string,
+    transformRepo: TransformRepository,
+    jsondocRepo: JsondocRepository,
+    userId: string
+): Promise<AgentConfiguration> {
+    // Compute canonical context for tool filtering
+    const canonicalContext = computeCanonicalJsondocsFromLineage(
+        lineageGraph,
+        jsondocs,
+        transforms,
+        humanTransforms,
+        transformInputs,
+        transformOutputs
+    );
+
+    // Build filtered tools based on canonical context
+    const tools = computeAvailableToolsFromCanonicalContext(
+        canonicalContext,
+        transformRepo,
+        jsondocRepo,
+        projectId,
+        userId
+    );
+
+    return {
+        requestType: 'general',
+        context: buildContextString(),
+        prompt: buildPromptWithToolExamples(),
+        tools // Only relevant tools for current workflow state
+    };
+}
+```
+
+### Benefits Achieved
+
+#### **For AI Agents**
+- **Reduced Confusion** - Only sees tools relevant to current context
+- **Better Decision Making** - Clear progression through workflow stages
+- **Fewer Errors** - Can't accidentally skip steps or repeat completed work
+- **Focused Prompts** - Tool examples only show relevant possibilities
+
+#### **For Users**
+- **Cleaner Interface** - Only relevant actions available at each stage
+- **Guided Workflow** - Clear progression through creation process
+- **Reduced Cognitive Load** - No need to understand which tools to use when
+- **Consistent Experience** - Same filtering logic across all interfaces
+
+#### **For Developers**
+- **Maintainable Logic** - Single source of truth for tool availability
+- **Test-Driven Development** - Comprehensive test coverage for all scenarios
+- **Easy Extension** - Adding new tools requires only updating filtering rules
+- **Framework Integration** - Uses same canonical logic as display components
+
+### Usage Examples
+
+#### **Empty Project Scenario**
+```typescript
+// Project has no jsondocs
+const context = { canonicalBrainstormIdea: null, ... };
+const tools = computeAvailableToolsFromCanonicalContext(context, ...);
+// Result: ['generate_brainstorm_ideas']
+
+// User request: "生成一些故事创意"
+// Agent sees: Only brainstorm generation tool
+// Agent action: Uses generate_brainstorm_ideas appropriately
+```
+
+#### **Mid-Workflow Scenario**
+```typescript
+// Project has brainstorm idea and outline settings
+const context = { 
+  canonicalBrainstormIdea: mockIdea,
+  canonicalOutlineSettings: mockSettings,
+  canonicalChronicles: null,
+  ...
+};
+const tools = computeAvailableToolsFromCanonicalContext(context, ...);
+// Result: ['edit_brainstorm_idea', 'edit_outline_settings', 'generate_chronicles']
+
+// User request: "基于现有设定生成时间顺序大纲"
+// Agent sees: Edit tools for existing content + chronicles generation
+// Agent action: Uses generate_chronicles with proper context
+```
+
+### Integration with Canonical Logic
+
+The tool filtering system leverages the same **canonical jsondoc resolution logic** used by display components and action computation:
+
+- **Consistent State Detection** - All systems use identical workflow state analysis
+- **Lineage Graph Integration** - Filters based on actual jsondoc relationships
+- **Priority Rules** - Same prioritization as display components (derived > user_input > ai_generated)
+- **Edge Case Handling** - Handles manual creation paths and incomplete workflows
+
+This ensures perfect consistency between what users see in the interface and what tools are available to the agent.
 
 ## Canonical Jsondoc Logic and Patch Approval Workflow
 
