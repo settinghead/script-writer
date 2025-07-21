@@ -50,8 +50,8 @@ const EpisodeSynopsisDisplay: React.FC<EpisodeSynopsisDisplayProps> = ({ episode
                         key={`${episode.jsondocId}-${episode.episodeNumber}`}
                         style={{
                             marginBottom: 16,
-                            background: 'linear-gradient(135deg, #f6f9fc 0%, #ffffff 100%)',
-                            border: '1px solid #e8f4fd'
+                            backgroundColor: '#1f1f1f',
+                            borderColor: '#434343'
                         }}
                         title={
                             <Space>
