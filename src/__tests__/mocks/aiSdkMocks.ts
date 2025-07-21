@@ -20,12 +20,17 @@ export function createCachedStreamObjectMock() {
     }) => {
         // Generate cache key from parameters
         const prompt = options.messages?.map(m => m.content).join('\n') || 'default-prompt';
+        // Handle wrapped models from middleware
+        const model = options.model;
+        const modelId = model?.modelId || model?._model?.modelId || 'test-model';
+        const provider = model?.provider || model?._model?.provider || 'test-provider';
+
         const cacheKey = generateCacheKey({
             prompt,
             seed: options.seed,
             schemaHash: generateSchemaHash(options.schema),
-            modelName: options.model.modelId || 'test-model',
-            provider: options.model.provider || 'test-provider',
+            modelName: modelId,
+            provider: provider,
             temperature: options.temperature,
             topP: options.topP,
             maxTokens: options.maxTokens,
@@ -100,10 +105,15 @@ export function createCachedStreamTextMock(mockOptions?: { onToolCall?: (toolNam
     }) => {
         // Generate cache key from parameters
         const prompt = options.messages?.map(m => m.content).join('\n') || 'default-prompt';
+        // Handle wrapped models from middleware
+        const model = options.model;
+        const modelId = model?.modelId || model?._model?.modelId || 'test-model';
+        const provider = model?.provider || model?._model?.provider || 'test-provider';
+
         const cacheKey = generateCacheKey({
             prompt,
-            modelName: options.model.modelId || 'test-model',
-            provider: options.model.provider || 'test-provider',
+            modelName: modelId,
+            provider: provider,
             seed: options.seed,
             temperature: options.temperature,
             topP: options.topP,

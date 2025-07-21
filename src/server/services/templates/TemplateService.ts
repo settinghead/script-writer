@@ -143,7 +143,19 @@ export class TemplateService {
       const isJsonPatch = isJsonPatchTemplate(template.id);
       let jsondocsOutput = '';
 
-      for (const [key, jsondoc] of Object.entries(context.jsondocs)) {
+      // Handle case where jsondocs might be a YAML string instead of an object
+      let jsondocsObject = context.jsondocs;
+      if (typeof context.jsondocs === 'string') {
+        console.log(`[TemplateService] WARNING: jsondocs is a string, this should be an object:`, {
+          jsondocs_preview: context.jsondocs.substring(0, 200) + '...'
+        });
+        // If it's a YAML string, we should not process it as individual jsondocs
+        // Instead, replace %%jsondocs%% directly with the YAML content
+        result = result.replace(/%%jsondocs%%/g, context.jsondocs);
+        return result;
+      }
+
+      for (const [key, jsondoc] of Object.entries(jsondocsObject)) {
         // Create a more descriptive label based on schema type
         const schemaTypeLabels: Record<string, string> = {
           'brainstorm_idea': '故事创意',
@@ -156,9 +168,20 @@ export class TemplateService {
           'user_input': '用户输入'
         };
 
+        console.log(`[TemplateService] Processing jsondoc for template:`, {
+          jsondoc_type: typeof jsondoc,
+          jsondoc_keys: Object.keys(jsondoc || {}),
+          jsondoc_preview: JSON.stringify(jsondoc).substring(0, 200) + '...'
+        });
+
         const jsondocTyped = jsondoc as any;
         const schemaType = jsondocTyped.schema_type || jsondocTyped.schemaType;
         if (!schemaType) {
+          console.log(`[TemplateService] ERROR: Missing schema_type field in jsondoc:`, {
+            full_jsondoc: JSON.stringify(jsondocTyped, null, 2),
+            jsondoc_keys: Object.keys(jsondocTyped || {}),
+            jsondoc_type: typeof jsondocTyped
+          });
           throw new Error(`Jsondoc missing schema_type field. This indicates a data integrity issue. Jsondoc: ${JSON.stringify(jsondocTyped, null, 2)}`);
         }
         const displayLabel = schemaTypeLabels[schemaType];

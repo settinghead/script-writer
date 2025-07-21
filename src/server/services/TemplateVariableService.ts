@@ -80,19 +80,40 @@ export class TemplateVariableService {
         jsondocs: JsondocReference[],
         executionContext: TemplateExecutionContext
     ): Promise<Record<string, any>> {
+        console.log(`[TemplateVariableService] Processing ${jsondocs.length} jsondoc references`);
         const jsondocContents: Record<string, any> = {};
 
         for (const ref of jsondocs) {
             try {
+                console.log(`[TemplateVariableService] Loading jsondoc ${ref.jsondocId}`);
                 const jsondoc = await executionContext.jsondocRepo.getJsondoc(ref.jsondocId);
                 if (jsondoc) {
+                    console.log(`[TemplateVariableService] Loaded jsondoc:`, {
+                        id: jsondoc.id,
+                        schema_type: jsondoc.schema_type,
+                        data_preview: JSON.stringify(jsondoc.data).substring(0, 100) + '...'
+                    });
+
                     // Use description as key, fallback to schema type
                     const key = ref.description || ref.schemaType || ref.jsondocId;
+                    console.log(`[TemplateVariableService] Using key "${key}" for jsondoc`);
+
                     jsondocContents[key] = {
                         id: jsondoc.id,
                         schemaType: jsondoc.schema_type,
-                        content: jsondoc.data
+                        schema_type: jsondoc.schema_type, // Add both for compatibility
+                        content: jsondoc.data,
+                        data: jsondoc.data // Add both for compatibility
                     };
+
+                    console.log(`[TemplateVariableService] Created jsondoc entry:`, {
+                        key,
+                        entry_keys: Object.keys(jsondocContents[key]),
+                        schema_type: jsondocContents[key].schema_type,
+                        schemaType: jsondocContents[key].schemaType
+                    });
+                } else {
+                    console.log(`[TemplateVariableService] ERROR: Jsondoc ${ref.jsondocId} not found`);
                 }
             } catch (error) {
                 console.warn(`Failed to load jsondoc ${ref.jsondocId}:`, error);
@@ -100,6 +121,7 @@ export class TemplateVariableService {
             }
         }
 
+        console.log(`[TemplateVariableService] Final jsondocContents keys:`, Object.keys(jsondocContents));
         return jsondocContents;
     }
 

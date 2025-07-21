@@ -1,10 +1,11 @@
 import { z } from 'zod';
-import { streamText } from 'ai';
+import { streamText, wrapLanguageModel } from 'ai';
 import { TransformRepository } from './TransformRepository';
 import { JsondocRepository } from './JsondocRepository';
 import { createAgentTool } from './StreamingAgentFramework';
 import { buildAgentConfiguration } from '../services/AgentRequestBuilder';
 import { getLLMModel } from './LLMConfig';
+import { createUserContextMiddleware } from '../middleware/UserContextMiddleware';
 
 // Schema for general agent requests
 export const GeneralAgentRequestSchema = z.object({
@@ -241,9 +242,27 @@ export class AgentService {
                 maxTokens
             } = options;
 
-            const model = await getLLMModel();
+            const baseModel = await getLLMModel();
+
+            // Create user context middleware to inject original user request into all LLM calls
+            const userContextMiddleware = createUserContextMiddleware({
+                originalUserRequest: request.userRequest,
+                projectId,
+                userId,
+                timestamp: new Date().toISOString()
+            });
+
+            // Wrap model with middleware to ensure tools have access to original user context
+            const enhancedModel = wrapLanguageModel({
+                model: baseModel,
+                middleware: userContextMiddleware
+            });
+
+            console.log('[AgentService] Using enhanced model with user context middleware');
+            console.log('[AgentService] Original user request length:', request.userRequest.length);
+
             const result = await streamText({
-                model: model,
+                model: enhancedModel, // Use enhanced model instead of base model
                 tools: tools,
                 maxSteps: 25, // Allow more steps for complex editing workflows
                 prompt: completePrompt,

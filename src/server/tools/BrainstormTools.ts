@@ -134,12 +134,29 @@ async function extractSourceIdeaData(
     targetPlatform: string;
     storyGenre: string;
 }> {
+    console.log(`[extractSourceIdeaData] Starting extraction with params:`, {
+        jsondocsCount: params.jsondocs.length,
+        firstJsondocId: params.jsondocs[0]?.jsondocId,
+        ideaIndex: params.ideaIndex
+    });
+
     // Get the first jsondoc from the array (primary source)
     const sourceJsondocRef = params.jsondocs[0];
+    console.log(`[extractSourceIdeaData] Loading jsondoc ${sourceJsondocRef.jsondocId}`);
     const sourceJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
     if (!sourceJsondoc) {
+        console.log(`[extractSourceIdeaData] ERROR: Source jsondoc ${sourceJsondocRef.jsondocId} not found`);
         throw new Error('Source jsondoc not found');
     }
+
+    console.log(`[extractSourceIdeaData] Loaded jsondoc:`, {
+        id: sourceJsondoc.id,
+        schema_type: sourceJsondoc.schema_type,
+        origin_type: sourceJsondoc.origin_type,
+        project_id: sourceJsondoc.project_id,
+        data_keys: Object.keys(sourceJsondoc.data || {}),
+        data_preview: JSON.stringify(sourceJsondoc.data).substring(0, 200) + '...'
+    });
 
     // Verify user has access to this jsondoc's project
     const hasAccess = await jsondocRepo.userHasProjectAccess(userId, sourceJsondoc.project_id);
@@ -172,8 +189,14 @@ async function extractSourceIdeaData(
             throw new Error(`Failed to extract idea at index ${params.ideaIndex}: ${extractError instanceof Error ? extractError.message : String(extractError)}`);
         }
     } else if (sourceJsondoc.schema_type === 'brainstorm_idea') {
+        console.log(`[extractSourceIdeaData] Processing brainstorm_idea jsondoc`);
         // Direct brainstorm idea jsondoc
         if (!sourceData.title || !sourceData.body) {
+            console.log(`[extractSourceIdeaData] ERROR: Invalid brainstorm_idea jsondoc - missing title or body:`, {
+                hasTitle: !!sourceData.title,
+                hasBody: !!sourceData.body,
+                sourceData
+            });
             throw new Error('Invalid brainstorm idea jsondoc');
         }
 
@@ -186,6 +209,7 @@ async function extractSourceIdeaData(
             targetPlatform = sourceJsondoc.metadata.platform || 'unknown';
             storyGenre = sourceJsondoc.metadata.genre || 'unknown';
         }
+        console.log(`[extractSourceIdeaData] Successfully extracted brainstorm_idea:`, { originalIdea, targetPlatform, storyGenre });
     } else if (sourceJsondoc.origin_type === 'user_input') {
         // User-edited jsondoc - extract from derived data
         let derivedData = sourceJsondoc.metadata?.derived_data;
@@ -245,9 +269,18 @@ export function createBrainstormEditToolDefinition(
         description: '编辑和改进现有故事创意。适用场景：用户对现有创意有具体的修改要求或改进建议。使用JSON Patch格式进行精确修改，只改变需要改变的部分，提高效率和准确性。支持各种编辑类型：内容扩展、风格调整、情节修改、结构调整等。系统会自动处理相关的上下文信息。',
         inputSchema: BrainstormEditInputSchema,
         outputSchema: BrainstormEditToolResultSchema,
-        execute: async (params: BrainstormEditInput, { toolCallId }): Promise<BrainstormEditToolResult> => {
+        execute: async (params: BrainstormEditInput, { toolCallId, userContext }): Promise<BrainstormEditToolResult> => {
             const sourceJsondocRef = params.jsondocs[0];
             console.log(`[BrainstormEditTool] Starting unified patch edit for jsondoc ${sourceJsondocRef.jsondocId}`);
+            console.log(`[BrainstormEditTool] Full params:`, JSON.stringify(params, null, 2));
+
+            // Log user context information
+            if (userContext?.originalUserRequest) {
+                console.log(`[BrainstormEditTool] Original user request: "${userContext.originalUserRequest}"`);
+                console.log(`[BrainstormEditTool] Agent interpreted as: "${params.editRequirements}"`);
+            } else {
+                console.log(`[BrainstormEditTool] No user context available, using agent interpretation only`);
+            }
 
             let originalIdea: { title: string; body: string } = { title: 'Unknown', body: 'Unknown' };
 
@@ -258,14 +291,23 @@ export function createBrainstormEditToolDefinition(
                 const { targetPlatform, storyGenre } = extractedData;
 
                 // Determine output jsondoc type based on source jsondoc type
+                console.log(`[BrainstormEditTool] Loading source jsondoc ${sourceJsondocRef.jsondocId}`);
                 const sourceJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
                 if (!sourceJsondoc) {
+                    console.log(`[BrainstormEditTool] ERROR: Source jsondoc ${sourceJsondocRef.jsondocId} not found`);
                     return {
                         status: 'error',
                         error: 'Source jsondoc not found',
                         originalIdea
                     };
                 }
+                console.log(`[BrainstormEditTool] Loaded source jsondoc:`, {
+                    id: sourceJsondoc.id,
+                    schema_type: sourceJsondoc.schema_type,
+                    data_preview: typeof sourceJsondoc.data === 'string'
+                        ? sourceJsondoc.data.substring(0, 100) + '...'
+                        : JSON.stringify(sourceJsondoc.data).substring(0, 100) + '...'
+                });
 
                 let outputJsondocType: TypedJsondoc['schema_type'];
                 if (sourceJsondoc.schema_type === 'brainstorm_idea') {
@@ -279,7 +321,58 @@ export function createBrainstormEditToolDefinition(
                     templateName: 'brainstorm_edit_patch',
                     inputSchema: BrainstormEditInputSchema,
                     outputSchema: JsonPatchOperationsSchema, // RFC6902 JSON patch array schema
-                    // No custom prepareTemplateVariables - use default schema-driven extraction
+                    // Custom template preparation to include user context
+                    prepareTemplateVariables: async (input) => {
+                        console.log(`[BrainstormEditTool] Preparing template variables for input:`, {
+                            jsondocsCount: input.jsondocs.length,
+                            editRequirements: input.editRequirements?.substring(0, 100) + '...',
+                            ideaIndex: input.ideaIndex
+                        });
+
+                        // Get default variables first
+                        const { TemplateVariableService } = await import('../services/TemplateVariableService.js');
+                        const templateService = new TemplateVariableService();
+                        console.log(`[BrainstormEditTool] Calling prepareDefaultTemplateVariables...`);
+                        const defaultVars = await templateService.prepareDefaultTemplateVariables(input, BrainstormEditInputSchema, {
+                            jsondocRepo,
+                            projectId,
+                            userId
+                        });
+                        console.log(`[BrainstormEditTool] Got default template variables:`, {
+                            keys: Object.keys(defaultVars),
+                            jsondocsKeys: Object.keys(defaultVars.jsondocs || {}),
+                            jsondocsPreview: JSON.stringify(defaultVars.jsondocs).substring(0, 300) + '...'
+                        });
+
+                        // Enhance with user context if available
+                        if (userContext?.originalUserRequest) {
+                            const enhancedEditRequirements = `用户原始完整请求: "${userContext.originalUserRequest}"
+
+代理解释的编辑要求: "${params.editRequirements}"
+
+请根据用户的原始完整请求进行编辑，而不仅仅是代理的解释。`;
+
+                            // Parse existing params and enhance them
+                            let existingParams = {};
+                            try {
+                                existingParams = JSON.parse(defaultVars.params || '{}');
+                            } catch (error) {
+                                console.warn('[BrainstormEditTool] Failed to parse existing params, using empty object');
+                            }
+
+                            return {
+                                ...defaultVars,
+                                params: templateService.formatAsYaml({
+                                    ...existingParams,
+                                    editRequirements: enhancedEditRequirements,
+                                    originalUserRequest: userContext.originalUserRequest,
+                                    agentInterpretation: params.editRequirements
+                                })
+                            };
+                        }
+
+                        return defaultVars;
+                    }
                 };
 
                 // Execute the streaming transform with patch-approval mode
