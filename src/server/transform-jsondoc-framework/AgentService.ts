@@ -227,10 +227,11 @@ export class AgentService {
             // 2. Run the streaming agent directly
             console.log('--- Starting Streaming Agent ---');
 
-            // Create agent tools
+            // Create agent tools with context information
             const tools: Record<string, any> = {};
+            const contextInfo = { projectId, userId };
             for (const toolDef of toolDefinitions) {
-                tools[toolDef.name] = createAgentTool(toolDef);
+                tools[toolDef.name] = createAgentTool(toolDef, contextInfo);
             }
 
             // Extract caching options

@@ -8,12 +8,62 @@ export interface UserContextOptions {
 }
 
 /**
+ * Global context storage for user context
+ * This is needed because AI SDK doesn't pass providerMetadata to tool executions
+ */
+class UserContextStorage {
+    private contexts = new Map<string, UserContextOptions>();
+
+    store(key: string, context: UserContextOptions): void {
+        this.contexts.set(key, context);
+    }
+
+    get(key: string): UserContextOptions | null {
+        return this.contexts.get(key) || null;
+    }
+
+    clear(key: string): void {
+        this.contexts.delete(key);
+    }
+
+    // Clean up old contexts (older than 1 hour)
+    cleanup(): void {
+        const oneHourAgo = Date.now() - (60 * 60 * 1000);
+        for (const [key, context] of this.contexts.entries()) {
+            const contextTime = new Date(context.timestamp).getTime();
+            if (contextTime < oneHourAgo) {
+                this.contexts.delete(key);
+            }
+        }
+    }
+}
+
+const globalUserContextStorage = new UserContextStorage();
+
+// Cleanup old contexts every 10 minutes
+setInterval(() => {
+    globalUserContextStorage.cleanup();
+}, 10 * 60 * 1000);
+
+/**
+ * Get user context for a specific project and user
+ */
+export function getUserContext(projectId: string, userId: string): UserContextOptions | null {
+    const key = `${projectId}-${userId}`;
+    return globalUserContextStorage.get(key);
+}
+
+/**
  * Middleware that injects user context into all LLM calls
  * This ensures tools have access to the original user request, not just the agent's interpretation
  */
 export function createUserContextMiddleware(
     contextOptions: UserContextOptions
 ): LanguageModelV1Middleware {
+    // Store context globally for tool access
+    const contextKey = `${contextOptions.projectId}-${contextOptions.userId}`;
+    globalUserContextStorage.store(contextKey, contextOptions);
+
     return {
         transformParams: async ({ params }) => {
             console.log('[UserContextMiddleware] Injecting user context into LLM call');
@@ -38,64 +88,29 @@ export function createUserContextMiddleware(
             };
         },
 
-        wrapStream: async ({ doStream, params }) => {
+        wrapStream: async ({ doStream }) => {
             console.log('[UserContextMiddleware] Processing streaming LLM call with user context');
 
             // Log context injection for debugging
-            const userContext = params.providerMetadata?.userContext;
-            if (userContext) {
-                console.log('[UserContextMiddleware] User context available:', {
-                    originalRequestLength: typeof userContext.originalUserRequest === 'string' ? userContext.originalUserRequest.length : 0,
-                    projectId: userContext.projectId,
-                    userId: userContext.userId,
-                    timestamp: userContext.timestamp
-                });
-            }
+            console.log('[UserContextMiddleware] User context available:', {
+                originalRequestLength: contextOptions.originalUserRequest.length,
+                projectId: contextOptions.projectId,
+                userId: contextOptions.userId,
+                timestamp: contextOptions.timestamp
+            });
 
             return await doStream();
         },
 
-        wrapGenerate: async ({ doGenerate, params }) => {
-            console.log('[UserContextMiddleware] Processing generate LLM call with user context');
-
+        wrapGenerate: async ({ doGenerate }) => {
             // Log context injection for debugging  
-            const userContext = params.providerMetadata?.userContext;
-            if (userContext) {
-                console.log('[UserContextMiddleware] User context available:', {
-                    originalRequestLength: typeof userContext.originalUserRequest === 'string' ? userContext.originalUserRequest.length : 0,
-                    projectId: userContext.projectId,
-                    userId: userContext.userId
-                });
-            }
+            console.log('[UserContextMiddleware] User context available:', {
+                originalRequestLength: contextOptions.originalUserRequest.length,
+                projectId: contextOptions.projectId,
+                userId: contextOptions.userId
+            });
 
             return await doGenerate();
         }
     };
-}
-
-/**
- * Helper function to extract user context from tool execution options
- * This is used by tools to access the original user request
- */
-export function extractUserContext(messages?: any[]): UserContextOptions | null {
-    try {
-        // The user context should be in the provider metadata
-        // We need to look through the messages to find it
-        if (!messages || !Array.isArray(messages)) {
-            return null;
-        }
-
-        // Look for user context in the most recent messages
-        for (let i = messages.length - 1; i >= 0; i--) {
-            const message = messages[i];
-            if (message?.providerMetadata?.userContext) {
-                return message.providerMetadata.userContext;
-            }
-        }
-
-        return null;
-    } catch (error) {
-        console.warn('[UserContextMiddleware] Failed to extract user context:', error);
-        return null;
-    }
 } 
