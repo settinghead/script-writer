@@ -205,6 +205,14 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
     const [isProcessing, setIsProcessing] = useState(false);
     const [modalVisible, setModalVisible] = useState(true);
 
+    // Reset modal visibility when new patches arrive
+    useEffect(() => {
+        if (patches && patches.length > 0) {
+            setModalVisible(true);
+            console.log(`[PatchReviewModal] New patches detected: ${patches.length}, showing modal`);
+        }
+    }, [patches?.length]); // Only depend on patch count to avoid excessive re-renders
+
     // Auto-select all patches when they load
     useEffect(() => {
         if (patches && patches.length > 0 && selectedPatches.size === 0) {

@@ -17,6 +17,7 @@ import { UnifiedDisplayRenderer } from './UnifiedDisplayRenderer';
 import { ExportButton } from './ExportButton';
 import { computeUnifiedWorkflowState } from '../utils/actionComputation';
 import { PatchReviewModal } from './PatchReviewModal';
+import { ElectricSQLDebugger } from './ElectricSQLDebugger';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -706,6 +707,9 @@ const ProjectLayout: React.FC = () => {
 
             {/* Patch Review Modal - Shows when there are pending patches */}
             {projectId && <PatchReviewModal projectId={projectId} />}
+
+            {/* Debug: Electric SQL real-time updates */}
+            {/* {projectId && <ElectricSQLDebugger projectId={projectId} />} */}
         </Layout>
     );
 };

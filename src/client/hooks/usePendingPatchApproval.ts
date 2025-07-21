@@ -127,6 +127,8 @@ export function usePendingPatchApproval(projectId: string): PendingPatchApproval
             }
         }
 
+        console.log(`[usePendingPatchApproval] Electric SQL computed ${pendingPatches.length} pending patches for project ${projectId}`);
+
         return pendingPatches;
     }, [projectData.jsondocs, projectData.transforms, projectData.transformInputs, projectData.transformOutputs, projectData.isLoading]);
 
@@ -172,6 +174,34 @@ export function usePendingPatchApproval(projectId: string): PendingPatchApproval
     const patches = electricPatches.length > 0 ? electricPatches : fallbackPatches;
     const isLoading = projectData.isLoading || (electricPatches.length === 0 && fallbackLoading);
     const error = projectData.error || fallbackError;
+
+    // Debug logging for patch changes
+    useEffect(() => {
+        console.log(`[usePendingPatchApproval] Hook result changed for project ${projectId}:`, {
+            electricPatches: electricPatches.length,
+            fallbackPatches: fallbackPatches.length,
+            finalPatches: patches.length,
+            isLoading,
+            projectDataLoading: projectData.isLoading,
+            jsondocsCount: Array.isArray(projectData.jsondocs) ? projectData.jsondocs.length : 'not-array',
+            transformsCount: Array.isArray(projectData.transforms) ? projectData.transforms.length : 'not-array',
+            patchJsondocsInData: Array.isArray(projectData.jsondocs)
+                ? projectData.jsondocs.filter((j: any) => j.schema_type === 'json_patch').length
+                : 0,
+        });
+
+        // Log individual patch jsondocs for debugging
+        if (Array.isArray(projectData.jsondocs)) {
+            const patchJsondocs = projectData.jsondocs.filter((j: any) => j.schema_type === 'json_patch');
+            if (patchJsondocs.length > 0) {
+                console.log(`[usePendingPatchApproval] Found patch jsondocs:`, patchJsondocs.map((p: any) => ({
+                    id: p.id,
+                    created_at: p.created_at,
+                    updated_at: p.updated_at,
+                })));
+            }
+        }
+    }, [patches.length, isLoading, electricPatches.length, fallbackPatches.length, projectId, projectData.isLoading, projectData.jsondocs?.length, projectData.transforms?.length]);
 
     return {
         patches,
