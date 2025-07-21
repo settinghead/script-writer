@@ -156,8 +156,8 @@ async function testStreamingPatches() {
         const allProjectTransforms = await jsondocRepo.getAllProjectTransformsForLineage(testProjectId);
         const allTransformOutputs = await jsondocRepo.getAllProjectTransformOutputsForLineage(testProjectId);
 
-        const aiPatchTransforms = allProjectTransforms.filter((t: any) => t.type === 'ai_patch');
-        const patchJsondocs = allProjectJsondocs.filter((j: any) => j.schema_type === 'json_patch');
+        const aiPatchTransforms = allProjectTransforms.filter((t) => t.type === 'ai_patch');
+        const patchJsondocs = allProjectJsondocs.filter((j) => j.schema_type === 'json_patch');
 
         console.log(`✅ Found ${aiPatchTransforms.length} ai_patch transforms`);
         console.log(`✅ Found ${patchJsondocs.length} patch jsondocs`);

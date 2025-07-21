@@ -64,7 +64,7 @@ ${principlesText}
 输出格式必须是一个JSON补丁操作数组，每个操作包含：
 - op: 操作类型（"replace"用于修改现有字段，"add"用于添加新元素（仅限于Array; Object不可以添加新的字段)，"remove"用于删除字段）
 - path: JSON指针路径（如${examplePathsText}）- **必须基于array_index_reference中的索引信息**
-- value: 新的值（replace和add操作需要）
+- value: 新的值（replace和add操作需要。注意新的值必须是完整的修改后的值，不要只修改部分字段）
 
 **正确的输出格式示例：**
 [
