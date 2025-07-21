@@ -2,8 +2,12 @@ import { Router, Request, Response } from 'express';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
-import { buildToolsForRequestType } from '../services/AgentRequestBuilder';
 import { TemplateService } from '../services/templates/TemplateService';
+import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTools';
+import { createOutlineSettingsToolDefinition, createOutlineSettingsEditToolDefinition } from '../tools/OutlineSettingsTool';
+import { createChroniclesToolDefinition, createChroniclesEditToolDefinition } from '../tools/ChroniclesTool';
+import { createEpisodePlanningToolDefinition, createEpisodePlanningEditToolDefinition } from '../tools/EpisodePlanningTool';
+import { createEpisodeSynopsisToolDefinition } from '../tools/EpisodeSynopsisTool';
 import { JsonPatchOperationsSchema } from '@/common/schemas/transforms';
 
 /**
@@ -25,13 +29,18 @@ export function createAdminRoutes(
         // Use a dummy project ID for tool listing (tools are the same across projects)
         const dummyProjectId = 'admin-tools-listing';
 
-        // Get all available tools using the same function as the agent
-        const tools = buildToolsForRequestType(
-            transformRepo || {} as any, // Fallback if transformRepo not provided
-            jsondocRepo,
-            dummyProjectId,
-            userId
-        );
+        // Get all available tools (admin routes need all tools for debugging)
+        const tools = [
+            createBrainstormToolDefinition(transformRepo, jsondocRepo, dummyProjectId, userId),
+            createBrainstormEditToolDefinition(transformRepo, jsondocRepo, dummyProjectId, userId),
+            createOutlineSettingsToolDefinition(transformRepo, jsondocRepo, dummyProjectId, userId),
+            createOutlineSettingsEditToolDefinition(transformRepo, jsondocRepo, dummyProjectId, userId),
+            createChroniclesToolDefinition(transformRepo, jsondocRepo, dummyProjectId, userId),
+            createChroniclesEditToolDefinition(transformRepo, jsondocRepo, dummyProjectId, userId),
+            createEpisodePlanningToolDefinition(transformRepo, jsondocRepo, dummyProjectId, userId),
+            createEpisodePlanningEditToolDefinition(transformRepo, jsondocRepo, dummyProjectId, userId),
+            createEpisodeSynopsisToolDefinition(transformRepo, jsondocRepo, dummyProjectId, userId)
+        ];
 
         // Build registry with tool metadata
         const toolRegistry = new Map();
