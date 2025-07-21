@@ -471,8 +471,18 @@ export function createPatchRoutes(
                     if (approvedPatches.length === 0) continue;
 
                     // Apply approved patches to create new derived content
+                    // Parse original jsondoc data if it's a string
+                    let originalData = patchContext.originalJsondoc.data;
+                    if (typeof originalData === 'string') {
+                        try {
+                            originalData = JSON.parse(originalData);
+                        } catch (parseError) {
+                            throw new Error(`Failed to parse original jsondoc data: ${parseError}`);
+                        }
+                    }
+
                     const derivedData = applyCanonicalPatches(
-                        patchContext.originalJsondoc.data,
+                        originalData,
                         approvedPatches
                     );
 

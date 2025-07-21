@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useEffect } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Tree, Typography, Space, Tag } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import {
@@ -12,10 +12,11 @@ import {
     SettingOutlined,
     ClockCircleOutlined
 } from '@ant-design/icons';
-import { useEffectiveBrainstormIdeas, useProjectInitialMode } from '../transform-jsondoc-framework/useLineageResolution';
+import { useProjectInitialMode } from '../transform-jsondoc-framework/useLineageResolution';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useCurrentSection, type CurrentSection } from '../hooks/useCurrentSection';
 import { useChosenBrainstormIdea } from '../hooks/useChosenBrainstormIdea';
+import { computeCanonicalJsondocsFromLineage } from '../../common/canonicalJsondocLogic';
 
 const { Text } = Typography;
 
@@ -34,11 +35,31 @@ interface ProjectTreeNode extends DataNode {
 }
 
 const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
-    const { ideas, isLoading: ideasLoading } = useEffectiveBrainstormIdeas();
     const { chosenIdea } = useChosenBrainstormIdea();
     const { isInitialMode, isLoading: initialModeLoading } = useProjectInitialMode();
     const projectData = useProjectData();
     const currentSection = useCurrentSection();
+
+    // Compute canonical context using the canonical logic
+    const canonicalContext = useMemo(() => {
+        if (projectData.jsondocs === "pending" || projectData.jsondocs === "error" ||
+            projectData.transforms === "pending" || projectData.transforms === "error" ||
+            projectData.humanTransforms === "pending" || projectData.humanTransforms === "error" ||
+            projectData.transformInputs === "pending" || projectData.transformInputs === "error" ||
+            projectData.transformOutputs === "pending" || projectData.transformOutputs === "error" ||
+            projectData.lineageGraph === "pending" || projectData.lineageGraph === "error") {
+            return null;
+        }
+
+        return computeCanonicalJsondocsFromLineage(
+            projectData.lineageGraph,
+            projectData.jsondocs,
+            projectData.transforms,
+            projectData.humanTransforms,
+            projectData.transformInputs,
+            projectData.transformOutputs
+        );
+    }, [projectData]);
 
     // Function to determine if a tree node should be highlighted
     const shouldHighlightNode = useCallback((navigationTarget?: string): boolean => {
@@ -83,66 +104,41 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         return nodeSection === currentSection;
     }, [currentSection]);
 
-    // Strict jsondoc-based checks
+    // Canonical jsondoc-based checks
     const jsondocChecks = useMemo(() => {
-        if (projectData.jsondocs === "pending" || projectData.jsondocs === "error") {
+        if (!canonicalContext) {
             return {
                 hasBrainstormIdeas: false,
                 hasBrainstormInput: false,
                 hasEditableBrainstormIdea: false,
                 hasOutlineSettings: false,
-                hasChronicles: false
+                hasChronicles: false,
+                hasEpisodePlanning: false,
+                hasEpisodeSynopsis: false
             };
         }
 
-        // Check for brainstorm jsondocs
-        const hasBrainstormIdeas = ideas.length > 0;
-
-        // Check for brainstorm tool input (creation step)
-        const hasBrainstormInput = projectData.jsondocs.some(jsondoc =>
-            jsondoc.schema_type === 'brainstorm_input_params'
-        );
-
-        // Check for editable brainstorm idea (editing step)
-        const hasEditableBrainstormIdea = projectData.jsondocs.some(jsondoc =>
-            (jsondoc.schema_type === 'brainstorm_idea') &&
-            jsondoc.origin_type === 'user_input'
-        );
-
-        // Check for outline settings jsondocs
-        const hasOutlineSettings = projectData.jsondocs.some(jsondoc =>
-            jsondoc.schema_type === 'outline_settings'
-        );
-
-        // Check for chronicles jsondocs
-        const hasChronicles = projectData.jsondocs.some(jsondoc =>
-            jsondoc.schema_type === 'chronicles'
-        );
-
-        // Check for episode planning jsondocs
-        const hasEpisodePlanning = projectData.jsondocs.some(jsondoc =>
-            jsondoc.schema_type === 'episode_planning'
-        );
-
-        // Check for episode synopsis jsondocs
-        const hasEpisodeSynopsis = projectData.jsondocs.some(jsondoc =>
-            jsondoc.schema_type === 'episode_synopsis'
-        );
-
         return {
-            hasBrainstormIdeas,
-            hasBrainstormInput,
-            hasEditableBrainstormIdea,
-            hasOutlineSettings,
-            hasChronicles,
-            hasEpisodePlanning,
-            hasEpisodeSynopsis
+            // Check for canonical brainstorm content (either idea or collection)
+            hasBrainstormIdeas: !!(canonicalContext.canonicalBrainstormIdea || canonicalContext.canonicalBrainstormCollection),
+            // Check for brainstorm input
+            hasBrainstormInput: !!canonicalContext.canonicalBrainstormInput,
+            // Check for editable brainstorm idea (user_input origin type)
+            hasEditableBrainstormIdea: !!(canonicalContext.canonicalBrainstormIdea && canonicalContext.canonicalBrainstormIdea.origin_type === 'user_input'),
+            // Check for outline settings
+            hasOutlineSettings: !!canonicalContext.canonicalOutlineSettings,
+            // Check for chronicles
+            hasChronicles: !!canonicalContext.canonicalChronicles,
+            // Check for episode planning
+            hasEpisodePlanning: !!canonicalContext.canonicalEpisodePlanning,
+            // Check for episode synopsis
+            hasEpisodeSynopsis: canonicalContext.canonicalEpisodeSynopsisList.length > 0
         };
-    }, [ideas, projectData.jsondocs]);
+    }, [canonicalContext]);
 
-    // Build simplified tree data structure with main sections - only show sections with actual jsondocs
+    // Build simplified tree data structure with main sections - only show canonical content
     const treeData: ProjectTreeNode[] = useMemo(() => {
-        if (ideasLoading || initialModeLoading) {
+        if (initialModeLoading || !canonicalContext) {
             return [];
         }
 
@@ -153,72 +149,32 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
 
         const sections: ProjectTreeNode[] = [];
 
-        // 1. BRAINSTORM SECTION - only show if we have brainstorm ideas
+        // 1. BRAINSTORM SECTION - only show if we have canonical brainstorm content
         if (jsondocChecks.hasBrainstormIdeas) {
             const brainstormHighlighted = shouldHighlightNode('#ideas');
-            const brainstormChildren: ProjectTreeNode[] = [];
 
-            if (ideas === "pending" || ideas === "error") {
-                return sections;
-            }
+            // Get canonical brainstorm title
+            let brainstormTitle = '头脑风暴';
+            let brainstormCount = 1; // Show as single canonical content
 
-            const jsondocs = projectData.jsondocs;
-            if (jsondocs === "pending" || jsondocs === "error") {
-                return sections;
-            }
-
-            // Add individual brainstorm ideas as children
-            ideas.forEach((idea, index) => {
-                let ideaTitle = `创意 ${index + 1}`;
-                let isChosen = false;
-                let isEdited = false;
-
-                try {
-                    const jsondoc = jsondocs.find(a => a.id === idea.jsondocId);
-                    if (jsondoc) {
-                        const data = JSON.parse(jsondoc.data);
-                        if (idea.jsondocPath === '$') {
-                            ideaTitle = data.title || ideaTitle;
-                        } else if (data.ideas && Array.isArray(data.ideas) && data.ideas[idea.index]) {
-                            ideaTitle = data.ideas[idea.index].title || ideaTitle;
-                        }
+            try {
+                if (canonicalContext.canonicalBrainstormIdea) {
+                    const data = typeof canonicalContext.canonicalBrainstormIdea.data === 'string'
+                        ? JSON.parse(canonicalContext.canonicalBrainstormIdea.data)
+                        : canonicalContext.canonicalBrainstormIdea.data;
+                    brainstormTitle = data.title || brainstormTitle;
+                } else if (canonicalContext.canonicalBrainstormCollection) {
+                    const data = typeof canonicalContext.canonicalBrainstormCollection.data === 'string'
+                        ? JSON.parse(canonicalContext.canonicalBrainstormCollection.data)
+                        : canonicalContext.canonicalBrainstormCollection.data;
+                    if (data.ideas && Array.isArray(data.ideas)) {
+                        brainstormCount = data.ideas.length;
+                        brainstormTitle = `头脑风暴集合`;
                     }
-
-                    // Check if this is the chosen idea
-                    isChosen = chosenIdea?.originalJsondocId === idea.originalJsondocId &&
-                        chosenIdea?.index === idea.index;
-
-                    // Check if edited
-                    isEdited = idea.jsondocId !== idea.originalJsondocId;
-                } catch (error) {
-                    console.error('Error parsing idea data:', error);
                 }
-
-                brainstormChildren.push({
-                    key: `idea-${idea.jsondocId}-${idea.index}`,
-                    title: (
-                        <Space>
-                            {isChosen && <StarFilled style={{ color: '#faad14', fontSize: '12px' }} />}
-                            <Text style={{
-                                color: brainstormHighlighted ? '#1890ff' : '#fff',
-                                fontWeight: brainstormHighlighted ? 500 : 400
-                            }}>
-                                {ideaTitle}
-                            </Text>
-                            {isEdited && <EditOutlined style={{
-                                color: brainstormHighlighted ? '#40a9ff' : '#1890ff',
-                                fontSize: '12px'
-                            }} />}
-                        </Space>
-                    ),
-                    icon: <BulbOutlined style={{
-                        fontSize: '14px',
-                        color: brainstormHighlighted ? '#1890ff' : '#888'
-                    }} />,
-                    selectable: true,
-                    navigationTarget: '#ideas'
-                });
-            });
+            } catch (error) {
+                console.error('Error parsing canonical brainstorm data:', error);
+            }
 
             const brainstormSection: ProjectTreeNode = {
                 key: 'brainstorm-section',
@@ -242,18 +198,20 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                             fontWeight: brainstormHighlighted ? 700 : 500,
                             textShadow: brainstormHighlighted ? '0 0 8px rgba(24, 144, 255, 0.8)' : 'none'
                         }}>
-                            头脑风暴
+                            {brainstormTitle}
                         </Text>
-                        <Tag
-                            color={brainstormHighlighted ? "blue" : "default"}
-                            style={{
-                                boxShadow: brainstormHighlighted ? '0 0 8px rgba(24, 144, 255, 0.4)' : 'none',
-                                border: brainstormHighlighted ? '1px solid rgba(24, 144, 255, 0.6)' : undefined,
-                                marginLeft: '8px'
-                            }}
-                        >
-                            {ideas.length}
-                        </Tag>
+                        {canonicalContext.canonicalBrainstormCollection && (
+                            <Tag
+                                color={brainstormHighlighted ? "blue" : "default"}
+                                style={{
+                                    boxShadow: brainstormHighlighted ? '0 0 8px rgba(24, 144, 255, 0.4)' : 'none',
+                                    border: brainstormHighlighted ? '1px solid rgba(24, 144, 255, 0.6)' : undefined,
+                                    marginLeft: '8px'
+                                }}
+                            >
+                                {brainstormCount}
+                            </Tag>
+                        )}
                     </Space>
                 ),
                 icon: <BulbOutlined style={{
@@ -261,8 +219,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                     filter: brainstormHighlighted ? 'drop-shadow(0 0 4px rgba(24, 144, 255, 0.6))' : 'none'
                 }} />,
                 selectable: true,
-                navigationTarget: '#ideas',
-                children: brainstormChildren.length > 0 ? brainstormChildren : undefined
+                navigationTarget: '#ideas'
             };
 
             sections.push(brainstormSection);
@@ -494,7 +451,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         }
 
         return sections;
-    }, [ideas, ideasLoading, initialModeLoading, isInitialMode, chosenIdea, jsondocChecks, shouldHighlightNode, projectData.jsondocs]);
+    }, [canonicalContext, initialModeLoading, isInitialMode, chosenIdea, jsondocChecks, shouldHighlightNode]);
 
     // Handle tree node selection - scroll to corresponding section
     const handleSelect = useCallback((selectedKeys: React.Key[], info: any) => {
