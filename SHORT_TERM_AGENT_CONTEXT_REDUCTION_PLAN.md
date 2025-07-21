@@ -31,11 +31,82 @@ The changes will be verifiable via AgentContextView.tsx, which already computes 
 2. **Prioritization**:
    - In CanonicalJsondocLogic.ts, add intent-to-types mapping (e.g., 'generate_episode_synopsis' => ['brainstorm_idea', 'outline_settings', 'chronicles', 'episode_planning']). Filter canonical context to these types, ranking by: 1) Required for intent, 2) Leaf/user_input status, 3) Recency.
 
+   **Algorithm Sketch for Prioritization**:
+   ```
+   function prioritizeJsondocs(canonicalContext, intent):
+       requiredTypes = getRequiredTypesForIntent(intent)  // e.g., ['brainstorm_idea', 'chronicles']
+       allJsondocs = extractAllFromContext(canonicalContext)  // Flatten to array
+       
+       // Step 1: Filter to relevant types
+       relevant = allJsondocs.filter(j => requiredTypes.includes(j.schema_type))
+       
+       // Step 2: Score each (higher score = higher priority)
+       scored = relevant.map(j => {
+           score = 0
+           if isRequiredForIntent(j.schema_type, intent): score += 10  // Core for task
+           if j.isLeaf: score += 5                           // Prefer leaf nodes
+           if j.origin_type == 'user_input': score += 3       // Prefer user edits
+           score += (now - j.created_at) / someNormalizer     // Recency boost (newer higher)
+           return {jsondoc: j, score}
+       })
+       
+       // Step 3: Sort descending by score
+       return scored.sort((a, b) => b.score - a.score).map(s => s.jsondoc)
+   ```
+
 3. **Trimming**:
    - Add `trimJsondocContent(jsondoc, priority)` function: For high-priority, keep full; medium: summarize bodies (e.g., truncate to 500 chars); low: keep only metadata. Apply based on rank (e.g., top 4 full, next 2 summarized).
 
+   **Algorithm Sketch for Trimming**:
+   ```
+   function trimJsondocContent(jsondoc, rank, totalCount):  // rank 0 = highest priority
+       if rank < 4: return jsondoc  // Top 4: full content
+       
+       trimmed = deepClone(jsondoc)
+       data = trimmed.data  // Assume parsed JSON
+       
+       // Medium priority: truncate long fields
+       if rank < totalCount / 2:
+           for key in data:
+               if isString(data[key]) and data[key].length > 500:
+                   data[key] = data[key].substring(0, 500) + ' [truncated]'
+       
+       // Low priority: keep only metadata/structure
+       else:
+           for key in data:
+               if isObject(data[key]) or isArray(data[key]):
+                   data[key] = { summary: `Original had ${Object.keys(data[key]).length} items` }
+               elif isString(data[key]):
+                   data[key] = data[key].substring(0, 100) + ' [summarized]'
+       
+       trimmed.data = data
+       trimmed.metadata.trimmed = true
+       return trimmed
+   ```
+
 4. **Capping**:
    - In buildContextForRequestType, build context string from prioritized/trimmed jsondocs. If >16k chars, iteratively discard lowest-priority until under limit, logging discards.
+
+   **Algorithm Sketch for Capping**:
+   ```
+   function capContext(prioritizedJsondocs, maxChars=16000):
+       currentContext = ""
+       included = []
+       
+       for jsondoc in prioritizedJsondocs:
+           trimmed = trimJsondocContent(jsondoc, included.length, prioritizedJsondocs.length)
+           addition = stringifyForContext(trimmed)  // Convert to prompt string
+           
+           if len(currentContext) + len(addition) > maxChars:
+               // Cap reached - discard this and all lower
+               log("Capped: discarded " + (prioritizedJsondocs.length - included.length) + " jsondocs")
+               break
+           
+           currentContext += addition
+           included.push(jsondoc.id)
+       
+       return currentContext
+   ```
 
 5. **Frontend Alignment and Debugging**:
    - Mirror prioritization in actionComputation.ts for client-side consistency.
