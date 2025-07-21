@@ -7,6 +7,7 @@ interface DebugParams {
 
 interface AgentContextParams {
     userInput: string;
+    intent?: string;
     lastUpdated: number;
 }
 

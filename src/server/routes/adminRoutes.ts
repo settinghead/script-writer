@@ -233,6 +233,96 @@ export function createAdminRoutes(
         }
     });
 
+    // GET /api/admin/intents - List available intents
+    router.get('/intents', authMiddleware.authenticate, async (req: Request, res: Response) => {
+        try {
+            // Extract intent mapping from tool names and their descriptions
+            const intentMapping = [
+                {
+                    value: 'generate_brainstorm_ideas',
+                    label: '生成故事创意',
+                    description: '基于头脑风暴参数生成多个故事想法',
+                    category: '创意生成'
+                },
+                {
+                    value: 'edit_brainstorm_idea',
+                    label: '编辑故事创意',
+                    description: '修改现有的故事创意内容',
+                    category: '内容编辑'
+                },
+                {
+                    value: 'generate_outline_settings',
+                    label: '生成剧本设定',
+                    description: '基于故事创意生成角色、背景和商业设定',
+                    category: '设定生成'
+                },
+                {
+                    value: 'edit_outline_settings',
+                    label: '编辑剧本设定',
+                    description: '修改现有的剧本设定内容',
+                    category: '内容编辑'
+                },
+                {
+                    value: 'generate_chronicles',
+                    label: '生成时间顺序大纲',
+                    description: '基于剧本设定创建故事时序结构',
+                    category: '结构生成'
+                },
+                {
+                    value: 'edit_chronicles',
+                    label: '编辑时间顺序大纲',
+                    description: '修改现有的时间顺序大纲内容',
+                    category: '内容编辑'
+                },
+                {
+                    value: 'generate_episode_planning',
+                    label: '生成剧集框架',
+                    description: '基于时间顺序大纲创建分集结构',
+                    category: '框架生成'
+                },
+                {
+                    value: 'edit_episode_planning',
+                    label: '编辑剧集框架',
+                    description: '修改现有的剧集框架内容',
+                    category: '内容编辑'
+                },
+                {
+                    value: 'generate_episode_synopsis',
+                    label: '生成每集大纲',
+                    description: '基于剧集框架生成详细的每集内容',
+                    category: '内容生成'
+                }
+            ];
+
+            // Group by category for better UX
+            const categorizedIntents = intentMapping.reduce((acc, intent) => {
+                if (!acc[intent.category]) {
+                    acc[intent.category] = [];
+                }
+                acc[intent.category].push({
+                    value: intent.value,
+                    label: intent.label,
+                    description: intent.description
+                });
+                return acc;
+            }, {} as Record<string, Array<{ value: string, label: string, description: string }>>);
+
+            res.json({
+                success: true,
+                intents: intentMapping,
+                categorizedIntents,
+                totalIntents: intentMapping.length
+            });
+
+        } catch (error) {
+            console.error('Error fetching intents:', error);
+            res.status(500).json({
+                error: 'Failed to fetch intents',
+                details: error instanceof Error ? error.message : String(error)
+            });
+        }
+    });
+
     // GET /api/admin/tools/:toolName/prompt - Get template prompt for a tool
     router.get('/tools/:toolName/prompt', async (req: Request, res: Response) => {
         try {

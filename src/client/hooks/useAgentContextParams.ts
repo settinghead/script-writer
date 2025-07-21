@@ -4,12 +4,14 @@ import { debugParamsStorage, type AgentContextParams as StorageAgentContextParam
 export interface AgentContextParams {
     userInput: string;
     projectId: string;
+    intent?: string;
 }
 
 export function useAgentContextParams(projectId: string) {
     const [params, setParams] = useState<AgentContextParams>({
         userInput: '',
-        projectId
+        projectId,
+        intent: undefined
     });
     const [isLoading, setIsLoading] = useState(false);
     const [hasError, setHasError] = useState(false);
@@ -41,12 +43,16 @@ export function useAgentContextParams(projectId: string) {
                 const loaded = await debugParamsStorage.loadAgentContextParams(projectId);
                 if (loaded) {
                     debugLog('Loaded params:', loaded);
-                    const loadedParams: AgentContextParams = { userInput: loaded.userInput, projectId };
+                    const loadedParams: AgentContextParams = {
+                        userInput: loaded.userInput,
+                        projectId,
+                        intent: loaded.intent
+                    };
                     setParams(loadedParams);
                     lastSavedParamsRef.current = loadedParams;
                 } else {
                     // Initialize with current projectId if no saved params
-                    const initialParams: AgentContextParams = { userInput: '', projectId };
+                    const initialParams: AgentContextParams = { userInput: '', projectId, intent: undefined };
                     setParams(initialParams);
                     lastSavedParamsRef.current = initialParams;
                 }
@@ -67,12 +73,19 @@ export function useAgentContextParams(projectId: string) {
         setParams(prev => ({ ...prev, userInput: newInput }));
     }, [debugLog]);
 
+    // Update intent function
+    const updateIntent = useCallback((newIntent: string | undefined) => {
+        debugLog('Updating intent:', { newIntent });
+        setParams(prev => ({ ...prev, intent: newIntent }));
+    }, [debugLog]);
+
     // Check if params have actually changed since last save
     const hasParamsChanged = useCallback((currentParams: AgentContextParams) => {
         if (!lastSavedParamsRef.current) return true;
         return (
             currentParams.userInput !== lastSavedParamsRef.current.userInput ||
-            currentParams.projectId !== lastSavedParamsRef.current.projectId
+            currentParams.projectId !== lastSavedParamsRef.current.projectId ||
+            currentParams.intent !== lastSavedParamsRef.current.intent
         );
     }, []);
 
@@ -176,6 +189,7 @@ export function useAgentContextParams(projectId: string) {
     return {
         params,
         updateUserInput,
+        updateIntent,
         isLoading,
         hasError,
         autoSave,

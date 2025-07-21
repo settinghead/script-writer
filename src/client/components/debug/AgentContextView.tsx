@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Input, Card, Typography, Alert, Spin, Tag, Divider } from 'antd';
+import { Input, Card, Typography, Alert, Spin, Tag, Divider, Select } from 'antd';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useAgentContextParams } from '../../hooks/useAgentContextParams';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -9,6 +9,7 @@ import type { CanonicalJsondocContext } from '../../../common/canonicalJsondocLo
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 interface AgentPromptResponse {
     success: boolean;
@@ -23,6 +24,20 @@ interface AgentPromptResponse {
         contextType: string;
         contextData: any;
     };
+}
+
+interface Intent {
+    value: string;
+    label: string;
+    description: string;
+    category: string;
+}
+
+interface IntentsResponse {
+    success: boolean;
+    intents: Intent[];
+    categorizedIntents: Record<string, Array<{ value: string, label: string, description: string }>>;
+    totalIntents: number;
 }
 
 interface AgentContextViewProps {
@@ -125,12 +140,15 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
     const {
         params,
         updateUserInput,
+        updateIntent,
         hasError: paramsHasError
     } = useAgentContextParams(projectId);
 
     const [promptResponse, setPromptResponse] = useState<AgentPromptResponse | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [intents, setIntents] = useState<Intent[]>([]);
+    const [intentsLoading, setIntentsLoading] = useState(false);
 
     // Debug logging
     const debugLog = useCallback((message: string, data?: any) => {
@@ -217,8 +235,9 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
         }
     }, [projectData, debugLog]);
 
-    // Debounce user input to avoid excessive API calls
+    // Debounce user input and intent to avoid excessive API calls
     const debouncedUserInput = useDebounce(params.userInput, 1000);
+    const debouncedIntent = useDebounce(params.intent, 1000);
 
     // Stable workflow state for useEffect dependency
     const stableWorkflowState = useMemo(() => {
@@ -232,10 +251,47 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
         updateUserInput(newValue);
     }, [updateUserInput, debugLog]);
 
+    // Intent change handler
+    const handleIntentChange = useCallback((value: string) => {
+        debugLog('Intent change:', value);
+        updateIntent(value === '' ? undefined : value);
+    }, [updateIntent, debugLog]);
+
+    // Fetch available intents
+    useEffect(() => {
+        const fetchIntents = async () => {
+            try {
+                setIntentsLoading(true);
+                const response = await fetch('/api/admin/intents', {
+                    headers: {
+                        'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data: IntentsResponse = await response.json();
+                setIntents(data.intents);
+                debugLog('Loaded intents:', data.intents.length);
+            } catch (err) {
+                const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+                debugLog('Error fetching intents:', errorMessage);
+                // Don't set error state for intents - it's not critical
+            } finally {
+                setIntentsLoading(false);
+            }
+        };
+
+        fetchIntents();
+    }, [debugLog]);
+
     // Generate agent prompt when debounced input or workflow state changes
     useEffect(() => {
         debugLog('useEffect triggered for prompt generation:', {
             debouncedUserInput: debouncedUserInput.length,
+            debouncedIntent,
             stableWorkflowState
         });
 
@@ -260,6 +316,7 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                         projectId,
                         userRequest: debouncedUserInput,
                         contextType: 'general',
+                        intent: debouncedIntent,
                         contextData: {
                             workflowState
                         }
@@ -283,7 +340,7 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
         };
 
         generatePrompt();
-    }, [debouncedUserInput, stableWorkflowState, projectId, workflowState, debugLog]);
+    }, [debouncedUserInput, debouncedIntent, stableWorkflowState, projectId, workflowState, debugLog]);
 
     // Memoized render functions to prevent unnecessary re-renders
     const renderCodeBlock = useCallback((content: string, maxHeight = '400px') => {
@@ -440,6 +497,30 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                             <Title level={4} style={{ color: '#fff', marginBottom: '16px' }}>
                                 用户输入
                             </Title>
+                            <div style={{ marginBottom: '12px' }}>
+                                <Text strong style={{ color: '#fff', display: 'block', marginBottom: '8px' }}>
+                                    意图选择 (可选)
+                                </Text>
+                                <Select
+                                    value={params.intent || ''}
+                                    onChange={handleIntentChange}
+                                    placeholder="选择具体意图以优化Agent响应..."
+                                    allowClear
+                                    loading={intentsLoading}
+                                    style={{ width: '100%' }}
+                                    dropdownStyle={{ background: '#262626' }}
+                                >
+                                    {intents.map((intent) => (
+                                        <Option key={intent.value} value={intent.value} title={intent.description}>
+                                            <div>
+                                                <div style={{ fontWeight: 'bold' }}>{intent.label}</div>
+                                                <div style={{ fontSize: '12px', color: '#999' }}>{intent.description}</div>
+                                            </div>
+                                        </Option>
+                                    ))}
+                                </Select>
+                            </div>
+
                             <TextArea
                                 value={params.userInput}
                                 onChange={handleInputChange}
@@ -529,6 +610,9 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                                 <div style={{ marginBottom: '16px', padding: '16px', backgroundColor: '#262626', borderRadius: '8px' }}>
                                     <Text strong style={{ color: '#fff' }}>上下文类型: </Text>
                                     <Text code>{promptResponse.input.contextType}</Text>
+                                    <br />
+                                    <Text strong style={{ color: '#fff' }}>选择意图: </Text>
+                                    <Text code>{debouncedIntent || '无'}</Text>
                                     <br />
                                     <Text strong style={{ color: '#fff' }}>实际可用工具: </Text>
                                     <Text type="secondary">{promptResponse.context.availableTools.join(', ')}</Text>
