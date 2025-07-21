@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Input, Card, Typography, Alert, Spin } from 'antd';
+import { Input, Card, Typography, Alert, Spin, Tag, Divider } from 'antd';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useAgentContextParams } from '../../hooks/useAgentContextParams';
 import { useDebounce } from '../../hooks/useDebounce';
 import { computeUnifiedWorkflowState } from '../../utils/actionComputation';
+import { computeCanonicalJsondocsFromLineage } from '../../../common/canonicalJsondocLogic';
+import type { CanonicalJsondocContext } from '../../../common/canonicalJsondocLogic';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -25,6 +27,95 @@ interface AgentPromptResponse {
 
 interface AgentContextViewProps {
     projectId: string;
+}
+
+// All available tool definitions (mirrors server-side logic)
+const ALL_AVAILABLE_TOOLS = [
+    'generate_brainstorm_ideas',
+    'edit_brainstorm_idea',
+    'generate_outline_settings',
+    'edit_outline_settings',
+    'generate_chronicles',
+    'edit_chronicles',
+    'generate_episode_planning',
+    'edit_episode_planning',
+    'generate_episode_synopsis'
+];
+
+/**
+ * Compute available tools based on canonical jsondoc context (frontend mirror of server logic)
+ * This mirrors the logic in src/server/services/AgentRequestBuilder.ts
+ */
+function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocContext): string[] {
+    const availableTools: string[] = [];
+
+    // Check what canonical jsondocs exist
+    const hasBrainstormResult = context.canonicalBrainstormCollection || context.canonicalBrainstormIdea;
+    const hasOutlineSettings = !!context.canonicalOutlineSettings;
+    const hasChronicles = !!context.canonicalChronicles;
+    const hasEpisodePlanning = !!context.canonicalEpisodePlanning;
+
+    // Apply filtering rules (same as server)
+    if (!hasBrainstormResult) {
+        availableTools.push('generate_brainstorm_ideas');
+    }
+
+    if (hasBrainstormResult) {
+        availableTools.push('edit_brainstorm_idea');
+    }
+
+    if (context.canonicalBrainstormIdea && !hasOutlineSettings) {
+        availableTools.push('generate_outline_settings');
+    }
+
+    if (hasOutlineSettings) {
+        // Add edit tools for previous stages
+        if (context.canonicalBrainstormIdea) {
+            availableTools.push('edit_brainstorm_idea');
+        }
+        availableTools.push('edit_outline_settings');
+
+        // Add next generation tool
+        if (!hasChronicles) {
+            availableTools.push('generate_chronicles');
+        }
+    }
+
+    if (hasChronicles) {
+        // Add edit tools for previous stages
+        if (context.canonicalBrainstormIdea) {
+            availableTools.push('edit_brainstorm_idea');
+        }
+        if (hasOutlineSettings) {
+            availableTools.push('edit_outline_settings');
+        }
+        availableTools.push('edit_chronicles');
+
+        // Add next generation tool
+        if (!hasEpisodePlanning) {
+            availableTools.push('generate_episode_planning');
+        }
+    }
+
+    if (hasEpisodePlanning) {
+        // Add edit tools for all previous stages
+        if (context.canonicalBrainstormIdea) {
+            availableTools.push('edit_brainstorm_idea');
+        }
+        if (hasOutlineSettings) {
+            availableTools.push('edit_outline_settings');
+        }
+        if (hasChronicles) {
+            availableTools.push('edit_chronicles');
+        }
+        availableTools.push('edit_episode_planning');
+
+        // Episode synopsis can be generated multiple times
+        availableTools.push('generate_episode_synopsis');
+    }
+
+    // Remove duplicates and return
+    return [...new Set(availableTools)];
 }
 
 export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId }) => {
@@ -79,6 +170,52 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
             return null;
         }
     }, [projectData, projectId, debugLog]);
+
+    // Compute canonical context and filtered tools
+    const toolFilteringState = useMemo(() => {
+        if (!projectData ||
+            projectData.jsondocs === "pending" || projectData.jsondocs === "error" ||
+            projectData.transforms === "pending" || projectData.transforms === "error" ||
+            projectData.humanTransforms === "pending" || projectData.humanTransforms === "error" ||
+            projectData.transformInputs === "pending" || projectData.transformInputs === "error" ||
+            projectData.transformOutputs === "pending" || projectData.transformOutputs === "error" ||
+            projectData.lineageGraph === "pending" || projectData.lineageGraph === "error") {
+            return null;
+        }
+
+        try {
+            // Compute canonical context using the same logic as server
+            const canonicalContext = computeCanonicalJsondocsFromLineage(
+                projectData.lineageGraph,
+                projectData.jsondocs,
+                projectData.transforms,
+                projectData.humanTransforms,
+                projectData.transformInputs,
+                projectData.transformOutputs
+            );
+
+            // Compute filtered tools based on canonical context
+            const filteredTools = computeAvailableToolsFromCanonicalContext(canonicalContext);
+            const excludedTools = ALL_AVAILABLE_TOOLS.filter(tool => !filteredTools.includes(tool));
+
+            return {
+                canonicalContext,
+                filteredTools,
+                excludedTools,
+                hasCanonicalContent: !!(
+                    canonicalContext.canonicalBrainstormIdea ||
+                    canonicalContext.canonicalBrainstormCollection ||
+                    canonicalContext.canonicalOutlineSettings ||
+                    canonicalContext.canonicalChronicles ||
+                    canonicalContext.canonicalEpisodePlanning ||
+                    canonicalContext.canonicalBrainstormInput
+                )
+            };
+        } catch (error) {
+            debugLog('Error computing tool filtering state:', error);
+            return null;
+        }
+    }, [projectData, debugLog]);
 
     // Debounce user input to avoid excessive API calls
     const debouncedUserInput = useDebounce(params.userInput, 1000);
@@ -171,6 +308,93 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
         );
     }, [debugLog]);
 
+    // Render tool filtering section
+    const renderToolFiltering = useCallback(() => {
+        if (!toolFilteringState) {
+            return (
+                <div style={{
+                    padding: '16px',
+                    backgroundColor: '#262626',
+                    borderRadius: '8px',
+                    marginBottom: '16px'
+                }}>
+                    <Text type="secondary">工具过滤状态计算中...</Text>
+                </div>
+            );
+        }
+
+        const { filteredTools, excludedTools, canonicalContext, hasCanonicalContent } = toolFilteringState;
+
+        return (
+            <div style={{
+                padding: '16px',
+                backgroundColor: '#262626',
+                borderRadius: '8px',
+                marginBottom: '16px'
+            }}>
+                <div style={{ marginBottom: '12px' }}>
+                    <Text strong style={{ color: '#fff' }}>项目状态: </Text>
+                    <Tag color={hasCanonicalContent ? 'green' : 'orange'}>
+                        {hasCanonicalContent ? '有内容' : '空项目'}
+                    </Tag>
+                </div>
+
+                <div style={{ marginBottom: '12px' }}>
+                    <Text strong style={{ color: '#fff' }}>规范内容: </Text>
+                    <div style={{ marginTop: '4px' }}>
+                        {canonicalContext.canonicalBrainstormCollection && (
+                            <Tag color="purple" style={{ marginBottom: '4px' }}>头脑风暴集合</Tag>
+                        )}
+                        {canonicalContext.canonicalBrainstormIdea && (
+                            <Tag color="purple" style={{ marginBottom: '4px' }}>单个创意</Tag>
+                        )}
+                        {canonicalContext.canonicalOutlineSettings && (
+                            <Tag color="blue" style={{ marginBottom: '4px' }}>剧本设定</Tag>
+                        )}
+                        {canonicalContext.canonicalChronicles && (
+                            <Tag color="cyan" style={{ marginBottom: '4px' }}>时间顺序大纲</Tag>
+                        )}
+                        {canonicalContext.canonicalEpisodePlanning && (
+                            <Tag color="geekblue" style={{ marginBottom: '4px' }}>剧集框架</Tag>
+                        )}
+                        {canonicalContext.canonicalBrainstormInput && (
+                            <Tag color="volcano" style={{ marginBottom: '4px' }}>头脑风暴输入</Tag>
+                        )}
+                        {!hasCanonicalContent && (
+                            <Tag color="default" style={{ marginBottom: '4px' }}>无内容</Tag>
+                        )}
+                    </div>
+                </div>
+
+                <Divider style={{ margin: '12px 0', borderColor: '#444' }} />
+
+                <div style={{ marginBottom: '12px' }}>
+                    <Text strong style={{ color: '#52c41a' }}>可用工具 ({filteredTools.length}): </Text>
+                    <div style={{ marginTop: '4px' }}>
+                        {filteredTools.map(tool => (
+                            <Tag key={tool} color="green" style={{ marginBottom: '4px' }}>
+                                {tool}
+                            </Tag>
+                        ))}
+                    </div>
+                </div>
+
+                {excludedTools.length > 0 && (
+                    <div>
+                        <Text strong style={{ color: '#ff7875' }}>已过滤工具 ({excludedTools.length}): </Text>
+                        <div style={{ marginTop: '4px' }}>
+                            {excludedTools.map(tool => (
+                                <Tag key={tool} color="red" style={{ marginBottom: '4px' }}>
+                                    {tool}
+                                </Tag>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    }, [toolFilteringState]);
+
     if (!projectData) {
         return <Spin size="large" />;
     }
@@ -209,7 +433,7 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                     gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
                     gap: '32px'
                 }}>
-                    {/* Left Column - Input and Workflow State */}
+                    {/* Left Column - Input, Workflow State, and Tool Filtering */}
                     <div style={{ minWidth: '400px' }}>
                         {/* Input Section */}
                         <div style={{ marginBottom: '24px' }}>
@@ -229,6 +453,14 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                             {paramsHasError && (
                                 <Alert message="参数存储错误" type="error" style={{ marginTop: '8px' }} />
                             )}
+                        </div>
+
+                        {/* Tool Filtering Section */}
+                        <div style={{ marginBottom: '24px' }}>
+                            <Title level={4} style={{ color: '#fff', marginBottom: '16px' }}>
+                                智能工具过滤
+                            </Title>
+                            {renderToolFiltering()}
                         </div>
 
                         {/* Current Workflow State */}
@@ -298,7 +530,7 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                                     <Text strong style={{ color: '#fff' }}>上下文类型: </Text>
                                     <Text code>{promptResponse.input.contextType}</Text>
                                     <br />
-                                    <Text strong style={{ color: '#fff' }}>可用工具: </Text>
+                                    <Text strong style={{ color: '#fff' }}>实际可用工具: </Text>
                                     <Text type="secondary">{promptResponse.context.availableTools.join(', ')}</Text>
                                 </div>
 
