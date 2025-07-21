@@ -32,15 +32,103 @@ No backward compatibility needed—replace existing storage/logic. Follow repo r
 2. **Prompt Restructuring for Caching**:
    - In `episodeSynopsis.ts`, move `%%jsondocs%%` and fixed instructions to the prompt start, per [Context Cache](https://help.aliyun.com/zh/model-studio/context-cache). Ensure prefixes >=256 tokens for caching eligibility.
 
+   **Algorithm Sketch for Prompt Restructuring**:
+   ```
+   function restructurePrompt(template):
+       sections = splitTemplateIntoSections(template)  // Split by markers like ## 任务
+       
+       // Identify fixed (cacheable) and variable sections
+       fixed = sections.filter(s => !s.contains('%%params%%') and s.isReferenceMaterial())  // e.g., 参考资料, 创作要求
+       variable = sections.filter(s => s.contains('%%params%%') or s.isOutputSpecific())  // e.g., 生成参数
+       
+       // Reorder: fixed first, then variable
+       restructured = fixed.concat(variable)
+       
+       // Ensure min length for caching
+       prefixLength = calculateLength(fixed.join('\n'))
+       if prefixLength < 256:
+           addPaddingToFixed(fixed)  // e.g., expand instructions or add comments
+       
+       return restructured.join('\n')
+   ```
+
 3. **History Storage**:
    - In `AgentService.ts`, after tool execution, group messages by `toolCallId` and store in `chat_conversations` via new repo method (e.g., `saveConversation(toolCallId, projectId, toolName, messages)`). For episode synopsis, store the full LLM input/output as a multi-message array.
+
+   **Algorithm Sketch for History Storage**:
+   ```
+   function saveConversation(toolCallId, projectId, toolName, rawMessages):
+       // Group messages by toolCallId
+       conversation = rawMessages.filter(m => m.metadata.toolCallId == toolCallId)
+       
+       // Sort chronologically
+       sorted = conversation.sort((a, b) => a.created_at - b.created_at)
+       
+       // Convert to multi-message format (role/content pairs)
+       messagesArray = sorted.map(m => ({role: m.role, content: m.content}))
+       
+       // Store in DB
+       db.insert('chat_conversations', {
+           id: generateUUID(),
+           project_id: projectId,
+           tool_name: toolName,
+           messages: JSON.stringify(messagesArray),
+           created_at: now()
+       })
+   ```
 
 4. **Reconstruction Logic**:
    - In `ChatMessageRepository.ts`, implement `reconstructHistoryForAction(toolName, projectId, params)`: Query prior conversations for toolName (e.g., 'generate_episode_synopsis'), sort by created_at, reconstruct the exact multi-message history, and append a new user message (e.g., {role: 'user', content: `Generate the next episode synopsis group: ${JSON.stringify(params)}`}).
    - In `EpisodeSynopsisTool.ts`, check for prior synopsis conversations (e.g., by groupTitle or episodes). If found, reconstruct the history and pass as multi-message array to LLM via `executeStreamingTransform` (add `conversationHistory` param). This ensures caching of shared prefixes.
 
+   **Algorithm Sketch for Reconstruction**:
+   ```
+   function reconstructHistoryForAction(toolName, projectId, params):
+       // Query prior conversations
+       conversations = db.select('chat_conversations')
+           .where('project_id', projectId)
+           .where('tool_name', toolName)
+           .orderBy('created_at desc')
+           .limit(1)  // Get most recent for continuation
+       
+       if conversations.empty():
+           return []  // New conversation
+       
+       history = JSON.parse(conversations[0].messages)
+       
+       // Append new user message
+       newMessage = {
+           role: 'user',
+           content: `Generate next group: ${JSON.stringify(params)}`  // e.g., episodes, groupTitle
+       }
+       history.push(newMessage)
+       
+       return history  // Full array for LLM multi-message input
+   ```
+
 5. **Integration in Agent**:
    - In `AgentService.ts`, before streaming, check if request is a continuation (e.g., keyword "continue" or matching tool/params). If yes, reconstruct history and use multi-message prompt. The agent LLM will process the appended message and call `generate_episode_synopsis` with new params (e.g., episodes 7-12).
+
+   **Algorithm Sketch for Agent Integration**:
+   ```
+   function runGeneralAgent(request, projectId, userId):
+       // Check for continuation
+       isContinuation = request.contains('continue') or matchesPriorParams(request.params)
+       
+       if isContinuation:
+           history = reconstructHistoryForAction('generate_episode_synopsis', projectId, request.params)
+           prompt = buildMultiMessagePrompt(history)  // Convert to Qwen-compatible multi-message
+       else:
+           prompt = buildStandardPrompt(request)
+       
+       // Stream with prompt (multi-message enables caching)
+       result = streamText({model: qwenModel, prompt})
+       
+       // If tool called successfully, save updated history
+       if result.toolCalled == 'generate_episode_synopsis':
+           updatedMessages = history.concat(result.newMessages)  // Append LLM response/tool result
+           saveConversation(result.toolCallId, projectId, 'generate_episode_synopsis', updatedMessages)
+   ```
 
 6. **Testing**:
    - Generate 1-6 synopsis, then 7-12 as continuation—verify cache hits via logs (`cached_tokens` in LLM response) and successful tool call.
