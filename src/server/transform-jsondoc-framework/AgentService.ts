@@ -36,12 +36,12 @@ export class AgentService {
         const icon = icons[hash % icons.length];
 
         const phases = {
-            'thinking': '正在思考您的请求',
-            'analyzing': '计算中...',
-            'processing': '正在处理相关内容',
-            'generating': '正在生成创作内容',
-            'completing': '正在完成最后步骤',
-            'error': '❌ 处理过程中遇到问题'
+            'thinking': '编剧大脑启动中',
+            'analyzing': '剧情分析器运转中',
+            'processing': '角色们正在排练',
+            'generating': '创意火花四溅中',
+            'completing': '最后润色，马上完工',
+            'error': '❌ 剧本卡壳了'
         };
 
         return `${icon} ${phases[phase as keyof typeof phases] || '正在进行相关计算'}...`;

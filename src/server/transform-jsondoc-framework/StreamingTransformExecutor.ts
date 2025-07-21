@@ -325,8 +325,27 @@ export class StreamingTransformExecutor {
                                     jsondocData = executionMode.originalJsondoc;
                                 }
                             } else if (executionMode?.mode === 'patch-approval') {
-                                // In patch-approval mode, don't apply patches during streaming - just keep original
-                                jsondocData = executionMode.originalJsondoc;
+                                // In patch-approval mode, create/update patch jsondocs progressively
+                                try {
+                                    await this.createStreamingPatchApprovalJsondocs(
+                                        partialData as TOutput,
+                                        executionMode.originalJsondoc,
+                                        config.templateName,
+                                        retryCount,
+                                        projectId,
+                                        userId,
+                                        jsondocRepo,
+                                        transformId,
+                                        transformRepo,
+                                        dryRun,
+                                        chunkCount
+                                    );
+                                    console.log(`[StreamingTransformExecutor] Updated streaming patches at chunk ${chunkCount}`);
+                                } catch (patchError) {
+                                    console.warn(`[StreamingTransformExecutor] Streaming patch update failed at chunk ${chunkCount}, continuing...`);
+                                    console.warn(`[StreamingTransformExecutor] Patch content: ${JSON.stringify(partialData)}`);
+                                }
+                                jsondocData = null; // Skip regular jsondoc updates in patch-approval mode
                             } else {
                                 // Transform LLM output to final jsondoc format if needed
                                 jsondocData = config.transformLLMOutput
@@ -334,7 +353,7 @@ export class StreamingTransformExecutor {
                                     : partialData;
                             }
 
-                            if (!dryRun && outputJsondocId) {
+                            if (!dryRun && outputJsondocId && jsondocData !== null) {
                                 await jsondocRepo.updateJsondoc(
                                     outputJsondocId,
                                     jsondocData,
@@ -361,6 +380,9 @@ export class StreamingTransformExecutor {
                                 }
                             } else if (dryRun) {
                                 console.log(`[StreamingTransformExecutor] Dry run: Skipping jsondoc update for ${config.templateName} at chunk ${chunkCount}`);
+                            } else if (executionMode?.mode === 'patch-approval') {
+                                // In patch-approval mode, we don't update during streaming, only at completion
+                                console.log(`[StreamingTransformExecutor] Patch-approval mode: Skipping streaming update at chunk ${chunkCount}`);
                             }
                         } catch (updateError) {
                             console.warn(`[StreamingTransformExecutor] Failed to update jsondoc at chunk ${chunkCount}:`, updateError);
@@ -399,8 +421,8 @@ export class StreamingTransformExecutor {
                         dryRun
                     );
                 } else if (executionMode?.mode === 'patch-approval') {
-                    // Create individual patch jsondocs for approval
-                    finalJsondocData = await this.createPatchApprovalJsondocs(
+                    // Finalize streaming patch jsondocs - mark them as completed
+                    await this.finalizeStreamingPatchApprovalJsondocs(
                         finalValidatedData,
                         executionMode.originalJsondoc,
                         config.templateName,
@@ -410,8 +432,10 @@ export class StreamingTransformExecutor {
                         jsondocRepo,
                         transformId,
                         transformRepo,
-                        dryRun
+                        dryRun,
+                        chunkCount
                     );
+                    finalJsondocData = null; // No single jsondoc output in patch-approval mode
                 } else {
                     // Transform LLM output to final jsondoc format if needed (full-object mode)
                     finalJsondocData = config.transformLLMOutput
@@ -419,51 +443,89 @@ export class StreamingTransformExecutor {
                         : finalValidatedData;
                 }
 
-                if (!dryRun && outputJsondocId) {
-                    await jsondocRepo.updateJsondoc(
-                        outputJsondocId,
-                        finalJsondocData,
-                        {
-                            chunk_count: chunkCount,
-                            completed_at: new Date().toISOString(),
-                            total_updates: updateCount + 1,
-                            retry_count: retryCount
-                        },
-                        'completed'  // Mark as completed to trigger validation
-                    );
+                // Handle different execution modes for completion
+                if (!dryRun) {
+                    if (executionMode?.mode === 'patch-approval') {
+                        // In patch-approval mode, we don't have a single output jsondoc
+                        // Instead, patch jsondocs were created by createPatchApprovalJsondocs
+                        // We still need to store LLM metadata and mark transform as completed
 
-                    // 10. Link output jsondoc to transform (if not already linked during streaming)
-                    if (!outputLinked && transformId) {
-                        await transformRepo.addTransformOutputs(transformId, [
-                            { jsondocId: outputJsondocId, outputRole: 'generated_output' }
-                        ], projectId);
-                    }
+                        // 11. Store LLM metadata (simplified - we don't have detailed usage from streaming)
+                        if (transformId) {
+                            await transformRepo.addLLMTransform({
+                                transform_id: transformId,
+                                model_name: 'streaming_model',
+                                raw_response: JSON.stringify(finalValidatedData), // Store LLM output, not transformed
+                                token_usage: null,
+                                project_id: projectId
+                            });
+                        }
 
-                    // 11. Store LLM metadata (simplified - we don't have detailed usage from streaming)
-                    if (transformId) {
-                        await transformRepo.addLLMTransform({
-                            transform_id: transformId,
-                            model_name: 'streaming_model',
-                            raw_response: JSON.stringify(finalValidatedData), // Store LLM output, not transformed
-                            token_usage: null,
-                            project_id: projectId
-                        });
-                    }
-
-                    // 12. Mark transform as completed
-                    if (transformId) {
-                        await transformRepo.updateTransform(transformId, {
-                            status: 'completed',
-                            execution_context: {
-                                template_name: config.templateName,
+                        // 12. Mark ai_patch transform as completed (CRITICAL FIX)
+                        if (transformId) {
+                            const finalPatches = this.extractJsonPatches(finalValidatedData);
+                            await transformRepo.updateTransform(transformId, {
+                                status: 'completed',
+                                execution_context: {
+                                    template_name: config.templateName,
+                                    completed_at: new Date().toISOString(),
+                                    execution_mode: 'patch-approval',
+                                    patch_count: finalPatches?.length || 0,
+                                    total_chunks: chunkCount,
+                                    total_updates: updateCount + 1,
+                                    retry_count: retryCount,
+                                    max_retries: maxRetries,
+                                    streaming_patches: true
+                                }
+                            });
+                        }
+                    } else if (outputJsondocId) {
+                        // Normal mode with output jsondoc
+                        await jsondocRepo.updateJsondoc(
+                            outputJsondocId,
+                            finalJsondocData,
+                            {
+                                chunk_count: chunkCount,
                                 completed_at: new Date().toISOString(),
-                                output_jsondoc_id: outputJsondocId,
-                                total_chunks: chunkCount,
                                 total_updates: updateCount + 1,
-                                retry_count: retryCount,
-                                max_retries: maxRetries
-                            }
-                        });
+                                retry_count: retryCount
+                            },
+                            'completed'  // Mark as completed to trigger validation
+                        );
+
+                        // 10. Link output jsondoc to transform (if not already linked during streaming)
+                        if (!outputLinked && transformId) {
+                            await transformRepo.addTransformOutputs(transformId, [
+                                { jsondocId: outputJsondocId, outputRole: 'generated_output' }
+                            ], projectId);
+                        }
+
+                        // 11. Store LLM metadata (simplified - we don't have detailed usage from streaming)
+                        if (transformId) {
+                            await transformRepo.addLLMTransform({
+                                transform_id: transformId,
+                                model_name: 'streaming_model',
+                                raw_response: JSON.stringify(finalValidatedData), // Store LLM output, not transformed
+                                token_usage: null,
+                                project_id: projectId
+                            });
+                        }
+
+                        // 12. Mark transform as completed
+                        if (transformId) {
+                            await transformRepo.updateTransform(transformId, {
+                                status: 'completed',
+                                execution_context: {
+                                    template_name: config.templateName,
+                                    completed_at: new Date().toISOString(),
+                                    output_jsondoc_id: outputJsondocId,
+                                    total_chunks: chunkCount,
+                                    total_updates: updateCount + 1,
+                                    retry_count: retryCount,
+                                    max_retries: maxRetries
+                                }
+                            });
+                        }
                     }
                 } else if (dryRun) {
                     console.log(`[StreamingTransformExecutor] Dry run: Skipping all database operations for ${config.templateName}`);
@@ -965,6 +1027,226 @@ export class StreamingTransformExecutor {
             return [];  // Array-based jsondocs
         } else {
             return {};  // Object-based jsondocs
+        }
+    }
+
+    /**
+     * Create or update individual patch jsondocs progressively during streaming
+     */
+    private async createStreamingPatchApprovalJsondocs<TOutput>(
+        llmOutput: TOutput,
+        originalJsondoc: any,
+        templateName: string,
+        retryCount: number,
+        projectId?: string,
+        userId?: string,
+        jsondocRepo?: JsondocRepository,
+        transformId?: string | null,
+        transformRepo?: TransformRepository,
+        dryRun?: boolean,
+        chunkCount?: number
+    ): Promise<void> {
+        if (dryRun || !jsondocRepo || !projectId || !transformId || !transformRepo) {
+            console.log(`[StreamingTransformExecutor] Dry run or missing dependencies: Skipping streaming patch jsondoc creation`);
+            return;
+        }
+
+        try {
+            // Extract individual patches from LLM output
+            const patches = this.extractJsonPatches(llmOutput);
+            if (!patches || patches.length === 0) {
+                console.log(`[StreamingTransformExecutor] No patches found in streaming LLM output at chunk ${chunkCount}`);
+                return;
+            }
+
+            console.log(`[StreamingTransformExecutor] Processing ${patches.length} patches during streaming at chunk ${chunkCount}`);
+
+            // Get existing patch jsondocs created by this transform
+            const existingOutputs = await transformRepo.getTransformOutputs(transformId);
+            const existingPatchJsondocs = await Promise.all(
+                existingOutputs.map(async output => {
+                    const jsondoc = await jsondocRepo.getJsondoc(output.jsondoc_id);
+                    return jsondoc && jsondoc.schema_type === 'json_patch'
+                        ? { jsondoc, outputId: output.jsondoc_id }
+                        : null;
+                })
+            );
+            const validPatchJsondocs = existingPatchJsondocs.filter(item => item !== null);
+
+            // Process each patch - create new ones or update existing ones
+            for (let i = 0; i < patches.length; i++) {
+                const patch = patches[i];
+                const patchData = {
+                    patches: [patch], // Single patch per jsondoc
+                    targetJsondocId: 'unknown', // Will be determined during approval
+                    targetSchemaType: 'unknown',
+                    patchIndex: i,
+                    applied: false,
+                    chunkCount: chunkCount || 0,
+                    streamingUpdate: true
+                };
+
+                if (i < validPatchJsondocs.length) {
+                    // Update existing patch jsondoc
+                    const existingPatch = validPatchJsondocs[i];
+                    await jsondocRepo.updateJsondoc(
+                        existingPatch.outputId,
+                        patchData,
+                        {
+                            last_updated: new Date().toISOString(),
+                            chunk_count: chunkCount || 0,
+                            patch_index: i,
+                            streaming_update: true,
+                            template_name: templateName
+                        }
+                    );
+                    console.log(`[StreamingTransformExecutor] Updated existing patch jsondoc ${existingPatch.outputId} (index ${i}) at chunk ${chunkCount}`);
+                } else {
+                    // Create new patch jsondoc
+                    const patchJsondoc = await jsondocRepo.createJsondoc(
+                        projectId,
+                        'json_patch',
+                        patchData,
+                        'v1',
+                        {
+                            created_at: new Date().toISOString(),
+                            template_name: templateName,
+                            patch_index: i,
+                            applied: false,
+                            target_jsondoc_id: 'unknown',
+                            target_schema_type: 'unknown',
+                            chunk_count: chunkCount || 0,
+                            streaming_creation: true
+                        },
+                        'streaming', // Mark as streaming initially
+                        'ai_generated'
+                    );
+
+                    // Link patch jsondoc as output to the transform
+                    await transformRepo.addTransformOutputs(transformId, [
+                        { jsondocId: patchJsondoc.id }
+                    ], projectId);
+
+                    console.log(`[StreamingTransformExecutor] Created new patch jsondoc ${patchJsondoc.id} (index ${i}) at chunk ${chunkCount}`);
+                }
+            }
+
+            // Mark any extra existing patch jsondocs as deleted if we have fewer patches now
+            if (validPatchJsondocs.length > patches.length) {
+                for (let i = patches.length; i < validPatchJsondocs.length; i++) {
+                    const extraPatch = validPatchJsondocs[i];
+                    await jsondocRepo.updateJsondoc(
+                        extraPatch.outputId,
+                        { deleted: true },
+                        {
+                            deleted_at: new Date().toISOString(),
+                            chunk_count: chunkCount || 0,
+                            reason: 'patch_count_reduced_during_streaming'
+                        }
+                    );
+                    console.log(`[StreamingTransformExecutor] Marked extra patch jsondoc ${extraPatch.outputId} as deleted at chunk ${chunkCount}`);
+                }
+            }
+
+        } catch (error) {
+            console.error(`[StreamingTransformExecutor] Failed to create/update streaming patch jsondocs at chunk ${chunkCount}:`, error);
+            // Don't throw - allow streaming to continue
+        }
+    }
+
+    /**
+     * Finalize streaming patch jsondocs - mark them as completed and clean up
+     */
+    private async finalizeStreamingPatchApprovalJsondocs<TOutput>(
+        llmOutput: TOutput,
+        originalJsondoc: any,
+        templateName: string,
+        retryCount: number,
+        projectId?: string,
+        userId?: string,
+        jsondocRepo?: JsondocRepository,
+        transformId?: string | null,
+        transformRepo?: TransformRepository,
+        dryRun?: boolean,
+        chunkCount?: number
+    ): Promise<void> {
+        if (dryRun || !jsondocRepo || !projectId || !transformId || !transformRepo) {
+            console.log(`[StreamingTransformExecutor] Dry run or missing dependencies: Skipping patch jsondoc finalization`);
+            return;
+        }
+
+        try {
+            // Extract final patches from LLM output
+            const finalPatches = this.extractJsonPatches(llmOutput);
+            if (!finalPatches || finalPatches.length === 0) {
+                console.log(`[StreamingTransformExecutor] No final patches found for finalization`);
+                return;
+            }
+
+            console.log(`[StreamingTransformExecutor] Finalizing ${finalPatches.length} patch jsondocs`);
+
+            // Get all patch jsondocs created by this transform
+            const existingOutputs = await transformRepo.getTransformOutputs(transformId);
+            const patchOutputs = [];
+
+            for (const output of existingOutputs) {
+                const jsondoc = await jsondocRepo.getJsondoc(output.jsondoc_id);
+                if (jsondoc && jsondoc.schema_type === 'json_patch') {
+                    patchOutputs.push(output);
+                }
+            }
+
+            // Update each patch jsondoc to completed status
+            for (let i = 0; i < finalPatches.length && i < patchOutputs.length; i++) {
+                const patch = finalPatches[i];
+                const outputId = patchOutputs[i].jsondoc_id;
+
+                const finalPatchData = {
+                    patches: [patch], // Single patch per jsondoc
+                    targetJsondocId: 'unknown', // Will be determined during approval
+                    targetSchemaType: 'unknown',
+                    patchIndex: i,
+                    applied: false,
+                    chunkCount: chunkCount || 0,
+                    streamingUpdate: false,
+                    finalized: true
+                };
+
+                await jsondocRepo.updateJsondoc(
+                    outputId,
+                    finalPatchData,
+                    {
+                        completed_at: new Date().toISOString(),
+                        chunk_count: chunkCount || 0,
+                        patch_index: i,
+                        template_name: templateName,
+                        finalized: true
+                    },
+                    'completed' // Mark as completed
+                );
+
+                console.log(`[StreamingTransformExecutor] Finalized patch jsondoc ${outputId} (index ${i})`);
+            }
+
+            // Mark any remaining patch jsondocs as completed even if they don't have final data
+            for (let i = finalPatches.length; i < patchOutputs.length; i++) {
+                const outputId = patchOutputs[i].jsondoc_id;
+                await jsondocRepo.updateJsondoc(
+                    outputId,
+                    { deleted: true, finalized: true },
+                    {
+                        completed_at: new Date().toISOString(),
+                        deleted_at: new Date().toISOString(),
+                        reason: 'no_final_patch_data'
+                    },
+                    'completed'
+                );
+                console.log(`[StreamingTransformExecutor] Marked extra patch jsondoc ${outputId} as deleted during finalization`);
+            }
+
+        } catch (error) {
+            console.error(`[StreamingTransformExecutor] Failed to finalize streaming patch jsondocs:`, error);
+            // Don't throw - the transform should still complete
         }
     }
 

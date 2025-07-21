@@ -140,6 +140,11 @@ src/
 - **For debugging lineage issues or understanding data flow for a specific project**, use the extract-lineage-tree.ts script: `./run-ts src/server/scripts/extract-lineage-tree.ts <project-id>`
 - The extract-lineage-tree script builds the complete lineage graph from the database and prints both the tree structure and main workflow path
 - **For inspecting the actual content of jsondocs or particles**, use the inspect-content.ts script: `./run-ts src/server/scripts/inspect-content.ts <project-id> <type> <comma_separated_ids>` where type is either "jsondoc" or "particle"
+- **For complex debugging issues, create reusable pipeline scripts** that can be chained together using Unix pipes
+- Pipeline scripts should communicate via JSON over stdin/stdout with clear delimiters like `=== PROJECT_DATA_JSON_START ===` and `=== PROJECT_DATA_JSON_END ===`
+- **ALWAYS add `process.exit(0)` in the finally block** of debugging scripts to prevent them from hanging
+- Example pipeline pattern: `./run-ts extract-data.ts <id> | ./run-ts process-data.ts <id>`
+- This modular approach allows easier iteration and debugging of complex problems
 
 ## Data Validation
 

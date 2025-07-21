@@ -22,7 +22,7 @@ async function deleteTransformRecursively(
 ): Promise<{ deletedTransformIds: string[], deletedJsondocIds: string[] }> {
     console.log(`[RecursiveDeletion] Processing transform: ${transformId}`);
 
-    // Get all outputs of this transform
+    // Get all outputs of this transform BEFORE deleting the transform
     const outputs = await transformRepo.getTransformOutputs(transformId);
 
     // For each output, find any transforms that use it as input and delete them first
@@ -46,20 +46,22 @@ async function deleteTransformRecursively(
                 );
             }
         }
+    }
 
-        // Delete the output jsondoc
+    // Delete the transform itself FIRST - this will CASCADE delete transform_inputs and transform_outputs
+    if (!deletedTransformIds.includes(transformId)) {
+        await transformRepo.deleteTransform(transformId);
+        deletedTransformIds.push(transformId);
+        console.log(`[RecursiveDeletion] Deleted transform: ${transformId}`);
+    }
+
+    // Now safely delete the output jsondocs (no more foreign key references)
+    for (const output of outputs) {
         if (!deletedJsondocIds.includes(output.jsondoc_id)) {
             await jsondocRepo.deleteJsondoc(output.jsondoc_id);
             deletedJsondocIds.push(output.jsondoc_id);
             console.log(`[RecursiveDeletion] Deleted jsondoc: ${output.jsondoc_id}`);
         }
-    }
-
-    // Delete the transform itself
-    if (!deletedTransformIds.includes(transformId)) {
-        await transformRepo.deleteTransform(transformId);
-        deletedTransformIds.push(transformId);
-        console.log(`[RecursiveDeletion] Deleted transform: ${transformId}`);
     }
 
     return { deletedTransformIds, deletedJsondocIds };
