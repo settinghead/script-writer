@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 import { StreamingTransformConfig, executeStreamingTransform } from '../transform-jsondoc-framework/StreamingTransformExecutor';
-import { getPatchApprovalEventBus } from '../services/ParticleSystemInitializer';
+
 import {
     BrainstormEditInputSchema,
     BrainstormEditInput,
@@ -19,6 +19,65 @@ import { extractDataAtPath } from '../services/transform-instantiations/pathTran
 import { TypedJsondoc } from '@/common/jsondocs';
 import { createJsondocProcessor } from './shared/JsondocProcessor';
 
+/**
+ * Extract patch content from ai_patch transform outputs for agent context
+ */
+async function extractPatchContentForAgent(
+    transformId: string,
+    transformRepo: TransformRepository,
+    jsondocRepo: JsondocRepository
+): Promise<Array<{ path: string; operation: string; summary: string; newValue: any }>> {
+    try {
+        // Get all output jsondocs from the ai_patch transform
+        const outputs = await transformRepo.getTransformOutputs(transformId);
+        const patchContent: Array<{ path: string; operation: string; summary: string; newValue: any }> = [];
+
+        for (const output of outputs) {
+            const patchJsondoc = await jsondocRepo.getJsondoc(output.jsondoc_id);
+            if (patchJsondoc && patchJsondoc.schema_type === 'json_patch') {
+                const patchData = typeof patchJsondoc.data === 'string'
+                    ? JSON.parse(patchJsondoc.data)
+                    : patchJsondoc.data;
+
+                // Extract patch operations for agent context
+                if (patchData.patches && Array.isArray(patchData.patches)) {
+                    for (const patch of patchData.patches) {
+                        const pathParts = patch.path.replace(/^\//, '').split('/');
+                        const fieldName = pathParts[pathParts.length - 1];
+
+                        let summary = '';
+                        switch (patch.op) {
+                            case 'replace':
+                                summary = `Update ${fieldName}`;
+                                break;
+                            case 'add':
+                                summary = `Add ${fieldName}`;
+                                break;
+                            case 'remove':
+                                summary = `Remove ${fieldName}`;
+                                break;
+                            default:
+                                summary = `${patch.op} ${fieldName}`;
+                        }
+
+                        patchContent.push({
+                            path: patch.path,
+                            operation: patch.op,
+                            summary,
+                            newValue: patch.value
+                        });
+                    }
+                }
+            }
+        }
+
+        return patchContent;
+    } catch (error) {
+        console.warn(`[extractPatchContentForAgent] Failed to extract patch content:`, error);
+        return [];
+    }
+}
+
 // Discriminated union for brainstorm edit results
 const BrainstormEditToolResultSchema = z.discriminatedUnion('status', [
     z.object({
@@ -29,10 +88,14 @@ const BrainstormEditToolResultSchema = z.discriminatedUnion('status', [
             title: z.string(),
             body: z.string()
         }).optional(),
-        editedIdea: z.object({
-            title: z.string(),
-            body: z.string()
-        }).optional()
+        patchContent: z.array(z.object({
+            path: z.string(),
+            operation: z.string(),
+            summary: z.string(),
+            newValue: z.any()
+        })).optional(),
+        patchCount: z.number().optional(),
+        message: z.string().optional()
     }),
     z.object({
         status: z.literal('rejected'),
@@ -251,72 +314,19 @@ export function createBrainstormEditToolDefinition(
                     maxTokens: cachingOptions?.maxTokens
                 });
 
-                // Wait for user approval of the patches
-                const patchApprovalEventBus = getPatchApprovalEventBus();
-                if (!patchApprovalEventBus) {
-                    return {
-                        status: 'error',
-                        error: 'PatchApprovalEventBus not available',
-                        originalIdea
-                    };
-                }
+                // Extract patch content for agent context
+                const patchContent = await extractPatchContentForAgent(result.transformId, transformRepo, jsondocRepo);
 
-                console.log(`[BrainstormEditTool] Waiting for approval of transform ${result.transformId}`);
-                const approvalResult = await patchApprovalEventBus.waitForPatchApproval(result.transformId);
-
-                if (approvalResult === 'rejected') {
-                    console.log(`[BrainstormEditTool] Patches rejected by user for transform ${result.transformId}`);
-                    return {
-                        status: 'rejected',
-                        reason: 'User rejected the proposed patches',
-                        originalIdea
-                    };
-                }
-
-                console.log(`[BrainstormEditTool] Patches approved, finding derived jsondoc`);
-
-                // Find the human_patch_approval transform that was created for this ai_patch transform
-                const allTransforms = await jsondocRepo.getAllProjectTransformsForLineage(projectId);
-                const approvalTransform = allTransforms.find((t: any) =>
-                    t.type === 'human_patch_approval' &&
-                    t.execution_context?.original_ai_patch_transform_id === result.transformId
-                );
-
-                if (!approvalTransform) {
-                    return {
-                        status: 'error',
-                        error: 'Could not find human_patch_approval transform',
-                        originalIdea
-                    };
-                }
-
-                // Get the derived jsondoc created by the approval transform
-                const approvalOutputs = await transformRepo.getTransformOutputs(approvalTransform.id);
-                const derivedJsondocId = approvalOutputs.find(output => output.output_role === 'approved_result')?.jsondoc_id;
-
-                if (!derivedJsondocId) {
-                    return {
-                        status: 'error',
-                        error: 'Could not find derived jsondoc from approval transform',
-                        originalIdea
-                    };
-                }
-
-                // Get the final derived jsondoc to extract the edited idea
-                const finalJsondoc = await jsondocRepo.getJsondoc(derivedJsondocId);
-                const editedIdea = finalJsondoc?.data || originalIdea;
-
-                console.log(`[BrainstormEditTool] Successfully completed unified patch edit with derived jsondoc ${derivedJsondocId}`);
+                console.log(`[BrainstormEditTool] Successfully created ${patchContent.length} patches for review`);
 
                 return {
                     status: 'success',
-                    outputJsondocId: derivedJsondocId, // Return the derived jsondoc, not the original AI patch jsondoc
+                    outputJsondocId: result.transformId, // Return the AI patch transform ID
                     finishReason: result.finishReason,
                     originalIdea,
-                    editedIdea: {
-                        title: editedIdea.title || originalIdea.title,
-                        body: editedIdea.body || originalIdea.body
-                    }
+                    patchContent: patchContent, // For agent awareness
+                    patchCount: patchContent.length,
+                    message: `Created ${patchContent.length} patches for your review. The changes will be applied after you approve them in the review modal.`
                 };
 
             } catch (error) {

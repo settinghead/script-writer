@@ -1,7 +1,64 @@
 import { z } from 'zod';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { getPatchApprovalEventBus } from '../services/ParticleSystemInitializer';
+/**
+ * Extract patch content from ai_patch transform outputs for agent context
+ */
+async function extractPatchContentForAgent(
+    transformId: string,
+    transformRepo: TransformRepository,
+    jsondocRepo: JsondocRepository
+): Promise<Array<{ path: string; operation: string; summary: string; newValue: any }>> {
+    try {
+        // Get all output jsondocs from the ai_patch transform
+        const outputs = await transformRepo.getTransformOutputs(transformId);
+        const patchContent: Array<{ path: string; operation: string; summary: string; newValue: any }> = [];
+
+        for (const output of outputs) {
+            const patchJsondoc = await jsondocRepo.getJsondoc(output.jsondoc_id);
+            if (patchJsondoc && patchJsondoc.schema_type === 'json_patch') {
+                const patchData = typeof patchJsondoc.data === 'string'
+                    ? JSON.parse(patchJsondoc.data)
+                    : patchJsondoc.data;
+
+                // Extract patch operations for agent context
+                if (patchData.patches && Array.isArray(patchData.patches)) {
+                    for (const patch of patchData.patches) {
+                        const pathParts = patch.path.replace(/^\//, '').split('/');
+                        const fieldName = pathParts[pathParts.length - 1];
+
+                        let summary = '';
+                        switch (patch.op) {
+                            case 'replace':
+                                summary = `Update ${fieldName}`;
+                                break;
+                            case 'add':
+                                summary = `Add ${fieldName}`;
+                                break;
+                            case 'remove':
+                                summary = `Remove ${fieldName}`;
+                                break;
+                            default:
+                                summary = `${patch.op} ${fieldName}`;
+                        }
+
+                        patchContent.push({
+                            path: patch.path,
+                            operation: patch.op,
+                            summary,
+                            newValue: patch.value
+                        });
+                    }
+                }
+            }
+        }
+
+        return patchContent;
+    } catch (error) {
+        console.warn(`[extractPatchContentForAgent] Failed to extract patch content:`, error);
+        return [];
+    }
+}
 import { defaultPrepareTemplateVariables } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import {
     OutlineSettingsInputSchema,
@@ -32,16 +89,14 @@ const OutlineSettingsToolResultSchema = z.object({
 const OutlineSettingsEditToolResultSchema = z.object({
     outputJsondocId: z.string(),
     finishReason: z.string(),
-    originalSettings: z.object({
-        title: z.string(),
-        genre: z.string(),
-        // Add other key fields for reference
-    }).optional(),
-    editedSettings: z.object({
-        title: z.string(),
-        genre: z.string(),
-        // Add other key fields for reference
-    }).optional()
+    patchContent: z.array(z.object({
+        path: z.string(),
+        operation: z.string(),
+        summary: z.string(),
+        newValue: z.any()
+    })).optional(),
+    patchCount: z.number().optional(),
+    message: z.string().optional()
 });
 
 interface OutlineSettingsToolResult {
@@ -221,38 +276,17 @@ export function createOutlineSettingsEditToolDefinition(
                     maxTokens: cachingOptions?.maxTokens
                 });
 
-                // Wait for user approval of the patches
-                const patchApprovalEventBus = getPatchApprovalEventBus();
-                if (!patchApprovalEventBus) {
-                    throw new Error('PatchApprovalEventBus not available');
-                }
+                // Extract patch content for agent context
+                const patchContent = await extractPatchContentForAgent(result.transformId, transformRepo, jsondocRepo);
 
-                console.log(`[OutlineSettingsEditTool] Waiting for approval of transform ${result.transformId}`);
-                const approvalResult = await patchApprovalEventBus.waitForPatchApproval(result.transformId);
-
-                if (approvalResult === 'rejected') {
-                    throw new Error('Patches were rejected by user');
-                }
-
-                console.log(`[OutlineSettingsEditTool] Patches approved, applying changes`);
-
-                // Get the final jsondoc to extract the edited settings
-                const finalJsondoc = await jsondocRepo.getJsondoc(result.outputJsondocId);
-                const editedSettings = finalJsondoc?.data || originalSettings;
-
-                console.log(`[OutlineSettingsEditTool] Successfully completed JSON patch edit with jsondoc ${result.outputJsondocId}`);
+                console.log(`[OutlineSettingsEditTool] Successfully created ${patchContent.length} patches for review`);
 
                 return {
-                    outputJsondocId: result.outputJsondocId,
+                    outputJsondocId: result.transformId,
                     finishReason: result.finishReason,
-                    originalSettings: {
-                        title: originalSettings.title || '',
-                        genre: originalSettings.genre || ''
-                    },
-                    editedSettings: {
-                        title: editedSettings.title || originalSettings.title || '',
-                        genre: editedSettings.genre || originalSettings.genre || ''
-                    }
+                    patchContent: patchContent,
+                    patchCount: patchContent.length,
+                    message: `Created ${patchContent.length} patches for your outline settings. The changes will be applied after you approve them in the review modal.`
                 };
 
             } catch (error) {

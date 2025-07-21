@@ -4,7 +4,7 @@ import { ParticleExtractor } from './ParticleExtractor';
 import { ParticleService } from './ParticleService';
 import { ParticleEventBus } from './ParticleEventBus';
 import { ParticleTemplateProcessor } from './ParticleTemplateProcessor';
-import { PatchApprovalEventBus } from './PatchApprovalEventBus';
+
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 import { DB } from '../database/types';
@@ -15,7 +15,6 @@ export interface ParticleSystemServices {
     particleService: ParticleService;
     particleEventBus: ParticleEventBus;
     particleTemplateProcessor: ParticleTemplateProcessor;
-    patchApprovalEventBus: PatchApprovalEventBus;
 }
 
 let globalParticleSystem: ParticleSystemServices | null = null;
@@ -37,7 +36,6 @@ export async function initializeParticleSystem(db: Kysely<DB>): Promise<Particle
 
         // Setup event bus for real-time updates
         const particleEventBus = new ParticleEventBus(db, particleService);
-        const patchApprovalEventBus = new PatchApprovalEventBus(db);
 
         // Store global instance
         globalParticleSystem = {
@@ -45,8 +43,7 @@ export async function initializeParticleSystem(db: Kysely<DB>): Promise<Particle
             particleExtractor,
             particleService,
             particleEventBus,
-            particleTemplateProcessor,
-            patchApprovalEventBus
+            particleTemplateProcessor
         };
 
         // Try to start listening for jsondoc changes, but don't fail if it doesn't work
@@ -57,13 +54,7 @@ export async function initializeParticleSystem(db: Kysely<DB>): Promise<Particle
             console.warn('[ParticleSystem] ⚠️ Particle event bus failed to start, will use manual updates:', error instanceof Error ? error.message : String(error));
         }
 
-        // Try to start listening for patch approval notifications
-        try {
-            await patchApprovalEventBus.startListening();
-            console.log('[ParticleSystem] ✅ Patch approval event bus started successfully');
-        } catch (error) {
-            console.warn('[ParticleSystem] ⚠️ Patch approval event bus failed to start:', error instanceof Error ? error.message : String(error));
-        }
+
 
         console.log('[ParticleSystem] ✅ Particle system initialized successfully');
 
@@ -93,9 +84,7 @@ export function getParticleTemplateProcessor(): ParticleTemplateProcessor | null
     return globalParticleSystem?.particleTemplateProcessor || null;
 }
 
-export function getPatchApprovalEventBus(): PatchApprovalEventBus | null {
-    return globalParticleSystem?.patchApprovalEventBus || null;
-}
+
 
 /**
  * Check if particle system is initialized

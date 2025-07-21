@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { Modal, Button, Space, Card, Typography, Checkbox, message } from 'antd';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { Modal, Button, Space, Card, Typography, Checkbox, message, Tag, Divider } from 'antd';
 import { CheckOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons';
-import { usePendingPatchApproval, type PendingPatchGroup } from '../hooks/usePendingPatchApproval';
+import { usePendingPatchApproval, type PendingPatchItem } from '../hooks/usePendingPatchApproval';
 import { YJSJsondocProvider } from '../transform-jsondoc-framework/contexts/YJSJsondocContext';
 import { YJSTextField, YJSTextAreaField } from '../transform-jsondoc-framework/components/YJSField';
 import { PatchApprovalEditor } from './PatchApprovalEditor';
@@ -50,7 +50,7 @@ const DiffView: React.FC<{ oldValue: string; newValue: string }> = ({ oldValue, 
                             key={index}
                             style={{
                                 backgroundColor: '#1a4a1a',
-                                color: '#95de64',
+                                color: '#95f985',
                                 padding: '2px 0'
                             }}
                         >
@@ -59,7 +59,7 @@ const DiffView: React.FC<{ oldValue: string; newValue: string }> = ({ oldValue, 
                     );
                 } else {
                     return (
-                        <span key={index} style={{ color: '#ffffff' }}>
+                        <span key={index} style={{ color: '#d9d9d9' }}>
                             {part.value}
                         </span>
                     );
@@ -69,254 +69,128 @@ const DiffView: React.FC<{ oldValue: string; newValue: string }> = ({ oldValue, 
     );
 };
 
-interface PatchReviewCardProps {
-    patchJsondoc: ElectricJsondoc;
-    originalJsondoc: ElectricJsondoc;
-    selected: boolean;
+// Individual patch card component
+const PatchCard: React.FC<{
+    patchItem: PendingPatchItem;
+    isSelected: boolean;
     onSelectionChange: (selected: boolean) => void;
-    projectId: string;
-}
-
-const PatchReviewCard: React.FC<PatchReviewCardProps> = ({
-    patchJsondoc,
-    originalJsondoc,
-    selected,
-    onSelectionChange,
-    projectId
-}) => {
-    const [isCreatingTransform, setIsCreatingTransform] = useState(false);
-    const projectData = useProjectData();
+}> = ({ patchItem, isSelected, onSelectionChange }) => {
+    const { patchJsondoc, originalJsondoc, sourceTransformMetadata } = patchItem;
 
     // Parse patch data
     const patchData = useMemo(() => {
         try {
-            return typeof patchJsondoc.data === 'string'
+            const data = typeof patchJsondoc.data === 'string'
                 ? JSON.parse(patchJsondoc.data)
                 : patchJsondoc.data;
-        } catch (e) {
-            console.error('Failed to parse patch data:', e);
-            return {};
+            return data;
+        } catch (error) {
+            console.error('Failed to parse patch data:', error);
+            return { patches: [] };
         }
     }, [patchJsondoc.data]);
 
-    // Check if this patch has a human transform (derived edit mode from DB state)
-    const hasHumanTransform = useMemo(() => {
-        if (!Array.isArray(projectData.humanTransforms)) {
-            console.log('[PatchReviewModal] No humanTransforms array available');
-            return false;
-        }
-
-        // Look for a human transform that has this patch jsondoc as source
-        const found = projectData.humanTransforms.some(transform =>
-            transform.source_jsondoc_id === patchJsondoc.id &&
-            transform.derivation_path === '$'  // Changed from '$.patches' to '$'
-        );
-
-        console.log(`[PatchReviewModal] Checking for human transform for patch ${patchJsondoc.id}: ${found ? 'FOUND' : 'NOT FOUND'}`);
-        console.log(`[PatchReviewModal] Available transforms:`, projectData.humanTransforms.map(t => ({
-            id: t.id,
-            source_jsondoc_id: t.source_jsondoc_id,
-            derivation_path: t.derivation_path,
-            status: t.status,
-            type: t.type
-        })));
-        console.log(`[PatchReviewModal] Looking for source_jsondoc_id: ${patchJsondoc.id} with derivation_path: '$'`);
-
-        return found;
-    }, [
-        // Create a stable dependency by hashing relevant transform data
-        Array.isArray(projectData.humanTransforms) ?
-            projectData.humanTransforms.map((t: any) =>
-                `${t.source_jsondoc_id}-${t.derivation_path}-${t.derived_jsondoc_id}`
-            ).join(',') : '',
-        patchJsondoc.id
-    ]);
-
-    // Get the derived jsondoc ID if human transform exists
-    const derivedJsondocId = useMemo(() => {
-        if (!Array.isArray(projectData.humanTransforms)) {
-            return null;
-        }
-
-        const humanTransform = projectData.humanTransforms.find(transform =>
-            transform.source_jsondoc_id === patchJsondoc.id &&
-            transform.derivation_path === '$'  // Changed from '$.patches' to '$'
-        );
-
-        return humanTransform?.derived_jsondoc_id || null;
-    }, [
-        // Create a stable dependency by hashing relevant transform data
-        Array.isArray(projectData.humanTransforms) ?
-            projectData.humanTransforms.map((t: any) =>
-                `${t.source_jsondoc_id}-${t.derivation_path}-${t.derived_jsondoc_id}`
-            ).join(',') : '',
-        patchJsondoc.id
-    ]);
-
-    // Handle creating human transform for editing
-    const handleStartEdit = useCallback(async () => {
-        console.log(`[PatchReviewModal] handleStartEdit called for patch ${patchJsondoc.id}`);
-        console.log(`[PatchReviewModal] hasHumanTransform: ${hasHumanTransform}, isCreatingTransform: ${isCreatingTransform}`);
-
-        if (hasHumanTransform || isCreatingTransform) {
-            console.log(`[PatchReviewModal] Skipping transform creation - already exists or in progress`);
-            return;
-        }
-
-        setIsCreatingTransform(true);
+    // Parse original data
+    const originalData = useMemo(() => {
         try {
-            console.log(`[PatchReviewModal] Creating human transform for patch ${patchJsondoc.id}`);
-
-            // Create human transform for this patch jsondoc
-            const response = await fetch(`/api/jsondocs/${patchJsondoc.id}/human-transform`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
-                },
-                credentials: 'include',
-                body: JSON.stringify({
-                    transformName: 'edit_json_patch',
-                    derivationPath: '$',
-                    fieldUpdates: {}
-                })
-            });
-
-            console.log(`[PatchReviewModal] API response status: ${response.status}`);
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                console.error(`[PatchReviewModal] API error:`, errorData);
-                throw new Error(errorData.message || `HTTP ${response.status}`);
-            }
-
-            const result = await response.json();
-            console.log('[PatchReviewModal] Human transform created successfully:', result);
-            console.log(`[PatchReviewModal] Transform ID: ${result.transform?.id}`);
-            console.log(`[PatchReviewModal] Derived jsondoc ID: ${result.derivedJsondoc?.id}`);
-
-            message.success('开始编辑模式');
-
-            // Force a small delay to allow Electric SQL to sync
-            setTimeout(() => {
-                console.log(`[PatchReviewModal] After 1s delay - checking sync status`);
-                console.log(`[PatchReviewModal] hasHumanTransform: ${hasHumanTransform}`);
-                console.log(`[PatchReviewModal] Available transforms:`,
-                    Array.isArray(projectData.humanTransforms)
-                        ? projectData.humanTransforms.map((t: any) => ({
-                            id: t.id,
-                            source_jsondoc_id: t.source_jsondoc_id,
-                            derivation_path: t.derivation_path,
-                            transform_name: t.transform_name
-                        }))
-                        : projectData.humanTransforms
-                );
-
-                // Force re-render by updating a state variable
-                setIsCreatingTransform(false);
-                setIsCreatingTransform(false); // Double call to force re-render
-            }, 1000);
-
-            console.log('Human transform created for patch editing');
+            const data = typeof originalJsondoc.data === 'string'
+                ? JSON.parse(originalJsondoc.data)
+                : originalJsondoc.data;
+            return data;
         } catch (error) {
-            console.error('[PatchReviewModal] Failed to create human transform:', error);
-            message.error('创建编辑版本失败');
-        } finally {
-            setIsCreatingTransform(false);
+            console.error('Failed to parse original data:', error);
+            return {};
         }
-    }, [patchJsondoc.id, hasHumanTransform, isCreatingTransform, projectData.humanTransforms]);
-
-    // Extract the first patch operation from the patches array
-    const operation = patchData.patches?.[0];
-    const patchIndex = patchData.patchIndex ?? 0;
-
-    // Helper function to get value at JSON path
-    const getValueAtPath = (obj: any, path: string): any => {
-        if (!path || !obj) return undefined;
-
-        // Remove leading slash and split by slash
-        const pathParts = path.replace(/^\//, '').split('/');
-        let current = obj;
-
-        for (const part of pathParts) {
-            if (current === null || current === undefined) return undefined;
-            current = current[part];
-        }
-
-        return current;
-    };
-
-    // Extract original and new values
-    const newValue = operation?.value;
-    const originalData = typeof originalJsondoc.data === 'string'
-        ? JSON.parse(originalJsondoc.data)
-        : originalJsondoc.data;
-    const originalValue = operation ? getValueAtPath(originalData, operation.path) : undefined;
-
-    // Format path for display
-    const formatPath = (path: string) => {
-        return path.replace(/^\//, '').replace(/\//g, ' → ');
-    };
-
-    // Helper function to format values for display
-    const formatValue = (value: any) => {
-        if (value === null || value === undefined) return '(空)';
-        if (typeof value === 'string') return value;
-        return JSON.stringify(value, null, 2);
-    };
+    }, [originalJsondoc.data]);
 
     return (
         <Card
             size="small"
-            style={{ marginBottom: '12px' }}
+            style={{
+                marginBottom: 12,
+                border: isSelected ? '2px solid #1890ff' : '1px solid #434343',
+                backgroundColor: isSelected ? '#001529' : '#141414'
+            }}
             title={
                 <Space>
                     <Checkbox
-                        checked={selected}
+                        checked={isSelected}
                         onChange={(e) => onSelectionChange(e.target.checked)}
                     />
-                    <Text strong>路径: {formatPath(operation?.path || '')}</Text>
-                    <Text type="secondary">操作: {operation?.op || 'unknown'}</Text>
+                    <Text strong>补丁 #{patchItem.patchIndex + 1}</Text>
+                    <Tag color="blue">{originalJsondoc.schema_type}</Tag>
+                    {sourceTransformMetadata?.toolName && (
+                        <Tag color="green">{sourceTransformMetadata.toolName}</Tag>
+                    )}
                 </Space>
             }
-            extra={
-                <Button
-                    size="small"
-                    icon={<EditOutlined />}
-                    onClick={() => {
-                        console.log(`[PatchReviewModal] Edit button clicked - hasHumanTransform: ${hasHumanTransform}`);
-                        handleStartEdit();
-                    }}
-                    loading={isCreatingTransform}
-                    disabled={hasHumanTransform}
-                >
-                    {hasHumanTransform ? '编辑中' : '编辑'}
-                </Button>
-            }
         >
-            <div>
-                {hasHumanTransform ? (
-                    <PatchApprovalEditor
-                        patchJsondocId={derivedJsondocId || patchJsondoc.id}
-                        onSave={() => {
-                            console.log('[PatchReviewModal] Patch saved via special editor');
-                            // The patch has been updated, UI should reflect changes automatically via Electric SQL
-                        }}
-                        onCancel={() => {
-                            console.log('[PatchReviewModal] Patch editing cancelled');
-                            // Could implement cancellation logic here if needed
-                        }}
-                    />
-                ) : (
-                    <div>
-                        <Text strong>变更内容:</Text>
-                        <DiffView
-                            oldValue={formatValue(originalValue)}
-                            newValue={formatValue(newValue)}
-                        />
-                    </div>
-                )}
-            </div>
+            {patchData.patches && patchData.patches.length > 0 ? (
+                patchData.patches.map((patch: any, index: number) => {
+                    const fieldPath = patch.path.replace(/^\//, '').split('/');
+                    const fieldName = fieldPath[fieldPath.length - 1];
+                    const currentValue = fieldPath.reduce((obj: any, key: string) => obj?.[key], originalData);
+                    const newValue = patch.value;
+
+                    return (
+                        <div key={index} style={{ marginBottom: 16 }}>
+                            <Text strong style={{ color: '#1890ff' }}>
+                                {patch.op === 'replace' ? '修改' : patch.op === 'add' ? '添加' : '删除'}
+                                {fieldName}:
+                            </Text>
+
+                            {patch.op === 'replace' && (
+                                <DiffView
+                                    oldValue={String(currentValue || '')}
+                                    newValue={String(newValue || '')}
+                                />
+                            )}
+
+                            {patch.op === 'add' && (
+                                <pre style={{
+                                    background: '#1a4a1a',
+                                    border: '1px solid #52c41a',
+                                    borderRadius: '4px',
+                                    padding: '8px',
+                                    marginTop: '4px',
+                                    color: '#95f985',
+                                    fontFamily: 'monospace',
+                                    fontSize: '14px'
+                                }}>
+                                    {String(newValue || '')}
+                                </pre>
+                            )}
+
+                            {patch.op === 'remove' && (
+                                <pre style={{
+                                    background: '#4a1a1a',
+                                    border: '1px solid #ff4d4f',
+                                    borderRadius: '4px',
+                                    padding: '8px',
+                                    marginTop: '4px',
+                                    color: '#ff7875',
+                                    fontFamily: 'monospace',
+                                    fontSize: '14px',
+                                    textDecoration: 'line-through'
+                                }}>
+                                    {String(currentValue || '')}
+                                </pre>
+                            )}
+                        </div>
+                    );
+                })
+            ) : (
+                <Text type="secondary">无补丁数据</Text>
+            )}
+
+            {/* Show metadata if available */}
+            {sourceTransformMetadata?.editRequirements && (
+                <div style={{ marginTop: 12, padding: 8, background: '#262626', borderRadius: 4 }}>
+                    <Text type="secondary" style={{ fontSize: '12px' }}>
+                        编辑要求: {sourceTransformMetadata.editRequirements}
+                    </Text>
+                </div>
+            )}
         </Card>
     );
 };
@@ -326,19 +200,18 @@ interface PatchReviewModalProps {
 }
 
 export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId }) => {
-    const { pendingPatches, isLoading, error } = usePendingPatchApproval(projectId);
+    const { patches, isLoading, error } = usePendingPatchApproval(projectId);
     const [selectedPatches, setSelectedPatches] = useState<Set<string>>(new Set());
     const [isProcessing, setIsProcessing] = useState(false);
     const [modalVisible, setModalVisible] = useState(true);
 
-    // Initialize selected patches when modal opens
-    const handleModalOpen = useCallback(() => {
-        if (pendingPatches) {
-            // Select all patches by default
-            const allPatchIds = new Set(pendingPatches.patchJsondocs.map(patch => patch.id));
+    // Auto-select all patches when they load
+    useEffect(() => {
+        if (patches && patches.length > 0 && selectedPatches.size === 0) {
+            const allPatchIds = new Set(patches.map(patch => patch.patchJsondoc.id));
             setSelectedPatches(allPatchIds);
         }
-    }, [pendingPatches]);
+    }, [patches, selectedPatches.size]);
 
     // Handle patch selection
     const handlePatchSelection = useCallback((patchId: string, selected: boolean) => {
@@ -355,29 +228,30 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
 
     // Handle select all/none
     const handleSelectAll = useCallback((selectAll: boolean) => {
-        if (pendingPatches) {
+        if (patches && patches.length > 0) {
             if (selectAll) {
-                setSelectedPatches(new Set(pendingPatches.patchJsondocs.map(patch => patch.id)));
+                setSelectedPatches(new Set(patches.map(patch => patch.patchJsondoc.id)));
             } else {
                 setSelectedPatches(new Set());
             }
         }
-    }, [pendingPatches]);
+    }, [patches]);
 
     // Handle approval
     const handleApprove = useCallback(async () => {
-        if (!pendingPatches) return;
+        if (!patches || patches.length === 0 || selectedPatches.size === 0) return;
 
         setIsProcessing(true);
         try {
-            const response = await fetch(`/api/transforms/${pendingPatches.transformId}/approve`, {
+            const response = await fetch('/api/patches/approve', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer debug-auth-token-script-writer-dev'
                 },
                 body: JSON.stringify({
-                    selectedPatchIds: Array.from(selectedPatches)
+                    selectedPatchIds: Array.from(selectedPatches),
+                    projectId
                 })
             });
 
@@ -390,29 +264,31 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
             console.log('Patches approved:', result);
             message.success(`补丁已批准！批准了 ${selectedPatches.size} 个补丁`);
 
-            // Reset state
-            setSelectedPatches(new Set());
+            // Close modal
+            setModalVisible(false);
         } catch (error) {
             console.error('Failed to approve patches:', error);
             message.error(`批准失败：${error instanceof Error ? error.message : '未知错误'}`);
         } finally {
             setIsProcessing(false);
         }
-    }, [pendingPatches, selectedPatches]);
+    }, [patches, selectedPatches, projectId]);
 
     // Handle rejection
     const handleReject = useCallback(async () => {
-        if (!pendingPatches) return;
+        if (!patches || patches.length === 0 || selectedPatches.size === 0) return;
 
         setIsProcessing(true);
         try {
-            const response = await fetch(`/api/transforms/${pendingPatches.transformId}/reject`, {
+            const response = await fetch('/api/patches/reject', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': 'Bearer debug-auth-token-script-writer-dev'
                 },
                 body: JSON.stringify({
+                    selectedPatchIds: Array.from(selectedPatches),
+                    projectId,
                     rejectionReason: 'User rejected patches'
                 })
             });
@@ -424,146 +300,104 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
 
             const result = await response.json();
             console.log('Patches rejected:', result);
+            message.success(`补丁已拒绝！拒绝了 ${selectedPatches.size} 个补丁`);
 
-            // Create a detailed success message
-            const patchCount = result.deletedPatchIds?.length || 0;
-            const transformCount = result.deletedTransformIds?.length || 0;
-
-            let successMessage = `补丁已删除！删除了 ${patchCount} 个补丁`;
-            if (transformCount > 1) {
-                successMessage += ` 和 ${transformCount - 1} 个相关的编辑版本`;
-            }
-
-            message.success(successMessage);
-
-            // Reset state
-            setSelectedPatches(new Set());
+            // Close modal
+            setModalVisible(false);
         } catch (error) {
             console.error('Failed to reject patches:', error);
             message.error(`拒绝失败：${error instanceof Error ? error.message : '未知错误'}`);
         } finally {
             setIsProcessing(false);
         }
-    }, [pendingPatches]);
+    }, [patches, selectedPatches, projectId]);
 
-    // Handle modal close
-    const handleClose = useCallback(() => {
-        setModalVisible(false);
-        // Modal will reappear when pendingPatches changes or on refresh
-        // This is by design as per the requirements
-    }, []);
-
-    // Reset modal visibility when new pending patches appear
-    React.useEffect(() => {
-        if (pendingPatches) {
-            setModalVisible(true);
-        }
-    }, [pendingPatches]);
-
-    // Don't show modal if no pending patches or if user dismissed it
-    if (!pendingPatches || !modalVisible) {
+    // Don't show modal if no patches
+    if (!patches || patches.length === 0) {
         return null;
     }
+
+    const selectedCount = selectedPatches.size;
+    const totalCount = patches.length;
 
     return (
         <Modal
             title={
                 <Space>
                     <EditOutlined />
-                    <span>AI修改审核</span>
-                    <Text type="secondary">({pendingPatches.patchJsondocs.length} 个补丁待审核)</Text>
+                    <span>补丁审核</span>
+                    <Tag color="blue">{totalCount} 个待审核补丁</Tag>
                 </Space>
             }
-            open={true}
-            onCancel={handleClose}
-            afterOpenChange={(open) => {
-                if (open) {
-                    handleModalOpen();
-                }
-            }}
-            width={1400}
-            style={{
-                top: 20,
-                paddingBottom: 0,
-                maxWidth: 'calc(100vw - 32px)',
-                height: 'calc(100vh - 40px)'
-            }}
-            bodyStyle={{
-                height: 'calc(100vh - 140px)',
-                overflow: 'hidden',
-                padding: '16px'
-            }}
+            open={modalVisible}
+            onCancel={() => setModalVisible(false)}
+            width={800}
+            style={{ top: 20 }}
             footer={
                 <Space>
-                    <Button onClick={handleClose}>
-                        稍后处理
+                    <Checkbox
+                        checked={selectedCount === totalCount}
+                        indeterminate={selectedCount > 0 && selectedCount < totalCount}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                    >
+                        全选 ({selectedCount}/{totalCount})
+                    </Checkbox>
+
+                    <Divider type="vertical" />
+
+                    <Button
+                        onClick={() => setModalVisible(false)}
+                        disabled={isProcessing}
+                    >
+                        取消
                     </Button>
                     <Button
                         danger
+                        icon={<CloseOutlined />}
                         onClick={handleReject}
+                        disabled={selectedCount === 0 || isProcessing}
                         loading={isProcessing}
                     >
-                        拒绝选中的补丁
+                        拒绝选中 ({selectedCount})
                     </Button>
                     <Button
                         type="primary"
                         icon={<CheckOutlined />}
                         onClick={handleApprove}
+                        disabled={selectedCount === 0 || isProcessing}
                         loading={isProcessing}
-                        disabled={selectedPatches.size === 0}
                     >
-                        批准选中的补丁 ({selectedPatches.size})
+                        批准选中 ({selectedCount})
                     </Button>
                 </Space>
             }
         >
-            <div style={{ height: '100%', overflowY: 'auto' }}>
-                {/* Header Info */}
-                <Card size="small" style={{ marginBottom: '16px' }}>
-                    <Paragraph>
-                        <Text strong>原始文档:</Text> {pendingPatches.originalJsondoc.schema_type}
-                    </Paragraph>
-                    {pendingPatches.editRequirements && (
-                        <Paragraph>
-                            <Text strong>编辑要求:</Text> {pendingPatches.editRequirements}
-                        </Paragraph>
-                    )}
-
-                </Card>
-
-                {/* Patch Selection Controls */}
-                <div style={{ marginBottom: '16px' }}>
-                    <Space>
-                        <Button
-                            size="small"
-                            onClick={() => handleSelectAll(true)}
-                        >
-                            全选
-                        </Button>
-                        <Button
-                            size="small"
-                            onClick={() => handleSelectAll(false)}
-                        >
-                            全不选
-                        </Button>
-                        <Text type="secondary">
-                            已选择 {selectedPatches.size} / {pendingPatches.patchJsondocs.length} 个补丁
-                        </Text>
-                    </Space>
+            {isLoading && (
+                <div style={{ textAlign: 'center', padding: 20 }}>
+                    <Text>加载补丁中...</Text>
                 </div>
+            )}
 
-                {/* Patch Cards */}
-                {pendingPatches.patchJsondocs.map((patchJsondoc) => (
-                    <PatchReviewCard
-                        key={patchJsondoc.id}
-                        patchJsondoc={patchJsondoc}
-                        originalJsondoc={pendingPatches.originalJsondoc}
-                        selected={selectedPatches.has(patchJsondoc.id)}
-                        onSelectionChange={(selected) => handlePatchSelection(patchJsondoc.id, selected)}
-                        projectId={projectId}
-                    />
-                ))}
-            </div>
+            {error && (
+                <div style={{ textAlign: 'center', padding: 20 }}>
+                    <Text type="danger">加载补丁失败: {error.message}</Text>
+                </div>
+            )}
+
+            {patches && patches.length > 0 && (
+                <div style={{ maxHeight: '60vh', overflowY: 'auto', padding: '0 4px' }}>
+                    {patches.map((patchItem, index) => (
+                        <PatchCard
+                            key={patchItem.patchJsondoc.id}
+                            patchItem={{ ...patchItem, patchIndex: index }}
+                            isSelected={selectedPatches.has(patchItem.patchJsondoc.id)}
+                            onSelectionChange={(selected) =>
+                                handlePatchSelection(patchItem.patchJsondoc.id, selected)
+                            }
+                        />
+                    ))}
+                </div>
+            )}
         </Modal>
     );
 }; 

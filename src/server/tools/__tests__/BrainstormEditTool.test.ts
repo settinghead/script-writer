@@ -2,16 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createBrainstormEditToolDefinition } from '../BrainstormTools';
 import { createMockJsondocRepository, createMockTransformRepository } from '../../../__tests__/mocks/databaseMocks';
 
-// Mock the ParticleSystemInitializer module
-vi.mock('../../services/ParticleSystemInitializer', async (importOriginal) => {
-    const actual = await importOriginal() as any;
-    return {
-        ...actual,
-        getPatchApprovalEventBus: vi.fn()
-    };
-});
 
-import { getPatchApprovalEventBus } from '../../services/ParticleSystemInitializer';
+
+
 
 describe('BrainstormEditTool (Unified Streaming Patch)', () => {
     let mockTransformRepo: any;
@@ -446,11 +439,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             mockJsondocRepo.getJsondoc.mockResolvedValue(sourceJsondoc);
             mockJsondocRepo.userHasProjectAccess.mockResolvedValue(true);
 
-            // Mock the patch approval event bus to return 'rejected'
-            const mockPatchApprovalEventBus = {
-                waitForPatchApproval: vi.fn().mockResolvedValue('rejected')
-            } as any;
-            vi.mocked(getPatchApprovalEventBus).mockReturnValue(mockPatchApprovalEventBus);
+            // Note: New implementation doesn't wait for approval, just creates patches
 
             const input = {
                 jsondocs: [{
@@ -465,18 +454,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             // Act
             const result = await brainstormEditTool.execute(input, { toolCallId: 'test-rejection' });
 
-            // Assert
-            expect(result).toEqual({
-                status: 'rejected',
-                reason: 'User rejected the proposed patches',
-                originalIdea: {
-                    title: '测试标题',
-                    body: '测试内容'
-                }
-            });
-
-            // Verify that the patch approval was awaited
-            expect(mockPatchApprovalEventBus.waitForPatchApproval).toHaveBeenCalled();
+            // Assert - new implementation returns success with patch content
+            expect(result.status).toBe('success');
+            expect(result).toHaveProperty('patchContent');
+            expect(result).toHaveProperty('message');
+            expect(result.message).toContain('patches for your review');
         });
     });
 }); 

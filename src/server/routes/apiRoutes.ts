@@ -14,6 +14,7 @@ import { createElectricProxyRoutes } from '../transform-jsondoc-framework/electr
 import { createProjectRoutes } from './projectRoutes';
 import { createJsondocRoutes } from './jsondocRoutes';
 import { createTransformRoutes } from './transformRoutes';
+import { createPatchRoutes } from './patchRoutes';
 import { createChatRoutes } from './chatRoutes';
 import { createAdminRoutes } from './adminRoutes';
 import { createExportRoutes } from './exportRoutes';
@@ -42,6 +43,9 @@ export function createAPIRoutes(
 
     // Mount transform routes
     app.use('/api/transforms', createTransformRoutes(authMiddleware, jsondocRepo, transformRepo));
+
+    // Mount patch routes
+    app.use('/api/patches', createPatchRoutes(authMiddleware, jsondocRepo, transformRepo));
 
     // Mount chat routes
     app.use('/api/chat', createChatRoutes(authMiddleware, chatService));
