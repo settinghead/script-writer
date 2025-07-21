@@ -602,13 +602,32 @@ export function createAdminRoutes(
             // Extract workflow state from context data
             const workflowState = contextData?.workflowState || {};
 
+            // Determine current stage based on available actions (more reliable than trying to extract from parameters)
+            const determineCurrentStage = (actions: any[], hasActiveTransforms: boolean) => {
+                if (hasActiveTransforms) return 'processing';
+                if (!actions || actions.length === 0) return 'initial';
+
+                // Analyze actions to determine stage
+                const actionIds = actions.map((a: any) => a.id);
+                if (actionIds.includes('brainstorm_creation')) return 'initial';
+                if (actionIds.includes('outline_generation')) return 'idea_editing';
+                if (actionIds.includes('chronicles_generation')) return 'outline_generation';
+                if (actionIds.includes('episode_planning_generation')) return 'chronicles_generation';
+                if (actionIds.includes('episode_synopsis_generation')) return 'episode_planning';
+
+                return 'unknown';
+            };
+
+            const currentStage = determineCurrentStage(
+                workflowState.actions || [],
+                workflowState.parameters?.hasActiveTransforms || false
+            );
+
             res.json({
                 success: true,
                 prompt: agentConfig.prompt,
                 context: {
-                    currentStage: workflowState.parameters?.currentStage || (() => {
-                        throw new Error('Current stage not found in workflow state. This indicates a workflow computation issue.');
-                    })(),
+                    currentStage,
                     hasActiveTransforms: workflowState.parameters?.hasActiveTransforms || false,
                     availableTools,
                     workflowState
