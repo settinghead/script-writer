@@ -259,7 +259,6 @@ const BrainstormInputForm: React.FC<{ minimized?: boolean }> = ({ minimized = fa
                         <YJSTextAreaField
                             path="other_requirements"
                             placeholder="例如：特定的情节要求、角色设定、风格偏好等"
-                            rows={4}
                         />
                     </div>
                 </div>
