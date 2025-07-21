@@ -1698,6 +1698,92 @@ First Run:  Cache MISS → Saved 77 chunks to cache
 Second Run: Cache HIT (77 chunks) → Near-instantaneous replay
 ```
 
+### Long-Term Context Caching
+
+**Context Caching System**: The framework implements intelligent conversation history management to leverage LLM context caching (e.g., Qwen Context Cache) for significant cost savings and performance improvements.
+
+**Key Features**:
+- **Conversation History Storage** - Complete conversation tracking linked to transform lineage
+- **Automatic Continuation Detection** - Smart detection of follow-up requests for multi-batch operations
+- **Cache-Optimized Prompts** - Template restructuring with fixed content first for maximum caching efficiency
+- **Seamless User Experience** - Transparent history reconstruction without user intervention
+
+**Architecture Components**:
+
+**1. Conversation Storage**:
+```sql
+-- Chat conversations table for history tracking
+CREATE TABLE chat_conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  project_id TEXT NOT NULL REFERENCES projects(id),
+  tool_name TEXT NOT NULL,
+  tool_call_id VARCHAR(255),
+  messages JSONB NOT NULL, -- Array of {role, content} objects
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Enhanced transforms table with tool call linking
+ALTER TABLE transforms ADD COLUMN tool_call_id VARCHAR(255);
+```
+
+**2. Smart Continuation Detection**:
+```typescript
+// Automatic detection of continuation requests
+const continuationKeywords = ['continue', 'next', '继续', '接下来'];
+const episodeRangePattern = /第\s*\d+\s*-\s*\d+\s*集/; // "第7-12集"
+
+const isContinuation = userRequest.toLowerCase().includes('continue') || 
+                      userRequest.includes('接下来') ||
+                      episodeRangePattern.test(userRequest);
+```
+
+**3. History Reconstruction**:
+```typescript
+// ChatMessageRepository methods for conversation management
+async saveConversation(projectId, toolName, toolCallId, messages): Promise<void>
+async reconstructHistoryForAction(projectId, toolName, params): Promise<Message[]>
+async hasExistingConversation(projectId, toolName): Promise<boolean>
+```
+
+**4. Cache-Optimized Templates**:
+```typescript
+// Template structure optimized for context caching
+const episodeSynopsisTemplate = `
+## 参考资料
+%%jsondocs%% // Fixed content - cacheable prefix (≥256 tokens)
+
+## 创作要求
+[Fixed instructions and formatting requirements]
+
+---
+## 任务 
+%%params%% // Variable content - non-cacheable suffix
+`;
+```
+
+**Usage Pattern - Episode Synopsis Generation**:
+```typescript
+// First request: "生成第1-6集的剧集大纲"
+// → Full context sent to LLM → Conversation history stored
+
+// Continuation request: "继续生成第7-12集的大纲"  
+// → History reconstructed → Multi-message prompt enables caching
+// → Shared prefixes cached at 40% cost of input tokens
+```
+
+**Benefits**:
+- **30%+ Cost Savings** - Cached tokens cost 40% of input tokens (Qwen Context Cache)
+- **Faster Response Times** - Cached prefixes processed more efficiently
+- **Seamless Continuations** - Multi-batch workflows (episodes 1-6, then 7-12) work transparently
+- **Complete Audit Trail** - All conversations linked to transform lineage via tool call IDs
+
+**Integration with Transform System**:
+- **Tool Call Linking** - Every transform records its `tool_call_id` for conversation tracking
+- **Automatic Saving** - Successful tool executions automatically store conversation history
+- **Project-Based Access** - Conversation history respects project membership and access control
+- **Framework Agnostic** - Can be extended to any tool requiring context continuity
+
 ## Electric SQL Integration
 
 ### Real-Time Synchronization

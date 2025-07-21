@@ -93,6 +93,16 @@ export interface ChatMessagesRaw {
   updated_at: Generated<Timestamp>;
 }
 
+export interface ChatConversations {
+  id: Generated<string>;
+  project_id: string;
+  tool_name: string;
+  tool_call_id: string | null;
+  messages: Json;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface HumanTransforms {
   action_type: string;
   change_description: string | null;
@@ -168,6 +178,7 @@ export interface Transforms {
   retry_count: Generated<number | null>;
   status: Generated<string | null>;
   streaming_status: string | null;
+  tool_call_id: string | null;
   type: string;
   type_version: Generated<string>;
   updated_at: Generated<Timestamp>;
@@ -220,6 +231,7 @@ export interface DB {
   jsondoc_yjs_documents: JsondocYjsDocuments;
   jsondocs: Jsondocs;
   auth_providers: AuthProviders;
+  chat_conversations: ChatConversations;
   chat_messages_display: ChatMessagesDisplay;
   chat_messages_raw: ChatMessagesRaw;
   embedding_cache: EmbeddingCache;

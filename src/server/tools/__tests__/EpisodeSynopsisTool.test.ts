@@ -167,7 +167,8 @@ describe('EpisodeSynopsisTool', () => {
                 seed: undefined,
                 temperature: undefined,
                 topP: undefined,
-                maxTokens: undefined
+                maxTokens: undefined,
+                toolCallId: 'test-episode-synopsis'
             });
         });
 
@@ -249,7 +250,8 @@ describe('EpisodeSynopsisTool', () => {
                 seed: undefined,
                 temperature: undefined,
                 topP: undefined,
-                maxTokens: undefined
+                maxTokens: undefined,
+                toolCallId: 'test-minimal-context'
             });
         });
 
@@ -314,7 +316,8 @@ describe('EpisodeSynopsisTool', () => {
                 seed: undefined,
                 temperature: undefined,
                 topP: undefined,
-                maxTokens: undefined
+                maxTokens: undefined,
+                toolCallId: 'test-access-denied'
             });
         });
 
@@ -369,7 +372,8 @@ describe('EpisodeSynopsisTool', () => {
                 seed: 123,
                 temperature: 0.8,
                 topP: 0.95,
-                maxTokens: 3000
+                maxTokens: 3000,
+                toolCallId: 'test-caching-options'
             });
         });
 
@@ -484,7 +488,8 @@ describe('EpisodeSynopsisTool', () => {
                 seed: undefined,
                 temperature: undefined,
                 topP: undefined,
-                maxTokens: undefined
+                maxTokens: undefined,
+                toolCallId: 'test-large-range'
             });
         });
     });

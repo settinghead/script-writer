@@ -364,6 +364,114 @@ export class ChatMessageRepository {
         return !!result;
     }
 
+    // CONVERSATION HISTORY METHODS FOR CONTEXT CACHING
+
+    /**
+     * Save conversation history for a tool call to enable context caching
+     */
+    async saveConversation(
+        projectId: string,
+        toolName: string,
+        toolCallId: string,
+        messages: Array<{ role: string; content: string }>
+    ): Promise<void> {
+        const id = uuidv4();
+        const now = new Date().toISOString();
+
+        await this.db
+            .insertInto('chat_conversations')
+            .values({
+                id,
+                project_id: projectId,
+                tool_name: toolName,
+                tool_call_id: toolCallId,
+                messages: JSON.stringify(messages),
+                created_at: now,
+                updated_at: now
+            })
+            .execute();
+    }
+
+    /**
+     * Reconstruct conversation history for continuation requests
+     * Returns the most recent conversation for a tool, with an appended user message
+     */
+    async reconstructHistoryForAction(
+        projectId: string,
+        toolName: string,
+        continuationParams: any
+    ): Promise<Array<{ role: string; content: string }>> {
+        // Query for the most recent conversation for this tool in this project
+        const conversation = await this.db
+            .selectFrom('chat_conversations')
+            .selectAll()
+            .where('project_id', '=', projectId)
+            .where('tool_name', '=', toolName)
+            .orderBy('created_at', 'desc')
+            .executeTakeFirst();
+
+        if (!conversation) {
+            return []; // New conversation
+        }
+
+        // Parse the stored messages
+        const history = typeof conversation.messages === 'string'
+            ? JSON.parse(conversation.messages)
+            : conversation.messages as Array<{ role: string; content: string }>;
+
+        // Append new user message for continuation
+        const continuationMessage = {
+            role: 'user',
+            content: `Continue with the next group: ${JSON.stringify(continuationParams)}`
+        };
+
+        return [...history, continuationMessage];
+    }
+
+    /**
+     * Check if a conversation exists for continuation
+     */
+    async hasExistingConversation(projectId: string, toolName: string): Promise<boolean> {
+        const result = await this.db
+            .selectFrom('chat_conversations')
+            .select('id')
+            .where('project_id', '=', projectId)
+            .where('tool_name', '=', toolName)
+            .executeTakeFirst();
+
+        return !!result;
+    }
+
+    /**
+     * Get all conversations for a project and tool (for debugging)
+     */
+    async getConversationsForTool(projectId: string, toolName: string): Promise<any[]> {
+        const results = await this.db
+            .selectFrom('chat_conversations')
+            .selectAll()
+            .where('project_id', '=', projectId)
+            .where('tool_name', '=', toolName)
+            .orderBy('created_at', 'desc')
+            .execute();
+
+        return results.map(row => ({
+            ...row,
+            messages: typeof row.messages === 'string' ? JSON.parse(row.messages) : row.messages,
+            created_at: row.created_at.toISOString(),
+            updated_at: row.updated_at.toISOString()
+        }));
+    }
+
+    /**
+     * Delete conversations for a project (cleanup)
+     */
+    async deleteConversationsForProject(projectId: string): Promise<void> {
+        await this.db
+            .deleteFrom('chat_conversations')
+            .where('project_id', '=', projectId)
+            .execute();
+    }
+
     // Methods for AgentService dual message system
     async createComputationMessage(projectId: string, content: string): Promise<{ id: string }> {
         const message = await this.createDisplayMessage(projectId, 'assistant', content, {

@@ -79,7 +79,9 @@ export function createEpisodeSynopsisToolDefinition(
                 seed: cachingOptions?.seed,
                 temperature: cachingOptions?.temperature,
                 topP: cachingOptions?.topP,
-                maxTokens: cachingOptions?.maxTokens
+                maxTokens: cachingOptions?.maxTokens,
+                // Pass tool call ID for conversation history tracking
+                toolCallId
             });
 
             console.log(`[EpisodeSynopsisTool] Episode synopsis generation completed. Output jsondoc: ${result.outputJsondocId}`);

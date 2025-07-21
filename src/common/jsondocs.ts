@@ -49,6 +49,7 @@ export interface Transform {
     retry_count: number;
     max_retries: number;
     execution_context?: any;
+    tool_call_id?: string;
     created_at: string;
 }
 

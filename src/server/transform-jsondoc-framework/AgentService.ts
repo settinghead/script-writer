@@ -148,6 +148,88 @@ export class AgentService {
     }
 
     /**
+     * Check if request is a continuation and reconstruct conversation history
+     */
+    private async checkForContinuation(
+        request: GeneralAgentRequest,
+        projectId: string
+    ): Promise<{ isContinuation: boolean; conversationHistory: Array<{ role: string; content: string }> }> {
+        // Check if this is a continuation request (contains keywords like "continue", "next", or specific episode ranges)
+        const userRequest = request.userRequest.toLowerCase();
+        const isContinuation = userRequest.includes('continue') ||
+            userRequest.includes('next') ||
+            userRequest.includes('接下来') ||
+            userRequest.includes('继续') ||
+            /第\s*\d+\s*-\s*\d+\s*集/.test(userRequest); // Pattern like "第7-12集"
+
+        if (!isContinuation || !this.chatMessageRepo) {
+            return { isContinuation: false, conversationHistory: [] };
+        }
+
+        // For episode synopsis generation, try to reconstruct history
+        const toolName = 'generate_episode_synopsis';
+        const hasExisting = await this.chatMessageRepo.hasExistingConversation(projectId, toolName);
+
+        if (!hasExisting) {
+            return { isContinuation: false, conversationHistory: [] };
+        }
+
+        // Reconstruct conversation history with continuation parameters
+        const continuationParams = {
+            userRequest: request.userRequest,
+            contextType: request.contextType,
+            contextData: request.contextData
+        };
+
+        const conversationHistory = await this.chatMessageRepo.reconstructHistoryForAction(
+            projectId,
+            toolName,
+            continuationParams
+        );
+
+        return { isContinuation: true, conversationHistory };
+    }
+
+    /**
+     * Build multi-message prompt from conversation history
+     */
+    private buildMultiMessagePrompt(conversationHistory: Array<{ role: string; content: string }>): string {
+        // Convert conversation history to a single prompt that preserves the conversation structure
+        // This maintains compatibility with the existing streamText interface while enabling caching
+        const conversationText = conversationHistory.map(msg => {
+            const roleLabel = msg.role === 'user' ? '用户' : msg.role === 'assistant' ? '助手' : '系统';
+            return `[${roleLabel}]: ${msg.content}`;
+        }).join('\n\n');
+
+        return `以下是之前的对话历史，请基于此上下文继续处理用户的新请求：
+
+${conversationText}
+
+请根据上述对话历史和最新的用户请求，继续执行相应的工具调用。`;
+    }
+
+    /**
+     * Save conversation history after successful tool execution
+     */
+    private async saveConversationHistory(
+        projectId: string,
+        toolName: string,
+        toolCallId: string,
+        originalPrompt: string,
+        toolResult: any,
+        assistantResponse: string
+    ): Promise<void> {
+        if (!this.chatMessageRepo) return;
+
+        const messages = [
+            { role: 'user', content: originalPrompt },
+            { role: 'assistant', content: assistantResponse }
+        ];
+
+        await this.chatMessageRepo.saveConversation(projectId, toolName, toolCallId, messages);
+    }
+
+    /**
      * General agent method that can handle various types of requests including brainstorm editing
      */
     public async runGeneralAgent(
@@ -187,7 +269,10 @@ export class AgentService {
                 responseMessageId = undefined;
             }
 
-            // 1. Build agent configuration using new abstraction
+            // 1. Check for conversation continuation
+            const { isContinuation, conversationHistory } = await this.checkForContinuation(request, projectId);
+
+            // 2. Build agent configuration using new abstraction
             const agentConfig = await buildAgentConfiguration(
                 request,
                 projectId,
@@ -203,8 +288,16 @@ export class AgentService {
                 }
             );
 
-            const completePrompt = agentConfig.prompt;
+            // 3. Use conversation history for continuation or regular prompt
+            const completePrompt = isContinuation && conversationHistory.length > 0
+                ? this.buildMultiMessagePrompt(conversationHistory)
+                : agentConfig.prompt;
             const toolDefinitions = agentConfig.tools;
+
+            console.log(`[AgentService] ${isContinuation ? 'Continuation' : 'New'} request detected`);
+            if (isContinuation) {
+                console.log(`[AgentService] Using conversation history with ${conversationHistory.length} messages`);
+            }
 
             // Update computation message to show analysis phase
             if (computationMessageId && this.chatMessageRepo) {
@@ -373,6 +466,18 @@ export class AgentService {
                                     }
                                 }
                             );
+
+                            // Save conversation history for episode synopsis tool
+                            if (currentToolCall.toolName === 'generate_episode_synopsis') {
+                                await this.saveConversationHistory(
+                                    projectId,
+                                    currentToolCall.toolName,
+                                    delta.toolCallId,
+                                    completePrompt,
+                                    delta.result,
+                                    accumulatedResponse || 'Tool executed successfully'
+                                );
+                            }
                         }
                         break;
 

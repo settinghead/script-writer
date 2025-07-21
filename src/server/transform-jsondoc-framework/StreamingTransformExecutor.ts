@@ -90,6 +90,8 @@ export interface StreamingTransformParams<TInput, TOutput> {
     dryRun?: boolean;  // Skip all database operations (default: false)
     // NEW: Streaming callback for real-time updates
     onStreamChunk?: (chunk: TOutput, chunkCount: number) => void | Promise<void>;  // Called for each streaming chunk
+    // NEW: Tool call ID for conversation history tracking
+    toolCallId?: string;
 }
 
 /**
@@ -138,7 +140,8 @@ export class StreamingTransformExecutor {
             maxTokens,
             executionMode,
             dryRun = false,
-            onStreamChunk
+            onStreamChunk,
+            toolCallId
         } = params;
 
         let transformId: string | null = null;
@@ -167,7 +170,8 @@ export class StreamingTransformExecutor {
                             retry_count: retryCount,
                             max_retries: maxRetries,
                             ...transformMetadata
-                        }
+                        },
+                        toolCallId
                     );
                     transformId = transform.id;
                 } else if (!dryRun && transformId) {

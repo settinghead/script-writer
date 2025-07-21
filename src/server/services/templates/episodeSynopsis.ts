@@ -5,12 +5,6 @@ export const episodeSynopsisTemplate: LLMTemplate = {
   name: 'Episode Synopsis Generation',
   promptTemplate: `你是专业的中国短剧编剧，专门为抖音、快手、小红书等平台创作2分钟短剧内容。
 
-## 任务
-基于剧集框架，为指定剧集组生成详细的每集大纲。每集约2分钟，必须具有强烈的戏剧张力和平台优化的钩子设计。
-
-## 生成参数
-%%params%%
-
 ## 参考资料
 
 以下是生成每集大纲的参考资料。请特别注意：
@@ -28,10 +22,6 @@ export const episodeSynopsisTemplate: LLMTemplate = {
 %%jsondocs%%
 
 ## 创作要求
-
-### 重要：只为指定剧集组生成内容
-- 只生成参数中指定的剧集组（如第1-3集）
-- 其他背景信息仅供理解故事脉络，不要为其他集数生成内容
 
 ### 2分钟短剧结构
 每集必须包含：
@@ -51,7 +41,8 @@ export const episodeSynopsisTemplate: LLMTemplate = {
 - 角色关系发展要有层次感
 - 悬念设计要环环相扣
 
-## 输出格式
+### 输出格式要求
+生成的内容必须严格按照以下JSON格式：
 {
   "groupTitle": "组标题",
   "episodeRange": "集数范围",
@@ -67,7 +58,20 @@ export const episodeSynopsisTemplate: LLMTemplate = {
       "estimatedDuration": 120
     }
   ]
-}`,
+}
+
+---
+
+## 任务
+
+基于剧集框架，为指定剧集组生成详细的每集大纲。每集约2分钟，必须具有强烈的戏剧张力和平台优化的钩子设计。
+
+### 重要：只为指定剧集组生成内容
+- 只生成参数中指定的剧集组（如第1-3集）
+- 其他背景信息仅供理解故事脉络，不要为其他集数生成内容
+
+## 生成参数
+%%params%%`,
   outputFormat: 'json',
   variables: ['jsondocs', 'params']
 }; 

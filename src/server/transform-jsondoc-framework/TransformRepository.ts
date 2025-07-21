@@ -19,7 +19,8 @@ export class TransformRepository {
         type: 'llm' | 'human' | 'ai_patch' | 'human_patch_approval',
         typeVersion: string = 'v1',
         status: string = 'running',
-        executionContext?: any
+        executionContext?: any,
+        toolCallId?: string
     ): Promise<Transform> {
         const id = uuidv4();
         const now = new Date();
@@ -33,6 +34,7 @@ export class TransformRepository {
             retry_count: 0,
             max_retries: executionContext?.max_retries || 2,
             execution_context: executionContext ? JSON.stringify(executionContext) : null,
+            tool_call_id: toolCallId || null,
             created_at: now,
             updated_at: now
         };
@@ -51,6 +53,7 @@ export class TransformRepository {
             retry_count: 0,
             max_retries: executionContext?.max_retries || 2,
             execution_context: executionContext,
+            tool_call_id: toolCallId,
             created_at: now.toISOString()
         };
     }
@@ -209,6 +212,7 @@ export class TransformRepository {
             retry_count: row.retry_count || 0,
             max_retries: row.max_retries || 2,
             execution_context: row.execution_context ? JSON.parse(row.execution_context) : undefined,
+            tool_call_id: row.tool_call_id || undefined,
             created_at: row.created_at?.toISOString() || new Date().toISOString()
         };
     }
