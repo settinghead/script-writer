@@ -17,7 +17,7 @@ export interface ToolDefinition {
 export const ALL_AGENT_TOOLS: ToolDefinition[] = [
     // === PARTICLE SEARCH TOOLS ===
     {
-        name: 'query',
+        name: 'queryJsondocs',
         category: 'particle_search',
         description: '语义搜索项目中的相关信息',
         alwaysAvailable: true // Available when particle system is initialized

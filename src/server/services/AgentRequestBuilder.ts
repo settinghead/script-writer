@@ -176,22 +176,25 @@ ${context}
 ===智能信息搜索指南 开始===
 你现在拥有智能查询工具来按需获取项目信息：
 
-**query工具** - 语义搜索项目中的相关信息
-- 使用自然语言描述你需要什么信息
-- 例如：query("角色设定") 来查找人物信息
-- 例如：query("故事背景") 来了解设定信息
-- 例如：query("剧集结构") 来查看分集安排
-- 根据similarity分数判断相关性：>0.7高度相关，0.4-0.7中等相关，<0.4低相关
+**queryJsondocs工具** - 语义搜索项目中的相关信息
+- 使用自然语言查询：如"主角的性格设定"、"故事的核心冲突"
+- 基于语义理解，不需要精确匹配关键词
+- 返回最相关的信息片段和来源
 
-**getJsondocContent工具** - 获取指定jsondoc的完整内容
-- 当从query获得jsondoc_id后，使用此工具查看完整内容
-- 可选择指定JSONPath获取特定部分，如"$.characters[0]"
+**getJsondocContent工具** - 获取完整的jsondoc内容
+- 当你需要查看特定文档的完整内容时使用
+- 输入jsondoc ID来获取详细信息
+- 用于深入了解特定组件的所有细节
 
-**使用策略：**
-- 对于编辑任务：先查询相关的现有内容
-- 对于生成任务：查询所需的上游依赖信息
-- 对于问答任务：查询用户询问的具体内容
-- 可以进行多次查询来全面了解情况
+**搜索策略：**
+1. 首先使用queryJsondocs进行语义搜索找到相关信息
+2. 如果需要更多细节，使用getJsondocContent获取完整内容
+3. 根据搜索结果来决定如何处理用户请求
+
+**重要：优先使用搜索工具** - 在生成或编辑内容之前，先搜索相关的现有信息，这样可以：
+- 保持故事一致性
+- 避免重复创建已有内容
+- 基于现有设定进行合理扩展
 ===智能信息搜索指南 结束===
 
 1. 仔细分析用户请求，理解用户的真实意图。
@@ -401,18 +404,18 @@ export function computeAvailableToolsFromCanonicalContext(
         if (particleSystem && particleSystem.unifiedSearch) {
             const particleSearchTools = getParticleSearchToolNames();
             particleSearchTools.forEach(toolName => {
-                if (toolName === 'query') {
+                if (toolName === 'queryJsondocs') {
                     addTool(() => createQueryToolDefinition(particleSystem.unifiedSearch, projectId, userId));
                 } else if (toolName === 'getJsondocContent') {
                     addTool(() => createGetJsondocContentToolDefinition(jsondocRepo, projectId, userId));
                 }
             });
-            console.log(`[AgentRequestBuilder] Added particle search tools (${particleSearchTools.join(', ')})`);
+            console.log(`[AgentRequestBuilder] Added particle search tools (${particleSearchTools.length}):`, particleSearchTools);
         } else {
-            console.log(`[AgentRequestBuilder] Particle system not available, skipping particle search tools`);
+            console.log('[AgentRequestBuilder] Particle system not available, skipping particle search tools');
         }
     } catch (error) {
-        console.warn(`[AgentRequestBuilder] Failed to initialize particle search tools:`, error);
+        console.log('[AgentRequestBuilder] Failed to initialize particle search tools:', error);
     }
 
     // Check what canonical jsondocs exist

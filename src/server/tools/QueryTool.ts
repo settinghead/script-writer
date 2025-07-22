@@ -28,7 +28,7 @@ export const QueryToolResultSchema = z.object({
 export type QueryToolResult = z.infer<typeof QueryToolResultSchema>;
 
 /**
- * Create the query tool definition for agent use
+ * Create a query tool for searching project content using particle-based search
  */
 export function createQueryToolDefinition(
     unifiedSearch: UnifiedParticleSearch,
@@ -36,47 +36,43 @@ export function createQueryToolDefinition(
     userId: string
 ): StreamingToolDefinition<QueryToolInput, QueryToolResult> {
     return {
-        name: 'query',
-        description: '搜索项目中的相关信息。使用自然语言描述你需要什么信息，系统会返回最相关的内容片段及其来源。例如："查找角色信息"、"寻找故事背景设定"、"获取剧集结构"等。根据相关度分数判断信息质量：>0.7为高度相关，0.4-0.7为中等相关，<0.4为低相关。',
+        name: 'queryJsondocs',
+        description: '语义搜索项目中的相关信息。使用自然语言查询来找到相关的内容片段。',
         inputSchema: QueryToolInputSchema,
         outputSchema: QueryToolResultSchema,
-        execute: async (params: QueryToolInput): Promise<QueryToolResult> => {
-            const limit = params.limit || 5;
-
-            console.log(`[QueryTool] Searching for: "${params.query}" (limit: ${limit})`);
-
+        execute: async (input: QueryToolInput) => {
             try {
-                // Use embedding-based search for high-quality semantic results
-                const searchResults = await unifiedSearch.searchParticles(params.query, projectId, {
+                console.log(`[QueryTool] Executing search for project ${projectId}, user ${userId}:`, input.query);
+
+                // Perform the search using UnifiedParticleSearch
+                const searchResults = await unifiedSearch.searchParticles(input.query, projectId, {
                     mode: 'embedding',
-                    limit,
+                    limit: input.limit || 5,
                     threshold: 0.0 // Don't filter by threshold, let agent decide
                 });
 
-                console.log(`[QueryTool] Found ${searchResults.length} results`);
+                const results = searchResults.map((result: any) => ({
+                    id: result.id,
+                    jsondoc_id: result.jsondoc_id,
+                    path: result.path,
+                    type: result.type,
+                    title: result.title,
+                    content_text: result.content_text,
+                    similarity: result.similarity || 0
+                }));
 
-                return {
-                    results: searchResults.map(result => ({
-                        id: result.id,
-                        jsondoc_id: result.jsondoc_id,
-                        path: result.path,
-                        type: result.type,
-                        title: result.title,
-                        content_text: result.content_text,
-                        similarity: result.similarity || 0
-                    })),
+                const toolResult: QueryToolResult = {
+                    results: results,
                     total_found: searchResults.length,
-                    query_processed: params.query
+                    query_processed: input.query
                 };
-            } catch (error) {
-                console.error(`[QueryTool] Search failed:`, error);
 
-                // Return empty results instead of throwing to avoid breaking agent flow
-                return {
-                    results: [],
-                    total_found: 0,
-                    query_processed: params.query
-                };
+                console.log(`[QueryTool] Found ${results.length} results for query: "${input.query}"`);
+                return toolResult;
+
+            } catch (error) {
+                console.error('[QueryTool] Search failed:', error);
+                throw new Error(`搜索失败: ${error instanceof Error ? error.message : String(error)}`);
             }
         }
     };
