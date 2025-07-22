@@ -81,6 +81,7 @@
     "iconoir-react": "^7.11.0",
     "ionicons": "^8.0.9",
     "js-yaml": "^4.1.0",
+    "jsonpath-plus": "^10.3.0",
     "jsonrepair": "^3.12.0",
     "jsonwebtoken": "^9.0.2",
     "kysely": "^0.28.2",

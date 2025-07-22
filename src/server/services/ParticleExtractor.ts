@@ -2,6 +2,8 @@ import { EmbeddingService } from './EmbeddingService';
 import { TypedJsondoc } from '../../common/jsondocs.js';
 import { dump } from 'js-yaml';
 import { createHash } from 'crypto';
+import { JSONPath } from 'jsonpath-plus';
+import { getParticlePathsForSchemaType, ParticlePathDefinition } from './particleRegistry';
 
 export interface ParticleData {
     id: string;
@@ -10,33 +12,18 @@ export interface ParticleData {
     title: string;
     content: any;
     content_text: string;
-    content_hash: string; // New field
+    content_hash: string;
     embedding: number[];
 }
 
-type ParticleExtractorFunction = (jsondoc: TypedJsondoc) => Promise<ParticleData[]>;
-type EmbeddingContentExtractor = (content: any, jsondoc: TypedJsondoc) => string;
-
 /**
- * Extract particles from jsondocs based on schema type
+ * Extract particles from jsondocs using JSONPath-based registry
  */
 export class ParticleExtractor {
-    private extractors: Map<string, ParticleExtractorFunction> = new Map();
     private embeddingContentExtractors: Map<string, EmbeddingContentExtractor> = new Map();
 
     constructor(private embeddingService: EmbeddingService) {
-        this.registerExtractors();
         this.registerEmbeddingContentExtractors();
-    }
-
-    private registerExtractors() {
-        this.extractors.set('brainstorm_collection', this.extractBrainstormParticles.bind(this));
-        this.extractors.set('brainstorm_input_params', this.extractBrainstormInputParticles.bind(this));
-        this.extractors.set('剧本设定', this.extractOutlineParticles.bind(this));
-        this.extractors.set('chronicles', this.extractChroniclesParticles.bind(this));
-        this.extractors.set('brainstorm_idea', this.extractBrainstormIdeaParticles.bind(this));
-        this.extractors.set('episode_planning', this.extractEpisodePlanningParticles.bind(this));
-        this.extractors.set('episode_synopsis', this.extractEpisodeSynopsisParticles.bind(this));
     }
 
     private registerEmbeddingContentExtractors() {
@@ -44,20 +31,137 @@ export class ParticleExtractor {
         // The default YAML format with metadata context should handle most cases well
     }
 
+    /**
+     * Extract particles from a jsondoc using registry-based JSONPath queries
+     */
     async extractParticles(jsondoc: TypedJsondoc): Promise<ParticleData[]> {
-        const extractor = this.extractors.get(jsondoc.schema_type);
-        if (!extractor) {
-            console.log(`No particle extractor found for schema type: ${jsondoc.schema_type}`);
-            return [];
+        const pathDefinitions = getParticlePathsForSchemaType(jsondoc.schema_type);
+        const particles: ParticleData[] = [];
+        const seenIds = new Set<string>(); // Deduplication
+
+        for (const definition of pathDefinitions) {
+            try {
+                const matches = JSONPath({
+                    path: definition.path,
+                    json: jsondoc.data,
+                    resultType: 'all'
+                });
+
+                for (let i = 0; i < matches.length; i++) {
+                    const match = matches[i];
+                    const content = match.value;
+                    const actualPath = this.normalizeJsonPath(match.path);
+
+                    // Skip null/undefined content
+                    if (content === null || content === undefined) {
+                        continue;
+                    }
+
+                    // Generate title
+                    const title = this.extractTitle(content, definition, i);
+
+                    // Generate embedding content
+                    const contentText = this.generateEmbeddingContent(
+                        definition.type,
+                        content,
+                        jsondoc,
+                        actualPath
+                    );
+
+                    if (!contentText.trim()) {
+                        continue; // Skip empty content
+                    }
+
+                    // Generate stable ID
+                    const particleId = this.generateParticleId(jsondoc, actualPath, definition.type, content);
+
+                    // Skip duplicates
+                    if (seenIds.has(particleId)) {
+                        continue;
+                    }
+                    seenIds.add(particleId);
+
+                    // Generate embedding
+                    const embedding = await this.embeddingService.generateEmbedding(contentText);
+
+                    // Generate content hash
+                    const contentHash = this.generateContentHash(content, contentText);
+
+                    particles.push({
+                        id: particleId,
+                        path: actualPath,
+                        type: definition.type,
+                        title,
+                        content,
+                        content_text: contentText,
+                        content_hash: contentHash,
+                        embedding
+                    });
+                }
+            } catch (error) {
+                console.error(`[ParticleExtractor] Failed to process path ${definition.path} for schema ${jsondoc.schema_type}:`, error);
+                // Continue with other paths
+            }
         }
 
-        return await extractor(jsondoc);
+        return particles;
+    }
+
+    /**
+     * Extract title from content using definition
+     */
+    private extractTitle(content: any, definition: ParticlePathDefinition, index: number): string {
+        // Try to extract title using titlePath
+        if (definition.titlePath && content && typeof content === 'object') {
+            try {
+                const titleMatches = JSONPath({
+                    path: definition.titlePath,
+                    json: content,
+                    wrap: false
+                });
+
+                if (titleMatches && typeof titleMatches === 'string' && titleMatches.trim()) {
+                    return titleMatches.trim();
+                }
+            } catch (error) {
+                // Fallback to default
+            }
+        }
+
+        // For string content, use truncated version as title
+        if (typeof content === 'string') {
+            const truncated = content.length > 20 ? content.substring(0, 20) + '...' : content;
+            return truncated || definition.titleDefault || `${definition.type} ${index + 1}`;
+        }
+
+        // Use default title with index
+        return definition.titleDefault ? `${definition.titleDefault} ${index + 1}` : `${definition.type} ${index + 1}`;
+    }
+
+    /**
+     * Normalize JSONPath format for consistency
+     */
+    private normalizeJsonPath(path: string | string[]): string {
+        if (Array.isArray(path)) {
+            // Convert array path to string format
+            let result = '$';
+            for (let i = 1; i < path.length; i++) {
+                const segment = path[i];
+                if (typeof segment === 'number') {
+                    result += `[${segment}]`;
+                } else {
+                    result += `['${segment}']`;
+                }
+            }
+            return result;
+        }
+        return path;
     }
 
     /**
      * Generate embedding content for a particle.
      * Uses custom extractor if available, otherwise defaults to YAML format.
-     * NEW: Includes metadata context for better search relevance.
+     * Includes metadata context for better search relevance.
      */
     private generateEmbeddingContent(particleType: string, content: any, jsondoc: TypedJsondoc, particlePath?: string): string {
         // Generate the base content using custom extractor or YAML
@@ -92,10 +196,6 @@ export class ParticleExtractor {
             const pathComponents: string[] = [];
 
             // Parse JSONPath to extract meaningful components
-            // Examples: 
-            // "$.characters[0]" -> "characters, 0"
-            // "$.selling_points[1]" -> "selling_points, 1" 
-            // "$.setting.key_scenes[2]" -> "setting, key_scenes, 2"
             const pathMatch = particlePath.match(/^\$\.(.+)$/);
             if (pathMatch) {
                 const pathPart = pathMatch[1];
@@ -147,322 +247,6 @@ export class ParticleExtractor {
         const input = JSON.stringify(content) + '|' + content_text;
         return createHash('sha256').update(input).digest('hex');
     }
+}
 
-    private async extractBrainstormParticles(jsondoc: TypedJsondoc): Promise<ParticleData[]> {
-        const data = jsondoc.data as any; // Use any for flexible access to data properties
-        const particles: ParticleData[] = [];
-
-        if (data.ideas && Array.isArray(data.ideas)) {
-            for (let i = 0; i < data.ideas.length; i++) {
-                const idea = data.ideas[i];
-                if (!idea.title && !idea.body) continue; // Skip empty ideas
-
-                const title = idea.title || `创意 ${i + 1}`;
-                const content = { title: idea.title, body: idea.body };
-                const contentText = this.generateEmbeddingContent('idea', content, jsondoc, `$.ideas[${i}]`);
-
-                if (contentText) {
-                    const embedding = await this.embeddingService.generateEmbedding(contentText);
-
-                    particles.push({
-                        id: this.generateParticleId(jsondoc, `$.ideas[${i}]`, '创意', content),
-                        path: `$.ideas[${i}]`,
-                        type: '创意',
-                        title,
-                        content,
-                        content_text: contentText,
-                        content_hash: this.generateContentHash(idea, contentText), // Add content hash
-                        embedding
-                    });
-                }
-            }
-        }
-
-        return particles;
-    }
-
-    private async extractBrainstormInputParticles(jsondoc: TypedJsondoc): Promise<ParticleData[]> {
-        const data = jsondoc.data as any;
-        const particles: ParticleData[] = [];
-
-        // Create a single particle from the brainstorm input parameters
-        const platform = data.platform || '';
-        const genre = data.genre || '';
-
-        // Build meaningful title
-        const title = `头脑风暴参数: ${platform}${genre ? ` - ${genre}` : ''}`;
-
-        // Generate embedding content using the registered extractor or default YAML
-        const contentText = this.generateEmbeddingContent('brainstorm_input_params', data, jsondoc, '$');
-
-        if (contentText.trim()) {
-            const embedding = await this.embeddingService.generateEmbedding(contentText);
-
-            particles.push({
-                id: this.generateParticleId(jsondoc, '$', '头脑风暴参数', data),
-                path: '$',
-                type: '头脑风暴参数',
-                title,
-                content: data,
-                content_text: contentText,
-                content_hash: this.generateContentHash(data, contentText), // Add content hash
-                embedding
-            });
-        }
-
-        return particles;
-    }
-
-    private async extractBrainstormIdeaParticles(jsondoc: TypedJsondoc): Promise<ParticleData[]> {
-        const data = jsondoc.data as any; // Use any for flexible access to data properties
-        const particles: ParticleData[] = [];
-
-        // Extract single brainstorm idea
-        if (data.title || data.body) {
-            const title = data.title || '创意';
-            const content = { title: data.title, body: data.body };
-            const contentText = this.generateEmbeddingContent('idea', content, jsondoc, '$');
-
-            if (contentText) {
-                const embedding = await this.embeddingService.generateEmbedding(contentText);
-
-                particles.push({
-                    id: this.generateParticleId(jsondoc, '$', '创意', content),
-                    path: '$',
-                    type: '创意',
-                    title,
-                    content,
-                    content_text: contentText,
-                    content_hash: this.generateContentHash(content, contentText), // Add content hash
-                    embedding
-                });
-            }
-        }
-
-        return particles;
-    }
-
-    private async extractOutlineParticles(jsondoc: TypedJsondoc): Promise<ParticleData[]> {
-        const data = jsondoc.data as any; // Use any for flexible access to data properties
-        const particles: ParticleData[] = [];
-
-        // Extract characters
-        if (data.characters && Array.isArray(data.characters)) {
-            for (let i = 0; i < data.characters.length; i++) {
-                const character = data.characters[i];
-                if (!character.name && !character.description) continue;
-
-                const title = character.name || `角色 ${i + 1}`;
-                const contentText = this.generateEmbeddingContent('character', character, jsondoc, `$.characters[${i}]`);
-
-                if (contentText) {
-                    const embedding = await this.embeddingService.generateEmbedding(contentText);
-
-                    particles.push({
-                        id: this.generateParticleId(jsondoc, `$.characters[${i}]`, '人物', character),
-                        path: `$.characters[${i}]`,
-                        type: '人物',
-                        title,
-                        content: character,
-                        content_text: contentText,
-                        content_hash: this.generateContentHash(character, contentText), // Add content hash
-                        embedding
-                    });
-                }
-            }
-        }
-
-        // Extract selling points
-        if (data.selling_points && Array.isArray(data.selling_points)) {
-            for (let i = 0; i < data.selling_points.length; i++) {
-                const point = data.selling_points[i];
-                if (!point || typeof point !== 'string') continue;
-
-                const title = point.length > 20 ? point.substring(0, 20) + '...' : point;
-                const content = { text: point };
-                const contentText = this.generateEmbeddingContent('selling_point', content, jsondoc, `$.selling_points[${i}]`);
-
-                particles.push({
-                    id: this.generateParticleId(jsondoc, `$.selling_points[${i}]`, '卖点', content),
-                    path: `$.selling_points[${i}]`,
-                    type: '卖点',
-                    title,
-                    content,
-                    content_text: contentText,
-                    content_hash: this.generateContentHash(content, contentText), // Add content hash
-                    embedding: await this.embeddingService.generateEmbedding(contentText)
-                });
-            }
-        }
-
-        // Extract satisfaction points
-        if (data.satisfaction_points && Array.isArray(data.satisfaction_points)) {
-            for (let i = 0; i < data.satisfaction_points.length; i++) {
-                const point = data.satisfaction_points[i];
-                if (!point || typeof point !== 'string') continue;
-
-                const title = point.length > 20 ? point.substring(0, 20) + '...' : point;
-                const content = { text: point };
-                const contentText = this.generateEmbeddingContent('satisfaction_point', content, jsondoc, `$.satisfaction_points[${i}]`);
-
-                particles.push({
-                    id: this.generateParticleId(jsondoc, `$.satisfaction_points[${i}]`, '爽点', content),
-                    path: `$.satisfaction_points[${i}]`,
-                    type: '爽点',
-                    title,
-                    content,
-                    content_text: contentText,
-                    content_hash: this.generateContentHash(content, contentText), // Add content hash
-                    embedding: await this.embeddingService.generateEmbedding(contentText)
-                });
-            }
-        }
-
-        // Extract key scenes from setting.key_scenes
-        if (data.setting && data.setting.key_scenes && Array.isArray(data.setting.key_scenes)) {
-            for (let i = 0; i < data.setting.key_scenes.length; i++) {
-                const scene = data.setting.key_scenes[i];
-                if (!scene || typeof scene !== 'string') continue;
-
-                const title = scene.length > 20 ? scene.substring(0, 20) + '...' : scene;
-                const content = { text: scene };
-                const contentText = this.generateEmbeddingContent('scene', content, jsondoc, `$.setting.key_scenes[${i}]`);
-                const embedding = await this.embeddingService.generateEmbedding(contentText);
-
-                particles.push({
-                    id: this.generateParticleId(jsondoc, `$.setting.key_scenes[${i}]`, '场景', content),
-                    path: `$.setting.key_scenes[${i}]`,
-                    type: '场景',
-                    title,
-                    content,
-                    content_text: contentText,
-                    content_hash: this.generateContentHash(content, contentText), // Add content hash
-                    embedding
-                });
-            }
-        }
-
-        return particles;
-    }
-
-    private async extractChroniclesParticles(jsondoc: TypedJsondoc): Promise<ParticleData[]> {
-        const data = jsondoc.data as any;
-        const particles: ParticleData[] = [];
-
-        if (data.stages && Array.isArray(data.stages)) {
-            for (let i = 0; i < data.stages.length; i++) {
-                const stage = data.stages[i];
-                if (!stage.title && !stage.stageSynopsis) continue;
-
-                const title = stage.title || `阶段 ${i + 1}`;
-                const content = {
-                    title: stage.title,
-                    stageSynopsis: stage.stageSynopsis,
-                    event: stage.event,
-                    numberOfEpisodes: stage.numberOfEpisodes
-                };
-
-                const contentText = this.generateEmbeddingContent('stage', content, jsondoc, `$.stages[${i}]`);
-
-                if (contentText) {
-                    const embedding = await this.embeddingService.generateEmbedding(contentText);
-
-                    particles.push({
-                        id: this.generateParticleId(jsondoc, `$.stages[${i}]`, '阶段', content),
-                        path: `$.stages[${i}]`,
-                        type: '阶段',
-                        title,
-                        content,
-                        content_text: contentText,
-                        content_hash: this.generateContentHash(content, contentText), // Add content hash
-                        embedding
-                    });
-                }
-            }
-        }
-
-        return particles;
-    }
-
-    private async extractEpisodePlanningParticles(jsondoc: TypedJsondoc): Promise<ParticleData[]> {
-        const data = jsondoc.data as any;
-        const particles: ParticleData[] = [];
-
-        if (data.episodeGroups && Array.isArray(data.episodeGroups)) {
-            for (let i = 0; i < data.episodeGroups.length; i++) {
-                const group = data.episodeGroups[i];
-                if (!group.groupTitle) continue;
-
-                const title = group.groupTitle;
-                const content = {
-                    groupTitle: group.groupTitle,
-                    episodes: group.episodes,
-                    keyEvents: group.keyEvents,
-                    hooks: group.hooks,
-                    emotionalBeats: group.emotionalBeats
-                };
-
-                const contentText = this.generateEmbeddingContent('episode_group', content, jsondoc, `$.episodeGroups[${i}]`);
-
-                if (contentText) {
-                    const embedding = await this.embeddingService.generateEmbedding(contentText);
-
-                    particles.push({
-                        id: this.generateParticleId(jsondoc, `$.episodeGroups[${i}]`, '剧集组', content),
-                        path: `$.episodeGroups[${i}]`,
-                        type: '剧集组',
-                        title,
-                        content,
-                        content_text: contentText,
-                        content_hash: this.generateContentHash(content, contentText), // Add content hash
-                        embedding
-                    });
-                }
-            }
-        }
-
-        return particles;
-    }
-
-    private async extractEpisodeSynopsisParticles(jsondoc: TypedJsondoc): Promise<ParticleData[]> {
-        const data = jsondoc.data as any;
-        const particles: ParticleData[] = [];
-
-        if (data.episodes && Array.isArray(data.episodes)) {
-            for (let i = 0; i < data.episodes.length; i++) {
-                const episode = data.episodes[i];
-                if (!episode.title) continue;
-
-                const title = `第${episode.episodeNumber}集: ${episode.title}`;
-                const content = {
-                    episodeNumber: episode.episodeNumber,
-                    title: episode.title,
-                    openingHook: episode.openingHook,
-                    mainPlot: episode.mainPlot,
-                    emotionalClimax: episode.emotionalClimax,
-                    cliffhanger: episode.cliffhanger,
-                    suspenseElements: episode.suspenseElements
-                };
-
-                const contentText = this.generateEmbeddingContent('episode', content, jsondoc, `$.episodes[${i}]`);
-
-                if (contentText) {
-                    const embedding = await this.embeddingService.generateEmbedding(contentText);
-
-                    particles.push({
-                        id: this.generateParticleId(jsondoc, `$.episodes[${i}]`, '每集大纲', content),
-                        path: `$.episodes[${i}]`,
-                        type: '每集大纲',
-                        title,
-                        content,
-                        content_text: contentText,
-                        content_hash: this.generateContentHash(content, contentText), // Add content hash
-                        embedding
-                    });
-                }
-            }
-        }
-
-        return particles;
-    }
-} 
+type EmbeddingContentExtractor = (content: any, jsondoc: TypedJsondoc) => string; 
