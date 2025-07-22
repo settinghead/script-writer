@@ -20,13 +20,13 @@ export const useChroniclesDescendants = (outlineSettingsJsondocId: string): UseC
             };
         }
 
-        // Get all outline settings jsondocs in the lineage chain
+        // Get all 剧本设定 jsondocs in the lineage chain
         if (!Array.isArray(projectData.jsondocs)) return { hasChroniclesDescendants: false, latestChronicles: null, isLoading: false };
         const allOutlineSettingsJsondocs = projectData.jsondocs.filter((jsondoc) =>
-            jsondoc.schema_type === 'outline_settings' && jsondoc.data
+            jsondoc.schema_type === '剧本设定' && jsondoc.data
         );
 
-        // Find transforms that use ANY outline settings jsondoc as input (lineage-aware)
+        // Find transforms that use ANY 剧本设定 jsondoc as input (lineage-aware)
         if (!Array.isArray(projectData.transformInputs)) return { hasChroniclesDescendants: false, latestChronicles: null, isLoading: false };
         const relatedTransforms = projectData.transformInputs.filter((input) =>
             allOutlineSettingsJsondocs.some((jsondoc) => jsondoc.id === input.jsondoc_id)
@@ -54,7 +54,7 @@ export const useChroniclesDescendants = (outlineSettingsJsondocId: string): UseC
         );
 
         if (chroniclesJsondocs.length === 0) {
-            // console.log(`[useChroniclesDescendants] No chronicles found for outline settings jsondoc: ${outlineSettingsJsondocId}`);
+            // console.log(`[useChroniclesDescendants] No chronicles found for 剧本设定 jsondoc: ${outlineSettingsJsondocId}`);
             return {
                 hasChroniclesDescendants: false,
                 latestChronicles: null,
@@ -62,7 +62,7 @@ export const useChroniclesDescendants = (outlineSettingsJsondocId: string): UseC
             };
         }
 
-        // console.log(`[useChroniclesDescendants] Found ${chroniclesJsondocs.length} chronicles for outline settings jsondoc: ${outlineSettingsJsondocId}`);
+        // console.log(`[useChroniclesDescendants] Found ${chroniclesJsondocs.length} chronicles for 剧本设定 jsondoc: ${outlineSettingsJsondocId}`);
 
         // Sort by creation time and get the latest
         const sortedChronicles = [...chroniclesJsondocs].sort((a, b) =>

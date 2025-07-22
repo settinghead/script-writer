@@ -14,11 +14,11 @@ export const BaseTransformDefinition = z.object({
 // Transform registry
 export const TransformRegistry = {
   // Outline Settings Transform
-  'outline_settings_generation': {
-    pathPattern: '^\\$\\[outline_settings\\]$',
+  '剧本设定_generation': {
+    pathPattern: '^\\$\\[剧本设定\\]$',
     inputSchema: OutlineSettingsInputSchema,
     outputSchema: OutlineSettingsOutputSchema,
-    outputType: 'outline_settings'
+    outputType: '剧本设定'
   },
 
   // Chronicles Transform
@@ -92,7 +92,7 @@ export const BrainstormEditInputSchema = BaseToolInputSchema.extend({
 
 export type BrainstormEditInput = z.infer<typeof BrainstormEditInputSchema>;
 
-// Input schema for outline settings editing
+// Input schema for 剧本设定 editing
 export const OutlineSettingsEditInputSchema = BaseToolInputSchema.extend({
   editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：修改角色设定、调整卖点、更新故事背景等'),
   agentInstructions: z.string().optional().describe('来自智能体的额外指导信息，用于更好地理解编辑意图')
@@ -133,10 +133,10 @@ export const BrainstormEditJsonPatchInputSchema = BrainstormEditInputSchema;
 // Output schema for JSON patch-based brainstorm editing
 export const BrainstormEditJsonPatchOutputSchema = JsonPatchArraySchema;
 
-// Input schema for JSON patch-based outline settings editing
+// Input schema for JSON patch-based 剧本设定 editing
 export const OutlineSettingsEditJsonPatchInputSchema = OutlineSettingsEditInputSchema;
 
-// Output schema for JSON patch-based outline settings editing
+// Output schema for JSON patch-based 剧本设定 editing
 export const OutlineSettingsEditJsonPatchOutputSchema = JsonPatchArraySchema;
 
 // Transform registry
@@ -211,11 +211,11 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     pathPattern: '^(title|body)$', // Matches title or body fields
     instantiationFunction: 'createUserInputFromBrainstormField'
   },
-  'edit_outline_settings': {
-    name: 'edit_outline_settings',
-    description: 'Edit outline settings with fine-grained field tracking',
-    sourceJsondocType: 'outline_settings',
-    targetJsondocType: 'outline_settings',
+  'edit_剧本设定': {
+    name: 'edit_剧本设定',
+    description: 'Edit 剧本设定 with fine-grained field tracking',
+    sourceJsondocType: '剧本设定',
+    targetJsondocType: '剧本设定',
     pathPattern: '^\\$(\\..*)?$', // Root or any path like $.title, $.characters[0].name, etc.
     instantiationFunction: 'createOutlineSettingsFromOutlineSettings'
   },

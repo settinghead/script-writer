@@ -68,7 +68,7 @@ describe('EpisodePlanningTool', () => {
 
             const mockOutlineJsondoc = {
                 id: 'outline-id',
-                schema_type: 'outline_settings',
+                schema_type: '剧本设定',
                 project_id: projectId,
                 data: {
                     title: 'Test Outline',
@@ -100,7 +100,7 @@ describe('EpisodePlanningTool', () => {
                 jsondocs: [
                     { jsondocId: 'chronicles-id', description: 'Chronicles data', schemaType: 'chronicles' as const },
                     { jsondocId: 'brainstorm-id', description: 'Brainstorm idea', schemaType: 'brainstorm_idea' as const },
-                    { jsondocId: 'outline-id', description: 'Outline settings', schemaType: 'outline_settings' as const }
+                    { jsondocId: 'outline-id', description: 'Outline settings', schemaType: '剧本设定' as const }
                 ],
                 numberOfEpisodes: 30,
                 requirements: 'Test requirements'
@@ -135,7 +135,7 @@ describe('EpisodePlanningTool', () => {
                     toolName: 'generate_episode_planning',
                     chronicles: 'chronicles-id',
                     brainstorm_idea: 'brainstorm-id',
-                    outline_settings: 'outline-id',
+                    剧本设定: 'outline-id',
                     numberOfEpisodes: 30,
                     requirements: 'Test requirements'
                 },

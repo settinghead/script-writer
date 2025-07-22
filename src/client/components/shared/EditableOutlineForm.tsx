@@ -7,7 +7,7 @@ import { YJSSlateArrayOfStringField } from '../../transform-jsondoc-framework/co
 const { Text } = Typography;
 
 /**
- * YJS-enabled editable form component for outline settings
+ * YJS-enabled editable form component for 剧本设定
  * This component is designed to be used within a YJSJsondocProvider
  * Uses the new subscription-based approach with useYJSField
  */

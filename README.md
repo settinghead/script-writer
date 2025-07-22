@@ -37,8 +37,8 @@ A collaborative Chinese short drama script writing application built on the [Tra
 **Chronicles (时间顺序大纲)**:
 - **Chronological Structure** - Complete story timeline from earliest events to conclusion (story order, not broadcast order)
 - **Episode Planning** - Staged progression with detailed synopsis for each story phase
-- **Context-Aware Generation** - References outline settings for consistent character and world development
-- **Sequential Workflow** - Generated after outline settings are established
+- **Context-Aware Generation** - References 剧本设定 for consistent character and world development
+- **Sequential Workflow** - Generated after 剧本设定 are established
 - **Individual Stage Editing** - Granular editing of individual chronicle stages with full field support
 - **Stage-Level Human Transforms** - Each stage can be independently edited while preserving the overall chronicles structure
 - **Complete Field Editing** - All stage fields editable: title, synopsis, events, emotion arcs, relationship developments, insights
@@ -222,7 +222,7 @@ type ComponentId =
   | 'brainstorm-input-editor' 
   | 'idea-colletion'
   | 'single-idea-editor'
-  | 'outline-settings-display'
+  | '剧本设定-display'
   | 'chronicles-display';
 
 // Discriminated union modes (no optional parameters)
@@ -251,7 +251,7 @@ export const componentRegistry: Record<ComponentId, React.ComponentType<any>> = 
   'brainstorm-input-editor': BrainstormInputEditor,
   'idea-colletion': ProjectBrainstormPage,
   'single-idea-editor': SingleBrainstormIdeaEditor,
-  'outline-settings-display': OutlineSettingsDisplay,
+  '剧本设定-display': OutlineSettingsDisplay,
   'chronicles-display': ChroniclesDisplay
 };
 
@@ -371,7 +371,7 @@ This unified system provides a solid foundation for the Chinese short drama scri
 The application supports two distinct paths for script creation, each optimized for different creative approaches:
 
 ### Path 1: Manual Entry Path (手动输入路径)
-**User Flow**: Manual idea entry → Edit → Generate outline settings → Generate chronicles → Generate episode planning → Generate scripts
+**User Flow**: Manual idea entry → Edit → Generate 剧本设定 → Generate chronicles → Generate episode planning → Generate scripts
 
 **Stages**:
 1. **手动创意输入 (Manual Idea Entry)** - User manually enters a single story concept
@@ -387,7 +387,7 @@ The application supports two distinct paths for script creation, each optimized 
 - **Streamlined Flow** - No selection step required, faster progression
 
 ### Path 2: AI Brainstorm Path (AI头脑风暴路径)
-**User Flow**: Brainstorm input → AI generates multiple ideas → Select best idea → Edit → Generate outline settings → Generate chronicles → Generate episode planning → Generate scripts
+**User Flow**: Brainstorm input → AI generates multiple ideas → Select best idea → Edit → Generate 剧本设定 → Generate chronicles → Generate episode planning → Generate scripts
 
 **Stages**:
 1. **头脑风暴输入 (Brainstorm Input)** - User provides creative brief and requirements
@@ -434,7 +434,7 @@ const actions = computeActionsFromLineage(currentStage, context);
 - `brainstorm_input` - Brainstorm input created, ready for AI generation
 - `brainstorm_selection` - Multiple AI ideas generated, user must select one
 - `idea_editing` - Single idea available (manual or selected), ready for editing
-- `outline_generation` - Idea finalized, ready for outline settings generation
+- `outline_generation` - Idea finalized, ready for 剧本设定 generation
 - `chronicles_generation` - Outline settings complete, ready for chronicles
 - `episode_planning` - Chronicles complete, ready for episode planning generation
 - `script_generation` - Episode planning complete, ready for script writing
@@ -589,7 +589,7 @@ yText.insert(0, 'Hello collaborative world!');
 ### Benefits Achieved
 
 **Real-time Collaboration**:
-- Multiple users can edit brainstorm requirements, story ideas, and outline settings simultaneously
+- Multiple users can edit brainstorm requirements, story ideas, and 剧本设定 simultaneously
 - Immediate visual feedback during collaboration
 - Automatic conflict resolution without user intervention
 
@@ -869,8 +869,8 @@ export const IdeaSchema = z.object({
 **Outline Settings Schema**:
 ```typescript
 export const JsondocSchemaRegistry = {
-  'outline_settings': OutlineSettingsOutputSchema,
-  'outline_settings_input': OutlineSettingsInputSchema,
+  '剧本设定': OutlineSettingsOutputSchema,
+  '剧本设定_input': OutlineSettingsInputSchema,
   // ... other schemas
 } as const;
 
@@ -1342,8 +1342,8 @@ fetch('/api/chat', {
 ### Content Management
 - `POST /api/jsondocs/:id/human-transform` - Execute human edit transform (supports chronicle stage editing, field edits, etc.)
 - `GET /api/jsondocs` - List jsondocs with filtering
-- `GET /api/projects/:projectId/outline-settings` - Get outline settings for brainstorm ideas
-- `GET /api/projects/:projectId/chronicles` - Get chronicles for outline settings
+- `GET /api/projects/:projectId/剧本设定` - Get 剧本设定 for brainstorm ideas
+- `GET /api/projects/:projectId/chronicles` - Get chronicles for 剧本设定
 - `POST /api/projects/:projectId/episode-planning` - Generate episode planning from chronicles
 - `GET /api/projects/:projectId/episode-planning` - Get episode planning for project
 
@@ -1363,7 +1363,7 @@ POST /api/jsondocs/chronicles-jsondoc-id/human-transform
   "fieldUpdates": {}
 }
 
-# Edit specific fields in outline settings
+# Edit specific fields in 剧本设定
 POST /api/jsondocs/outline-jsondoc-id/human-transform
 {
   "transformName": "edit_outline_field",

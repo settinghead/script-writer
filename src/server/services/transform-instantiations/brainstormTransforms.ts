@@ -111,7 +111,7 @@ export function createUserInputFromBrainstormField(
 export const createOutlineSettingsTransform = (sourceJsondocId: string) => {
   return {
     sourceJsondocId,
-    targetPath: '$[outline_settings]',
+    targetPath: '$[剧本设定]',
     inputSchema: OutlineSettingsInputSchema,
     outputSchema: OutlineSettingsOutputSchema,
     transformType: 'llm' as const
@@ -147,8 +147,8 @@ export function createBrainstormToolInput(
 }
 
 /**
- * Create editable outline settings from existing outline settings
- * Returns the outline settings data directly (no wrapper)
+ * Create editable 剧本设定 from existing 剧本设定
+ * Returns the 剧本设定 data directly (no wrapper)
  */
 export function createOutlineSettingsFromOutlineSettings(
   sourceJsondocData: any,
@@ -157,7 +157,7 @@ export function createOutlineSettingsFromOutlineSettings(
   const outlineSettingsData = extractDataAtPath(sourceJsondocData, derivationPath);
 
   if (!outlineSettingsData || typeof outlineSettingsData !== 'object') {
-    throw new Error(`Invalid outline settings data at path ${derivationPath}`);
+    throw new Error(`Invalid 剧本设定 data at path ${derivationPath}`);
   }
 
   // Validate the data structure against the output schema

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export type CurrentSection = 'ideas' | 'outline-settings' | 'chronicles' | 'episode-planning' | 'episode-synopsis' | null;
+export type CurrentSection = 'ideas' | '剧本设定' | 'chronicles' | 'episode-planning' | 'episode-synopsis' | null;
 
 /**
  * Hook to detect which section is currently visible in the viewport
@@ -12,7 +12,7 @@ export function useCurrentSection(): CurrentSection {
     useEffect(() => {
         const sectionSelectors = [
             '#ideas',
-            '#outline-settings',
+            '#剧本设定',
             '#chronicles',
             '#episode-planning',
             '#episode-synopsis'
@@ -23,7 +23,7 @@ export function useCurrentSection(): CurrentSection {
 
                 // SOLUTION: Don't rely on entries (which only show changes)
                 // Instead, manually check all target elements on every intersection event
-                const sectionSelectors = ['#ideas', '#outline-settings', '#chronicles', '#episode-planning', '#episode-synopsis'];
+                const sectionSelectors = ['#ideas', '#剧本设定', '#chronicles', '#episode-planning', '#episode-synopsis'];
                 const allSectionData: { id: string; rect: DOMRect; element: HTMLElement }[] = [];
 
                 sectionSelectors.forEach(selector => {
@@ -63,7 +63,7 @@ export function useCurrentSection(): CurrentSection {
                     // Calculate intersection ratio manually
                     const intersectionRatio = Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0)) / rect.height;
 
-                    if (intersectionRatio > 0.03 && (id === 'ideas' || id === 'outline-settings' || id === 'chronicles')) {
+                    if (intersectionRatio > 0.03 && (id === 'ideas' || id === '剧本设定' || id === 'chronicles')) {
                         sectionsWithData.push({
                             id,
                             intersectionRatio,
@@ -108,7 +108,7 @@ export function useCurrentSection(): CurrentSection {
                         const distanceToCenter = Math.abs(elementCenter - viewportCenter);
                         const intersectionRatio = Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0)) / rect.height;
 
-                        if (intersectionRatio > 0 && (id === 'ideas' || id === 'outline-settings' || id === 'chronicles')) {
+                        if (intersectionRatio > 0 && (id === 'ideas' || id === '剧本设定' || id === 'chronicles')) {
                             fallbackSections.push({ id, intersectionRatio, distanceToCenter });
                         }
                     });

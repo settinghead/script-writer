@@ -258,7 +258,7 @@ export type TypedJsondoc =
     | JsondocWithData<'brainstorm_idea', 'v1', BrainstormIdeaV1>
     | JsondocWithData<'brainstorm_input_params', 'v1', BrainstormParamsV1>
     | JsondocWithData<'brainstorm_input', 'v1', BrainstormParamsV1>
-    | JsondocWithData<'outline_settings', 'v1', OutlineSettingV1>
+    | JsondocWithData<'剧本设定', 'v1', OutlineSettingV1>
     | JsondocWithData<'chronicles', 'v1', ChroniclesV1>
     | JsondocWithData<'episode_planning', 'v1', EpisodePlanningV1>
     | JsondocWithData<'episode_planning_input', 'v1', EpisodePlanningInputV1>

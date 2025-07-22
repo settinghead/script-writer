@@ -59,8 +59,8 @@ export const JsondocSchemaRegistry = {
   'brainstorm_input_params': BrainstormToolInputSchema,
 
   // New outline schemas
-  'outline_settings_input': OutlineSettingsInputSchema,
-  'outline_settings': OutlineSettingsOutputSchema,
+  '剧本设定_input': OutlineSettingsInputSchema,
+  '剧本设定': OutlineSettingsOutputSchema,
   'chronicles_input': ChroniclesInputSchema,
   'chronicles': ChroniclesOutputSchema,
 

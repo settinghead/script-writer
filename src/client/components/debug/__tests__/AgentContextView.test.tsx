@@ -46,7 +46,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
     }
 
     if (context.canonicalBrainstormIdea && !hasOutlineSettings) {
-        availableTools.push('generate_outline_settings');
+        availableTools.push('generate_剧本设定');
     }
 
     if (hasOutlineSettings) {
@@ -54,7 +54,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
         if (context.canonicalBrainstormIdea) {
             availableTools.push('edit_brainstorm_idea');
         }
-        availableTools.push('edit_outline_settings');
+        availableTools.push('edit_剧本设定');
 
         // Add next generation tool
         if (!hasChronicles) {
@@ -68,7 +68,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
             availableTools.push('edit_brainstorm_idea');
         }
         if (hasOutlineSettings) {
-            availableTools.push('edit_outline_settings');
+            availableTools.push('edit_剧本设定');
         }
         availableTools.push('edit_chronicles');
 
@@ -84,7 +84,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
             availableTools.push('edit_brainstorm_idea');
         }
         if (hasOutlineSettings) {
-            availableTools.push('edit_outline_settings');
+            availableTools.push('edit_剧本设定');
         }
         if (hasChronicles) {
             availableTools.push('edit_chronicles');
@@ -152,7 +152,7 @@ describe('AgentContextView Tool Filtering', () => {
             expect(tools).toEqual(['edit_brainstorm_idea']);
         });
 
-        it('should return edit_brainstorm_idea and generate_outline_settings when single brainstorm_idea exists', () => {
+        it('should return edit_brainstorm_idea and generate_剧本设定 when single brainstorm_idea exists', () => {
             const mockIdea = createMockJsondoc('idea-1', 'brainstorm_idea', 'user_input');
             const context: CanonicalJsondocContext = {
                 canonicalBrainstormIdea: mockIdea,
@@ -171,12 +171,12 @@ describe('AgentContextView Tool Filtering', () => {
             };
 
             const tools = computeAvailableToolsFromCanonicalContext(context);
-            expect(tools).toEqual(['edit_brainstorm_idea', 'generate_outline_settings']);
+            expect(tools).toEqual(['edit_brainstorm_idea', 'generate_剧本设定']);
         });
 
-        it('should return appropriate tools when outline_settings exists', () => {
+        it('should return appropriate tools when 剧本设定 exists', () => {
             const mockIdea = createMockJsondoc('idea-1', 'brainstorm_idea', 'user_input');
-            const mockOutline = createMockJsondoc('outline-1', 'outline_settings');
+            const mockOutline = createMockJsondoc('outline-1', '剧本设定');
             const context: CanonicalJsondocContext = {
                 canonicalBrainstormIdea: mockIdea,
                 canonicalBrainstormCollection: null,
@@ -194,12 +194,12 @@ describe('AgentContextView Tool Filtering', () => {
             };
 
             const tools = computeAvailableToolsFromCanonicalContext(context);
-            expect(tools).toEqual(['edit_brainstorm_idea', 'edit_outline_settings', 'generate_chronicles']);
+            expect(tools).toEqual(['edit_brainstorm_idea', 'edit_剧本设定', 'generate_chronicles']);
         });
 
         it('should return all edit tools plus generate_episode_synopsis when episode_planning exists', () => {
             const mockIdea = createMockJsondoc('idea-1', 'brainstorm_idea', 'user_input');
-            const mockOutline = createMockJsondoc('outline-1', 'outline_settings');
+            const mockOutline = createMockJsondoc('outline-1', '剧本设定');
             const mockChronicles = createMockJsondoc('chronicles-1', 'chronicles');
             const mockEpisodePlanning = createMockJsondoc('episode-planning-1', 'episode_planning');
             const context: CanonicalJsondocContext = {
@@ -221,7 +221,7 @@ describe('AgentContextView Tool Filtering', () => {
             const tools = computeAvailableToolsFromCanonicalContext(context);
             expect(tools).toEqual([
                 'edit_brainstorm_idea',
-                'edit_outline_settings',
+                'edit_剧本设定',
                 'edit_chronicles',
                 'edit_episode_planning',
                 'generate_episode_synopsis'

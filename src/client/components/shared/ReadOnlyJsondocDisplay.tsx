@@ -241,8 +241,8 @@ export const ReadOnlyJsondocDisplay: React.FC<ReadOnlyJsondocDisplayProps> = ({ 
         );
     }
 
-    // Render outline settings specific layout
-    if (schemaType === 'outline_settings') {
+    // Render 剧本设定 specific layout
+    if (schemaType === '剧本设定') {
         return (
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 {/* Basic Information */}

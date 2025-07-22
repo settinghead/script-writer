@@ -48,7 +48,7 @@ export function createCachedStreamObjectMock() {
             console.warn(`No cached response found for key: ${cacheKey.substring(0, 8)}...`);
             const prompt = options.messages?.map(m => m.content).join('\n') || 'default-prompt';
             console.log(`[Mock] Checking prompt for fallback detection: ${prompt.substring(0, 200)}...`);
-            console.log(`[Mock] Contains 'outline_settings'?`, prompt.includes('outline_settings'));
+            console.log(`[Mock] Contains '剧本设定'?`, prompt.includes('剧本设定'));
             console.log(`[Mock] Contains 'chronicles'?`, prompt.includes('chronicles'));
             console.log(`[Mock] Contains '时间线编年史'?`, prompt.includes('时间线编年史'));
             console.log(`[Mock] Contains '大纲设置'?`, prompt.includes('大纲设置'));
@@ -56,8 +56,8 @@ export function createCachedStreamObjectMock() {
             console.log(`[Mock] Contains '时间顺序'?`, prompt.includes('时间顺序'));
 
             // Check for template names first - most specific patterns
-            if (prompt.includes('templateName: outline_settings') || prompt.includes('template: outline_settings')) {
-                console.log('[Mock] Using outline settings fallback (template name match)');
+            if (prompt.includes('templateName: 剧本设定') || prompt.includes('template: 剧本设定')) {
+                console.log('[Mock] Using 剧本设定 fallback (template name match)');
                 return createFallbackOutlineObject();
             } else if (prompt.includes('templateName: chronicles') || prompt.includes('template: chronicles')) {
                 console.log('[Mock] Using chronicles fallback (template name match)');
@@ -72,7 +72,7 @@ export function createCachedStreamObjectMock() {
                 console.log('[Mock] Using chronicles fallback (content match)');
                 return createFallbackChroniclesObject();
             } else if (prompt.includes('大纲设置') || (prompt.includes('故事创意') && prompt.includes('制定详细的大纲设置'))) {
-                console.log('[Mock] Using outline settings fallback (content match)');
+                console.log('[Mock] Using 剧本设定 fallback (content match)');
                 return createFallbackOutlineObject();
             } else if (prompt.includes('outline') || prompt.includes('Outline') || prompt.includes('大纲')) {
                 console.log('[Mock] Using generic outline fallback');
@@ -438,7 +438,7 @@ function createFallbackEpisodePlanningObject() {
 }
 
 /**
- * Fallback mock for outline settings generation (matches OutlineSettingsOutputSchema)
+ * Fallback mock for 剧本设定 generation (matches OutlineSettingsOutputSchema)
  */
 function createFallbackOutlineObject() {
     const mockOutlineSettingsData = {

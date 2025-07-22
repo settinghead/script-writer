@@ -8,7 +8,7 @@ interface LLMTemplate {
 }
 
 export const outlineSettingsTemplate: LLMTemplate = {
-    id: 'outline_settings',
+    id: '剧本设定',
     name: 'Outline Settings Generation',
     promptTemplate: `你是一位专门从事中国社交媒体平台短视频内容的创意总监和编剧。你的任务是根据选定的故事创意，制定详细的大纲设置，为后续的剧本创作奠定坚实基础。
 

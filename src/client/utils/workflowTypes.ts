@@ -15,7 +15,7 @@ export type ComponentId =
     | 'brainstorm-input-editor'
     | 'idea-collection'
     | 'single-idea-editor'
-    | 'outline-settings-display'
+    | '剧本设定-display'
     | 'chronicles-display'
     | 'episode-planning-display'
     | 'episode-synopsis-display';

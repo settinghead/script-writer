@@ -1521,7 +1521,7 @@ export function findMainWorkflowPath(
     try {
         // Step 1: Find the main outline (only one allowed per project)
         const outlineJsondocs = jsondocs.filter(a =>
-            a.schema_type === 'outline_settings'
+            a.schema_type === '剧本设定'
         );
 
         // Sort by creation date to get the latest/main outline
@@ -1733,7 +1733,7 @@ function traceForwardFromJsondoc(
             const isMainWorkflowJsondoc =
                 nextJsondoc.schema_type === 'brainstorm_collection' ||
                 nextJsondoc.schema_type === 'brainstorm_idea' ||
-                nextJsondoc.schema_type === 'outline_settings' ||
+                nextJsondoc.schema_type === '剧本设定' ||
                 nextJsondoc.schema_type === 'chronicles' ||
                 nextJsondoc.schema_type === 'episode_planning';
 
@@ -1805,8 +1805,8 @@ function createWorkflowNodeFromJsondoc(
 
         navigationTarget = '#selected-idea';
     } else if (
-        jsondoc.schema_type === 'outline_settings') {
-        nodeType = 'outline_settings';
+        jsondoc.schema_type === '剧本设定') {
+        nodeType = '剧本设定';
 
         // Try to extract title from outline data
         try {

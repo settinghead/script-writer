@@ -31,7 +31,7 @@ export class ParticleExtractor {
     private registerExtractors() {
         this.extractors.set('brainstorm_collection', this.extractBrainstormParticles.bind(this));
         this.extractors.set('brainstorm_input_params', this.extractBrainstormInputParticles.bind(this));
-        this.extractors.set('outline_settings', this.extractOutlineParticles.bind(this));
+        this.extractors.set('剧本设定', this.extractOutlineParticles.bind(this));
         this.extractors.set('chronicles', this.extractChroniclesParticles.bind(this));
         this.extractors.set('brainstorm_idea', this.extractBrainstormIdeaParticles.bind(this));
         this.extractors.set('episode_planning', this.extractEpisodePlanningParticles.bind(this));

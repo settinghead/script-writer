@@ -161,7 +161,7 @@ export class TemplateService {
           'brainstorm_idea': '故事创意',
           'brainstorm_collection': '创意集合',
           'brainstorm_input_params': '头脑风暴参数',
-          'outline_settings': '剧本设定',
+          '剧本设定': '剧本设定',
           'chronicles': '时间顺序大纲',
           'episode_planning': '剧集框架',
           'episode_synopsis': '分集大纲',

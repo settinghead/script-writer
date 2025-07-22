@@ -84,7 +84,7 @@ describe('EpisodeSynopsisTool', () => {
 
             const mockOutlineJsondoc = {
                 id: 'outline-id',
-                schema_type: 'outline_settings',
+                schema_type: '剧本设定',
                 project_id: projectId,
                 data: {
                     title: '甜宠短剧设定',
@@ -119,7 +119,7 @@ describe('EpisodeSynopsisTool', () => {
                     { jsondocId: 'episode-planning-id', description: 'Episode planning', schemaType: 'episode_planning' as const },
                     { jsondocId: 'chronicles-id', description: 'Chronicles', schemaType: 'chronicles' as const },
                     { jsondocId: 'brainstorm-id', description: 'Brainstorm idea', schemaType: 'brainstorm_idea' as const },
-                    { jsondocId: 'outline-id', description: 'Outline settings', schemaType: 'outline_settings' as const }
+                    { jsondocId: 'outline-id', description: 'Outline settings', schemaType: '剧本设定' as const }
                 ],
                 groupTitle: '相遇篇',
                 episodeRange: '1-3',
@@ -158,7 +158,7 @@ describe('EpisodeSynopsisTool', () => {
                     episode_planning: 'episode-planning-id',
                     chronicles: 'chronicles-id',
                     brainstorm_idea: 'brainstorm-id',
-                    outline_settings: 'outline-id',
+                    剧本设定: 'outline-id',
                     target_group_title: '相遇篇',
                     target_episode_range: '1-3',
                     target_episodes: '1,2,3'
@@ -216,7 +216,7 @@ describe('EpisodeSynopsisTool', () => {
                     { jsondocId: 'episode-planning-id', description: 'Episode planning', schemaType: 'episode_planning' as const },
                     { jsondocId: 'missing-chronicles', description: 'Missing chronicles', schemaType: 'chronicles' as const },
                     { jsondocId: 'missing-brainstorm', description: 'Missing brainstorm', schemaType: 'brainstorm_idea' as const },
-                    { jsondocId: 'missing-outline', description: 'Missing outline', schemaType: 'outline_settings' as const }
+                    { jsondocId: 'missing-outline', description: 'Missing outline', schemaType: '剧本设定' as const }
                 ],
                 groupTitle: '开场篇',
                 episodeRange: '4-6',

@@ -30,7 +30,7 @@ describe('JsondocProcessor', () => {
                 },
                 {
                     id: 'jsondoc-2',
-                    schema_type: 'outline_settings',
+                    schema_type: '剧本设定',
                     project_id: 'project-1',
                     data: { title: 'Test Outline', genre: 'romance' }
                 },
@@ -52,7 +52,7 @@ describe('JsondocProcessor', () => {
 
             const jsondocRefs: JsondocReference[] = [
                 { jsondocId: 'jsondoc-1', description: 'Test idea', schemaType: 'brainstorm_idea' },
-                { jsondocId: 'jsondoc-2', description: 'Test outline', schemaType: 'outline_settings' },
+                { jsondocId: 'jsondoc-2', description: 'Test outline', schemaType: '剧本设定' },
                 { jsondocId: 'jsondoc-3', description: 'Test chronicles', schemaType: 'chronicles' }
             ];
 
@@ -61,12 +61,12 @@ describe('JsondocProcessor', () => {
             expect(result.processedCount).toBe(3);
             expect(result.jsondocData).toEqual({
                 brainstorm_idea: { title: 'Test Idea 1', body: 'Test content 1' },
-                outline_settings: { title: 'Test Outline', genre: 'romance' },
+                剧本设定: { title: 'Test Outline', genre: 'romance' },
                 chronicles: { title: 'Test Chronicles', stages: [] }
             });
             expect(result.jsondocMetadata).toEqual({
                 brainstorm_idea: 'jsondoc-1',
-                outline_settings: 'jsondoc-2',
+                剧本设定: 'jsondoc-2',
                 chronicles: 'jsondoc-3'
             });
 
@@ -86,7 +86,7 @@ describe('JsondocProcessor', () => {
                 .mockResolvedValueOnce(null) // First jsondoc not found
                 .mockResolvedValueOnce({
                     id: 'jsondoc-2',
-                    schema_type: 'outline_settings',
+                    schema_type: '剧本设定',
                     project_id: 'project-1',
                     data: { title: 'Test Outline', genre: 'romance' }
                 });
@@ -96,17 +96,17 @@ describe('JsondocProcessor', () => {
 
             const jsondocRefs: JsondocReference[] = [
                 { jsondocId: 'missing-id', description: 'Missing jsondoc', schemaType: 'brainstorm_idea' },
-                { jsondocId: 'jsondoc-2', description: 'Test outline', schemaType: 'outline_settings' }
+                { jsondocId: 'jsondoc-2', description: 'Test outline', schemaType: '剧本设定' }
             ];
 
             const result = await processor.processJsondocs(jsondocRefs);
 
             expect(result.processedCount).toBe(1);
             expect(result.jsondocData).toEqual({
-                outline_settings: { title: 'Test Outline', genre: 'romance' }
+                剧本设定: { title: 'Test Outline', genre: 'romance' }
             });
             expect(result.jsondocMetadata).toEqual({
-                outline_settings: 'jsondoc-2'
+                剧本设定: 'jsondoc-2'
             });
         });
 

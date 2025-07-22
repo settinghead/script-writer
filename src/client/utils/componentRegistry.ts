@@ -16,7 +16,7 @@ export const COMPONENT_REGISTRY = {
     'brainstorm-input-editor': BrainstormInputEditor,
     'idea-collection': IdeaCollection,
     'single-idea-editor': SingleBrainstormIdeaEditor,
-    'outline-settings-display': OutlineSettingsDisplay,
+    '剧本设定-display': OutlineSettingsDisplay,
     'chronicles-display': ChroniclesDisplay,
     'episode-planning-display': EpisodePlanningDisplay,
     'episode-synopsis-display': EpisodeSynopsisDisplay

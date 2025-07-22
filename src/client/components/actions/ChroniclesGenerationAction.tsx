@@ -15,7 +15,7 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
     const { projectId, onSuccess, onError } = props;
     const [isGenerating, setIsGenerating] = useState(false);
 
-    // Get outline settings from props (new way) or null (old way)
+    // Get 剧本设定 from props (new way) or null (old way)
     const latestOutlineSettings = 'jsondocs' in props ? props.jsondocs.outlineSettings : null;
 
     // Handle chronicles generation
@@ -41,7 +41,7 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
         }
     }, [latestOutlineSettings, projectId, onSuccess, onError]);
 
-    // Show error if no outline settings found
+    // Show error if no 剧本设定 found
     if (!latestOutlineSettings) {
         return (
             <Alert
@@ -54,7 +54,7 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
         );
     }
 
-    // Get outline settings data for display
+    // Get 剧本设定 data for display
     const outlineData = useMemo(() => {
         if (!latestOutlineSettings?.data) return null;
         try {
@@ -62,7 +62,7 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
                 ? JSON.parse(latestOutlineSettings.data)
                 : latestOutlineSettings.data;
         } catch (error) {
-            console.warn('Failed to parse outline settings data:', error);
+            console.warn('Failed to parse 剧本设定 data:', error);
             return null;
         }
     }, [latestOutlineSettings]);

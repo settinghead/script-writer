@@ -1,7 +1,7 @@
 import { createJsonPatchTemplate } from './jsonPatchBase';
 
 export const outlineSettingsEditPatchTemplate = createJsonPatchTemplate(
-    'outline_settings_edit_patch',
+    '剧本设定_edit_patch',
     'Outline Settings Editing (JSON Patch)',
     '剧本设定',
     '剧本设定设置',

@@ -4,7 +4,7 @@ export interface ExportableItem {
     id: string;
     name: string;
     content: any;
-    type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | 'outline_settings' | 'chronicles' | 'episode_planning';
+    type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '剧本设定' | 'chronicles' | 'episode_planning';
     defaultSelected: boolean;
 }
 
@@ -58,12 +58,12 @@ export function generateExportableItems(
                 };
                 break;
 
-            case 'outline-settings-display':
+            case '剧本设定-display':
                 item = {
-                    id: 'outline-settings-display',
+                    id: '剧本设定-display',
                     name: '大纲设置',
                     content: component.props.outlineSettings,
-                    type: 'outline_settings',
+                    type: '剧本设定',
                     defaultSelected: true
                 };
                 break;

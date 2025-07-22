@@ -305,9 +305,9 @@ export function useCharactersFromLineage(sourceJsondocId: string | null): {
             }
 
 
-            // Also check for outline_settings (outline settings)
+            // Also check for 剧本设定 (剧本设定)
             const outlineSettingsJsondocs = findParentJsondocsBySchemaType(
-                sourceJsondocId, 'outline_settings',
+                sourceJsondocId, '剧本设定',
                 projectData.lineageGraph,
                 projectData.jsondocs
             );

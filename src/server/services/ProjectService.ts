@@ -47,7 +47,7 @@ export class ProjectService {
                     // Count different types of jsondocs
                     const jsondocCounts = {
                         ideations: jsondocs.filter(a => a.schema_type === 'brainstorm_collection').length,
-                        outline_settings: jsondocs.filter(a => a.schema_type === 'outline_settings').length,
+                        剧本设定: jsondocs.filter(a => a.schema_type === '剧本设定').length,
                         chronicles: jsondocs.filter(a => a.schema_type === 'chronicles').length,
                     };
 
@@ -62,8 +62,8 @@ export class ProjectService {
                         // Determine phase based on latest jsondocs
                         if (jsondocCounts.chronicles > 0) {
                             currentPhase = 'chronicles';
-                        } else if (jsondocCounts.outline_settings > 0) {
-                            currentPhase = 'outline_settings';
+                        } else if (jsondocCounts.剧本设定 > 0) {
+                            currentPhase = '剧本设定';
                         } else {
                             currentPhase = 'brainstorming';
                         }
@@ -88,7 +88,7 @@ export class ProjectService {
                     // Try to get some content for preview
                     const userInput = jsondocs.find(a => a.schema_type === 'brainstorm_idea');
                     const brainstormIdea = jsondocs.find(a => a.schema_type === 'brainstorm_idea');
-                    const outlineTitle = jsondocs.find(a => a.schema_type === 'outline_settings');
+                    const outlineTitle = jsondocs.find(a => a.schema_type === '剧本设定');
 
                     if (outlineTitle) {
                         previewContent = outlineTitle.data.title;
@@ -124,7 +124,7 @@ export class ProjectService {
                         updatedAt: project.updated_at,
                         jsondocCounts: {
                             ideations: 0,
-                            outline_settings: 0,
+                            剧本设定: 0,
                             chronicles: 0,
                         }
                     };

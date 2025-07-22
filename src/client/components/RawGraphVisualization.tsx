@@ -232,7 +232,7 @@ const JsondocNode: React.FC<{
                                 } else if (jsondoc.schema_type === 'brainstorm_idea') {
                                     const title = data.title || '';
                                     preview = title.length > 25 ? `${title.substring(0, 25)}...` : title;
-                                } else if (jsondoc.schema_type === 'outline_settings') {
+                                } else if (jsondoc.schema_type === '剧本设定') {
                                     const outlineTitle = data.title || data.synopsis || '';
                                     preview = outlineTitle.length > 25 ? `${outlineTitle.substring(0, 25)}...` : outlineTitle;
                                 } else if (jsondoc.schema_type === 'json_patch') {

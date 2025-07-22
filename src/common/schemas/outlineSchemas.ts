@@ -4,7 +4,7 @@ import { BaseToolInputSchema } from './common';
 import { MIN_EPISODES, MAX_EPISODES } from '../config/constants';
 
 // ===========================================
-// OUTLINE SETTINGS SCHEMAS
+// 剧本设定 SCHEMAS
 // ===========================================
 
 // Outline Settings Schemas

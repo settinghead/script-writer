@@ -108,7 +108,7 @@ describe('Agent Tool Filtering', () => {
             expect(toolNames).toEqual(['edit_brainstorm_idea']);
         });
 
-        it('should return edit_brainstorm_idea and generate_outline_settings when single brainstorm_idea exists', () => {
+        it('should return edit_brainstorm_idea and generate_剧本设定 when single brainstorm_idea exists', () => {
             const context = createCanonicalContext({
                 canonicalBrainstormIdea: createMockJsondoc('idea-1', 'brainstorm_idea')
             });
@@ -123,13 +123,13 @@ describe('Agent Tool Filtering', () => {
             );
 
             const toolNames = availableTools.map(tool => tool.name).sort();
-            expect(toolNames).toEqual(['edit_brainstorm_idea', 'generate_outline_settings']);
+            expect(toolNames).toEqual(['edit_brainstorm_idea', 'generate_剧本设定']);
         });
 
-        it('should return appropriate tools when outline_settings exists', () => {
+        it('should return appropriate tools when 剧本设定 exists', () => {
             const context = createCanonicalContext({
                 canonicalBrainstormIdea: createMockJsondoc('idea-1', 'brainstorm_idea'),
-                canonicalOutlineSettings: createMockJsondoc('outline-1', 'outline_settings')
+                canonicalOutlineSettings: createMockJsondoc('outline-1', '剧本设定')
             });
 
             const availableTools = computeAvailableToolsFromCanonicalContext(
@@ -144,7 +144,7 @@ describe('Agent Tool Filtering', () => {
             const toolNames = availableTools.map(tool => tool.name).sort();
             expect(toolNames).toEqual([
                 'edit_brainstorm_idea',
-                'edit_outline_settings',
+                'edit_剧本设定',
                 'generate_chronicles'
             ]);
         });
@@ -152,7 +152,7 @@ describe('Agent Tool Filtering', () => {
         it('should return appropriate tools when chronicles exists', () => {
             const context = createCanonicalContext({
                 canonicalBrainstormIdea: createMockJsondoc('idea-1', 'brainstorm_idea'),
-                canonicalOutlineSettings: createMockJsondoc('outline-1', 'outline_settings'),
+                canonicalOutlineSettings: createMockJsondoc('outline-1', '剧本设定'),
                 canonicalChronicles: createMockJsondoc('chronicles-1', 'chronicles')
             });
 
@@ -169,7 +169,7 @@ describe('Agent Tool Filtering', () => {
             expect(toolNames).toEqual([
                 'edit_brainstorm_idea',
                 'edit_chronicles',
-                'edit_outline_settings',
+                'edit_剧本设定',
                 'generate_episode_planning'
             ]);
         });
@@ -177,7 +177,7 @@ describe('Agent Tool Filtering', () => {
         it('should return appropriate tools when episode_planning exists', () => {
             const context = createCanonicalContext({
                 canonicalBrainstormIdea: createMockJsondoc('idea-1', 'brainstorm_idea'),
-                canonicalOutlineSettings: createMockJsondoc('outline-1', 'outline_settings'),
+                canonicalOutlineSettings: createMockJsondoc('outline-1', '剧本设定'),
                 canonicalChronicles: createMockJsondoc('chronicles-1', 'chronicles'),
                 canonicalEpisodePlanning: createMockJsondoc('planning-1', 'episode_planning')
             });
@@ -196,7 +196,7 @@ describe('Agent Tool Filtering', () => {
                 'edit_brainstorm_idea',
                 'edit_chronicles',
                 'edit_episode_planning',
-                'edit_outline_settings',
+                'edit_剧本设定',
                 'generate_episode_synopsis'
             ]);
         });
@@ -204,7 +204,7 @@ describe('Agent Tool Filtering', () => {
         it('should return all edit tools plus generate_episode_synopsis when episode_synopsis exists', () => {
             const context = createCanonicalContext({
                 canonicalBrainstormIdea: createMockJsondoc('idea-1', 'brainstorm_idea'),
-                canonicalOutlineSettings: createMockJsondoc('outline-1', 'outline_settings'),
+                canonicalOutlineSettings: createMockJsondoc('outline-1', '剧本设定'),
                 canonicalChronicles: createMockJsondoc('chronicles-1', 'chronicles'),
                 canonicalEpisodePlanning: createMockJsondoc('planning-1', 'episode_planning'),
                 canonicalEpisodeSynopsisList: [
@@ -226,7 +226,7 @@ describe('Agent Tool Filtering', () => {
                 'edit_brainstorm_idea',
                 'edit_chronicles',
                 'edit_episode_planning',
-                'edit_outline_settings',
+                'edit_剧本设定',
                 'generate_episode_synopsis'
             ]);
         });
@@ -267,10 +267,10 @@ describe('Agent Tool Filtering', () => {
             expect(toolNames).not.toContain('generate_brainstorm_ideas');
         });
 
-        it('should never include generate_outline_settings when outline_settings already exists', () => {
+        it('should never include generate_剧本设定 when 剧本设定 already exists', () => {
             const context = createCanonicalContext({
                 canonicalBrainstormIdea: createMockJsondoc('idea-1', 'brainstorm_idea'),
-                canonicalOutlineSettings: createMockJsondoc('outline-1', 'outline_settings')
+                canonicalOutlineSettings: createMockJsondoc('outline-1', '剧本设定')
             });
 
             const availableTools = computeAvailableToolsFromCanonicalContext(
@@ -283,13 +283,13 @@ describe('Agent Tool Filtering', () => {
             );
 
             const toolNames = availableTools.map(tool => tool.name);
-            expect(toolNames).not.toContain('generate_outline_settings');
+            expect(toolNames).not.toContain('generate_剧本设定');
         });
 
         it('should never include generate_chronicles when chronicles already exists', () => {
             const context = createCanonicalContext({
                 canonicalBrainstormIdea: createMockJsondoc('idea-1', 'brainstorm_idea'),
-                canonicalOutlineSettings: createMockJsondoc('outline-1', 'outline_settings'),
+                canonicalOutlineSettings: createMockJsondoc('outline-1', '剧本设定'),
                 canonicalChronicles: createMockJsondoc('chronicles-1', 'chronicles')
             });
 
@@ -309,7 +309,7 @@ describe('Agent Tool Filtering', () => {
         it('should never include generate_episode_planning when episode_planning already exists', () => {
             const context = createCanonicalContext({
                 canonicalBrainstormIdea: createMockJsondoc('idea-1', 'brainstorm_idea'),
-                canonicalOutlineSettings: createMockJsondoc('outline-1', 'outline_settings'),
+                canonicalOutlineSettings: createMockJsondoc('outline-1', '剧本设定'),
                 canonicalChronicles: createMockJsondoc('chronicles-1', 'chronicles'),
                 canonicalEpisodePlanning: createMockJsondoc('planning-1', 'episode_planning')
             });
@@ -347,7 +347,7 @@ describe('Agent Tool Filtering', () => {
             expect(toolNames).not.toContain('generate_brainstorm_ideas');
         });
 
-        it('should handle edge case: brainstorm_idea exists but not outline_settings (manual creation)', () => {
+        it('should handle edge case: brainstorm_idea exists but not 剧本设定 (manual creation)', () => {
             const context = createCanonicalContext({
                 canonicalBrainstormIdea: createMockJsondoc('idea-1', 'brainstorm_idea', 'user_input')
             });
@@ -362,13 +362,13 @@ describe('Agent Tool Filtering', () => {
             );
 
             const toolNames = availableTools.map(tool => tool.name).sort();
-            expect(toolNames).toEqual(['edit_brainstorm_idea', 'generate_outline_settings']);
+            expect(toolNames).toEqual(['edit_brainstorm_idea', 'generate_剧本设定']);
         });
 
         it('should always allow generate_episode_synopsis when episode_planning exists (can generate multiple groups)', () => {
             const context = createCanonicalContext({
                 canonicalBrainstormIdea: createMockJsondoc('idea-1', 'brainstorm_idea'),
-                canonicalOutlineSettings: createMockJsondoc('outline-1', 'outline_settings'),
+                canonicalOutlineSettings: createMockJsondoc('outline-1', '剧本设定'),
                 canonicalChronicles: createMockJsondoc('chronicles-1', 'chronicles'),
                 canonicalEpisodePlanning: createMockJsondoc('planning-1', 'episode_planning'),
                 canonicalEpisodeSynopsisList: [

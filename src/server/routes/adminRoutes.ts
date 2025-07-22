@@ -64,17 +64,17 @@ export function createAdminRoutes(
                         outputSchema: () => Promise.resolve(JsonPatchOperationsSchema)
                     }
                 },
-                'generate_outline_settings': {
-                    templateName: 'outline_settings',
-                    outputJsondocType: 'outline_settings',
+                'generate_剧本设定': {
+                    templateName: '剧本设定',
+                    outputJsondocType: '剧本设定',
                     schemas: {
                         inputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.OutlineSettingsInputSchema),
                         outputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.OutlineSettingsOutputSchema)
                     }
                 },
-                'edit_outline_settings': {
-                    templateName: 'outline_settings_edit_patch',
-                    outputJsondocType: 'outline_settings',
+                'edit_剧本设定': {
+                    templateName: '剧本设定_edit_patch',
+                    outputJsondocType: '剧本设定',
                     schemas: {
                         inputSchema: () => import('@/common/schemas/transforms.js').then(m => m.OutlineSettingsEditInputSchema),
                         outputSchema: () => Promise.resolve(JsonPatchOperationsSchema)
@@ -190,8 +190,8 @@ export function createAdminRoutes(
             const templates = [
                 'brainstorming',
                 'brainstorm_edit_patch',
-                'outline_settings',
-                'outline_settings_edit_patch',
+                '剧本设定',
+                '剧本设定_edit_patch',
                 'chronicles',
                 'chronicles_edit_patch',
                 'episode_planning',
@@ -251,13 +251,13 @@ export function createAdminRoutes(
                     category: '内容编辑'
                 },
                 {
-                    value: 'generate_outline_settings',
+                    value: 'generate_剧本设定',
                     label: '生成剧本设定',
                     description: '基于故事创意生成角色、背景和商业设定',
                     category: '设定生成'
                 },
                 {
-                    value: 'edit_outline_settings',
+                    value: 'edit_剧本设定',
                     label: '编辑剧本设定',
                     description: '修改现有的剧本设定内容',
                     category: '内容编辑'

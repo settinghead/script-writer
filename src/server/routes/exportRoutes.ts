@@ -27,7 +27,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         id: string;
         name: string;
         content: any;
-        type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | 'outline_settings' | 'chronicles' | 'episode_planning';
+        type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '剧本设定' | 'chronicles' | 'episode_planning';
     }
 
     /**
@@ -139,13 +139,13 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
             });
         }
 
-        // Add outline settings if exists
+        // Add 剧本设定 if exists
         if (canonicalContext.canonicalOutlineSettings) {
             items.push({
-                id: 'outline-settings-display',
+                id: '剧本设定-display',
                 name: '大纲设置',
                 content: canonicalContext.canonicalOutlineSettings,
-                type: 'outline_settings'
+                type: '剧本设定'
             });
         }
 
@@ -184,7 +184,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                     return formatIdeaCollection(item.content);
                 case 'chosen_idea':
                     return formatChosenIdea(item.content);
-                case 'outline_settings':
+                case '剧本设定':
                     return formatOutlineSettings(item.content);
                 case 'chronicles':
                     return formatChronicles(item.content);

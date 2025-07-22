@@ -154,8 +154,8 @@ Jsondocs also have `schema_type` that defines their data structure:
 - **`brainstorm_collection`** - Multiple story ideas grouped together
 - **`brainstorm_idea`** - Individual story idea
 - **`brainstorm_input_params`** - Parameters for brainstorm generation
-- **`outline_settings`** - Detailed story structure with characters and plot
-- **`outline_settings_input`** - Input parameters for outline generation
+- **`剧本设定`** - Detailed story structure with characters and plot
+- **`剧本设定_input`** - Input parameters for outline generation
 - **`chronicles`** - Chronological story timeline
 - **`chronicles_input`** - Input parameters for chronicles generation
 
@@ -175,7 +175,7 @@ export type TypedJsondoc =
     | JsondocWithData<'brainstorm_collection', 'v1', BrainstormIdeaCollectionV1>
     | JsondocWithData<'brainstorm_idea', 'v1', BrainstormIdeaV1>
     | JsondocWithData<'brainstorm_input_params', 'v1', BrainstormParamsV1>
-    | JsondocWithData<'outline_settings', 'v1', OutlineSettingsV1>
+    | JsondocWithData<'剧本设定', 'v1', OutlineSettingsV1>
     | JsondocWithData<'chronicles', 'v1', ChroniclesV1>
     // ... more types
 
@@ -592,7 +592,7 @@ User Request → Agent Analysis → Context Enrichment → Canonical Context Ana
 - **Dependency Tracking** - Understand cascading effects of changes
 
 **Dual-Type Architecture**:
-- **Schema Types** (`schema_type`) - Define data structure (e.g., `brainstorm_collection`, `outline_settings`)
+- **Schema Types** (`schema_type`) - Define data structure (e.g., `brainstorm_collection`, `剧本设定`)
 - **Origin Types** (`origin_type`) - Define creation source (`ai_generated`, `user_input`, `decomposed_from_collection`)
 - **Editability Logic** - Use origin_type to determine edit permissions and UI behavior
 - **Versioned Validation** - All transforms validated against Zod schemas via JsondocSchemaRegistry
@@ -931,7 +931,7 @@ The framework supports two distinct execution modes for AI-powered content gener
 
 **Example Templates**:
 - `brainstorming` - Generates complete story idea collections
-- `outline_settings` - Creates full character and story foundation
+- `剧本设定` - Creates full character and story foundation
 - `chronicles` - Produces complete chronological timelines
 
 **Execution Flow**:
@@ -1868,8 +1868,8 @@ export const JsondocSchemaRegistry = {
   'brainstorm_input_params': BrainstormToolInputSchema,
 
   // Outline schemas
-  'outline_settings_input': OutlineSettingsInputSchema,
-  'outline_settings': OutlineSettingsOutputSchema,
+  '剧本设定_input': OutlineSettingsInputSchema,
+  '剧本设定': OutlineSettingsOutputSchema,
   
   // Chronicles schemas
   'chronicles_input': ChroniclesInputSchema,
@@ -1878,11 +1878,11 @@ export const JsondocSchemaRegistry = {
 
 // Transform schemas with regex path patterns
 export const TransformRegistry = {
-  'outline_settings_generation': {
-    pathPattern: '^\\$\\[outline_settings\\]$',
+  '剧本设定_generation': {
+    pathPattern: '^\\$\\[剧本设定\\]$',
     inputSchema: OutlineSettingsInputSchema,
     outputSchema: OutlineSettingsOutputSchema,
-    outputType: 'outline_settings'
+    outputType: '剧本设定'
   },
   'brainstorm_idea_edit': {
     pathPattern: '^\\$\\.ideas\\[\\d+\\]$',
@@ -3738,18 +3738,18 @@ availableTools = ['generate_brainstorm_ideas']
 availableTools = ['edit_brainstorm_idea']
 ```
 
-**Has brainstorm_idea** → `edit_brainstorm_idea` + `generate_outline_settings`
+**Has brainstorm_idea** → `edit_brainstorm_idea` + `generate_剧本设定`
 ```typescript
 // Single idea exists, can edit it or proceed to next stage
-availableTools = ['edit_brainstorm_idea', 'generate_outline_settings']
+availableTools = ['edit_brainstorm_idea', 'generate_剧本设定']
 ```
 
-**Has outline_settings** → Edit tools for previous stages + `generate_chronicles`
+**Has 剧本设定** → Edit tools for previous stages + `generate_chronicles`
 ```typescript
 // Outline exists, can edit previous work or proceed
 availableTools = [
   'edit_brainstorm_idea', 
-  'edit_outline_settings', 
+  'edit_剧本设定', 
   'generate_chronicles'
 ]
 ```
@@ -3759,7 +3759,7 @@ availableTools = [
 // Chronicles exist, can edit previous work or proceed
 availableTools = [
   'edit_brainstorm_idea',
-  'edit_outline_settings', 
+  'edit_剧本设定', 
   'edit_chronicles',
   'generate_episode_planning'
 ]
@@ -3770,7 +3770,7 @@ availableTools = [
 // Episode planning exists, can edit any stage or generate episodes
 availableTools = [
   'edit_brainstorm_idea',
-  'edit_outline_settings',
+  'edit_剧本设定',
   'edit_chronicles', 
   'edit_episode_planning',
   'generate_episode_synopsis'
@@ -3905,7 +3905,7 @@ const tools = computeAvailableToolsFromCanonicalContext(context, ...);
 
 #### **Mid-Workflow Scenario**
 ```typescript
-// Project has brainstorm idea and outline settings
+// Project has brainstorm idea and 剧本设定
 const context = { 
   canonicalBrainstormIdea: mockIdea,
   canonicalOutlineSettings: mockSettings,
@@ -3913,7 +3913,7 @@ const context = {
   ...
 };
 const tools = computeAvailableToolsFromCanonicalContext(context, ...);
-// Result: ['edit_brainstorm_idea', 'edit_outline_settings', 'generate_chronicles']
+// Result: ['edit_brainstorm_idea', 'edit_剧本设定', 'generate_chronicles']
 
 // User request: "基于现有设定生成时间顺序大纲"
 // Agent sees: Edit tools for existing content + chronicles generation

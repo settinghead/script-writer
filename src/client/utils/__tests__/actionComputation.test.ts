@@ -47,11 +47,11 @@ describe('actionComputation', () => {
         });
     });
 
-    describe('computeActionsFromLineage with multiple outline settings', () => {
+    describe('computeActionsFromLineage with multiple 剧本设定', () => {
         it('should detect latest leaf outline and add chronicles action', () => {
             const fakeJsondocs = [
-                { id: 'outline1', schema_type: 'outline_settings', origin_type: 'ai_generated', created_at: '2024-01-01', project_id: 'test-project', schema_version: 'v1', data: '{}' },
-                { id: 'outline2', schema_type: 'outline_settings', origin_type: 'user_input', created_at: '2024-01-02', project_id: 'test-project', schema_version: 'v1', data: '{}' }
+                { id: 'outline1', schema_type: '剧本设定', origin_type: 'ai_generated', created_at: '2024-01-01', project_id: 'test-project', schema_version: 'v1', data: '{}' },
+                { id: 'outline2', schema_type: '剧本设定', origin_type: 'user_input', created_at: '2024-01-02', project_id: 'test-project', schema_version: 'v1', data: '{}' }
             ] as any[];
             const fakeLineageGraph = {
                 nodes: new Map([
@@ -77,9 +77,9 @@ describe('actionComputation', () => {
 
     it('should prefer user_input leaf over newer ai leaf in branches', () => {
         const fakeJsondocs = [
-            { id: 'outline1', schema_type: 'outline_settings', origin_type: 'ai_generated', created_at: '2024-01-01', project_id: 'test-project', schema_version: 'v1', data: '{}' },
-            { id: 'outline2', schema_type: 'outline_settings', origin_type: 'user_input', created_at: '2024-01-02', project_id: 'test-project', schema_version: 'v1', data: '{}' },
-            { id: 'outline3', schema_type: 'outline_settings', origin_type: 'ai_generated', created_at: '2024-01-03', project_id: 'test-project', schema_version: 'v1', data: '{}' }
+            { id: 'outline1', schema_type: '剧本设定', origin_type: 'ai_generated', created_at: '2024-01-01', project_id: 'test-project', schema_version: 'v1', data: '{}' },
+            { id: 'outline2', schema_type: '剧本设定', origin_type: 'user_input', created_at: '2024-01-02', project_id: 'test-project', schema_version: 'v1', data: '{}' },
+            { id: 'outline3', schema_type: '剧本设定', origin_type: 'ai_generated', created_at: '2024-01-03', project_id: 'test-project', schema_version: 'v1', data: '{}' }
         ] as any[];
         const fakeLineageGraph = {
             nodes: new Map([
@@ -116,7 +116,7 @@ describe('actionComputation', () => {
             },
             {
                 id: 'outline1',
-                schema_type: 'outline_settings',
+                schema_type: '剧本设定',
                 origin_type: 'ai_generated',
                 created_at: '2024-01-02',
                 project_id: 'test-project',

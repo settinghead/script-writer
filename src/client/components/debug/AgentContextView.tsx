@@ -48,8 +48,8 @@ interface AgentContextViewProps {
 const ALL_AVAILABLE_TOOLS = [
     'generate_brainstorm_ideas',
     'edit_brainstorm_idea',
-    'generate_outline_settings',
-    'edit_outline_settings',
+    'generate_剧本设定',
+    'edit_剧本设定',
     'generate_chronicles',
     'edit_chronicles',
     'generate_episode_planning',
@@ -80,7 +80,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
     }
 
     if (context.canonicalBrainstormIdea && !hasOutlineSettings) {
-        availableTools.push('generate_outline_settings');
+        availableTools.push('generate_剧本设定');
     }
 
     if (hasOutlineSettings) {
@@ -88,7 +88,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
         if (context.canonicalBrainstormIdea) {
             availableTools.push('edit_brainstorm_idea');
         }
-        availableTools.push('edit_outline_settings');
+        availableTools.push('edit_剧本设定');
 
         // Add next generation tool
         if (!hasChronicles) {
@@ -102,7 +102,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
             availableTools.push('edit_brainstorm_idea');
         }
         if (hasOutlineSettings) {
-            availableTools.push('edit_outline_settings');
+            availableTools.push('edit_剧本设定');
         }
         availableTools.push('edit_chronicles');
 
@@ -118,7 +118,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
             availableTools.push('edit_brainstorm_idea');
         }
         if (hasOutlineSettings) {
-            availableTools.push('edit_outline_settings');
+            availableTools.push('edit_剧本设定');
         }
         if (hasChronicles) {
             availableTools.push('edit_chronicles');

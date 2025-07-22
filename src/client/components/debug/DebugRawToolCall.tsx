@@ -54,12 +54,12 @@ const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
             return {
                 otherRequirements: '生成有创意的故事想法，快节奏，高颜值主角'
             };
-        case 'generate_outline_settings':
+        case 'generate_剧本设定':
             return {
                 title: '示例短剧标题',
                 requirements: '现代都市甜宠，去脸谱化，避免刻板印象'
             };
-        case 'edit_outline_settings':
+        case 'edit_剧本设定':
             return {
                 editRequirements: '调整剧本设定，优化角色设定和故事背景'
             };
@@ -99,16 +99,16 @@ const getExpectedJsondocTypes = (toolName: string): string[] => {
             return ['brainstorm_collection', 'brainstorm_idea'];
         case 'generate_brainstorm_ideas':
             return ['brainstorm_input_params'];
-        case 'generate_outline_settings':
+        case 'generate_剧本设定':
             return ['brainstorm_collection', 'brainstorm_idea'];
-        case 'edit_outline_settings':
-            return ['outline_settings'];
+        case 'edit_剧本设定':
+            return ['剧本设定'];
         case 'generate_chronicles':
-            return ['outline_settings', 'brainstorm_collection'];
+            return ['剧本设定', 'brainstorm_collection'];
         case 'edit_chronicles':
             return ['chronicles'];
         case 'generate_episode_planning':
-            return ['chronicles', 'outline_settings'];
+            return ['chronicles', '剧本设定'];
         case 'edit_episode_planning':
             return ['episode_planning'];
         case 'generate_episode_synopsis':

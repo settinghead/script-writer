@@ -441,7 +441,7 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         'brainstorm-input-editor': 1,
         'idea-collection': 2,
         'single-idea-editor': 3,
-        'outline-settings-display': 4,
+        '剧本设定-display': 4,
         'chronicles-display': 5,
         'episode-planning-display': 6,
         'episode-synopsis-display': 7
@@ -509,7 +509,7 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
     }
 
     if (context.outlineSettings) {
-        // Determine if the outline settings jsondoc is actually editable
+        // Determine if the 剧本设定 jsondoc is actually editable
         const isOutlineLeafNode = isLeafNode(context.outlineSettings.id, context.transformInputs);
         const isOutlineEditable = !context.hasActiveTransforms &&
             isOutlineLeafNode &&
@@ -517,14 +517,14 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
 
 
         components.push({
-            id: 'outline-settings-display',
-            component: getComponentById('outline-settings-display'),
+            id: '剧本设定-display',
+            component: getComponentById('剧本设定-display'),
             mode: context.hasActiveTransforms ? 'readonly' : 'editable',
             props: {
                 outlineSettings: context.outlineSettings,
                 isEditable: isOutlineEditable
             },
-            priority: componentOrder['outline-settings-display']
+            priority: componentOrder['剧本设定-display']
         });
     }
 
@@ -650,7 +650,7 @@ export function computeAgentContext(
 
     // Outline settings
     if (context.outlineSettings) {
-        agentContext.outline_settings = getFullData(context.outlineSettings);
+        agentContext.剧本设定 = getFullData(context.outlineSettings);
     }
 
     // Chronicles

@@ -474,7 +474,7 @@ export class ParticleExtractor {
     
     private registerExtractors() {
         this.extractors.set('brainstorm_collection', this.extractBrainstormParticles);
-        this.extractors.set('outline_settings', this.extractOutlineParticles);
+        this.extractors.set('剧本设定', this.extractOutlineParticles);
         this.extractors.set('chronicles', this.extractChroniclesParticles);
     }
     

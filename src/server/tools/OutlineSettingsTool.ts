@@ -107,7 +107,7 @@ interface OutlineSettingsToolResult {
 export type OutlineSettingsEditToolResult = z.infer<typeof OutlineSettingsEditToolResultSchema>;
 
 /**
- * Extract source outline settings data using canonical jsondoc logic
+ * Extract source 剧本设定 data using canonical jsondoc logic
  */
 async function extractSourceOutlineSettingsData(
     params: OutlineSettingsEditInput,
@@ -146,17 +146,17 @@ async function extractSourceOutlineSettingsData(
         transformOutputs
     );
 
-    // Get the canonical outline settings
+    // Get the canonical 剧本设定
     const canonicalOutlineSettings = canonicalContext.canonicalOutlineSettings;
 
     if (!canonicalOutlineSettings) {
-        throw new Error('No canonical outline settings found in project');
+        throw new Error('No canonical 剧本设定 found in project');
     }
 
     // Validate user access
     const hasAccess = await jsondocRepo.userHasProjectAccess(userId, canonicalOutlineSettings.project_id);
     if (!hasAccess) {
-        throw new Error(`Access denied to canonical outline settings ${canonicalOutlineSettings.id}`);
+        throw new Error(`Access denied to canonical 剧本设定 ${canonicalOutlineSettings.id}`);
     }
 
     const originalSettings = typeof canonicalOutlineSettings.data === 'string'
@@ -176,7 +176,7 @@ async function extractSourceOutlineSettingsData(
             throw new Error(`Access denied to jsondoc ${jsondocRef.jsondocId}`);
         }
 
-        // Only add as additional context if it's not the canonical outline settings
+        // Only add as additional context if it's not the canonical 剧本设定
         if (sourceJsondoc.id !== canonicalOutlineSettings.id) {
             additionalContexts.push({
                 description: jsondocRef.description,
@@ -194,7 +194,7 @@ async function extractSourceOutlineSettingsData(
 }
 
 /**
- * Factory function that creates an outline settings edit tool definition using JSON patch
+ * Factory function that creates an 剧本设定 edit tool definition using JSON patch
  */
 export function createOutlineSettingsEditToolDefinition(
     transformRepo: TransformRepository,
@@ -210,7 +210,7 @@ export function createOutlineSettingsEditToolDefinition(
     }
 ): StreamingToolDefinition<OutlineSettingsEditInput, OutlineSettingsEditToolResult> {
     return {
-        name: 'edit_outline_settings',
+        name: 'edit_剧本设定',
         description: '编辑和改进现有剧本设定设置。适用场景：用户对现有剧本设定有具体的修改要求或改进建议，如修改角色设定、调整卖点、更新故事背景等。使用JSON Patch格式进行精确修改，只改变需要改变的部分。系统会自动处理相关的上下文信息。',
         inputSchema: OutlineSettingsEditInputSchema,
         outputSchema: OutlineSettingsEditToolResultSchema,
@@ -218,7 +218,7 @@ export function createOutlineSettingsEditToolDefinition(
             const sourceJsondocRef = params.jsondocs[0];
             console.log(`[OutlineSettingsEditTool] Starting JSON patch edit for jsondoc ${sourceJsondocRef.jsondocId}`);
 
-            // Extract source outline settings data for context
+            // Extract source 剧本设定 data for context
             const { originalSettings, additionalContexts, targetPlatform, storyGenre } = await extractSourceOutlineSettingsData(params, jsondocRepo, userId, projectId);
 
             // Determine output jsondoc type
@@ -227,11 +227,11 @@ export function createOutlineSettingsEditToolDefinition(
                 throw new Error('Source jsondoc not found');
             }
 
-            const outputJsondocType: TypedJsondoc['schema_type'] = 'outline_settings';
+            const outputJsondocType: TypedJsondoc['schema_type'] = '剧本设定';
 
             // Create config for JSON patch generation using patch template
             const config: StreamingTransformConfig<OutlineSettingsEditInput, any> = {
-                templateName: 'outline_settings_edit_patch',
+                templateName: '剧本设定_edit_patch',
                 inputSchema: OutlineSettingsEditInputSchema,
                 outputSchema: JsonPatchOperationsSchema, // RFC6902 JSON patch array schema
                 prepareTemplateVariables: async (input) => {
@@ -258,7 +258,7 @@ export function createOutlineSettingsEditToolDefinition(
                         originalJsondoc: originalSettings
                     },
                     transformMetadata: {
-                        toolName: 'edit_outline_settings',
+                        toolName: 'edit_剧本设定',
                         source_jsondoc_id: sourceJsondocRef.jsondocId,
                         edit_requirements: params.editRequirements,
                         original_settings: originalSettings,
@@ -286,7 +286,7 @@ export function createOutlineSettingsEditToolDefinition(
                     finishReason: result.finishReason,
                     patchContent: patchContent,
                     patchCount: patchContent.length,
-                    message: `Created ${patchContent.length} patches for your outline settings. The changes will be applied after you approve them in the review modal.`
+                    message: `Created ${patchContent.length} patches for your 剧本设定. The changes will be applied after you approve them in the review modal.`
                 };
 
             } catch (error) {
@@ -298,7 +298,7 @@ export function createOutlineSettingsEditToolDefinition(
 }
 
 /**
- * Factory function that creates an outline settings generation tool definition
+ * Factory function that creates an 剧本设定 generation tool definition
  */
 export function createOutlineSettingsToolDefinition(
     transformRepo: TransformRepository,
@@ -314,12 +314,12 @@ export function createOutlineSettingsToolDefinition(
     }
 ): StreamingToolDefinition<OutlineSettingsInput, OutlineSettingsToolResult> {
     return {
-        name: 'generate_outline_settings',
+        name: 'generate_剧本设定',
         description: '生成剧本设定（人物角色、故事背景、商业定位等），为后续时间顺序大纲奠定基础。适用场景：用户已有相关创作内容，需要先确定基础设定再进行时序发展。系统会自动处理所有相关的上下文信息作为参考资料。',
         inputSchema: OutlineSettingsInputSchema,
         outputSchema: OutlineSettingsToolResultSchema,
         execute: async (params: OutlineSettingsInput, { toolCallId }): Promise<OutlineSettingsToolResult> => {
-            console.log(`[OutlineSettingsTool] Starting streaming outline settings generation with ${params.jsondocs.length} jsondocs`);
+            console.log(`[OutlineSettingsTool] Starting streaming 剧本设定 generation with ${params.jsondocs.length} jsondocs`);
 
             // Use shared jsondoc processor
             const jsondocProcessor = createJsondocProcessor(jsondocRepo, userId);
@@ -329,7 +329,7 @@ export function createOutlineSettingsToolDefinition(
 
             // Create streaming config with all extracted data
             const config: StreamingTransformConfig<OutlineSettingsInput, OutlineSettingsOutput> = {
-                templateName: 'outline_settings',
+                templateName: '剧本设定',
                 inputSchema: OutlineSettingsInputSchema,
                 outputSchema: OutlineSettingsOutputSchema
                 // No custom prepareTemplateVariables - use default schema-driven extraction
@@ -342,9 +342,9 @@ export function createOutlineSettingsToolDefinition(
                 userId,
                 transformRepo,
                 jsondocRepo,
-                outputJsondocType: 'outline_settings',
+                outputJsondocType: '剧本设定',
                 transformMetadata: {
-                    toolName: 'generate_outline_settings',
+                    toolName: 'generate_剧本设定',
                     ...jsondocMetadata, // Include all jsondoc IDs with their schema types as keys
                     title: params.title,
                     requirements: params.requirements
@@ -357,7 +357,7 @@ export function createOutlineSettingsToolDefinition(
                 maxTokens: cachingOptions?.maxTokens || 4000  // Set default max tokens to prevent truncation
             });
 
-            console.log(`[OutlineSettingsTool] Successfully completed streaming outline settings generation with jsondoc ${result.outputJsondocId}`);
+            console.log(`[OutlineSettingsTool] Successfully completed streaming 剧本设定 generation with jsondoc ${result.outputJsondocId}`);
 
             return {
                 outputJsondocId: result.outputJsondocId,

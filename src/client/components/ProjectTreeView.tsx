@@ -126,7 +126,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         // For other sections, use the standard mapping
         const navigationTargetToSection: Record<string, CurrentSection> = {
             '#ideas': 'ideas',
-            '#outline-settings': 'outline-settings',
+            '#剧本设定': '剧本设定',
             '#chronicles': 'chronicles',
             '#episode-planning': 'episode-planning',
             '#episode-synopsis': 'episode-synopsis'
@@ -157,7 +157,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             hasBrainstormInput: !!canonicalContext.canonicalBrainstormInput,
             // Check for editable brainstorm idea (user_input origin type)
             hasEditableBrainstormIdea: !!(canonicalContext.canonicalBrainstormIdea && canonicalContext.canonicalBrainstormIdea.origin_type === 'user_input'),
-            // Check for outline settings
+            // Check for 剧本设定
             hasOutlineSettings: !!canonicalContext.canonicalOutlineSettings,
             // Check for chronicles
             hasChronicles: !!canonicalContext.canonicalChronicles,
@@ -298,12 +298,12 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             sections.push(ideationSection);
         }
 
-        // 3. OUTLINE SETTINGS SECTION - only show if outline settings jsondocs exist
+        // 3. 剧本设定 SECTION - only show if 剧本设定 jsondocs exist
         if (jsondocChecks.hasOutlineSettings) {
-            const outlineSettingsHighlighted = shouldHighlightNode('#outline-settings');
+            const outlineSettingsHighlighted = shouldHighlightNode('#剧本设定');
 
             const outlineSettingsSection: ProjectTreeNode = {
-                key: 'outline-settings-section',
+                key: '剧本设定-section',
                 title: (
                     <Space style={{
                         padding: outlineSettingsHighlighted ? '4px 8px' : '0',
@@ -338,7 +338,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                     filter: outlineSettingsHighlighted ? 'drop-shadow(0 0 4px rgba(250, 173, 20, 0.6))' : 'none'
                 }} />,
                 selectable: true,
-                navigationTarget: '#outline-settings'
+                navigationTarget: '#剧本设定'
             };
 
             sections.push(outlineSettingsSection);
@@ -558,7 +558,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                 const sectionMapping: Record<string, string> = {
                     'ideas': 'ideas',
                     'ideation-edit': 'ideation-edit',
-                    'outline-settings': 'outline-settings',
+                    '剧本设定': '剧本设定',
                     'chronicles': 'chronicles',
                     'episode-planning': 'episode-planning',
                     'episode-synopsis': 'episode-synopsis'
