@@ -211,17 +211,14 @@ async function extractSourceIdeaData(
             body: sourceData.body
         };
 
+        // Extract platform and genre from metadata if available, but don't require them
+        // These fields aren't essential for brainstorm editing functionality
         if (sourceJsondoc.metadata) {
-            if (!sourceJsondoc.metadata.platform) {
-                throw new Error(`Missing platform in brainstorm_idea jsondoc metadata ${sourceJsondoc.id}. metadata: ${JSON.stringify(sourceJsondoc.metadata, null, 2)}`);
-            }
-            if (!sourceJsondoc.metadata.genre) {
-                throw new Error(`Missing genre in brainstorm_idea jsondoc metadata ${sourceJsondoc.id}. metadata: ${JSON.stringify(sourceJsondoc.metadata, null, 2)}`);
-            }
-            targetPlatform = sourceJsondoc.metadata.platform;
-            storyGenre = sourceJsondoc.metadata.genre;
+            targetPlatform = sourceJsondoc.metadata.platform || 'N/A';
+            storyGenre = sourceJsondoc.metadata.genre || 'N/A';
         } else {
-            throw new Error(`Missing metadata in brainstorm_idea jsondoc ${sourceJsondoc.id}. jsondoc: ${JSON.stringify(sourceJsondoc, null, 2)}`);
+            targetPlatform = 'N/A';
+            storyGenre = 'N/A';
         }
         console.log(`[extractSourceIdeaData] Successfully extracted brainstorm_idea:`, { originalIdea, targetPlatform, storyGenre });
     } else if (sourceJsondoc.origin_type === 'user_input') {

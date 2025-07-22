@@ -39,42 +39,8 @@ export class ParticleExtractor {
     }
 
     private registerEmbeddingContentExtractors() {
-        // Register custom embedding content extractors for specific particle types
-        // For brainstorm ideas, use title + body instead of YAML
-        this.embeddingContentExtractors.set('brainstorm_idea', (content: any) => {
-            return `${content.title || ''}\n${content.body || ''}`.trim();
-        });
-
-        // For characters, use name + description instead of YAML
-        this.embeddingContentExtractors.set('character', (content: any) => {
-            return `${content.name || ''} - ${content.description || ''}`.trim();
-        });
-
-        // For brainstorm input params, use structured text instead of YAML
-        this.embeddingContentExtractors.set('brainstorm_input_params', (content: any) => {
-            const parts = [];
-            if (content.platform) parts.push(`平台: ${content.platform}`);
-            if (content.genre) parts.push(`类型: ${content.genre}`);
-            if (content.other_requirements) parts.push(`需求: ${content.other_requirements}`);
-            if (content.numberOfIdeas) parts.push(`创意数量: ${content.numberOfIdeas}`);
-            return parts.join('\n');
-        });
-
-        // For stages, use title + synopsis instead of YAML
-        this.embeddingContentExtractors.set('stage', (content: any) => {
-            return `${content.title || ''}\n${content.stageSynopsis || ''}`.trim();
-        });
-
-        // For episode synopsis, use title + main plot + emotional climax
-        this.embeddingContentExtractors.set('episode', (content: any) => {
-            const parts = [];
-            if (content.title) parts.push(`标题: ${content.title}`);
-            if (content.openingHook) parts.push(`开场钩子: ${content.openingHook}`);
-            if (content.mainPlot) parts.push(`主要剧情: ${content.mainPlot}`);
-            if (content.emotionalClimax) parts.push(`情感高潮: ${content.emotionalClimax}`);
-            if (content.cliffhanger) parts.push(`结尾悬念: ${content.cliffhanger}`);
-            return parts.join('\n');
-        });
+        // Keep this method for future extensibility, but start with no special cases
+        // The default YAML format with metadata context should handle most cases well
     }
 
     async extractParticles(jsondoc: TypedJsondoc): Promise<ParticleData[]> {
@@ -90,59 +56,84 @@ export class ParticleExtractor {
     /**
      * Generate embedding content for a particle.
      * Uses custom extractor if available, otherwise defaults to YAML format.
+     * NEW: Includes metadata context for better search relevance.
      */
-    private generateEmbeddingContent(particleType: string, content: any, jsondoc: TypedJsondoc): string {
+    private generateEmbeddingContent(particleType: string, content: any, jsondoc: TypedJsondoc, particlePath?: string): string {
+        // Generate the base content using custom extractor or YAML
+        let baseContent: string;
         const customExtractor = this.embeddingContentExtractors.get(particleType);
         if (customExtractor) {
-            return customExtractor(content, jsondoc);
+            baseContent = customExtractor(content, jsondoc);
+        } else {
+            // Default: use YAML format for the underlying content
+            try {
+                baseContent = dump(content, {
+                    indent: 2,
+                    lineWidth: 120,
+                    noRefs: true,
+                    sortKeys: false
+                }).trim();
+            } catch (error) {
+                console.warn(`Failed to format content as YAML for particle type ${particleType}, falling back to JSON:`, error);
+                baseContent = JSON.stringify(content, null, 2);
+            }
         }
 
-        // Default: use YAML format for the underlying content
-        try {
-            return dump(content, {
-                indent: 2,
-                lineWidth: 120,
-                noRefs: true,
-                sortKeys: false
-            }).trim();
-        } catch (error) {
-            console.warn(`Failed to format content as YAML for particle type ${particleType}, falling back to JSON:`, error);
-            return JSON.stringify(content, null, 2);
+        // Build minimal metadata context: [schema_type], [comma-separated-path-components]
+        let contextPrefix = '';
+
+        if (jsondoc.schema_type) {
+            contextPrefix = jsondoc.schema_type;
+        }
+
+        // Extract path components from particlePath (e.g., "$.characters[7]" -> "characters, 7")
+        if (particlePath && particlePath !== '$') {
+            const pathComponents: string[] = [];
+
+            // Parse JSONPath to extract meaningful components
+            // Examples: 
+            // "$.characters[0]" -> "characters, 0"
+            // "$.selling_points[1]" -> "selling_points, 1" 
+            // "$.setting.key_scenes[2]" -> "setting, key_scenes, 2"
+            const pathMatch = particlePath.match(/^\$\.(.+)$/);
+            if (pathMatch) {
+                const pathPart = pathMatch[1];
+                // Split by dots and extract array indices
+                const parts = pathPart.split('.');
+                for (const part of parts) {
+                    const arrayMatch = part.match(/^([^[]+)\[(\d+)\]$/);
+                    if (arrayMatch) {
+                        pathComponents.push(arrayMatch[1], arrayMatch[2]);
+                    } else {
+                        pathComponents.push(part);
+                    }
+                }
+            }
+
+            if (pathComponents.length > 0) {
+                contextPrefix += ', ' + pathComponents.join(', ');
+            }
+        }
+
+        // Combine context and content
+        if (contextPrefix) {
+            return `${contextPrefix}\n\n${baseContent}`;
+        } else {
+            return baseContent;
         }
     }
 
     /**
      * Generate a deterministic hash-based ID for a particle
-     * This combines jsondoc content, particle path, type, and content to create a unique identifier
+     * Uses only stable identifiers (jsondoc_id + path + type) to ensure particles 
+     * are unique by (jsondoc, path) and don't change when content is updated
      */
     private generateParticleId(jsondoc: TypedJsondoc, path: string, type: string, content: any): string {
-        // Create a safe serialization function that handles circular references
-        const safeStringify = (obj: any): string => {
-            const seen = new WeakSet();
-            return JSON.stringify(obj, (key, value) => {
-                if (typeof value === 'object' && value !== null) {
-                    if (seen.has(value)) {
-                        return '[Circular]';
-                    }
-                    seen.add(value);
-                }
-                return value;
-            });
-        };
+        // Use only stable identifiers that don't change when content is updated
+        const stableInput = `${jsondoc.id}|${path}|${type}`;
 
-        const hashInput = {
-            jsondoc_id: jsondoc.id,
-            jsondoc_schema_type: jsondoc.schema_type,
-            jsondoc_schema_version: jsondoc.schema_version,
-            jsondoc_data: jsondoc.data,
-            particle_path: path,
-            particle_type: type,
-            particle_content: content
-        };
-
-        // Create a deterministic hash from the input using safe serialization
-        const hashInputString = safeStringify(hashInput);
-        const hash = createHash('sha256').update(hashInputString).digest('hex');
+        // Create a deterministic hash from the stable input
+        const hash = createHash('sha256').update(stableInput).digest('hex');
         const particleId = hash.substring(0, 16); // Use first 16 chars for readability
 
         return particleId;
@@ -159,7 +150,7 @@ export class ParticleExtractor {
 
                 const title = idea.title || `创意 ${i + 1}`;
                 const content = { title: idea.title, body: idea.body };
-                const contentText = this.generateEmbeddingContent('brainstorm_idea', content, jsondoc);
+                const contentText = this.generateEmbeddingContent('idea', content, jsondoc, `$.ideas[${i}]`);
 
                 if (contentText) {
                     const embedding = await this.embeddingService.generateEmbedding(contentText);
@@ -192,7 +183,7 @@ export class ParticleExtractor {
         const title = `头脑风暴参数: ${platform}${genre ? ` - ${genre}` : ''}`;
 
         // Generate embedding content using the registered extractor or default YAML
-        const contentText = this.generateEmbeddingContent('brainstorm_input_params', data, jsondoc);
+        const contentText = this.generateEmbeddingContent('brainstorm_input_params', data, jsondoc, '$');
 
         if (contentText.trim()) {
             const embedding = await this.embeddingService.generateEmbedding(contentText);
@@ -219,7 +210,7 @@ export class ParticleExtractor {
         if (data.title || data.body) {
             const title = data.title || '创意';
             const content = { title: data.title, body: data.body };
-            const contentText = this.generateEmbeddingContent('brainstorm_idea', content, jsondoc);
+            const contentText = this.generateEmbeddingContent('idea', content, jsondoc, '$');
 
             if (contentText) {
                 const embedding = await this.embeddingService.generateEmbedding(contentText);
@@ -250,7 +241,7 @@ export class ParticleExtractor {
                 if (!character.name && !character.description) continue;
 
                 const title = character.name || `角色 ${i + 1}`;
-                const contentText = this.generateEmbeddingContent('character', character, jsondoc);
+                const contentText = this.generateEmbeddingContent('character', character, jsondoc, `$.characters[${i}]`);
 
                 if (contentText) {
                     const embedding = await this.embeddingService.generateEmbedding(contentText);
@@ -276,7 +267,7 @@ export class ParticleExtractor {
 
                 const title = point.length > 20 ? point.substring(0, 20) + '...' : point;
                 const content = { text: point };
-                const contentText = this.generateEmbeddingContent('selling_point', content, jsondoc);
+                const contentText = this.generateEmbeddingContent('selling_point', content, jsondoc, `$.selling_points[${i}]`);
 
                 particles.push({
                     id: this.generateParticleId(jsondoc, `$.selling_points[${i}]`, '卖点', content),
@@ -298,7 +289,7 @@ export class ParticleExtractor {
 
                 const title = point.length > 20 ? point.substring(0, 20) + '...' : point;
                 const content = { text: point };
-                const contentText = this.generateEmbeddingContent('satisfaction_point', content, jsondoc);
+                const contentText = this.generateEmbeddingContent('satisfaction_point', content, jsondoc, `$.satisfaction_points[${i}]`);
 
                 particles.push({
                     id: this.generateParticleId(jsondoc, `$.satisfaction_points[${i}]`, '爽点', content),
@@ -319,15 +310,17 @@ export class ParticleExtractor {
                 if (!scene || typeof scene !== 'string') continue;
 
                 const title = scene.length > 20 ? scene.substring(0, 20) + '...' : scene;
-                const embedding = await this.embeddingService.generateEmbedding(scene);
+                const content = { text: scene };
+                const contentText = this.generateEmbeddingContent('scene', content, jsondoc, `$.setting.key_scenes[${i}]`);
+                const embedding = await this.embeddingService.generateEmbedding(contentText);
 
                 particles.push({
-                    id: this.generateParticleId(jsondoc, `$.setting.key_scenes[${i}]`, '场景', { text: scene }),
+                    id: this.generateParticleId(jsondoc, `$.setting.key_scenes[${i}]`, '场景', content),
                     path: `$.setting.key_scenes[${i}]`,
                     type: '场景',
                     title,
-                    content: { text: scene },
-                    content_text: scene,
+                    content,
+                    content_text: contentText,
                     embedding
                 });
             }
@@ -353,7 +346,7 @@ export class ParticleExtractor {
                     numberOfEpisodes: stage.numberOfEpisodes
                 };
 
-                const contentText = this.generateEmbeddingContent('stage', content, jsondoc);
+                const contentText = this.generateEmbeddingContent('stage', content, jsondoc, `$.stages[${i}]`);
 
                 if (contentText) {
                     const embedding = await this.embeddingService.generateEmbedding(contentText);
@@ -392,7 +385,7 @@ export class ParticleExtractor {
                     emotionalBeats: group.emotionalBeats
                 };
 
-                const contentText = this.generateEmbeddingContent('episode_group', content, jsondoc);
+                const contentText = this.generateEmbeddingContent('episode_group', content, jsondoc, `$.episodeGroups[${i}]`);
 
                 if (contentText) {
                     const embedding = await this.embeddingService.generateEmbedding(contentText);
@@ -433,7 +426,7 @@ export class ParticleExtractor {
                     suspenseElements: episode.suspenseElements
                 };
 
-                const contentText = this.generateEmbeddingContent('episode', content, jsondoc);
+                const contentText = this.generateEmbeddingContent('episode', content, jsondoc, `$.episodes[${i}]`);
 
                 if (contentText) {
                     const embedding = await this.embeddingService.generateEmbedding(contentText);
