@@ -130,7 +130,7 @@ export class ParticleService {
                         path: p.path,
                         type: p.type,
                         title: p.title,
-                        content: p.content,
+                        content: this.ensureJsonbCompatible(p.content),
                         content_text: p.content_text,
                         embedding: this.embeddingService.embeddingToVector(p.embedding),
                         content_hash: p.content_hash,
@@ -146,7 +146,7 @@ export class ParticleService {
                         .updateTable('particles')
                         .set({
                             title: p.title,
-                            content: p.content,
+                            content: this.ensureJsonbCompatible(p.content),
                             content_text: p.content_text,
                             embedding: this.embeddingService.embeddingToVector(p.embedding),
                             content_hash: p.content_hash,
@@ -425,5 +425,22 @@ export class ParticleService {
         // Use CanonicalJsondocService to check if jsondoc is canonical (displayed in UI)
         const projectId = (jsondoc as any).project_id;
         return await this.canonicalJsondocService.isJsondocCanonical(jsondocId, projectId);
+    }
+
+    /**
+     * Ensure content is compatible with PostgreSQL JSONB column
+     * Kysely doesn't automatically handle primitive values for JSONB
+     */
+    private ensureJsonbCompatible(content: any): any {
+        // For primitive values (strings, arrays), wrap them in an object
+        // Objects, numbers, and booleans work fine as-is
+        if (typeof content === 'string') {
+            return { value: content };
+        }
+        if (Array.isArray(content)) {
+            return { items: content };
+        }
+        // Objects, numbers, booleans, null work as-is
+        return content;
     }
 } 

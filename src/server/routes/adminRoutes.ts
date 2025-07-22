@@ -738,5 +738,108 @@ export function createAdminRoutes(
         }
     });
 
+    // POST /api/admin/particles/nuke-rebore/:projectId - Delete and recreate all particles for a project
+    router.post('/particles/nuke-rebore/:projectId', authMiddleware.authenticate, async (req: Request, res: Response) => {
+        try {
+            const { projectId } = req.params;
+            const userId = req.user?.id;
+
+            if (!userId) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
+
+            // Verify user has access to the project
+            const hasAccess = await jsondocRepo.userHasProjectAccess(userId, projectId);
+            if (!hasAccess) {
+                res.status(403).json({ error: 'Access denied to project' });
+                return;
+            }
+
+            console.log(`[AdminRoutes] Starting nuke & rebore for project ${projectId}`);
+
+            // Get particle system
+            const { getParticleSystem } = await import('../services/ParticleSystemInitializer.js');
+            const particleSystem = getParticleSystem();
+
+            if (!particleSystem) {
+                res.status(503).json({
+                    error: 'Particle system not available',
+                    details: 'Particle system may not be initialized due to missing configuration'
+                });
+                return;
+            }
+
+            // Step 1: Delete all particles for the project
+            const { db } = await import('../database/connection.js');
+            const deleteResult = await db
+                .deleteFrom('particles')
+                .where('project_id', '=', projectId)
+                .executeTakeFirst();
+
+            const deletedCount = Number(deleteResult.numDeletedRows) || 0;
+            console.log(`[AdminRoutes] Deleted ${deletedCount} particles for project ${projectId}`);
+
+            // Step 2: Get all jsondocs for the project
+            const jsondocs = await jsondocRepo.getProjectJsondocs(projectId);
+            console.log(`[AdminRoutes] Found ${jsondocs.length} jsondocs to process for project ${projectId}`);
+
+            // Step 3: Recreate particles for each jsondoc
+            let processedCount = 0;
+            let errorCount = 0;
+            const errors: string[] = [];
+
+            for (const jsondoc of jsondocs) {
+                try {
+                    // Skip patch-type jsondocs as they are temporary
+                    if (jsondoc.schema_type === 'json_patch') {
+                        continue;
+                    }
+
+                    await particleSystem.particleService.updateParticlesForJsondoc(jsondoc.id, projectId);
+                    processedCount++;
+                } catch (error) {
+                    errorCount++;
+                    const errorMsg = `Failed to process jsondoc ${jsondoc.id}: ${error instanceof Error ? error.message : String(error)}`;
+                    errors.push(errorMsg);
+                    console.error(`[AdminRoutes] ${errorMsg}`);
+                }
+            }
+
+            // Step 4: Count final particles
+            const finalParticleCount = await db
+                .selectFrom('particles')
+                .select(db.fn.count('id').as('count'))
+                .where('project_id', '=', projectId)
+                .executeTakeFirst();
+
+            const finalCount = Number(finalParticleCount?.count) || 0;
+
+            console.log(`[AdminRoutes] Nuke & rebore completed for project ${projectId}: ${deletedCount} deleted, ${finalCount} created`);
+
+            res.json({
+                success: true,
+                message: 'Nuke & rebore completed successfully',
+                projectId,
+                statistics: {
+                    particlesDeleted: deletedCount,
+                    jsondocsProcessed: processedCount,
+                    jsondocsSkipped: jsondocs.length - processedCount - errorCount,
+                    particlesCreated: finalCount,
+                    errors: errorCount
+                },
+                errors: errors.length > 0 ? errors : undefined,
+                timestamp: new Date().toISOString()
+            });
+
+        } catch (error) {
+            console.error('[AdminRoutes] Nuke & rebore failed:', error);
+            res.status(500).json({
+                error: 'Nuke & rebore failed',
+                details: error instanceof Error ? error.message : String(error)
+            });
+        }
+    });
+
     return router;
 } 

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Input, Slider, Card, List, Tag, Typography, Space, Spin, Alert, Button, Divider, Tabs } from 'antd';
-import { SearchOutlined, FileTextOutlined, ReloadOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { Input, Slider, Card, List, Tag, Typography, Space, Spin, Alert, Button, Divider, Tabs, Popconfirm, message } from 'antd';
+import { SearchOutlined, FileTextOutlined, ReloadOutlined, UnorderedListOutlined, DeleteOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useParticleSearch, useParticleList } from '../../hooks/useParticleSearch';
 import { useDebounce } from '../../hooks/useDebounce';
 
@@ -29,6 +29,7 @@ export const ParticleDebugComponent: React.FC<ParticleDebugComponentProps> = ({ 
     const [limit, setLimit] = useState(20);
     const [rawResults, setRawResults] = useState<ParticleResult[]>([]);
     const [isManualSearch, setIsManualSearch] = useState(false);
+    const [isNukeReboreLoading, setIsNukeReboreLoading] = useState(false);
 
     // Get active tab from URL params, default to 'search'
     const activeTab = searchParams.get('particle-tab') || 'search';
@@ -129,6 +130,60 @@ export const ParticleDebugComponent: React.FC<ParticleDebugComponentProps> = ({ 
         }
     }, []);
 
+    // Nuke & Rebore function
+    const handleNukeRebore = useCallback(async () => {
+        setIsNukeReboreLoading(true);
+        try {
+            const response = await fetch(`/api/admin/particles/nuke-rebore/${projectId}`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer debug-auth-token-script-writer-dev',
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Nuke & rebore failed: ${response.status} ${response.statusText}`);
+            }
+
+            const result = await response.json();
+
+            // Show success message with statistics
+            message.success({
+                content: (
+                    <div>
+                        <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>核弹重建完成！</div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>
+                            删除: {result.statistics?.particlesDeleted || 0} 个粒子<br />
+                            重建: {result.statistics?.particlesCreated || 0} 个粒子<br />
+                            处理: {result.statistics?.jsondocsProcessed || 0} 个文档
+                        </div>
+                    </div>
+                ),
+                duration: 6
+            });
+
+            // Refresh particle lists
+            if (activeTab === 'list') {
+                refresh();
+            }
+            if (debouncedQuery.trim()) {
+                searchParticles(debouncedQuery);
+                handleManualSearch(debouncedQuery);
+            }
+
+            console.log('Nuke & Rebore Result:', result);
+        } catch (err) {
+            console.error('Nuke & rebore failed:', err);
+            message.error({
+                content: `核弹重建失败: ${err instanceof Error ? err.message : '未知错误'}`,
+                duration: 8
+            });
+        } finally {
+            setIsNukeReboreLoading(false);
+        }
+    }, [projectId, activeTab, refresh, debouncedQuery, searchParticles, handleManualSearch]);
+
     // Render a particle list item
     const renderParticleItem = (particle: ParticleResult, showSimilarity: boolean = false) => (
         <List.Item style={{ borderBottomColor: '#434343' }}>
@@ -187,9 +242,33 @@ export const ParticleDebugComponent: React.FC<ParticleDebugComponentProps> = ({ 
     return (
         <div style={{ padding: '24px', height: '100%', overflow: 'auto' }}>
             <div style={{ marginBottom: '24px' }}>
-                <Title level={3} style={{ color: '#fff', marginBottom: '8px' }}>
-                    粒子嵌入搜索调试
-                </Title>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <Title level={3} style={{ color: '#fff', margin: 0 }}>
+                        粒子嵌入搜索调试
+                    </Title>
+                    <Popconfirm
+                        title="核弹重建粒子系统"
+                        description="这将删除当前项目的所有粒子，然后重新生成。此操作不可撤销，确定要继续吗？"
+                        onConfirm={handleNukeRebore}
+                        okText="确定"
+                        cancelText="取消"
+                        okButtonProps={{ danger: true }}
+                    >
+                        <Button
+                            icon={<ThunderboltOutlined />}
+                            loading={isNukeReboreLoading}
+                            danger
+                            type="primary"
+                            style={{
+                                background: 'linear-gradient(45deg, #ff4d4f, #ff7a45)',
+                                border: 'none',
+                                boxShadow: '0 2px 8px rgba(255, 77, 79, 0.3)'
+                            }}
+                        >
+                            核弹重建
+                        </Button>
+                    </Popconfirm>
+                </div>
                 <Text type="secondary">
                     测试粒子系统的语义搜索功能，调整相似度阈值来过滤结果
                 </Text>
