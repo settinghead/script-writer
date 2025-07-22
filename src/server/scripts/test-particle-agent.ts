@@ -4,16 +4,24 @@
  * Test script for the particle-based agent implementation
  */
 
-import { checkParticleBasedAgentHealth } from '../services/ParticleBasedAgentService';
+import { AgentService } from '../transform-jsondoc-framework/AgentService';
 import { getParticleSystem } from '../services/ParticleSystemInitializer';
+import db from '../database/connection';
+import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 
 async function testParticleAgent() {
     console.log('🧪 Testing Particle-Based Agent Implementation\n');
 
     try {
+        // Initialize database and repositories
+        const transformRepo = new TransformRepository(db);
+        const jsondocRepo = new JsondocRepository(db);
+        const agentService = new AgentService(transformRepo, jsondocRepo);
+
         // Test 1: Health Check
         console.log('1️⃣ Testing health check...');
-        const health = await checkParticleBasedAgentHealth();
+        const health = await agentService.checkParticleSearchHealth();
         console.log('Health Status:', JSON.stringify(health, null, 2));
 
         if (health.particleSystemAvailable) {

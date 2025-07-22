@@ -3,9 +3,10 @@ import { streamText, wrapLanguageModel } from 'ai';
 import { TransformRepository } from './TransformRepository';
 import { JsondocRepository } from './JsondocRepository';
 import { createAgentTool } from './StreamingAgentFramework';
-import { buildAgentConfiguration } from '../services/AgentRequestBuilder';
+import { buildAgentConfiguration, buildContextForRequestType, buildPromptForRequestType } from '../services/AgentRequestBuilder';
 import { getLLMModel } from './LLMConfig';
 import { createUserContextMiddleware } from '../middleware/UserContextMiddleware';
+import { getParticleSystem } from '../services/ParticleSystemInitializer';
 
 // Schema for general agent requests
 export const GeneralAgentRequestSchema = z.object({
@@ -86,6 +87,92 @@ export class AgentService {
         } catch (error) {
             return { parsed: false };
         }
+    }
+
+    /**
+     * Build minimal context that provides only workflow state overview for particle-based search
+     * This is used when particle search tools are available to reduce context size
+     */
+    private async buildMinimalContextForParticleSearch(
+        projectId: string,
+        jsondocRepo: JsondocRepository
+    ): Promise<string> {
+        const contextLines: string[] = [];
+        contextLines.push('=== 项目状态概览 ===');
+
+        try {
+            // Get basic project state without loading full content
+            const allJsondocs = await jsondocRepo.getProjectJsondocs(projectId);
+
+            const hasInput = allJsondocs.some((j: any) => j.schema_type === 'user_input');
+            const hasBrainstorm = allJsondocs.some((j: any) => j.schema_type === '灵感创意');
+            const hasOutline = allJsondocs.some((j: any) => j.schema_type === '剧本设定');
+            const hasChronicles = allJsondocs.some((j: any) => j.schema_type === 'chronicles');
+            const hasEpisodePlanning = allJsondocs.some((j: any) => j.schema_type === 'episode_planning');
+            const episodeSynopses = allJsondocs.filter((j: any) => j.schema_type === 'episode_synopsis');
+
+            if (hasInput) contextLines.push('✓ 用户输入已创建');
+            if (hasBrainstorm) contextLines.push('✓ 故事创意已生成');
+            if (hasOutline) contextLines.push('✓ 剧本设定已生成');
+            if (hasChronicles) contextLines.push('✓ 时间顺序大纲已生成');
+            if (hasEpisodePlanning) contextLines.push('✓ 剧集框架已生成');
+            if (episodeSynopses.length > 0) {
+                contextLines.push(`✓ 已生成 ${episodeSynopses.length} 个分集大纲`);
+            }
+
+            if (contextLines.length === 1) {
+                contextLines.push('项目尚未开始，可以从创建故事创意开始');
+            }
+
+        } catch (error) {
+            console.warn('[AgentService] Failed to load project state for minimal context:', error);
+            contextLines.push('无法加载项目状态，请使用查询工具获取信息');
+        }
+
+        contextLines.push('');
+        contextLines.push('使用 query 工具搜索具体内容，使用 getJsondocContent 工具查看完整文档。');
+
+        return contextLines.join('\n');
+    }
+
+    /**
+     * Enhanced prompt with query guidance for particle-based search
+     */
+    private buildQueryGuidedPrompt(userRequest: string, minimalContext: string): string {
+        return `你是一个专业的短剧剧本创作和编辑助手。你拥有智能查询工具来按需获取项目信息。
+
+**用户请求：** "${userRequest}"
+
+${minimalContext}
+
+**你的工作流程：**
+
+1. **分析用户请求** - 理解用户的真实意图和需要什么信息
+2. **智能信息收集** - 使用 query 工具搜索相关信息
+   - 例如：query("角色设定") 来查找人物信息
+   - 例如：query("故事背景") 来了解设定信息
+   - 例如：query("剧集结构") 来查看分集安排
+3. **深入内容获取** - 使用 getJsondocContent 工具获取完整文档
+4. **决策和执行** - 基于收集的信息选择合适的工具执行任务
+
+**查询策略指导：**
+- 对于编辑任务：先查询相关的现有内容
+- 对于生成任务：查询所需的上游依赖信息
+- 对于问答任务：查询用户询问的具体内容
+- 可以进行多次查询来全面了解情况
+
+**重要原则：**
+- 根据查询结果中的 similarity 分数判断信息相关性
+- similarity > 0.7: 高度相关，可直接使用
+- similarity 0.4-0.7: 中等相关，需要进一步确认
+- similarity < 0.4: 低相关，可能需要重新查询
+
+**可用工具说明：**
+- query: 语义搜索项目中的相关信息
+- getJsondocContent: 获取指定文档的完整内容
+- 其他创作工具会根据项目状态自动提供
+
+开始分析用户请求，进行必要的信息查询，然后执行相应的工具。`;
     }
 
     /**
@@ -272,26 +359,76 @@ ${conversationText}
             // 1. Check for conversation continuation
             const { isContinuation, conversationHistory } = await this.checkForContinuation(request, projectId);
 
-            // 2. Build agent configuration using new abstraction
-            const agentConfig = await buildAgentConfiguration(
-                request,
-                projectId,
-                this.transformRepo,
-                this.jsondocRepo,
-                userId,
-                {
-                    enableCaching: options.enableCaching,
-                    seed: options.seed,
-                    temperature: options.temperature,
-                    topP: options.topP,
-                    maxTokens: options.maxTokens
+            // 2. Check if particle search is available for optimized context approach
+            let useParticleSearchApproach = false;
+            try {
+                const particleSystem = getParticleSystem();
+                if (particleSystem && particleSystem.unifiedSearch) {
+                    // Check if particle system is healthy
+                    const healthCheck = await particleSystem.unifiedSearch.healthCheck();
+                    useParticleSearchApproach = healthCheck.particleCount > 0;
+                    console.log(`[AgentService] Particle search approach ${useParticleSearchApproach ? 'enabled' : 'disabled'} (particles: ${healthCheck.particleCount})`);
                 }
-            );
+            } catch (error) {
+                console.warn('[AgentService] Particle system health check failed:', error);
+            }
 
-            // 3. Use conversation history for continuation or regular prompt
-            const completePrompt = isContinuation && conversationHistory.length > 0
-                ? this.buildMultiMessagePrompt(conversationHistory)
-                : agentConfig.prompt;
+            let agentConfig;
+            let completePrompt;
+
+            if (useParticleSearchApproach && !isContinuation) {
+                // Use minimal context + particle search approach
+                console.log('[AgentService] Using particle-search optimized approach');
+
+                // Build minimal context
+                const minimalContext = await this.buildMinimalContextForParticleSearch(projectId, this.jsondocRepo);
+
+                // Build query-guided prompt
+                completePrompt = this.buildQueryGuidedPrompt(request.userRequest, minimalContext);
+
+                // Build agent configuration with minimal context
+                agentConfig = await buildAgentConfiguration(
+                    request,
+                    projectId,
+                    this.transformRepo,
+                    this.jsondocRepo,
+                    userId,
+                    {
+                        enableCaching: options.enableCaching,
+                        seed: options.seed,
+                        temperature: options.temperature,
+                        topP: options.topP,
+                        maxTokens: options.maxTokens
+                    }
+                );
+
+                console.log(`[AgentService] Minimal context size: ${minimalContext.length} characters (vs traditional approach)`);
+            } else {
+                // Use traditional full context approach
+                console.log('[AgentService] Using traditional full-context approach');
+
+                // Build agent configuration using existing abstraction
+                agentConfig = await buildAgentConfiguration(
+                    request,
+                    projectId,
+                    this.transformRepo,
+                    this.jsondocRepo,
+                    userId,
+                    {
+                        enableCaching: options.enableCaching,
+                        seed: options.seed,
+                        temperature: options.temperature,
+                        topP: options.topP,
+                        maxTokens: options.maxTokens
+                    }
+                );
+
+                // Use conversation history for continuation or regular prompt
+                completePrompt = isContinuation && conversationHistory.length > 0
+                    ? this.buildMultiMessagePrompt(conversationHistory)
+                    : agentConfig.prompt;
+            }
+
             const toolDefinitions = agentConfig.tools;
 
             console.log(`[AgentService] ${isContinuation ? 'Continuation' : 'New'} request detected`);
@@ -625,6 +762,57 @@ ${conversationText}
             }
 
             throw error;
+        }
+    }
+
+    /**
+     * Health check for particle-based search capabilities
+     */
+    public async checkParticleSearchHealth(): Promise<{
+        particleSystemAvailable: boolean;
+        unifiedSearchAvailable: boolean;
+        searchModes: {
+            stringSearchAvailable: boolean;
+            embeddingSearchAvailable: boolean;
+        };
+        particleCount: number;
+    }> {
+        try {
+            const particleSystem = getParticleSystem();
+            if (!particleSystem) {
+                return {
+                    particleSystemAvailable: false,
+                    unifiedSearchAvailable: false,
+                    searchModes: {
+                        stringSearchAvailable: false,
+                        embeddingSearchAvailable: false
+                    },
+                    particleCount: 0
+                };
+            }
+
+            const healthCheck = await particleSystem.unifiedSearch.healthCheck();
+
+            return {
+                particleSystemAvailable: true,
+                unifiedSearchAvailable: true,
+                searchModes: {
+                    stringSearchAvailable: healthCheck.stringSearchAvailable,
+                    embeddingSearchAvailable: healthCheck.embeddingSearchAvailable
+                },
+                particleCount: healthCheck.particleCount
+            };
+        } catch (error) {
+            console.error('[AgentService] Particle search health check failed:', error);
+            return {
+                particleSystemAvailable: false,
+                unifiedSearchAvailable: false,
+                searchModes: {
+                    stringSearchAvailable: false,
+                    embeddingSearchAvailable: false
+                },
+                particleCount: 0
+            };
         }
     }
 } 

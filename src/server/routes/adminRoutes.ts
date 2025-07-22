@@ -844,8 +844,9 @@ export function createAdminRoutes(
     // Debug health check for particle-based agent
     router.get('/particle-agent/health', async (req: Request, res: Response) => {
         try {
-            const { checkParticleBasedAgentHealth } = await import('../services/ParticleBasedAgentService.js');
-            const health = await checkParticleBasedAgentHealth();
+            const { AgentService } = await import('../transform-jsondoc-framework/AgentService.js');
+            const agentService = new AgentService(transformRepo, jsondocRepo);
+            const health = await agentService.checkParticleSearchHealth();
             res.json({
                 status: 'ok',
                 timestamp: new Date().toISOString(),
@@ -885,49 +886,36 @@ export function createAdminRoutes(
             console.log(`[AdminRoutes] Testing particle-based agent for project: ${projectId}`);
             console.log(`[AdminRoutes] User request: "${userRequest}"`);
 
-            const { runParticleBasedGeneralAgent } = await import('../services/ParticleBasedAgentService.js');
+            const { AgentService } = await import('../transform-jsondoc-framework/AgentService.js');
+            const agentService = new AgentService(transformRepo, jsondocRepo);
 
-            const result = await runParticleBasedGeneralAgent(
+            // Use the regular agent service - it will automatically detect and use particle search when available
+            await agentService.runGeneralAgent(
+                projectId,
+                user.id,
                 {
                     userRequest,
                     projectId,
                     contextType: 'general'
                 },
-                projectId,
-                transformRepo,
-                jsondocRepo,
-                user.id,
                 {
-                    createChatMessages: false, // Debug mode - don't create chat messages
-                    enableCaching: false,
-                    maxTokens: 1000 // Limit tokens for debug
+                    createChatMessages: false, // Don't create chat messages for debug tests
+                    enableCaching: false
                 }
             );
 
             res.json({
-                status: 'success',
+                status: 'completed',
                 timestamp: new Date().toISOString(),
-                result: {
-                    finalResponse: result.finalResponse,
-                    toolCallCount: result.toolCallCount,
-                    toolResultCount: result.toolResultCount,
-                    contextSize: result.contextSize,
-                    finishReason: result.finishReason
-                },
-                metadata: {
-                    projectId,
-                    userId: user.id,
-                    userRequest
-                }
+                message: 'Particle-based agent test completed successfully. Check console logs for details.'
             });
 
         } catch (error) {
-            console.error('[AdminRoutes] Particle agent test failed:', error);
+            console.error('[AdminRoutes] Particle-based agent test failed:', error);
             res.status(500).json({
                 status: 'error',
                 timestamp: new Date().toISOString(),
-                error: error instanceof Error ? error.message : 'Unknown error',
-                stack: error instanceof Error ? error.stack : undefined
+                error: error instanceof Error ? error.message : 'Unknown error'
             });
         }
     });

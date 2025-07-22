@@ -6,6 +6,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { computeUnifiedWorkflowState } from '../../utils/actionComputation';
 import { computeCanonicalJsondocsFromLineage } from '../../../common/canonicalJsondocLogic';
 import type { CanonicalJsondocContext } from '../../../common/canonicalJsondocLogic';
+import { getAllToolNames, getParticleSearchToolNames, getWorkflowTools, type WorkflowStage } from '../../../common/schemas/tools';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -44,19 +45,6 @@ interface AgentContextViewProps {
     projectId: string;
 }
 
-// All available tool definitions (mirrors server-side logic)
-const ALL_AVAILABLE_TOOLS = [
-    'generate_灵感创意s',
-    'edit_灵感创意',
-    'generate_剧本设定',
-    'edit_剧本设定',
-    'generate_chronicles',
-    'edit_chronicles',
-    'generate_episode_planning',
-    'edit_episode_planning',
-    'generate_episode_synopsis'
-];
-
 /**
  * Compute available tools based on canonical jsondoc context (frontend mirror of server logic)
  * This mirrors the logic in src/server/services/AgentRequestBuilder.ts
@@ -64,70 +52,23 @@ const ALL_AVAILABLE_TOOLS = [
 function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocContext): string[] {
     const availableTools: string[] = [];
 
-    // Check what canonical jsondocs exist
-    const hasBrainstormResult = context.canonicalBrainstormCollection || context.canonicalBrainstormIdea;
-    const hasOutlineSettings = !!context.canonicalOutlineSettings;
-    const hasChronicles = !!context.canonicalChronicles;
-    const hasEpisodePlanning = !!context.canonicalEpisodePlanning;
+    // === PARTICLE SEARCH TOOLS ===
+    // Always add particle search tools (they're available when particle system is initialized)
+    // Note: In the actual server, this checks if particle system is available
+    // For the debug view, we'll always show them to match the server behavior
+    availableTools.push(...getParticleSearchToolNames());
 
-    // Apply filtering rules (same as server)
-    if (!hasBrainstormResult) {
-        availableTools.push('generate_灵感创意s');
-    }
+    // === WORKFLOW TOOLS ===
+    // Use shared workflow logic
+    const workflowStage: WorkflowStage = {
+        hasBrainstormResult: !!(context.canonicalBrainstormCollection || context.canonicalBrainstormIdea),
+        hasBrainstormIdea: !!context.canonicalBrainstormIdea,
+        hasOutlineSettings: !!context.canonicalOutlineSettings,
+        hasChronicles: !!context.canonicalChronicles,
+        hasEpisodePlanning: !!context.canonicalEpisodePlanning
+    };
 
-    if (hasBrainstormResult) {
-        availableTools.push('edit_灵感创意');
-    }
-
-    if (context.canonicalBrainstormIdea && !hasOutlineSettings) {
-        availableTools.push('generate_剧本设定');
-    }
-
-    if (hasOutlineSettings) {
-        // Add edit tools for previous stages
-        if (context.canonicalBrainstormIdea) {
-            availableTools.push('edit_灵感创意');
-        }
-        availableTools.push('edit_剧本设定');
-
-        // Add next generation tool
-        if (!hasChronicles) {
-            availableTools.push('generate_chronicles');
-        }
-    }
-
-    if (hasChronicles) {
-        // Add edit tools for previous stages
-        if (context.canonicalBrainstormIdea) {
-            availableTools.push('edit_灵感创意');
-        }
-        if (hasOutlineSettings) {
-            availableTools.push('edit_剧本设定');
-        }
-        availableTools.push('edit_chronicles');
-
-        // Add next generation tool
-        if (!hasEpisodePlanning) {
-            availableTools.push('generate_episode_planning');
-        }
-    }
-
-    if (hasEpisodePlanning) {
-        // Add edit tools for all previous stages
-        if (context.canonicalBrainstormIdea) {
-            availableTools.push('edit_灵感创意');
-        }
-        if (hasOutlineSettings) {
-            availableTools.push('edit_剧本设定');
-        }
-        if (hasChronicles) {
-            availableTools.push('edit_chronicles');
-        }
-        availableTools.push('edit_episode_planning');
-
-        // Episode synopsis can be generated multiple times
-        availableTools.push('generate_episode_synopsis');
-    }
+    availableTools.push(...getWorkflowTools(workflowStage));
 
     // Remove duplicates and return
     return [...new Set(availableTools)];
@@ -214,7 +155,7 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
 
             // Compute filtered tools based on canonical context
             const filteredTools = computeAvailableToolsFromCanonicalContext(canonicalContext);
-            const excludedTools = ALL_AVAILABLE_TOOLS.filter(tool => !filteredTools.includes(tool));
+            const excludedTools = getAllToolNames().filter(tool => !filteredTools.includes(tool));
 
             return {
                 canonicalContext,

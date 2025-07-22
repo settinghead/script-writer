@@ -8,9 +8,13 @@ import { createOutlineSettingsToolDefinition, createOutlineSettingsEditToolDefin
 import { createChroniclesToolDefinition, createChroniclesEditToolDefinition } from '../tools/ChroniclesTool';
 import { createEpisodePlanningToolDefinition, createEpisodePlanningEditToolDefinition } from '../tools/EpisodePlanningTool';
 import { createEpisodeSynopsisToolDefinition } from '../tools/EpisodeSynopsisTool';
+import { createQueryToolDefinition } from '../tools/QueryTool';
+import { createGetJsondocContentToolDefinition } from '../tools/GetJsondocContentTool';
 import { generateCanonicalContentStructure } from '../utils/canonicalContentStructure';
 import type { GeneralAgentRequest } from '../transform-jsondoc-framework/AgentService';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
+import { getParticleSearchToolNames, getWorkflowTools, type WorkflowStage } from '../../common/schemas/tools';
+import { getParticleSystem } from './ParticleSystemInitializer';
 import { dump } from 'js-yaml';
 
 // Simplified to just general type
@@ -169,11 +173,33 @@ ${context}
 - 编辑多个组件时，遵循依赖顺序：先编辑上游内容（如创意），然后编辑依赖的下游内容（如框架）
 ===创作流程 结束===
 
+===智能信息搜索指南 开始===
+你现在拥有智能查询工具来按需获取项目信息：
+
+**query工具** - 语义搜索项目中的相关信息
+- 使用自然语言描述你需要什么信息
+- 例如：query("角色设定") 来查找人物信息
+- 例如：query("故事背景") 来了解设定信息
+- 例如：query("剧集结构") 来查看分集安排
+- 根据similarity分数判断相关性：>0.7高度相关，0.4-0.7中等相关，<0.4低相关
+
+**getJsondocContent工具** - 获取指定jsondoc的完整内容
+- 当从query获得jsondoc_id后，使用此工具查看完整内容
+- 可选择指定JSONPath获取特定部分，如"$.characters[0]"
+
+**使用策略：**
+- 对于编辑任务：先查询相关的现有内容
+- 对于生成任务：查询所需的上游依赖信息
+- 对于问答任务：查询用户询问的具体内容
+- 可以进行多次查询来全面了解情况
+===智能信息搜索指南 结束===
+
 1. 仔细分析用户请求，理解用户的真实意图。
-2. 审视YAML上下文，识别最新 brainstorm_input, chosen_idea, 剧本设定, chronicles, episode_planning 等内容。
-6. 选择最合适的工具来满足需求。
-7. 执行必要的工具调用。
-8. 完成后，返回JSON格式的最终响应。
+2. **如果需要了解项目现状或特定内容，使用query工具搜索相关信息。**
+3. 审视YAML上下文，识别最新 brainstorm_input, chosen_idea, 剧本设定, chronicles, episode_planning 等内容。
+4. 选择最合适的工具来满足需求。
+5. 执行必要的工具调用。
+6. 完成后，返回JSON格式的最终响应。
 ===你的任务 结束===
 
 ===工具选择示例 开始===
@@ -368,6 +394,27 @@ export function computeAvailableToolsFromCanonicalContext(
         availableTools.push(toolFactory());
     };
 
+    // === PARTICLE SEARCH TOOLS ===
+    // Always add particle search tools if the particle system is available
+    try {
+        const particleSystem = getParticleSystem();
+        if (particleSystem && particleSystem.unifiedSearch) {
+            const particleSearchTools = getParticleSearchToolNames();
+            particleSearchTools.forEach(toolName => {
+                if (toolName === 'query') {
+                    addTool(() => createQueryToolDefinition(particleSystem.unifiedSearch, projectId, userId));
+                } else if (toolName === 'getJsondocContent') {
+                    addTool(() => createGetJsondocContentToolDefinition(jsondocRepo, projectId, userId));
+                }
+            });
+            console.log(`[AgentRequestBuilder] Added particle search tools (${particleSearchTools.join(', ')})`);
+        } else {
+            console.log(`[AgentRequestBuilder] Particle system not available, skipping particle search tools`);
+        }
+    } catch (error) {
+        console.warn(`[AgentRequestBuilder] Failed to initialize particle search tools:`, error);
+    }
+
     // Check what canonical jsondocs exist
     const hasBrainstormInput = !!context.canonicalBrainstormInput;
     const hasBrainstormCollection = !!context.canonicalBrainstormCollection;
@@ -380,56 +427,52 @@ export function computeAvailableToolsFromCanonicalContext(
     // Check if any brainstorm result exists (collection or idea)
     const hasBrainstormResult = hasBrainstormCollection || hasBrainstormIdea;
 
-    // === BRAINSTORM STAGE ===
-    // generate_灵感创意s: Only if no brainstorm result exists yet
-    if (!hasBrainstormResult) {
-        addTool(() => createBrainstormToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
-    }
+    // === WORKFLOW TOOLS ===
+    // Use shared workflow logic to determine which workflow tools are available
+    const workflowStage: WorkflowStage = {
+        hasBrainstormResult,
+        hasBrainstormIdea,
+        hasOutlineSettings,
+        hasChronicles,
+        hasEpisodePlanning
+    };
 
-    // edit_灵感创意: If we have any brainstorm result (collection or single idea)
-    if (hasBrainstormResult) {
-        addTool(() => createBrainstormEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
-    }
+    const workflowToolNames = getWorkflowTools(workflowStage);
 
-    // === 剧本设定 STAGE ===
-    // generate_剧本设定: Only if we have brainstorm idea but no 剧本设定 yet
-    if (hasBrainstormIdea && !hasOutlineSettings) {
-        addTool(() => createOutlineSettingsToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
-    }
+    // Map workflow tool names to actual tool factory functions
+    workflowToolNames.forEach(toolName => {
+        switch (toolName) {
+            case 'generate_灵感创意s':
+                addTool(() => createBrainstormToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+                break;
+            case 'edit_灵感创意':
+                addTool(() => createBrainstormEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+                break;
+            case 'generate_剧本设定':
+                addTool(() => createOutlineSettingsToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+                break;
+            case 'edit_剧本设定':
+                addTool(() => createOutlineSettingsEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+                break;
+            case 'generate_chronicles':
+                addTool(() => createChroniclesToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+                break;
+            case 'edit_chronicles':
+                addTool(() => createChroniclesEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+                break;
+            case 'generate_episode_planning':
+                addTool(() => createEpisodePlanningToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+                break;
+            case 'edit_episode_planning':
+                addTool(() => createEpisodePlanningEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+                break;
+            case 'generate_episode_synopsis':
+                addTool(() => createEpisodeSynopsisToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+                break;
+        }
+    });
 
-    // edit_剧本设定: If 剧本设定 exist
-    if (hasOutlineSettings) {
-        addTool(() => createOutlineSettingsEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
-    }
-
-    // === CHRONICLES STAGE ===
-    // generate_chronicles: Only if we have 剧本设定 but no chronicles yet
-    if (hasOutlineSettings && !hasChronicles) {
-        addTool(() => createChroniclesToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
-    }
-
-    // edit_chronicles: If chronicles exist
-    if (hasChronicles) {
-        addTool(() => createChroniclesEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
-    }
-
-    // === EPISODE PLANNING STAGE ===
-    // generate_episode_planning: Only if we have chronicles but no episode planning yet
-    if (hasChronicles && !hasEpisodePlanning) {
-        addTool(() => createEpisodePlanningToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
-    }
-
-    // edit_episode_planning: If episode planning exists
-    if (hasEpisodePlanning) {
-        addTool(() => createEpisodePlanningEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
-    }
-
-    // === EPISODE SYNOPSIS STAGE ===
-    // generate_episode_synopsis: If we have episode planning (can generate multiple groups)
-    if (hasEpisodePlanning) {
-        addTool(() => createEpisodeSynopsisToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
-    }
-
+    console.log(`[AgentRequestBuilder] Added ${availableTools.length} tools total`);
     return availableTools;
 }
 
