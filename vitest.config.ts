@@ -27,14 +27,7 @@ export default defineConfig({
                 '**/dist-client/**'
             ]
         },
-        // Longer timeout for database operations
-        testTimeout: 30000,
-        // Run tests serially for database tests to avoid conflicts
-        poolOptions: {
-            threads: {
-                singleThread: true
-            }
-        }
+        testTimeout: 10000
     },
     resolve: {
         alias: {
