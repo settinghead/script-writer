@@ -58,7 +58,7 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
 
             if (selectedIdea.jsondocPath === '$') {
                 // This is a standalone brainstorm idea (derived from collection or original)
-                transformName = 'edit_brainstorm_idea';
+                transformName = 'edit_灵感创意';
                 sourceJsondocId = selectedIdea.jsondocId;
                 derivationPath = '$';
             } else {

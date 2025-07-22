@@ -255,7 +255,7 @@ export interface JsonPatchV1 {
 // Discriminated union for strongly typed jsondocs
 export type TypedJsondoc =
     | JsondocWithData<'brainstorm_collection', 'v1', BrainstormIdeaCollectionV1>
-    | JsondocWithData<'brainstorm_idea', 'v1', BrainstormIdeaV1>
+    | JsondocWithData<'灵感创意', 'v1', BrainstormIdeaV1>
     | JsondocWithData<'brainstorm_input_params', 'v1', BrainstormParamsV1>
     | JsondocWithData<'brainstorm_input', 'v1', BrainstormParamsV1>
     | JsondocWithData<'剧本设定', 'v1', OutlineSettingV1>
@@ -284,7 +284,7 @@ export interface JsondocWithData<
 
 // Helper function to get text content from any jsondoc type
 export function getJsondocTextContent(jsondoc: TypedJsondoc): string {
-    if (jsondoc.schema_type === 'brainstorm_idea') {
+    if (jsondoc.schema_type === '灵感创意') {
         return jsondoc.data.idea_text; // ✅ Correctly typed!
     }
 

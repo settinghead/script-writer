@@ -115,7 +115,7 @@ export const useJsondocEditor = (options: UseJsondocEditorOptions): UseJsondocEd
         if (jsondoc.schema_type === 'user_input') {
             requestData = { text: JSON.stringify(updatedData) };
         } else {
-            // For non-user_input jsondocs (like brainstorm_idea), send the raw data directly
+            // For non-user_input jsondocs (like 灵感创意), send the raw data directly
             // The apiService will wrap it in { data: ... }, so the backend gets { data: rawObject }
             requestData = updatedData;
         }

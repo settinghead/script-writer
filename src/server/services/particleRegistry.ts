@@ -28,7 +28,7 @@ export const particlePathsRegistry: Record<string, ParticlePathDefinition[]> = {
         // Empty array means default to root '$' as single particle
     ],
 
-    'brainstorm_idea': [
+    '灵感创意': [
         // Empty array means default to root '$' as single particle  
     ],
 
@@ -109,7 +109,7 @@ export function getParticlePathsForSchemaType(schemaType: string): ParticlePathD
 function getDefaultParticleType(schemaType: string): string {
     const typeMap: Record<string, string> = {
         'brainstorm_input_params': '头脑风暴参数',
-        'brainstorm_idea': '创意',
+        '灵感创意': '创意',
         'brainstorm_collection': '创意集合',
         '剧本设定': '剧本设定',
         'chronicles': '时间顺序大纲',
@@ -126,7 +126,7 @@ function getDefaultParticleType(schemaType: string): string {
 function getDefaultParticleTitle(schemaType: string): string {
     const titleMap: Record<string, string> = {
         'brainstorm_input_params': '头脑风暴参数',
-        'brainstorm_idea': '创意',
+        '灵感创意': '创意',
         'brainstorm_collection': '创意集合',
         '剧本设定': '剧本设定',
         'chronicles': '时间顺序大纲',

@@ -130,7 +130,7 @@ interface PatchApprovalEditorProps {
 
 /**
  * Special patch editor that:
- * 1. Finds the original brainstorm_idea via transformInput relationships
+ * 1. Finds the original 灵感创意 via transformInput relationships
  * 2. Applies current patches to show the "after" state
  * 3. Allows editing the full document
  * 4. Generates new patches and updates the patch jsondoc
@@ -161,7 +161,7 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
         projectData.getJsondocById
     ]);
 
-    // Find the original brainstorm_idea via transformInput relationships
+    // Find the original 灵感创意 via transformInput relationships
     const originalBrainstormIdea = useMemo(() => {
         if (!patchJsondoc || projectData.lineageGraph === "pending") {
             return null;
@@ -206,7 +206,7 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
             execution_context: creatingTransform.execution_context
         });
 
-        // Find the input brainstorm_idea for that transform
+        // Find the input 灵感创意 for that transform
         if (!Array.isArray(projectData.transformInputs)) {
             return null;
         }
@@ -226,7 +226,7 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
         if (!brainstormInputId && transformInputs.length > 0) {
             console.log('[PatchApprovalEditor] Trying fallback approach. All available inputs:', transformInputs);
 
-            // Try to find brainstorm_idea by checking jsondoc types
+            // Try to find 灵感创意 by checking jsondoc types
             for (const input of transformInputs) {
                 const inputJsondoc = projectData.getJsondocById(input.jsondoc_id);
                 console.log(`[PatchApprovalEditor] Checking input ${input.jsondoc_id}:`, {
@@ -234,9 +234,9 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
                     input_role: input.input_role
                 });
 
-                if (inputJsondoc?.schema_type === 'brainstorm_idea') {
+                if (inputJsondoc?.schema_type === '灵感创意') {
                     brainstormInputId = input.jsondoc_id;
-                    console.log('[PatchApprovalEditor] Found brainstorm_idea via fallback:', brainstormInputId);
+                    console.log('[PatchApprovalEditor] Found 灵感创意 via fallback:', brainstormInputId);
                     break;
                 }
             }
@@ -258,12 +258,12 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
         }
 
         const originalJsondoc = projectData.getJsondocById(brainstormInputId);
-        if (!originalJsondoc || originalJsondoc.schema_type !== 'brainstorm_idea') {
+        if (!originalJsondoc || originalJsondoc.schema_type !== '灵感创意') {
             console.log('[PatchApprovalEditor] Original jsondoc not found or wrong type:', originalJsondoc?.schema_type);
             return null;
         }
 
-        console.log('[PatchApprovalEditor] Found original brainstorm_idea:', originalJsondoc.id);
+        console.log('[PatchApprovalEditor] Found original 灵感创意:', originalJsondoc.id);
         return originalJsondoc;
     }, [
         patchJsondoc,

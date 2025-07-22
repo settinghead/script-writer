@@ -56,7 +56,7 @@ async function main() {
         console.log('2. Creating original brainstorm idea...');
         const originalIdea = await jsondocRepo.createJsondoc(
             TEST_PROJECT_ID,
-            'brainstorm_idea',
+            '灵感创意',
             {
                 title: '原始创意：霸总与小白花',
                 body: '一个关于霸总爱上清纯小白花的故事，充满了误会和甜蜜。'

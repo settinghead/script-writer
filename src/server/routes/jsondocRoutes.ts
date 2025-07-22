@@ -356,17 +356,17 @@ export function createJsondocRoutes(
                     return;
                 }
                 updatedData = data;
-            } else if (existingJsondoc.schema_type === 'brainstorm_idea') {
-                // Validate required fields for brainstorm_idea
+            } else if (existingJsondoc.schema_type === '灵感创意') {
+                // Validate required fields for 灵感创意
                 if (!data || typeof data !== 'object') {
                     res.status(400).json({
                         error: 'Missing or invalid data',
-                        details: 'data must be an object for brainstorm_idea jsondocs'
+                        details: 'data must be an object for 灵感创意 jsondocs'
                     });
                     return;
                 }
 
-                // Update the jsondoc in place (for brainstorm_idea jsondocs)
+                // Update the jsondoc in place (for 灵感创意 jsondocs)
                 updatedData = data;
             } else {
                 res.status(400).json({ error: `Cannot update jsondocs of type: ${existingJsondoc.schema_type} with origin_type: ${existingJsondoc.origin_type}` });

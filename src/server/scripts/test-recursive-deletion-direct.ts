@@ -137,7 +137,7 @@ async function main() {
         console.log('2. Creating original jsondoc...');
         const originalIdea = await jsondocRepo.createJsondoc(
             TEST_PROJECT_ID,
-            'brainstorm_idea',
+            '灵感创意',
             {
                 title: '原始创意：现代都市爱情',
                 body: '一个关于现代都市中两个独立个体相遇相爱的故事。'

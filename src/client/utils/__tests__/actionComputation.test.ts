@@ -107,7 +107,7 @@ describe('actionComputation', () => {
         const fakeJsondocs = [
             {
                 id: 'idea1',
-                schema_type: 'brainstorm_idea',
+                schema_type: '灵感创意',
                 origin_type: 'user_input',
                 created_at: '2024-01-01',
                 project_id: 'test-project',

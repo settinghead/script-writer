@@ -167,7 +167,7 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
     // Add brainstorm idea selection if we have a collection but no individual idea
     if (context.canonicalBrainstormCollection && !context.canonicalBrainstormIdea) {
         actions.push({
-            id: 'brainstorm_idea_selection',
+            id: '灵感创意_selection',
             type: 'selection',
             title: '选择创意',
             description: '从生成的创意中选择一个继续开发',

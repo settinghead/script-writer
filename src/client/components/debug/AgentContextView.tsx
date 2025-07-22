@@ -46,8 +46,8 @@ interface AgentContextViewProps {
 
 // All available tool definitions (mirrors server-side logic)
 const ALL_AVAILABLE_TOOLS = [
-    'generate_brainstorm_ideas',
-    'edit_brainstorm_idea',
+    'generate_灵感创意s',
+    'edit_灵感创意',
     'generate_剧本设定',
     'edit_剧本设定',
     'generate_chronicles',
@@ -72,11 +72,11 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
 
     // Apply filtering rules (same as server)
     if (!hasBrainstormResult) {
-        availableTools.push('generate_brainstorm_ideas');
+        availableTools.push('generate_灵感创意s');
     }
 
     if (hasBrainstormResult) {
-        availableTools.push('edit_brainstorm_idea');
+        availableTools.push('edit_灵感创意');
     }
 
     if (context.canonicalBrainstormIdea && !hasOutlineSettings) {
@@ -86,7 +86,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
     if (hasOutlineSettings) {
         // Add edit tools for previous stages
         if (context.canonicalBrainstormIdea) {
-            availableTools.push('edit_brainstorm_idea');
+            availableTools.push('edit_灵感创意');
         }
         availableTools.push('edit_剧本设定');
 
@@ -99,7 +99,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
     if (hasChronicles) {
         // Add edit tools for previous stages
         if (context.canonicalBrainstormIdea) {
-            availableTools.push('edit_brainstorm_idea');
+            availableTools.push('edit_灵感创意');
         }
         if (hasOutlineSettings) {
             availableTools.push('edit_剧本设定');
@@ -115,7 +115,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
     if (hasEpisodePlanning) {
         // Add edit tools for all previous stages
         if (context.canonicalBrainstormIdea) {
-            availableTools.push('edit_brainstorm_idea');
+            availableTools.push('edit_灵感创意');
         }
         if (hasOutlineSettings) {
             availableTools.push('edit_剧本设定');

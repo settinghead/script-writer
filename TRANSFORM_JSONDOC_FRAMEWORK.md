@@ -153,7 +153,7 @@ Every jsondoc has an `origin_type` that indicates how it was created:
 Jsondocs also have `schema_type` that defines their data structure:
 
 - **`brainstorm_collection`** - Multiple story ideas grouped together
-- **`brainstorm_idea`** - Individual story idea
+- **`灵感创意`** - Individual story idea
 - **`brainstorm_input_params`** - Parameters for brainstorm generation
 - **`剧本设定`** - Detailed story structure with characters and plot
 - **`剧本设定_input`** - Input parameters for outline generation
@@ -174,7 +174,7 @@ The framework uses a sophisticated TypeScript typing system with `TypedJsondoc`:
 // TypedJsondoc is a discriminated union based on schema_type
 export type TypedJsondoc =
     | JsondocWithData<'brainstorm_collection', 'v1', BrainstormIdeaCollectionV1>
-    | JsondocWithData<'brainstorm_idea', 'v1', BrainstormIdeaV1>
+    | JsondocWithData<'灵感创意', 'v1', BrainstormIdeaV1>
     | JsondocWithData<'brainstorm_input_params', 'v1', BrainstormParamsV1>
     | JsondocWithData<'剧本设定', 'v1', OutlineSettingsV1>
     | JsondocWithData<'chronicles', 'v1', ChroniclesV1>
@@ -2167,7 +2167,7 @@ export const JsondocSchemaRegistry = {
     genre: z.string(),
     total_ideas: z.number()
   }),
-  'brainstorm_idea': IdeaSchema,
+  '灵感创意': IdeaSchema,
   'brainstorm_input_params': BrainstormToolInputSchema,
 
   // Outline schemas
@@ -2187,7 +2187,7 @@ export const TransformRegistry = {
     outputSchema: OutlineSettingsOutputSchema,
     outputType: '剧本设定'
   },
-  'brainstorm_idea_edit': {
+  '灵感创意_edit': {
     pathPattern: '^\\$\\.ideas\\[\\d+\\]$',
     inputSchema: z.object({
       title: z.string(),
@@ -2197,7 +2197,7 @@ export const TransformRegistry = {
       title: z.string(),
       body: z.string()
     }),
-    outputType: 'brainstorm_idea'
+    outputType: '灵感创意'
   }
 } as const;
 ```
@@ -3491,7 +3491,7 @@ const BrainstormIdeaEditor: React.FC<{ jsondocId: string }> = ({ jsondocId }) =>
   return (
     <JsondocEditor
       jsondocId={activeJsondocId}
-      transformName="brainstorm_idea_edit" // Transform schema name
+      transformName="灵感创意_edit" // Transform schema name
       fields={[
         { field: 'title', component: 'input', maxLength: 100, placeholder: '输入创意标题' },
         { field: 'body', component: 'textarea', rows: 6, placeholder: '详细描述创意内容' }
@@ -3686,7 +3686,7 @@ const ProjectWorkspace: React.FC<{ projectId: string }> = ({ projectId }) => {
                   jsondocId={idea.jsondocId}
                   sourceJsondocId={idea.originalJsondocId}
                   path={idea.jsondocPath}
-                  transformName="brainstorm_idea_edit"
+                  transformName="灵感创意_edit"
                   fields={[
                     { field: 'title', component: 'input', maxLength: 100 },
                     { field: 'body', component: 'textarea', rows: 4 }
@@ -4094,29 +4094,29 @@ The system follows strict workflow progression rules:
 
 #### **Stage-Based Tool Availability**
 
-**Empty Project** → Only `generate_brainstorm_ideas`
+**Empty Project** → Only `generate_灵感创意s`
 ```typescript
 // No jsondocs exist yet
-availableTools = ['generate_brainstorm_ideas']
+availableTools = ['generate_灵感创意s']
 ```
 
-**Has brainstorm_collection** → Only `edit_brainstorm_idea`
+**Has brainstorm_collection** → Only `edit_灵感创意`
 ```typescript  
 // Multiple ideas generated, user needs to select/edit one
-availableTools = ['edit_brainstorm_idea']
+availableTools = ['edit_灵感创意']
 ```
 
-**Has brainstorm_idea** → `edit_brainstorm_idea` + `generate_剧本设定`
+**Has 灵感创意** → `edit_灵感创意` + `generate_剧本设定`
 ```typescript
 // Single idea exists, can edit it or proceed to next stage
-availableTools = ['edit_brainstorm_idea', 'generate_剧本设定']
+availableTools = ['edit_灵感创意', 'generate_剧本设定']
 ```
 
 **Has 剧本设定** → Edit tools for previous stages + `generate_chronicles`
 ```typescript
 // Outline exists, can edit previous work or proceed
 availableTools = [
-  'edit_brainstorm_idea', 
+  'edit_灵感创意', 
   'edit_剧本设定', 
   'generate_chronicles'
 ]
@@ -4126,7 +4126,7 @@ availableTools = [
 ```typescript
 // Chronicles exist, can edit previous work or proceed
 availableTools = [
-  'edit_brainstorm_idea',
+  'edit_灵感创意',
   'edit_剧本设定', 
   'edit_chronicles',
   'generate_episode_planning'
@@ -4137,7 +4137,7 @@ availableTools = [
 ```typescript
 // Episode planning exists, can edit any stage or generate episodes
 availableTools = [
-  'edit_brainstorm_idea',
+  'edit_灵感创意',
   'edit_剧本设定',
   'edit_chronicles', 
   'edit_episode_planning',
@@ -4264,11 +4264,11 @@ export async function buildAgentConfiguration(
 // Project has no jsondocs
 const context = { canonicalBrainstormIdea: null, ... };
 const tools = computeAvailableToolsFromCanonicalContext(context, ...);
-// Result: ['generate_brainstorm_ideas']
+// Result: ['generate_灵感创意s']
 
 // User request: "生成一些故事创意"
 // Agent sees: Only brainstorm generation tool
-// Agent action: Uses generate_brainstorm_ideas appropriately
+// Agent action: Uses generate_灵感创意s appropriately
 ```
 
 #### **Mid-Workflow Scenario**
@@ -4281,7 +4281,7 @@ const context = {
   ...
 };
 const tools = computeAvailableToolsFromCanonicalContext(context, ...);
-// Result: ['edit_brainstorm_idea', 'edit_剧本设定', 'generate_chronicles']
+// Result: ['edit_灵感创意', 'edit_剧本设定', 'generate_chronicles']
 
 // User request: "基于现有设定生成时间顺序大纲"
 // Agent sees: Edit tools for existing content + chronicles generation

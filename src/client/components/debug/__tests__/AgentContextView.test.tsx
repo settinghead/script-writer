@@ -38,11 +38,11 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
 
     // Apply filtering rules (same as server)
     if (!hasBrainstormResult) {
-        availableTools.push('generate_brainstorm_ideas');
+        availableTools.push('generate_灵感创意s');
     }
 
     if (hasBrainstormResult) {
-        availableTools.push('edit_brainstorm_idea');
+        availableTools.push('edit_灵感创意');
     }
 
     if (context.canonicalBrainstormIdea && !hasOutlineSettings) {
@@ -52,7 +52,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
     if (hasOutlineSettings) {
         // Add edit tools for previous stages
         if (context.canonicalBrainstormIdea) {
-            availableTools.push('edit_brainstorm_idea');
+            availableTools.push('edit_灵感创意');
         }
         availableTools.push('edit_剧本设定');
 
@@ -65,7 +65,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
     if (hasChronicles) {
         // Add edit tools for previous stages
         if (context.canonicalBrainstormIdea) {
-            availableTools.push('edit_brainstorm_idea');
+            availableTools.push('edit_灵感创意');
         }
         if (hasOutlineSettings) {
             availableTools.push('edit_剧本设定');
@@ -81,7 +81,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
     if (hasEpisodePlanning) {
         // Add edit tools for all previous stages
         if (context.canonicalBrainstormIdea) {
-            availableTools.push('edit_brainstorm_idea');
+            availableTools.push('edit_灵感创意');
         }
         if (hasOutlineSettings) {
             availableTools.push('edit_剧本设定');
@@ -109,7 +109,7 @@ describe('AgentContextView Tool Filtering', () => {
     });
 
     describe('computeAvailableToolsFromCanonicalContext', () => {
-        it('should return only generate_brainstorm_ideas for empty project', () => {
+        it('should return only generate_灵感创意s for empty project', () => {
             const context: CanonicalJsondocContext = {
                 canonicalBrainstormIdea: null,
                 canonicalBrainstormCollection: null,
@@ -127,10 +127,10 @@ describe('AgentContextView Tool Filtering', () => {
             };
 
             const tools = computeAvailableToolsFromCanonicalContext(context);
-            expect(tools).toEqual(['generate_brainstorm_ideas']);
+            expect(tools).toEqual(['generate_灵感创意s']);
         });
 
-        it('should return edit_brainstorm_idea when brainstorm_collection exists', () => {
+        it('should return edit_灵感创意 when brainstorm_collection exists', () => {
             const mockCollection = createMockJsondoc('collection-1', 'brainstorm_collection');
             const context: CanonicalJsondocContext = {
                 canonicalBrainstormIdea: null,
@@ -149,11 +149,11 @@ describe('AgentContextView Tool Filtering', () => {
             };
 
             const tools = computeAvailableToolsFromCanonicalContext(context);
-            expect(tools).toEqual(['edit_brainstorm_idea']);
+            expect(tools).toEqual(['edit_灵感创意']);
         });
 
-        it('should return edit_brainstorm_idea and generate_剧本设定 when single brainstorm_idea exists', () => {
-            const mockIdea = createMockJsondoc('idea-1', 'brainstorm_idea', 'user_input');
+        it('should return edit_灵感创意 and generate_剧本设定 when single 灵感创意 exists', () => {
+            const mockIdea = createMockJsondoc('idea-1', '灵感创意', 'user_input');
             const context: CanonicalJsondocContext = {
                 canonicalBrainstormIdea: mockIdea,
                 canonicalBrainstormCollection: null,
@@ -171,11 +171,11 @@ describe('AgentContextView Tool Filtering', () => {
             };
 
             const tools = computeAvailableToolsFromCanonicalContext(context);
-            expect(tools).toEqual(['edit_brainstorm_idea', 'generate_剧本设定']);
+            expect(tools).toEqual(['edit_灵感创意', 'generate_剧本设定']);
         });
 
         it('should return appropriate tools when 剧本设定 exists', () => {
-            const mockIdea = createMockJsondoc('idea-1', 'brainstorm_idea', 'user_input');
+            const mockIdea = createMockJsondoc('idea-1', '灵感创意', 'user_input');
             const mockOutline = createMockJsondoc('outline-1', '剧本设定');
             const context: CanonicalJsondocContext = {
                 canonicalBrainstormIdea: mockIdea,
@@ -194,11 +194,11 @@ describe('AgentContextView Tool Filtering', () => {
             };
 
             const tools = computeAvailableToolsFromCanonicalContext(context);
-            expect(tools).toEqual(['edit_brainstorm_idea', 'edit_剧本设定', 'generate_chronicles']);
+            expect(tools).toEqual(['edit_灵感创意', 'edit_剧本设定', 'generate_chronicles']);
         });
 
         it('should return all edit tools plus generate_episode_synopsis when episode_planning exists', () => {
-            const mockIdea = createMockJsondoc('idea-1', 'brainstorm_idea', 'user_input');
+            const mockIdea = createMockJsondoc('idea-1', '灵感创意', 'user_input');
             const mockOutline = createMockJsondoc('outline-1', '剧本设定');
             const mockChronicles = createMockJsondoc('chronicles-1', 'chronicles');
             const mockEpisodePlanning = createMockJsondoc('episode-planning-1', 'episode_planning');
@@ -220,7 +220,7 @@ describe('AgentContextView Tool Filtering', () => {
 
             const tools = computeAvailableToolsFromCanonicalContext(context);
             expect(tools).toEqual([
-                'edit_brainstorm_idea',
+                'edit_灵感创意',
                 'edit_剧本设定',
                 'edit_chronicles',
                 'edit_episode_planning',
@@ -228,7 +228,7 @@ describe('AgentContextView Tool Filtering', () => {
             ]);
         });
 
-        it('should never include generate_brainstorm_ideas when any brainstorm result exists', () => {
+        it('should never include generate_灵感创意s when any brainstorm result exists', () => {
             const mockCollection = createMockJsondoc('collection-1', 'brainstorm_collection');
             const context: CanonicalJsondocContext = {
                 canonicalBrainstormIdea: null,
@@ -247,7 +247,7 @@ describe('AgentContextView Tool Filtering', () => {
             };
 
             const tools = computeAvailableToolsFromCanonicalContext(context);
-            expect(tools).not.toContain('generate_brainstorm_ideas');
+            expect(tools).not.toContain('generate_灵感创意s');
         });
     });
 }); 

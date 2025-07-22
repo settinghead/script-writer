@@ -177,7 +177,7 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
 
                                     if (jsondoc.origin_type === 'user_input') {
                                         // For brainstorm ideas, check if it came from a collection or was directly created
-                                        if (jsondoc.schema_type === 'brainstorm_idea') {
+                                        if (jsondoc.schema_type === '灵感创意') {
                                             // If it has original_jsondoc_id in metadata, it's an edited version
                                             if (parsedMetadata && typeof parsedMetadata === 'object' && 'original_jsondoc_id' in parsedMetadata) {
                                                 return '已编辑';

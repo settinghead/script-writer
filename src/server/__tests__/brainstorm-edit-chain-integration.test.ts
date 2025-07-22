@@ -16,12 +16,12 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         // Test constants
         const projectId = 'test-project-1';
 
-        // Step 1: Create initial brainstorm_idea jsondoc
+        // Step 1: Create initial 灵感创意 jsondoc
         const jsondocs: ElectricJsondoc[] = [
             {
                 id: 'jsondoc-1',
                 project_id: projectId,
-                schema_type: 'brainstorm_idea',
+                schema_type: '灵感创意',
                 schema_version: 'v1',
                 origin_type: 'user_input',
                 data: JSON.stringify({
@@ -34,7 +34,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
             }
         ];
 
-        console.log('✅ Step 1: Created initial brainstorm_idea jsondoc:', jsondocs[0].id);
+        console.log('✅ Step 1: Created initial 灵感创意 jsondoc:', jsondocs[0].id);
 
         // Step 2: LLM transform changes style
         const transforms: ElectricTransform[] = [
@@ -60,7 +60,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         jsondocs.push({
             id: 'jsondoc-2',
             project_id: projectId,
-            schema_type: 'brainstorm_idea',
+            schema_type: '灵感创意',
             schema_version: 'v1',
             origin_type: 'ai_generated',
             data: JSON.stringify({
@@ -107,7 +107,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         jsondocs.push({
             id: 'jsondoc-3',
             project_id: projectId,
-            schema_type: 'brainstorm_idea',
+            schema_type: '灵感创意',
             schema_version: 'v1',
             origin_type: 'user_input',
             data: JSON.stringify({
@@ -143,7 +143,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         jsondocs.push({
             id: 'jsondoc-4',
             project_id: projectId,
-            schema_type: 'brainstorm_idea',
+            schema_type: '灵感创意',
             schema_version: 'v1',
             origin_type: 'ai_generated',
             data: JSON.stringify({
@@ -252,7 +252,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
 
         // Step 9: Verify the complete jsondoc chain
         const sortedJsondocs = jsondocs
-            .filter(a => a.schema_type === 'brainstorm_idea')
+            .filter(a => a.schema_type === '灵感创意')
             .sort((a, b) => a.created_at.localeCompare(b.created_at));
 
         expect(sortedJsondocs).toHaveLength(4);
@@ -387,7 +387,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
 
         // Test brainstorm idea jsondocs detection
         const brainstormIdeas = jsondocs.filter(a =>
-            a.schema_type === 'brainstorm_idea'
+            a.schema_type === '灵感创意'
         );
         console.log(`  - Found ${brainstormIdeas.length} brainstorm ideas`);
         expect(brainstormIdeas).toHaveLength(4);

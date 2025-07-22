@@ -24,7 +24,7 @@ describe('JsondocProcessor', () => {
             const mockJsondocs = [
                 {
                     id: 'jsondoc-1',
-                    schema_type: 'brainstorm_idea',
+                    schema_type: '灵感创意',
                     project_id: 'project-1',
                     data: { title: 'Test Idea 1', body: 'Test content 1' }
                 },
@@ -51,7 +51,7 @@ describe('JsondocProcessor', () => {
                 .mockResolvedValue(true);
 
             const jsondocRefs: JsondocReference[] = [
-                { jsondocId: 'jsondoc-1', description: 'Test idea', schemaType: 'brainstorm_idea' },
+                { jsondocId: 'jsondoc-1', description: 'Test idea', schemaType: '灵感创意' },
                 { jsondocId: 'jsondoc-2', description: 'Test outline', schemaType: '剧本设定' },
                 { jsondocId: 'jsondoc-3', description: 'Test chronicles', schemaType: 'chronicles' }
             ];
@@ -60,12 +60,12 @@ describe('JsondocProcessor', () => {
 
             expect(result.processedCount).toBe(3);
             expect(result.jsondocData).toEqual({
-                brainstorm_idea: { title: 'Test Idea 1', body: 'Test content 1' },
+                灵感创意: { title: 'Test Idea 1', body: 'Test content 1' },
                 剧本设定: { title: 'Test Outline', genre: 'romance' },
                 chronicles: { title: 'Test Chronicles', stages: [] }
             });
             expect(result.jsondocMetadata).toEqual({
-                brainstorm_idea: 'jsondoc-1',
+                灵感创意: 'jsondoc-1',
                 剧本设定: 'jsondoc-2',
                 chronicles: 'jsondoc-3'
             });
@@ -95,7 +95,7 @@ describe('JsondocProcessor', () => {
                 .mockResolvedValue(true);
 
             const jsondocRefs: JsondocReference[] = [
-                { jsondocId: 'missing-id', description: 'Missing jsondoc', schemaType: 'brainstorm_idea' },
+                { jsondocId: 'missing-id', description: 'Missing jsondoc', schemaType: '灵感创意' },
                 { jsondocId: 'jsondoc-2', description: 'Test outline', schemaType: '剧本设定' }
             ];
 
@@ -113,7 +113,7 @@ describe('JsondocProcessor', () => {
         it('should handle access denied gracefully', async () => {
             const mockJsondoc = {
                 id: 'jsondoc-1',
-                schema_type: 'brainstorm_idea',
+                schema_type: '灵感创意',
                 project_id: 'project-1',
                 data: { title: 'Test Idea', body: 'Test content' }
             };
@@ -127,18 +127,18 @@ describe('JsondocProcessor', () => {
                 .mockResolvedValueOnce(true);  // Access granted for second
 
             const jsondocRefs: JsondocReference[] = [
-                { jsondocId: 'jsondoc-1', description: 'Restricted jsondoc', schemaType: 'brainstorm_idea' },
-                { jsondocId: 'jsondoc-1', description: 'Accessible jsondoc', schemaType: 'brainstorm_idea' }
+                { jsondocId: 'jsondoc-1', description: 'Restricted jsondoc', schemaType: '灵感创意' },
+                { jsondocId: 'jsondoc-1', description: 'Accessible jsondoc', schemaType: '灵感创意' }
             ];
 
             const result = await processor.processJsondocs(jsondocRefs);
 
             expect(result.processedCount).toBe(1);
             expect(result.jsondocData).toEqual({
-                brainstorm_idea: { title: 'Test Idea', body: 'Test content' }
+                灵感创意: { title: 'Test Idea', body: 'Test content' }
             });
             expect(result.jsondocMetadata).toEqual({
-                brainstorm_idea: 'jsondoc-1'
+                灵感创意: 'jsondoc-1'
             });
         });
 
@@ -157,13 +157,13 @@ describe('JsondocProcessor', () => {
             const mockJsondocs = [
                 {
                     id: 'jsondoc-1',
-                    schema_type: 'brainstorm_idea',
+                    schema_type: '灵感创意',
                     project_id: 'project-1',
                     data: { title: 'First Idea', body: 'First content' }
                 },
                 {
                     id: 'jsondoc-2',
-                    schema_type: 'brainstorm_idea',
+                    schema_type: '灵感创意',
                     project_id: 'project-1',
                     data: { title: 'Second Idea', body: 'Second content' }
                 }
@@ -177,8 +177,8 @@ describe('JsondocProcessor', () => {
                 .mockResolvedValue(true);
 
             const jsondocRefs: JsondocReference[] = [
-                { jsondocId: 'jsondoc-1', description: 'First idea', schemaType: 'brainstorm_idea' },
-                { jsondocId: 'jsondoc-2', description: 'Second idea', schemaType: 'brainstorm_idea' }
+                { jsondocId: 'jsondoc-1', description: 'First idea', schemaType: '灵感创意' },
+                { jsondocId: 'jsondoc-2', description: 'Second idea', schemaType: '灵感创意' }
             ];
 
             const result = await processor.processJsondocs(jsondocRefs);
@@ -186,10 +186,10 @@ describe('JsondocProcessor', () => {
             expect(result.processedCount).toBe(2);
             // Last one should win for same schema type
             expect(result.jsondocData).toEqual({
-                brainstorm_idea: { title: 'Second Idea', body: 'Second content' }
+                灵感创意: { title: 'Second Idea', body: 'Second content' }
             });
             expect(result.jsondocMetadata).toEqual({
-                brainstorm_idea: 'jsondoc-2'
+                灵感创意: 'jsondoc-2'
             });
         });
     });
@@ -198,7 +198,7 @@ describe('JsondocProcessor', () => {
         it('should return jsondoc when found and accessible', async () => {
             const mockJsondoc = {
                 id: 'jsondoc-1',
-                schema_type: 'brainstorm_idea',
+                schema_type: '灵感创意',
                 project_id: 'project-1',
                 data: { title: 'Test Idea', body: 'Test content' }
             };
@@ -226,7 +226,7 @@ describe('JsondocProcessor', () => {
         it('should return null when access is denied', async () => {
             const mockJsondoc = {
                 id: 'jsondoc-1',
-                schema_type: 'brainstorm_idea',
+                schema_type: '灵感创意',
                 project_id: 'project-1',
                 data: { title: 'Test Idea', body: 'Test content' }
             };

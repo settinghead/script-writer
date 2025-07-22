@@ -54,7 +54,7 @@ async function testNonBlockingTools() {
 
         const ideaJsondoc = await jsondocRepo.createJsondoc(
             projectId,
-            'brainstorm_idea',
+            '灵感创意',
             testIdea,
             'v1',
             { test: true },
@@ -79,7 +79,7 @@ async function testNonBlockingTools() {
             jsondocs: [{
                 jsondocId: ideaJsondoc.id,
                 description: 'original_idea',
-                schemaType: 'brainstorm_idea'
+                schemaType: '灵感创意'
             }],
             editRequirements: '请将故事背景改为现代都市，增加更多科技元素和职场竞争'
         };

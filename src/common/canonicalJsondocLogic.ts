@@ -65,7 +65,7 @@ export function computeCanonicalJsondocsFromLineage(
 ): CanonicalJsondocContext {
 
     // Find canonical jsondoc for each schema type
-    const canonicalBrainstormIdea = findCanonicalJsondocByType(lineageGraph, jsondocs, 'brainstorm_idea');
+    const canonicalBrainstormIdea = findCanonicalJsondocByType(lineageGraph, jsondocs, '灵感创意');
     const canonicalBrainstormCollection = findCanonicalJsondocByType(lineageGraph, jsondocs, 'brainstorm_collection');
     const canonicalOutlineSettings = findCanonicalJsondocByType(lineageGraph, jsondocs, '剧本设定');
     const canonicalChronicles = findCanonicalJsondocByType(lineageGraph, jsondocs, 'chronicles');

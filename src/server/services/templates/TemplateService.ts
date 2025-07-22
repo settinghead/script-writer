@@ -158,7 +158,7 @@ export class TemplateService {
       for (const [key, jsondoc] of Object.entries(jsondocsObject)) {
         // Create a more descriptive label based on schema type
         const schemaTypeLabels: Record<string, string> = {
-          'brainstorm_idea': '故事创意',
+          '灵感创意': '故事创意',
           'brainstorm_collection': '创意集合',
           'brainstorm_input_params': '头脑风暴参数',
           '剧本设定': '剧本设定',

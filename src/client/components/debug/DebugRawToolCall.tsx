@@ -45,12 +45,12 @@ interface PromptResult {
 // Helper function to provide default parameters for tools
 const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
     switch (toolName) {
-        case 'edit_brainstorm_idea':
+        case 'edit_灵感创意':
             return {
                 editRequirements: '调整故事内容，增强吸引力',
                 ideaIndex: 0
             };
-        case 'generate_brainstorm_ideas':
+        case 'generate_灵感创意s':
             return {
                 otherRequirements: '生成有创意的故事想法，快节奏，高颜值主角'
             };
@@ -94,12 +94,12 @@ const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
 // Helper function to get expected jsondoc types for tools
 const getExpectedJsondocTypes = (toolName: string): string[] => {
     switch (toolName) {
-        case 'edit_brainstorm_idea':
-            return ['brainstorm_collection', 'brainstorm_idea'];
-        case 'generate_brainstorm_ideas':
+        case 'edit_灵感创意':
+            return ['brainstorm_collection', '灵感创意'];
+        case 'generate_灵感创意s':
             return ['brainstorm_input_params'];
         case 'generate_剧本设定':
-            return ['brainstorm_collection', 'brainstorm_idea'];
+            return ['brainstorm_collection', '灵感创意'];
         case 'edit_剧本设定':
             return ['剧本设定'];
         case 'generate_chronicles':

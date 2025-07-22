@@ -324,8 +324,8 @@ export class JsondocRepository {
                 transformOutputs
             );
 
-            // Get all brainstorm_idea jsondocs
-            const allBrainstormIdeas = jsondocs.filter(a => a.schema_type === 'brainstorm_idea');
+            // Get all 灵感创意 jsondocs
+            const allBrainstormIdeas = jsondocs.filter(a => a.schema_type === '灵感创意');
 
             // Resolve each to its latest version
             const latestJsondocIds = new Set<string>();
@@ -339,7 +339,7 @@ export class JsondocRepository {
 
                     // Find the actual jsondoc data
                     const latestJsondoc = jsondocs.find(a => a.id === result.jsondocId);
-                    if (latestJsondoc && latestJsondoc.schema_type === 'brainstorm_idea') {
+                    if (latestJsondoc && latestJsondoc.schema_type === '灵感创意') {
                         resolvedJsondocs.push(this.rowToJsondoc({
                             ...latestJsondoc,
                         }));
@@ -355,7 +355,7 @@ export class JsondocRepository {
         } catch (error) {
             console.error('Error getting latest brainstorm ideas:', error);
             // Fallback to regular method if lineage resolution fails
-            return this.getProjectJsondocsByType(projectId, 'brainstorm_idea');
+            return this.getProjectJsondocsByType(projectId, '灵感创意');
         }
     }
 

@@ -48,7 +48,7 @@ export function createAdminRoutes(
         for (const tool of tools) {
             // Map tool names to their template configurations based on known patterns
             const toolConfigs: Record<string, { templateName: string; outputJsondocType: string; schemas: any }> = {
-                'generate_brainstorm_ideas': {
+                'generate_灵感创意s': {
                     templateName: 'brainstorming',
                     outputJsondocType: 'brainstorm_collection',
                     schemas: {
@@ -56,9 +56,9 @@ export function createAdminRoutes(
                         outputSchema: () => import('@/common/transform_schemas.js').then(m => m.IdeationOutputSchema)
                     }
                 },
-                'edit_brainstorm_idea': {
+                'edit_灵感创意': {
                     templateName: 'brainstorm_edit_patch',
-                    outputJsondocType: 'brainstorm_idea',
+                    outputJsondocType: '灵感创意',
                     schemas: {
                         inputSchema: () => import('@/common/schemas/transforms.js').then(m => m.BrainstormEditInputSchema),
                         outputSchema: () => Promise.resolve(JsonPatchOperationsSchema)
@@ -182,7 +182,7 @@ export function createAdminRoutes(
                         properties: inputProperties
                     },
                     templatePath: templateName,
-                    hasCustomTemplateVariables: tool.name === 'edit_brainstorm_idea' // Only brainstorm edit has custom logic
+                    hasCustomTemplateVariables: tool.name === 'edit_灵感创意' // Only brainstorm edit has custom logic
                 };
             });
 
@@ -239,13 +239,13 @@ export function createAdminRoutes(
             // Extract intent mapping from tool names and their descriptions
             const intentMapping = [
                 {
-                    value: 'generate_brainstorm_ideas',
+                    value: 'generate_灵感创意s',
                     label: '生成故事创意',
                     description: '基于头脑风暴参数生成多个故事想法',
                     category: '创意生成'
                 },
                 {
-                    value: 'edit_brainstorm_idea',
+                    value: 'edit_灵感创意',
                     label: '编辑故事创意',
                     description: '修改现有的故事创意内容',
                     category: '内容编辑'

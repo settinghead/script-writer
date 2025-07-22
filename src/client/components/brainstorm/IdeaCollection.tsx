@@ -328,7 +328,7 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
   }
 
   // Determine schema type based on whether we have individual ideas or collections
-  const sectionSchemaType = hasOnlyIndividualIdeas ? "brainstorm_idea" : "brainstorm_collection";
+  const sectionSchemaType = hasOnlyIndividualIdeas ? "灵感创意" : "brainstorm_collection";
   const sectionJsondocId = hasOnlyIndividualIdeas ? ideas[0]?.jsondocId : undefined;
 
   return (

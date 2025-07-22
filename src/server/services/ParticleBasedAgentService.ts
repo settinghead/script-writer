@@ -26,7 +26,7 @@ async function buildMinimalContext(
         const allJsondocs = await jsondocRepo.getProjectJsondocs(projectId);
 
         const hasInput = allJsondocs.some((j: any) => j.schema_type === 'user_input');
-        const hasBrainstorm = allJsondocs.some((j: any) => j.schema_type === 'brainstorm_idea');
+        const hasBrainstorm = allJsondocs.some((j: any) => j.schema_type === '灵感创意');
         const hasOutline = allJsondocs.some((j: any) => j.schema_type === '剧本设定');
         const hasChronicles = allJsondocs.some((j: any) => j.schema_type === 'chronicles');
         const hasEpisodePlanning = allJsondocs.some((j: any) => j.schema_type === 'episode_planning');

@@ -68,7 +68,7 @@ async function testExportFunctionality() {
         // Create brainstorm idea
         await jsondocRepo.createJsondoc(
             testProjectId,
-            'brainstorm_idea',
+            '灵感创意',
             {
                 title: '误爱成宠',
                 body: '女主因为误会与霸道总裁开始了一段特殊的关系，在职场中两人逐渐了解彼此，最终走向幸福结局。'

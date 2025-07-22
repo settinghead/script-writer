@@ -3,13 +3,13 @@ import { TypedJsondoc } from "@/common/types";
 export const mockJsondocs = {
     brainstormIdea: {
         id: 'test-brainstorm-1',
-        type: 'brainstorm_idea',
+        type: '灵感创意',
         project_id: 'test-project-1',
         data: JSON.stringify({
             title: '误爱成宠',
             body: '林氏集团总裁林慕琛因一场误会将普通职员夏栀认作富家千金...'
         }),
-        schema_type: 'brainstorm_idea' as TypedJsondoc['schema_type'],
+        schema_type: '灵感创意' as TypedJsondoc['schema_type'],
         schema_version: '1.0',
         type_version: '1.0',
         origin_type: 'ai_generated',

@@ -229,7 +229,7 @@ const JsondocNode: React.FC<{
                                     } else {
                                         preview = '创意集合';
                                     }
-                                } else if (jsondoc.schema_type === 'brainstorm_idea') {
+                                } else if (jsondoc.schema_type === '灵感创意') {
                                     const title = data.title || '';
                                     preview = title.length > 25 ? `${title.substring(0, 25)}...` : title;
                                 } else if (jsondoc.schema_type === '剧本设定') {

@@ -108,7 +108,7 @@ describe('AgentService Integration', () => {
             } else if (request.userRequest?.includes('大纲') || request.userRequest?.includes('outline')) {
                 // For outline requests, simulate getting jsondocs for context
                 await mockJsondocRepo.getJsondocsByType(projectId, 'brainstorm_collection');
-                await mockJsondocRepo.getJsondocsByType(projectId, 'brainstorm_idea');
+                await mockJsondocRepo.getJsondocsByType(projectId, '灵感创意');
             } else if (request.userRequest?.includes('分析')) {
                 // For analysis requests, simulate context gathering
                 await mockJsondocRepo.getJsondocsByType(projectId, 'brainstorm_collection');
@@ -197,7 +197,7 @@ describe('AgentService Integration', () => {
                     total_ideas: 1
                 },
                 created_at: new Date().toISOString(),
-                schema_type: 'brainstorm_idea',
+                schema_type: '灵感创意',
                 schema_version: '1.0',
                 origin_type: 'ai_generated'
             }
@@ -245,14 +245,14 @@ describe('AgentService Integration', () => {
         const existingBrainstormJsondocs = [
             {
                 id: 'idea-1',
-                type: 'brainstorm_idea',
+                type: '灵感创意',
                 project_id: TEST_PROJECT_ID,
                 data: {
                     title: '误爱成宠（升级版）',
                     body: '现代都市背景下，职场精英的爱恋故事...'
                 },
                 created_at: new Date().toISOString(),
-                schema_type: 'brainstorm_idea',
+                schema_type: '灵感创意',
                 schema_version: '1.0',
                 origin_type: 'ai_generated'
             }
@@ -261,7 +261,7 @@ describe('AgentService Integration', () => {
         mockJsondocRepo.getJsondocsByType.mockImplementation((projectId: string, type: string) => {
             if (type === 'brainstorm_collection') {
                 return Promise.resolve([]);
-            } else if (type === 'brainstorm_idea') {
+            } else if (type === '灵感创意') {
                 return Promise.resolve(existingBrainstormJsondocs);
             } else if (type === 'outline_response') {
                 return Promise.resolve([]);

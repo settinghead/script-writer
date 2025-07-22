@@ -186,7 +186,7 @@ class ApiService {
             },
             body: JSON.stringify({
                 projectId,
-                schemaType: 'brainstorm_idea' as TypedJsondoc['schema_type'],
+                schemaType: '灵感创意' as TypedJsondoc['schema_type'],
                 data: {
                     title: '新创意',
                     body: ''

@@ -47,7 +47,7 @@ const ProjectContentRenderer: React.FC<{ projectId: string; scrollContainerRef: 
         // Look for brainstorm_input_params jsondocs OR brainstorm idea jsondocs
         return projectData.jsondocs.some((jsondoc) =>
             jsondoc.schema_type === 'brainstorm_input_params' ||
-            jsondoc.schema_type === 'brainstorm_idea' ||
+            jsondoc.schema_type === '灵感创意' ||
             jsondoc.schema_type === 'brainstorm_collection'
         );
     }, [projectData.jsondocs]);

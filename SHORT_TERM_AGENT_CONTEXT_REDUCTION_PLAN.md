@@ -5,7 +5,7 @@
 The current agent system in the script-writer project builds a comprehensive context for every request, including all canonical jsondocs computed from the lineage tree. This leads to excessively long prompts (e.g., 23k+ characters), which burdens the LLM (likely Qwen models) and causes issues like incomplete tool executions. For example, after generating episode synopsis for episodes 1-6, attempts to generate 7-12 fail because the added synopsis jsondoc bloats the context, even though the tool works fine in isolation.
 
 This short-term plan focuses on immediately reducing context length by intelligently selecting and optimizing jsondocs based on the user's intent and workflow stage. Drawing from the logic in actionComputation.ts (which computes unified workflow state including display components and actions) and canonicalJsondocLogic.ts (which prioritizes jsondocs by derivation, user input, leaf status, and recency), we'll introduce:
-- **Prioritization**: Rank jsondocs by relevance to the inferred intent (e.g., for synopsis generation, prioritize upstream like brainstorm_idea, 剧本设定, chronicles, episode_planning over unrelated or prior synopses).
+- **Prioritization**: Rank jsondocs by relevance to the inferred intent (e.g., for synopsis generation, prioritize upstream like 灵感创意, 剧本设定, chronicles, episode_planning over unrelated or prior synopses).
 - **Trimming**: Reduce content in lower-priority jsondocs (e.g., summarize or truncate bodies while preserving structure, with amount based on priority).
 - **Capping**: As a last resort, discard lowest-priority jsondocs if the context still exceeds a max limit (e.g., 16k chars) after trimming.
 
@@ -16,7 +16,7 @@ The changes will be verifiable via AgentContextView.tsx, which already computes 
 ## Changes Required
 
 - **AgentRequestBuilder.ts (src/server/services/AgentRequestBuilder.ts)**: Modify `buildContextForRequestType` to infer intent from user request (keyword matching or structured data) and prioritize/trim jsondocs. Add max length cap with truncation/discarding. Update `buildPromptForRequestType` to use optimized context.
-- **CanonicalJsondocLogic.ts (src/common/canonicalJsondocLogic.ts)**: Enhance `computeCanonicalJsondocsFromLineage` to accept `intent` param, filtering and ranking by relevance (e.g., map intents to required types like ['brainstorm_idea', '剧本设定'] for outline-related actions).
+- **CanonicalJsondocLogic.ts (src/common/canonicalJsondocLogic.ts)**: Enhance `computeCanonicalJsondocsFromLineage` to accept `intent` param, filtering and ranking by relevance (e.g., map intents to required types like ['灵感创意', '剧本设定'] for outline-related actions).
 - **ActionComputation.ts (src/client/utils/actionComputation.ts)**: Align client-side computation with new prioritization for consistency (e.g., pass intent to unified context computation).
 - **AgentContextView.tsx (src/client/components/debug/AgentContextView.tsx)**: Extend to display prioritized jsondocs, trimming details, and cap status (e.g., add sections for "Prioritized Context" and "Discarded Jsondocs").
 - **API Routes (e.g., src/server/routes/chatRoutes.ts)**: For button-triggered requests, send structured intent data instead of raw text.
@@ -29,12 +29,12 @@ The changes will be verifiable via AgentContextView.tsx, which already computes 
    - In backend (AgentRequestBuilder.ts), parse intent if present; fallback to keyword matching (e.g., regex for "generate episodes X-Y").
 
 2. **Prioritization**:
-   - In CanonicalJsondocLogic.ts, add intent-to-types mapping (e.g., 'generate_episode_synopsis' => ['brainstorm_idea', '剧本设定', 'chronicles', 'episode_planning']). Filter canonical context to these types, ranking by: 1) Required for intent, 2) Leaf/user_input status, 3) Recency.
+   - In CanonicalJsondocLogic.ts, add intent-to-types mapping (e.g., 'generate_episode_synopsis' => ['灵感创意', '剧本设定', 'chronicles', 'episode_planning']). Filter canonical context to these types, ranking by: 1) Required for intent, 2) Leaf/user_input status, 3) Recency.
 
    **Algorithm Sketch for Prioritization**:
    ```
    function prioritizeJsondocs(canonicalContext, intent):
-       requiredTypes = getRequiredTypesForIntent(intent)  // e.g., ['brainstorm_idea', 'chronicles']
+       requiredTypes = getRequiredTypesForIntent(intent)  // e.g., ['灵感创意', 'chronicles']
        allJsondocs = extractAllFromContext(canonicalContext)  // Flatten to array
        
        // Step 1: Filter to relevant types

@@ -446,7 +446,7 @@ const actions = computeActionsFromLineage(currentStage, context);
 - **Priority Ordering** - Actions displayed in logical workflow order
 
 **Dual-Path Support**:
-- **Manual Entry Detection** - Automatically identifies single `brainstorm_idea` with `user_input` origin
+- **Manual Entry Detection** - Automatically identifies single `灵感创意` with `user_input` origin
 - **AI Collection Handling** - Recognizes `brainstorm_collection` from AI generation
 - **Workflow Node Mapping** - Creates appropriate workflow nodes for each path type
 - **Stage Progression Logic** - Handles different progression patterns for each path
@@ -856,7 +856,7 @@ export const JsondocSchemaRegistry = {
     genre: z.string(),
     total_ideas: z.number()
   }),
-  'brainstorm_idea': IdeaSchema
+  '灵感创意': IdeaSchema
 } as const;
 
 export const IdeaSchema = z.object({

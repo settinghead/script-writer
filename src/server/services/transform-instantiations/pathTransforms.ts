@@ -1,7 +1,7 @@
 import { JsondocSchemaRegistry } from '../../../common/schemas/jsondocs';
 
 // Get the schema from the registry
-const BrainstormIdeaSchema = JsondocSchemaRegistry.brainstorm_idea;
+const BrainstormIdeaSchema = JsondocSchemaRegistry.灵感创意;
 
 // Export the schema for use by other modules
 export { BrainstormIdeaSchema };

@@ -63,7 +63,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
         return (
             <SectionWrapper
-                schemaType={"brainstorm_idea"}
+                schemaType={"灵感创意"}
                 title="初始创意"
                 sectionId="ideation-edit"
                 jsondocId={effectiveJsondoc.id}
@@ -96,7 +96,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                         })()}
                         icon="💡"
                         editableComponent={EditableBrainstormForm}
-                        schemaType="brainstorm_idea"
+                        schemaType="灵感创意"
                         enableClickToEdit={true}
                     />
                 </div>
@@ -112,7 +112,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
         }
 
         const brainstormIdeaJsondocs = projectData.jsondocs.filter(
-            (jsondoc: any) => jsondoc.schema_type === 'brainstorm_idea'
+            (jsondoc: any) => jsondoc.schema_type === '灵感创意'
         );
 
 
@@ -151,7 +151,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
 
     return (
         <SectionWrapper
-            schemaType={"brainstorm_idea"}
+            schemaType={"灵感创意"}
             title="初始创意"
             sectionId="ideation-edit"
             jsondocId={latestBrainstormIdea?.id}
@@ -163,7 +163,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                     title="当前创意"
                     icon="💡"
                     editableComponent={EditableBrainstormForm}
-                    schemaType="brainstorm_idea"
+                    schemaType="灵感创意"
                     enableClickToEdit={true}
                 />
             </div>

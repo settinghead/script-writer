@@ -58,7 +58,7 @@ describe('EpisodePlanningTool', () => {
 
             const mockBrainstormJsondoc = {
                 id: 'brainstorm-id',
-                schema_type: 'brainstorm_idea',
+                schema_type: '灵感创意',
                 project_id: projectId,
                 data: {
                     title: 'Test Brainstorm',
@@ -99,7 +99,7 @@ describe('EpisodePlanningTool', () => {
             const input = {
                 jsondocs: [
                     { jsondocId: 'chronicles-id', description: 'Chronicles data', schemaType: 'chronicles' as const },
-                    { jsondocId: 'brainstorm-id', description: 'Brainstorm idea', schemaType: 'brainstorm_idea' as const },
+                    { jsondocId: 'brainstorm-id', description: 'Brainstorm idea', schemaType: '灵感创意' as const },
                     { jsondocId: 'outline-id', description: 'Outline settings', schemaType: '剧本设定' as const }
                 ],
                 numberOfEpisodes: 30,
@@ -134,7 +134,7 @@ describe('EpisodePlanningTool', () => {
                 transformMetadata: {
                     toolName: 'generate_episode_planning',
                     chronicles: 'chronicles-id',
-                    brainstorm_idea: 'brainstorm-id',
+                    灵感创意: 'brainstorm-id',
                     剧本设定: 'outline-id',
                     numberOfEpisodes: 30,
                     requirements: 'Test requirements'

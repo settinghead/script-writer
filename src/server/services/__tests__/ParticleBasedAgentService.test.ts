@@ -68,7 +68,7 @@ describe('ParticleBasedAgentService', () => {
 
             (mockJsondocRepo.getJsondocsForProject as any).mockResolvedValue([
                 { schema_type: 'user_input' },
-                { schema_type: 'brainstorm_idea' },
+                { schema_type: '灵感创意' },
                 { schema_type: '剧本设定' }
             ]);
 

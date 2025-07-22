@@ -143,7 +143,7 @@ function computeUnifiedContext(
 
         // Basic stage detection without lineage
         const brainstormIdeas = projectData.jsondocs.filter(a =>
-            a.schema_type === 'brainstorm_idea'
+            a.schema_type === '灵感创意'
         );
 
         const brainstormCollections = projectData.jsondocs.filter(a =>

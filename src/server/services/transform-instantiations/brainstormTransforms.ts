@@ -9,7 +9,7 @@ import {
 } from '../../../common/schemas/outlineSchemas';
 
 // Get the schemas from the registry
-const BrainstormIdeaSchema = JsondocSchemaRegistry.brainstorm_idea;
+const BrainstormIdeaSchema = JsondocSchemaRegistry.灵感创意;
 
 
 // Type definitions based on schemas

@@ -28,7 +28,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
         it('should have correct tool definition structure', () => {
             expect(brainstormEditTool).toBeDefined();
             expect(brainstormEditTool.execute).toBeInstanceOf(Function);
-            expect(brainstormEditTool.name).toBe('edit_brainstorm_idea');
+            expect(brainstormEditTool.name).toBe('edit_灵感创意');
             expect(brainstormEditTool.description).toContain('JSON Patch格式');
             expect(brainstormEditTool.inputSchema).toBeDefined();
             expect(brainstormEditTool.outputSchema).toBeDefined();
@@ -39,7 +39,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 jsondocs: [{
                     jsondocId: 'test-jsondoc-id',
                     description: '测试故事创意',
-                    schemaType: 'brainstorm_idea'
+                    schemaType: '灵感创意'
                 }],
                 editRequirements: '增加悬疑元素',
                 agentInstructions: '保持原有风格',
@@ -90,7 +90,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             mockJsondocRepo.getJsondoc.mockResolvedValue({
                 id: 'restricted-jsondoc',
                 project_id: 'test-project',
-                schema_type: 'brainstorm_idea',
+                schema_type: '灵感创意',
                 data: { title: 'Test', body: 'Test content' }
             });
             mockJsondocRepo.userHasProjectAccess.mockResolvedValue(false);
@@ -180,11 +180,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
     });
 
     describe('Source Jsondoc Processing', () => {
-        it('should correctly extract data from brainstorm_idea jsondocs', async () => {
+        it('should correctly extract data from 灵感创意 jsondocs', async () => {
             // Arrange
             const sourceJsondoc = {
                 id: 'schema-jsondoc',
-                schema_type: 'brainstorm_idea',
+                schema_type: '灵感创意',
                 project_id: 'test-project-1',
                 data: {
                     title: '测试标题',
@@ -204,7 +204,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 jsondocs: [{
                     jsondocId: 'schema-jsondoc',
                     description: '测试故事创意',
-                    schemaType: 'brainstorm_idea'
+                    schemaType: '灵感创意'
                 }],
                 editRequirements: '测试处理'
             };
@@ -218,11 +218,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             }
         });
 
-        it('should correctly extract data from legacy brainstorm_idea jsondocs', async () => {
+        it('should correctly extract data from legacy 灵感创意 jsondocs', async () => {
             // Arrange
             const sourceJsondoc = {
                 id: 'legacy-jsondoc',
-                schema_type: 'brainstorm_idea',
+                schema_type: '灵感创意',
                 project_id: 'test-project-1',
                 data: {
                     title: '传统标题',
@@ -241,7 +241,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 jsondocs: [{
                     jsondocId: 'legacy-jsondoc',
                     description: '传统格式故事创意',
-                    schemaType: 'brainstorm_idea'
+                    schemaType: '灵感创意'
                 }],
                 editRequirements: '测试传统格式处理'
             };
@@ -298,7 +298,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
         it('should use streaming transform executor instead of dual-transform approach', () => {
             // Verify that the tool definition uses the unified approach
             expect(brainstormEditTool.description).toContain('JSON Patch格式');
-            expect(brainstormEditTool.name).toBe('edit_brainstorm_idea');
+            expect(brainstormEditTool.name).toBe('edit_灵感创意');
 
             // The tool should be properly structured for unified execution
             expect(brainstormEditTool.execute).toBeInstanceOf(Function);
@@ -314,7 +314,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 jsondocs: [{
                     jsondocId: 'test-id',
                     description: '测试故事创意',
-                    schemaType: 'brainstorm_idea'
+                    schemaType: '灵感创意'
                 }],
                 editRequirements: 'test requirements'
             };
@@ -326,7 +326,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 jsondocs: [{
                     jsondocId: 'test-id',
                     description: '测试故事创意',
-                    schemaType: 'brainstorm_idea'
+                    schemaType: '灵感创意'
                 }],
                 editRequirements: 'test requirements',
                 agentInstructions: 'test instructions',
@@ -379,7 +379,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             // Arrange
             mockJsondocRepo.getJsondoc.mockResolvedValue({
                 id: 'test-jsondoc',
-                schema_type: 'brainstorm_idea',
+                schema_type: '灵感创意',
                 project_id: 'test-project-1',
                 data: { title: 'test', body: 'test' },
                 metadata: {
@@ -393,7 +393,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 jsondocs: [{
                     jsondocId: 'test-jsondoc',
                     description: '测试故事创意',
-                    schemaType: 'brainstorm_idea'
+                    schemaType: '灵感创意'
                 }],
                 editRequirements: '测试仓库集成'
             };
@@ -412,7 +412,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             mockJsondocRepo.getJsondoc.mockResolvedValue({
                 id: 'protected-jsondoc',
                 project_id: 'test-project',
-                schema_type: 'brainstorm_idea',
+                schema_type: '灵感创意',
                 data: { title: 'Protected', body: 'Protected content' }
             });
             mockJsondocRepo.userHasProjectAccess.mockResolvedValue(false);
@@ -442,7 +442,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             // Arrange
             const sourceJsondoc = {
                 id: 'rejection-test-jsondoc',
-                schema_type: 'brainstorm_idea',
+                schema_type: '灵感创意',
                 project_id: 'test-project',
                 data: {
                     title: '测试标题',
@@ -464,7 +464,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                     jsondocId: 'rejection-test-jsondoc',
                     role: 'source_idea',
                     description: '测试故事创意',
-                    schemaType: 'brainstorm_idea'
+                    schemaType: '灵感创意'
                 }],
                 editRequirements: '改进故事内容'
             };

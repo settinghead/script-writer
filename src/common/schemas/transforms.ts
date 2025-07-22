@@ -38,7 +38,7 @@ export const TransformRegistry = {
   },
 
   // Brainstorm edit transforms
-  'brainstorm_idea_edit': {
+  '灵感创意_edit': {
     pathPattern: '^\\$\\.ideas\\[\\d+\\]$',
     inputSchema: z.object({
       title: z.string(),
@@ -48,7 +48,7 @@ export const TransformRegistry = {
       title: z.string(),
       body: z.string()
     }),
-    outputType: 'brainstorm_idea'
+    outputType: '灵感创意'
   }
 } as const;
 
@@ -155,7 +155,7 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     name: 'edit_brainstorm_collection_idea',
     description: 'Edit individual idea within brainstorm collection',
     sourceJsondocType: 'brainstorm_collection',
-    targetJsondocType: 'brainstorm_idea',
+    targetJsondocType: '灵感创意',
     pathPattern: '^\\$.ideas\\[\\d+\\]$', // JSONPath for ideas[n]
     instantiationFunction: 'createBrainstormIdeaFromPath'
   },
@@ -190,24 +190,24 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
   'brainstorm_to_outline': {
     name: 'brainstorm_to_outline',
     description: 'Convert a brainstorm idea to outline input',
-    sourceJsondocType: 'brainstorm_idea',
+    sourceJsondocType: '灵感创意',
     targetJsondocType: 'outline_input',
     pathPattern: '^\\$$', // Root path indicator ($)
     instantiationFunction: 'createOutlineInputFromBrainstormIdea'
   },
-  'edit_brainstorm_idea': {
-    name: 'edit_brainstorm_idea',
+  'edit_灵感创意': {
+    name: 'edit_灵感创意',
     description: 'Edit entire brainstorm idea object',
-    sourceJsondocType: 'brainstorm_idea',
-    targetJsondocType: 'brainstorm_idea',
+    sourceJsondocType: '灵感创意',
+    targetJsondocType: '灵感创意',
     pathPattern: '^\\$$', // Root path indicator ($)
     instantiationFunction: 'createBrainstormIdeaFromBrainstormIdea'
   },
-  'edit_brainstorm_idea_field': {
-    name: 'edit_brainstorm_idea_field',
+  'edit_灵感创意_field': {
+    name: 'edit_灵感创意_field',
     description: 'Edit individual fields of brainstorm ideas',
-    sourceJsondocType: 'brainstorm_idea',
-    targetJsondocType: 'brainstorm_idea',
+    sourceJsondocType: '灵感创意',
+    targetJsondocType: '灵感创意',
     pathPattern: '^(title|body)$', // Matches title or body fields
     instantiationFunction: 'createUserInputFromBrainstormField'
   },

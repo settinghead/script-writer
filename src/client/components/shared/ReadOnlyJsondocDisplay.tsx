@@ -218,7 +218,7 @@ export const ReadOnlyJsondocDisplay: React.FC<ReadOnlyJsondocDisplayProps> = ({ 
     }
 
     // Render brainstorm idea specific layout
-    if (schemaType === 'brainstorm_idea') {
+    if (schemaType === '灵感创意') {
         return (
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 {/* Title */}

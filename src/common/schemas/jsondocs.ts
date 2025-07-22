@@ -55,7 +55,7 @@ const JsonPatchSchema = z.object({
 export const JsondocSchemaRegistry = {
   // Brainstorm schemas
   'brainstorm_collection': BrainstormCollectionSchema,
-  'brainstorm_idea': IdeaSchema,
+  '灵感创意': IdeaSchema,
   'brainstorm_input_params': BrainstormToolInputSchema,
 
   // New outline schemas

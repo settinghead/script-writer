@@ -55,7 +55,7 @@ async function testStreamingPatches() {
         console.log('\n2. Creating test brainstorm idea...');
         const originalIdea = await jsondocRepo.createJsondoc(
             testProjectId,
-            'brainstorm_idea',
+            '灵感创意',
             {
                 title: '霸总追妻火葬场',
                 body: '沈总裁因为误会而冷落妻子，当他发现真相后开始疯狂追妻，但妻子已经心灰意冷。沈总裁必须用真心和行动来挽回妻子的心。'
@@ -77,7 +77,7 @@ async function testStreamingPatches() {
         const editInput = {
             jsondocs: [{
                 jsondocId: originalIdea.id,
-                schemaType: 'brainstorm_idea',
+                schemaType: '灵感创意',
                 description: 'Original brainstorm idea to edit'
             }],
             ideaIndex: 0,
@@ -103,7 +103,7 @@ async function testStreamingPatches() {
             userId: testUserId,
             transformRepo,
             jsondocRepo,
-            outputJsondocType: 'brainstorm_idea',
+            outputJsondocType: '灵感创意',
             executionMode: {
                 mode: 'patch-approval',
                 originalJsondoc: {
@@ -112,7 +112,7 @@ async function testStreamingPatches() {
                 }
             },
             transformMetadata: {
-                toolName: 'edit_brainstorm_idea',
+                toolName: 'edit_灵感创意',
                 source_jsondoc_id: originalIdea.id,
                 idea_index: 0,
                 edit_requirements: editInput.editRequirements,

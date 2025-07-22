@@ -45,7 +45,7 @@ export function useChosenBrainstormIdea(): {
                     if (humanTransform.derived_jsondoc_id) {
                         const derivedJsondoc = projectData.getJsondocById(humanTransform.derived_jsondoc_id);
 
-                        if (derivedJsondoc && (derivedJsondoc.schema_type === 'brainstorm_idea')) {
+                        if (derivedJsondoc && (derivedJsondoc.schema_type === '灵感创意')) {
                             // Extract index from derivation path
                             let index = 0;
                             let isFromCollection = false;

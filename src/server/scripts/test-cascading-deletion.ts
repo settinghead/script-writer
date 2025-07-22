@@ -51,7 +51,7 @@ async function testCascadingDeletion() {
         // Create original jsondoc
         const originalJsondoc = await jsondocRepo.createJsondoc(
             projectId,
-            'brainstorm_idea',
+            '灵感创意',
             { title: 'Original Title', body: 'Original content' },
             'v1',
             {},

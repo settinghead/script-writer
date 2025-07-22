@@ -66,7 +66,7 @@ async function testMultiPatchWorkflow() {
         for (let i = 0; i < testIdeas.length; i++) {
             const jsonDoc = await jsondocRepo.createJsondoc(
                 projectId,
-                'brainstorm_idea',
+                '灵感创意',
                 testIdeas[i],
                 'v1',
                 { test: true, index: i },
@@ -101,7 +101,7 @@ async function testMultiPatchWorkflow() {
                 jsondocs: [{
                     jsondocId: ideaJsondocs[i].id,
                     description: 'original_idea',
-                    schemaType: 'brainstorm_idea'
+                    schemaType: '灵感创意'
                 }],
                 editRequirements: editRequests[i]
             };
@@ -227,7 +227,7 @@ async function testMultiPatchWorkflow() {
             jsondocs: [{
                 jsondocId: ideaJsondocs[0].id,
                 description: 'original_idea',
-                schemaType: 'brainstorm_idea'
+                schemaType: '灵感创意'
             }],
             editRequirements: '添加更多戏剧冲突和转折点'
         };

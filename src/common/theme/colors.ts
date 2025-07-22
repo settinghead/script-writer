@@ -89,7 +89,7 @@ export const ColorUtils = {
         // Fallback colors for specific types
         switch (type) {
             case 'user_input': return AppColors.human.primary;
-            case 'brainstorm_idea': return AppColors.ai.primary;
+            case '灵感创意': return AppColors.ai.primary;
             case 'outline_response': return AppColors.ai.primary;
             case 'chronicles': return AppColors.ai.primary;
             case 'json_patch': return AppColors.status.warning; // Orange for patch jsondocs

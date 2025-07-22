@@ -40,7 +40,7 @@ describe('JsondocRepository', () => {
 
             // Assert
             expect(result).toHaveLength(1);
-            expect(result[0].schema_type).toBe('brainstorm_idea');
+            expect(result[0].schema_type).toBe('灵感创意');
             expect(result[0].data).toEqual({
                 title: '误爱成宠',
                 body: '林氏集团总裁林慕琛因一场误会将普通职员夏栀认作富家千金...'
@@ -70,7 +70,7 @@ describe('JsondocRepository', () => {
             // Assert
             expect(result).toBeDefined();
             expect(result?.id).toBe('test-brainstorm-1');
-            expect(result?.schema_type).toBe('brainstorm_idea');
+            expect(result?.schema_type).toBe('灵感创意');
             expect(result?.project_id).toBe('test-project-1');
             expect(result?.data).toEqual({
                 title: '误爱成宠',

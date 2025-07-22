@@ -17,7 +17,7 @@ vi.mock('../lineageBasedActionComputation', () => ({
                 a.schema_type === 'brainstorm_input_params'
             );
             const hasBrainstormIdeas = jsondocs.some(a =>
-                a.schema_type === 'brainstorm_idea'
+                a.schema_type === '灵感创意'
             );
             const hasOutlineSettings = jsondocs.some(a =>
                 a.schema_type === '剧本设定'
@@ -35,7 +35,7 @@ vi.mock('../lineageBasedActionComputation', () => ({
                 // Check if we have a leaf brainstorm idea (chosen idea) via lineage graph
                 if (lineageGraph && lineageGraph.nodes) {
                     const leafBrainstormIdeas = jsondocs.filter(a => {
-                        if (a.schema_type === 'brainstorm_idea') {
+                        if (a.schema_type === '灵感创意') {
                             const node = lineageGraph.nodes.get(a.id);
                             return node && node.isLeaf;
                         }
@@ -229,7 +229,7 @@ describe('Unified Workflow Computation', () => {
                     },
                     {
                         id: 'ideas-1',
-                        schema_type: 'brainstorm_idea',
+                        schema_type: '灵感创意',
                         data: '{"title": "Test Idea", "body": "Test body"}',
                         created_at: '2024-01-01T00:00:00Z'
                     }
@@ -254,9 +254,9 @@ describe('Unified Workflow Computation', () => {
                             jsondocId: 'ideas-1',
                             isLeaf: true,
                             depth: 1,
-                            jsondocType: 'brainstorm_idea',
+                            jsondocType: '灵感创意',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_idea',
+                            schemaType: '灵感创意',
                             originType: 'ai_generated',
                             jsondoc: { id: 'ideas-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'
@@ -286,7 +286,7 @@ describe('Unified Workflow Computation', () => {
                     },
                     {
                         id: 'ideas-1',
-                        schema_type: 'brainstorm_idea',
+                        schema_type: '灵感创意',
                         data: '{"title": "Test Idea", "body": "Test body"}',
                         created_at: '2024-01-01T00:00:00Z'
                     }
@@ -310,9 +310,9 @@ describe('Unified Workflow Computation', () => {
                             jsondocId: 'ideas-1',
                             isLeaf: true,
                             depth: 1,
-                            jsondocType: 'brainstorm_idea',
+                            jsondocType: '灵感创意',
                             sourceTransform: 'none',
-                            schemaType: 'brainstorm_idea',
+                            schemaType: '灵感创意',
                             originType: 'ai_generated',
                             jsondoc: { id: 'ideas-1' } as any,
                             createdAt: '2024-01-01T00:00:00Z'

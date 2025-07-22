@@ -4,7 +4,7 @@
  * This module provides pure functions for resolving complex jsondoc lineages
  * in the script-writer application. It handles chains like:
  * 
- * brainstorm_collection[0] → human_transform → user_input → llm_transform → brainstorm_idea
+ * brainstorm_collection[0] → human_transform → user_input → llm_transform → 灵感创意
  */
 
 import type {
@@ -915,7 +915,7 @@ export function findLatestBrainstormIdeas(
     graph: LineageGraph,
     jsondocs: ElectricJsondoc[]
 ): ElectricJsondoc[] {
-    return findLeafNodesByType(graph, jsondocs, 'brainstorm_idea');
+    return findLeafNodesByType(graph, jsondocs, '灵感创意');
 }
 
 /**
@@ -925,7 +925,7 @@ export function findLatestBrainstormIdeasWithLineage(
     graph: LineageGraph,
     jsondocs: import('../types').ElectricJsondoc[]
 ): import('../types').ElectricJsondocWithLineage[] {
-    const latestBrainstormIdeas = findLeafNodesByType(graph, jsondocs, 'brainstorm_idea');
+    const latestBrainstormIdeas = findLeafNodesByType(graph, jsondocs, '灵感创意');
     return addLineageToJsondocs(latestBrainstormIdeas, graph);
 }
 
@@ -1136,7 +1136,7 @@ export function findEffectiveBrainstormIdeas(
         .filter(([_, node]) => {
             if (node.type !== 'jsondoc') return false;
             const jsondoc = jsondocMap.get((node as LineageNodeJsondoc).jsondocId);
-            return jsondoc?.schema_type === 'brainstorm_idea' || jsondoc?.schema_type === 'brainstorm_collection';
+            return jsondoc?.schema_type === '灵感创意' || jsondoc?.schema_type === 'brainstorm_collection';
         });
 
     const relevantNodes = allBrainstormNodes
@@ -1155,7 +1155,7 @@ export function findEffectiveBrainstormIdeas(
 
             if (jsondoc.schema_type === 'brainstorm_collection') {
                 shouldInclude = node.isLeaf;
-            } else if (jsondoc.schema_type === 'brainstorm_idea') {
+            } else if (jsondoc.schema_type === '灵感创意') {
                 if (hasCollections) {
                     // If collections exist, only include leaf ideas
                     shouldInclude = node.isLeaf;
@@ -1164,10 +1164,10 @@ export function findEffectiveBrainstormIdeas(
                     if (node.isLeaf) {
                         shouldInclude = true;
                     } else {
-                        // Check if this is the latest brainstorm_idea (highest depth)
+                        // Check if this is the latest 灵感创意 (highest depth)
                         const allIdeaNodes = allBrainstormNodes.filter(([_, n]) => {
                             const j = jsondocMap.get((n as LineageNodeJsondoc).jsondocId);
-                            return j?.schema_type === 'brainstorm_idea';
+                            return j?.schema_type === '灵感创意';
                         });
                         const maxDepth = Math.max(...allIdeaNodes.map(([_, n]) => n.depth));
                         shouldInclude = node.depth === maxDepth;
@@ -1201,7 +1201,7 @@ export function findEffectiveBrainstormIdeas(
             } catch (e) {
                 console.warn('Failed to parse brainstorm collection data:', e);
             }
-        } else if (jsondoc.schema_type === 'brainstorm_idea') {
+        } else if (jsondoc.schema_type === '灵感创意') {
             // Handle individual ideas
             try {
                 const data = JSON.parse(jsondoc.data);
@@ -1560,7 +1560,7 @@ function createBrainstormOnlyWorkflow(jsondocs: ElectricJsondoc[]): WorkflowNode
     // Look for brainstorm collections and ideas
     const brainstormCollections = jsondocs.filter(a =>
         a.schema_type === 'brainstorm_collection' ||
-        a.schema_type === 'brainstorm_idea'
+        a.schema_type === '灵感创意'
     );
 
     // FIXED LOGIC: Properly handle the workflow progression
@@ -1576,9 +1576,9 @@ function createBrainstormOnlyWorkflow(jsondocs: ElectricJsondoc[]): WorkflowNode
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
         // Determine node type based on collection type
-        if (primaryJsondoc.schema_type === 'brainstorm_idea' && primaryJsondoc.origin_type === 'user_input') {
+        if (primaryJsondoc.schema_type === '灵感创意' && primaryJsondoc.origin_type === 'user_input') {
             // Single manually entered idea
-            nodeType = 'brainstorm_idea';
+            nodeType = '灵感创意';
 
             // Try to extract title from the jsondoc data
             try {
@@ -1609,9 +1609,9 @@ function createBrainstormOnlyWorkflow(jsondocs: ElectricJsondoc[]): WorkflowNode
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
 
         // Determine workflow node type based on jsondoc type
-        if (primaryJsondoc.schema_type === 'brainstorm_idea' && primaryJsondoc.origin_type === 'user_input') {
+        if (primaryJsondoc.schema_type === '灵感创意' && primaryJsondoc.origin_type === 'user_input') {
             // Single manually entered idea
-            nodeType = 'brainstorm_idea';
+            nodeType = '灵感创意';
 
             // Try to extract title from the jsondoc data
             try {
@@ -1732,7 +1732,7 @@ function traceForwardFromJsondoc(
             // Only include main workflow jsondocs, not individual stage edits
             const isMainWorkflowJsondoc =
                 nextJsondoc.schema_type === 'brainstorm_collection' ||
-                nextJsondoc.schema_type === 'brainstorm_idea' ||
+                nextJsondoc.schema_type === '灵感创意' ||
                 nextJsondoc.schema_type === '剧本设定' ||
                 nextJsondoc.schema_type === 'chronicles' ||
                 nextJsondoc.schema_type === 'episode_planning';
@@ -1792,8 +1792,8 @@ function createWorkflowNodeFromJsondoc(
         nodeType = 'brainstorm_collection';
         title = '创意构思';
         navigationTarget = '#ideas';
-    } else if (jsondoc.schema_type === 'brainstorm_idea') {
-        nodeType = 'brainstorm_idea';
+    } else if (jsondoc.schema_type === '灵感创意') {
+        nodeType = '灵感创意';
 
         // Try to extract title from data
         try {

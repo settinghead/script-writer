@@ -194,11 +194,11 @@ async function extractSourceIdeaData(
         } catch (extractError) {
             throw new Error(`Failed to extract idea at index ${params.ideaIndex}: ${extractError instanceof Error ? extractError.message : String(extractError)}`);
         }
-    } else if (sourceJsondoc.schema_type === 'brainstorm_idea') {
-        console.log(`[extractSourceIdeaData] Processing brainstorm_idea jsondoc`);
+    } else if (sourceJsondoc.schema_type === '灵感创意') {
+        console.log(`[extractSourceIdeaData] Processing 灵感创意 jsondoc`);
         // Direct brainstorm idea jsondoc
         if (!sourceData.title || !sourceData.body) {
-            console.log(`[extractSourceIdeaData] ERROR: Invalid brainstorm_idea jsondoc - missing title or body:`, {
+            console.log(`[extractSourceIdeaData] ERROR: Invalid 灵感创意 jsondoc - missing title or body:`, {
                 hasTitle: !!sourceData.title,
                 hasBody: !!sourceData.body,
                 sourceData
@@ -220,7 +220,7 @@ async function extractSourceIdeaData(
             targetPlatform = 'N/A';
             storyGenre = 'N/A';
         }
-        console.log(`[extractSourceIdeaData] Successfully extracted brainstorm_idea:`, { originalIdea, targetPlatform, storyGenre });
+        console.log(`[extractSourceIdeaData] Successfully extracted 灵感创意:`, { originalIdea, targetPlatform, storyGenre });
     } else if (sourceJsondoc.origin_type === 'user_input') {
         // User-edited jsondoc - extract from derived data
         let derivedData = sourceJsondoc.metadata?.derived_data;
@@ -288,7 +288,7 @@ export function createBrainstormEditToolDefinition(
     }
 ): StreamingToolDefinition<BrainstormEditInput, BrainstormEditToolResult> {
     return {
-        name: 'edit_brainstorm_idea',
+        name: 'edit_灵感创意',
         description: '编辑和改进现有故事创意。适用场景：用户对现有创意有具体的修改要求或改进建议。使用JSON Patch格式进行精确修改，只改变需要改变的部分，提高效率和准确性。支持各种编辑类型：内容扩展、风格调整、情节修改、结构调整等。系统会自动处理相关的上下文信息。',
         inputSchema: BrainstormEditInputSchema,
         outputSchema: BrainstormEditToolResultSchema,
@@ -333,10 +333,10 @@ export function createBrainstormEditToolDefinition(
                 });
 
                 let outputJsondocType: TypedJsondoc['schema_type'];
-                if (sourceJsondoc.schema_type === 'brainstorm_idea') {
-                    outputJsondocType = 'brainstorm_idea'; // Use new schema type
+                if (sourceJsondoc.schema_type === '灵感创意') {
+                    outputJsondocType = '灵感创意'; // Use new schema type
                 } else {
-                    outputJsondocType = 'brainstorm_idea'; // Legacy type
+                    outputJsondocType = '灵感创意'; // Legacy type
                 }
 
                 // Create config for unified patch generation using patch template
@@ -422,7 +422,7 @@ export function createBrainstormEditToolDefinition(
                         }
                     },
                     transformMetadata: {
-                        toolName: 'edit_brainstorm_idea',
+                        toolName: 'edit_灵感创意',
                         source_jsondoc_id: sourceJsondocRef.jsondocId,
                         idea_index: params.ideaIndex,
                         edit_requirements: params.editRequirements,
@@ -612,7 +612,7 @@ export function createBrainstormToolDefinition(
     }
 ): StreamingToolDefinition<IdeationInput, BrainstormToolResult> {
     return {
-        name: 'generate_brainstorm_ideas',
+        name: 'generate_灵感创意s',
         description: '生成新的故事创意。适用场景：用户想要全新的故事想法、需要更多创意选择、或当前没有满意的故事创意时。例如："给我一些新的故事想法"、"再想几个不同的创意"。系统会自动处理所有相关的上下文信息作为参考资料。',
         inputSchema: IdeationInputSchema,
         outputSchema: BrainstormToolResultSchema,
@@ -653,7 +653,7 @@ export function createBrainstormToolDefinition(
                 jsondocRepo,
                 outputJsondocType: 'brainstorm_collection',
                 transformMetadata: {
-                    toolName: 'generate_brainstorm_ideas',
+                    toolName: 'generate_灵感创意s',
                     ...jsondocMetadata, // Include all jsondoc IDs with their schema types as keys
                     platform: extractedParams.platform,
                     genre: extractedParams.genre,

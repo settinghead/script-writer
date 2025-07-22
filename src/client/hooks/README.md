@@ -82,7 +82,7 @@ ideas.map((idea, index) => {
     <JsondocEditor
       jsondocId={resolvedJsondocId || idea.jsondocId}
       path={pathKey}
-      transformName="edit_brainstorm_idea"
+      transformName="edit_灵感创意"
     />
   );
 });
