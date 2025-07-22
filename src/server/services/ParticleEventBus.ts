@@ -11,6 +11,15 @@ export interface JsondocChangeEvent {
     timestamp: number;
 }
 
+export interface TransformChangeEvent {
+    transform_id: string;
+    project_id: string;
+    type: string;
+    status: string;
+    operation: 'INSERT' | 'UPDATE' | 'DELETE';
+    timestamp: number;
+}
+
 export class ParticleEventBus extends EventEmitter {
     private dbConnection: Kysely<DB>;
     private particleService: ParticleService;
@@ -47,8 +56,9 @@ export class ParticleEventBus extends EventEmitter {
 
             await this.notificationClient.connect();
 
-            // Listen for jsondoc change notifications
+            // Listen for jsondoc and transform change notifications
             await this.notificationClient.query('LISTEN jsondoc_changed');
+            await this.notificationClient.query('LISTEN transform_changed');
 
             // Set up notification handler
             this.notificationClient.on('notification', (msg: any) => {
@@ -57,7 +67,14 @@ export class ParticleEventBus extends EventEmitter {
                         const data: JsondocChangeEvent = JSON.parse(msg.payload);
                         this.handleJsondocChange(data);
                     } catch (error) {
-                        console.error('[ParticleEventBus] Failed to parse notification payload:', error);
+                        console.error('[ParticleEventBus] Failed to parse jsondoc notification payload:', error);
+                    }
+                } else if (msg.channel === 'transform_changed') {
+                    try {
+                        const data: TransformChangeEvent = JSON.parse(msg.payload);
+                        this.handleTransformChange(data);
+                    } catch (error) {
+                        console.error('[ParticleEventBus] Failed to parse transform notification payload:', error);
                     }
                 }
             });
@@ -80,6 +97,7 @@ export class ParticleEventBus extends EventEmitter {
         try {
             if (this.notificationClient) {
                 await this.notificationClient.query('UNLISTEN jsondoc_changed');
+                await this.notificationClient.query('UNLISTEN transform_changed');
                 await this.notificationClient.end();
                 this.notificationClient = null;
             }
@@ -115,6 +133,35 @@ export class ParticleEventBus extends EventEmitter {
                 this.debouncedUpdates.delete(key);
             } catch (error) {
                 console.error(`[ParticleEventBus] Failed to process change for jsondoc ${data.jsondoc_id}:`, error);
+                this.debouncedUpdates.delete(key);
+            }
+        }, ParticleEventBus.DEBOUNCE_DELAY_MS);
+
+        this.debouncedUpdates.set(key, timeout);
+    }
+
+    /**
+     * Handle transform change notifications with debouncing
+     * When transforms change, canonicality might change, so we need to sync particle active status
+     */
+    private handleTransformChange(data: TransformChangeEvent): void {
+        const key = `project-${data.project_id}`;
+
+        // Clear existing timeout for this project
+        const existingTimeout = this.debouncedUpdates.get(key);
+        if (existingTimeout) {
+            clearTimeout(existingTimeout);
+        }
+
+        // Set new debounced update - sync entire project's particle active status
+        const timeout = setTimeout(async () => {
+            try {
+                console.log(`[ParticleEventBus] Transform change detected, syncing particle active status for project ${data.project_id}`);
+                await this.particleService.syncParticleActiveStatus(data.project_id);
+                this.debouncedUpdates.delete(key);
+                this.emit('particles_canonicality_synced', { projectId: data.project_id, operation: data.operation });
+            } catch (error) {
+                console.error(`[ParticleEventBus] Failed to sync particle active status for project ${data.project_id}:`, error);
                 this.debouncedUpdates.delete(key);
             }
         }, ParticleEventBus.DEBOUNCE_DELAY_MS);

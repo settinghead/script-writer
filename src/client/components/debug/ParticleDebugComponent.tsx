@@ -334,18 +334,6 @@ export const ParticleDebugComponent: React.FC<ParticleDebugComponentProps> = ({ 
                                             />
                                         </div>
 
-                                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                                            <Button
-                                                icon={<ReloadOutlined />}
-                                                onClick={checkParticleHealth}
-                                                type="default"
-                                            >
-                                                健康检查
-                                            </Button>
-                                            <Text style={{ color: '#888' }}>
-                                                限制: {limit} 条结果
-                                            </Text>
-                                        </div>
                                     </Space>
                                 </Card>
 

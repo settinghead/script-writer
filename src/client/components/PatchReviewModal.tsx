@@ -114,6 +114,81 @@ const PatchCard: React.FC<{
         }
     }, [originalJsondoc.data]);
 
+    // Generate human-readable path for the first patch (for title display)
+    const generateHumanReadablePath = (path: string[], originalData: any, includeSchemaType: boolean = true) => {
+        const pathParts: string[] = includeSchemaType ? [originalJsondoc.schema_type] : []; // Start with schema type if requested
+
+        for (let i = 0; i < path.length; i++) {
+            const segment = path[i];
+
+            if (segment === 'characters') {
+                pathParts.push('角色');
+            } else if (segment === 'selling_points') {
+                pathParts.push('卖点');
+            } else if (segment === 'satisfaction_points') {
+                pathParts.push('爽点');
+            } else if (segment === 'target_audience') {
+                pathParts.push('目标受众');
+            } else if (segment === 'setting') {
+                pathParts.push('设定');
+            } else if (segment === 'key_scenes') {
+                pathParts.push('关键场景');
+            } else if (segment === 'core_themes') {
+                pathParts.push('核心主题');
+            } else if (segment === 'personality_traits') {
+                pathParts.push('性格特征');
+            } else if (segment === 'relationships') {
+                pathParts.push('人际关系');
+            } else if (segment === 'character_arc') {
+                pathParts.push('角色弧光');
+            } else if (segment === 'description') {
+                pathParts.push('描述');
+            } else if (segment === 'name') {
+                pathParts.push('姓名');
+            } else if (segment === 'age') {
+                pathParts.push('年龄');
+            } else if (segment === 'gender') {
+                pathParts.push('性别');
+            } else if (segment === 'occupation') {
+                pathParts.push('职业');
+            } else if (segment === 'type') {
+                pathParts.push('类型');
+            } else if (segment === 'demographic') {
+                pathParts.push('人口统计');
+            } else if (segment === 'core_setting_summary') {
+                pathParts.push('核心设定概要');
+            } else if (!isNaN(Number(segment))) {
+                // This is an array index, try to get a meaningful name
+                const parentPath = path.slice(0, i);
+                const parentObj = parentPath.reduce((obj: any, key: string) => obj?.[key], originalData);
+
+                if (Array.isArray(parentObj) && parentObj[Number(segment)]) {
+                    const item = parentObj[Number(segment)];
+                    // Try to get a name or title for the item
+                    const itemName = item?.name || item?.title || `第${Number(segment) + 1}项`;
+                    pathParts.push(itemName);
+                } else {
+                    pathParts.push(`第${Number(segment) + 1}项`);
+                }
+            } else {
+                // Keep original segment as fallback
+                pathParts.push(segment);
+            }
+        }
+
+        return pathParts.join(' → ');
+    };
+
+    // Get the first patch for title display
+    const firstPatch = patchData.patches?.[0];
+    const titlePath = firstPatch ? generateHumanReadablePath(
+        firstPatch.path.replace(/^\//, '').split('/'),
+        originalData,
+        false // Don't include schema type in path since we show it as a pill
+    ) : '';
+
+    const patchOperation = firstPatch?.op === 'replace' ? '修改' : firstPatch?.op === 'add' ? '添加' : '删除';
+
     return (
         <Card
             size="small"
@@ -123,7 +198,7 @@ const PatchCard: React.FC<{
                 backgroundColor: isSelected ? '#001529' : '#141414'
             }}
             title={
-                <Space>
+                <Space wrap>
                     <Checkbox
                         checked={isSelected}
                         onChange={(e) => onSelectionChange(e.target.checked)}
@@ -133,23 +208,22 @@ const PatchCard: React.FC<{
                     {sourceTransformMetadata?.toolName && (
                         <Tag color="green">{sourceTransformMetadata.toolName}</Tag>
                     )}
+                    {titlePath && (
+                        <Text type="secondary" style={{ fontSize: '12px' }}>
+                            {patchOperation}: {titlePath}
+                        </Text>
+                    )}
                 </Space>
             }
         >
             {patchData.patches && patchData.patches.length > 0 ? (
                 patchData.patches.map((patch: any, index: number) => {
                     const fieldPath = patch.path.replace(/^\//, '').split('/');
-                    const fieldName = fieldPath[fieldPath.length - 1];
                     const currentValue = fieldPath.reduce((obj: any, key: string) => obj?.[key], originalData);
                     const newValue = patch.value;
 
                     return (
                         <div key={index} style={{ marginBottom: 16 }}>
-                            <Text strong style={{ color: '#1890ff' }}>
-                                {patch.op === 'replace' ? '修改' : patch.op === 'add' ? '添加' : '删除'}
-                                {fieldName}:
-                            </Text>
-
                             {patch.op === 'replace' && (
                                 <DiffView
                                     oldValue={formatValueForDisplay(currentValue)}
