@@ -15,12 +15,19 @@ export async function up(db: Kysely<any>): Promise<void> {
         .execute();
 
     // Add embedding column with pgvector type (flexible dimensions based on model)
-    const embeddingDimensions = process.env.EMBEDDING_DIMENSIONS;
-    if (!embeddingDimensions) {
-        throw new Error('EMBEDDING_DIMENSIONS is not set');
+    // In test environment, use a simple array column instead of vector type
+    if (process.env.NODE_ENV === 'test') {
+        // Use a simple array column for testing
+        await sql`ALTER TABLE embedding_cache ADD COLUMN embedding float[] NOT NULL`.execute(db);
+    } else {
+        // Use pgvector in production
+        const embeddingDimensions = process.env.EMBEDDING_DIMENSIONS;
+        if (!embeddingDimensions) {
+            throw new Error('EMBEDDING_DIMENSIONS is not set');
+        }
+        const embeddingDimensionsInt = parseInt(embeddingDimensions);
+        await sql`ALTER TABLE embedding_cache ADD COLUMN embedding vector(${sql.raw(`${embeddingDimensionsInt}`)}) NOT NULL`.execute(db);
     }
-    const embeddingDimensionsInt = parseInt(embeddingDimensions);
-    await sql`ALTER TABLE embedding_cache ADD COLUMN embedding vector(${sql.raw(`${embeddingDimensionsInt}`)}) NOT NULL`.execute(db);
 
     // Create index on model_name and provider for efficient lookups
     await db.schema

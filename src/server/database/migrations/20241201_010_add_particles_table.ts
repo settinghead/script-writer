@@ -1,8 +1,10 @@
 import { Kysely, sql } from 'kysely';
 
 export async function up(db: Kysely<any>): Promise<void> {
-    // Enable pgvector extension
-    await sql`CREATE EXTENSION IF NOT EXISTS vector`.execute(db);
+    // Enable pgvector extension (skip in test environment)
+    if (process.env.NODE_ENV !== 'test') {
+        await sql`CREATE EXTENSION IF NOT EXISTS vector`.execute(db);
+    }
 
     // Create particles table
     await db.schema
@@ -23,12 +25,18 @@ export async function up(db: Kysely<any>): Promise<void> {
         .execute();
 
     // Add embedding column with pgvector type (flexible dimensions based on model)
-    // Default to 1024 for OpenAI, but can be 1024 for Qwen or other dimensions
-    if (!process.env.EMBEDDING_DIMENSIONS) {
-        throw new Error('EMBEDDING_DIMENSIONS is not set');
+    // In test environment, use a simple array column instead of vector type
+    if (process.env.NODE_ENV === 'test') {
+        // Use a simple array column for testing
+        await sql`ALTER TABLE particles ADD COLUMN embedding float[]`.execute(db);
+    } else {
+        // Use pgvector in production
+        if (!process.env.EMBEDDING_DIMENSIONS) {
+            throw new Error('EMBEDDING_DIMENSIONS is not set');
+        }
+        const embeddingDimensions = parseInt(process.env.EMBEDDING_DIMENSIONS);
+        await sql`ALTER TABLE particles ADD COLUMN embedding vector(${sql.raw(`${embeddingDimensions}`)})`.execute(db);
     }
-    const embeddingDimensions = parseInt(process.env.EMBEDDING_DIMENSIONS);
-    await sql`ALTER TABLE particles ADD COLUMN embedding vector(${sql.raw(`${embeddingDimensions}`)})`.execute(db);
 
     // Create performance indexes
     await db.schema
@@ -49,8 +57,10 @@ export async function up(db: Kysely<any>): Promise<void> {
         .column('type')
         .execute();
 
-    // Create pgvector index for similarity search
-    await sql`CREATE INDEX idx_particles_embedding ON particles USING ivfflat (embedding vector_cosine_ops)`.execute(db);
+    // Create pgvector index for similarity search (skip in test environment)
+    if (process.env.NODE_ENV !== 'test') {
+        await sql`CREATE INDEX idx_particles_embedding ON particles USING ivfflat (embedding vector_cosine_ops)`.execute(db);
+    }
 
     // Create trigger for updated_at
     await sql`

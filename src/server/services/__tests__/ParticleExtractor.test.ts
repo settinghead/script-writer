@@ -156,12 +156,26 @@ describe('ParticleExtractor Batch Optimization', () => {
             }
         ]);
 
-        (JSONPath as any).mockReturnValue([
-            { value: { title: 'First', body: 'A' }, path: ['$', 'ideas', 0] },
-            { value: { title: 'Second', body: 'B' }, path: ['$', 'ideas', 1] },
-            { value: { title: 'Third', body: 'C' }, path: ['$', 'ideas', 2] },
-            { value: { title: 'Fourth', body: 'D' }, path: ['$', 'ideas', 3] }
-        ]);
+        // Mock JSONPath to handle both main path and title path extraction
+        (JSONPath as any).mockImplementation((options: any) => {
+            if (options.path === '$.ideas[*]') {
+                // Main path extraction
+                return [
+                    { value: { title: 'First', body: 'A' }, path: ['$', 'ideas', 0] },
+                    { value: { title: 'Second', body: 'B' }, path: ['$', 'ideas', 1] },
+                    { value: { title: 'Third', body: 'C' }, path: ['$', 'ideas', 2] },
+                    { value: { title: 'Fourth', body: 'D' }, path: ['$', 'ideas', 3] }
+                ];
+            } else if (options.path === '$.title') {
+                // Title extraction - return the title from the content
+                const content = options.json;
+                if (content && content.title) {
+                    return content.title;
+                }
+                return null;
+            }
+            return [];
+        });
 
         const mockEmbeddings = [
             { embedding: [1, 0, 0, 0], usage: { tokens: 10 } },
