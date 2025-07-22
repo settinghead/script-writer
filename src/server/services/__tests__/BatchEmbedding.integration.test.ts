@@ -135,17 +135,17 @@ describe('Batch Embedding Integration Test', () => {
         const embeddingService = new EmbeddingService();
 
         const testTexts = ['Single text input'];
-        const mockBatchEmbeddings = [[0.5, 0.6, 0.7]];
+        const mockEmbedding = [0.5, 0.6, 0.7];
 
-        (embedMany as any).mockResolvedValueOnce({
-            embeddings: mockBatchEmbeddings
+        (embed as any).mockResolvedValueOnce({
+            embedding: mockEmbedding
         });
 
         const results = await embeddingService.generateEmbeddingsBatch(testTexts, { cache: false });
 
-        // Even single text should use batch API for consistency
-        expect(embedMany).toHaveBeenCalledTimes(1);
-        expect(embed).not.toHaveBeenCalled();
+        // Single text uses individual embed call for efficiency
+        expect(embed).toHaveBeenCalledTimes(1);
+        expect(embedMany).not.toHaveBeenCalled();
 
         expect(results).toHaveLength(1);
         expect(results[0].embedding).toEqual([0.5, 0.6, 0.7]);

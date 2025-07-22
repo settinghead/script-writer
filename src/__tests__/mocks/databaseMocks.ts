@@ -94,6 +94,8 @@ export function createMockTransformRepository() {
         addTransformInputs: vi.fn().mockResolvedValue({}),
         updateTransform: vi.fn().mockResolvedValue({}),
         addTransformOutputs: vi.fn().mockResolvedValue({}),
+        getTransformOutputs: vi.fn().mockResolvedValue([]),
+        getTransformInputs: vi.fn().mockResolvedValue([]),
         addLLMPrompts: vi.fn().mockResolvedValue({}),
         addLLMTransform: vi.fn().mockResolvedValue({}),
     };

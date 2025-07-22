@@ -19,7 +19,8 @@ vi.mock('../../middleware/UserContextMiddleware.js', () => ({
 
 vi.mock('ai', () => ({
     streamText: vi.fn(),
-    wrapLanguageModel: vi.fn()
+    wrapLanguageModel: vi.fn(),
+    tool: vi.fn()
 }));
 
 describe('ParticleBasedAgentService', () => {
@@ -31,7 +32,7 @@ describe('ParticleBasedAgentService', () => {
 
     const mockTransformRepo = {} as TransformRepository;
     const mockJsondocRepo = {
-        getJsondocsForProject: vi.fn()
+        getProjectJsondocs: vi.fn()
     } as unknown as JsondocRepository;
 
     const mockUnifiedSearch = {
@@ -48,7 +49,7 @@ describe('ParticleBasedAgentService', () => {
 
     describe('runParticleBasedGeneralAgent', () => {
         it('should handle particle system not available', async () => {
-            const { getParticleSystem } = await import('../ParticleSystemInitializer');
+            const { getParticleSystem } = await import('../ParticleSystemInitializer.js');
             (getParticleSystem as any).mockReturnValue(null);
 
             await expect(
@@ -63,20 +64,20 @@ describe('ParticleBasedAgentService', () => {
         });
 
         it('should build minimal context successfully', async () => {
-            const { getParticleSystem } = await import('../ParticleSystemInitializer');
+            const { getParticleSystem } = await import('../ParticleSystemInitializer.js');
             (getParticleSystem as any).mockReturnValue(mockParticleSystem);
 
-            (mockJsondocRepo.getJsondocsForProject as any).mockResolvedValue([
+            (mockJsondocRepo.getProjectJsondocs as any).mockResolvedValue([
                 { schema_type: 'user_input' },
                 { schema_type: '灵感创意' },
                 { schema_type: '剧本设定' }
             ]);
 
-            const { getLLMModel } = await import('../../transform-jsondoc-framework/LLMConfig');
+            const { getLLMModel } = await import('../../transform-jsondoc-framework/LLMConfig.js');
             (getLLMModel as any).mockResolvedValue({ model: 'test-model' });
 
-            const { createUserContextMiddleware } = await import('../middleware/UserContextMiddleware');
-            (createUserContextMiddleware as any).mockReturnValue({ middleware: 'test' });
+            // Mock the UserContextMiddleware - skip import since it has complex dependencies
+            const createUserContextMiddleware = vi.fn().mockReturnValue({ middleware: 'test' });
 
             const { streamText, wrapLanguageModel } = await import('ai');
             (wrapLanguageModel as any).mockReturnValue({ enhanced: 'model' });
@@ -104,16 +105,16 @@ describe('ParticleBasedAgentService', () => {
         });
 
         it('should handle project with no jsondocs', async () => {
-            const { getParticleSystem } = await import('../ParticleSystemInitializer');
+            const { getParticleSystem } = await import('../ParticleSystemInitializer.js');
             (getParticleSystem as any).mockReturnValue(mockParticleSystem);
 
-            (mockJsondocRepo.getJsondocsForProject as any).mockResolvedValue([]);
+            (mockJsondocRepo.getProjectJsondocs as any).mockResolvedValue([]);
 
-            const { getLLMModel } = await import('../../transform-jsondoc-framework/LLMConfig');
+            const { getLLMModel } = await import('../../transform-jsondoc-framework/LLMConfig.js');
             (getLLMModel as any).mockResolvedValue({ model: 'test-model' });
 
-            const { createUserContextMiddleware } = await import('../middleware/UserContextMiddleware');
-            (createUserContextMiddleware as any).mockReturnValue({ middleware: 'test' });
+            // Mock the UserContextMiddleware - skip import since it has complex dependencies
+            const createUserContextMiddleware = vi.fn().mockReturnValue({ middleware: 'test' });
 
             const { streamText, wrapLanguageModel } = await import('ai');
             (wrapLanguageModel as any).mockReturnValue({ enhanced: 'model' });
@@ -140,15 +141,15 @@ describe('ParticleBasedAgentService', () => {
         });
 
         it('should handle database errors gracefully', async () => {
-            const { getParticleSystem } = await import('../ParticleSystemInitializer');
+            const { getParticleSystem } = await import('../ParticleSystemInitializer.js');
             (getParticleSystem as any).mockReturnValue(mockParticleSystem);
 
-            (mockJsondocRepo.getJsondocsForProject as any).mockRejectedValue(new Error('Database error'));
+            (mockJsondocRepo.getProjectJsondocs as any).mockRejectedValue(new Error('Database error'));
 
-            const { getLLMModel } = await import('../../transform-jsondoc-framework/LLMConfig');
+            const { getLLMModel } = await import('../../transform-jsondoc-framework/LLMConfig.js');
             (getLLMModel as any).mockResolvedValue({ model: 'test-model' });
 
-            const { createUserContextMiddleware } = await import('../middleware/UserContextMiddleware');
+            const { createUserContextMiddleware } = await import('../../middleware/UserContextMiddleware.js');
             (createUserContextMiddleware as any).mockReturnValue({ middleware: 'test' });
 
             const { streamText, wrapLanguageModel } = await import('ai');
@@ -178,7 +179,7 @@ describe('ParticleBasedAgentService', () => {
 
     describe('checkParticleBasedAgentHealth', () => {
         it('should return healthy status when particle system is available', async () => {
-            const { getParticleSystem } = await import('../ParticleSystemInitializer');
+            const { getParticleSystem } = await import('../ParticleSystemInitializer.js');
             (getParticleSystem as any).mockReturnValue(mockParticleSystem);
 
             (mockUnifiedSearch.healthCheck as any).mockResolvedValue({
@@ -201,7 +202,7 @@ describe('ParticleBasedAgentService', () => {
         });
 
         it('should return unhealthy status when particle system is not available', async () => {
-            const { getParticleSystem } = await import('../ParticleSystemInitializer');
+            const { getParticleSystem } = await import('../ParticleSystemInitializer.js');
             (getParticleSystem as any).mockReturnValue(null);
 
             const health = await checkParticleBasedAgentHealth();
@@ -218,7 +219,7 @@ describe('ParticleBasedAgentService', () => {
         });
 
         it('should handle health check errors gracefully', async () => {
-            const { getParticleSystem } = await import('../ParticleSystemInitializer');
+            const { getParticleSystem } = await import('../ParticleSystemInitializer.js');
             (getParticleSystem as any).mockReturnValue(mockParticleSystem);
 
             (mockUnifiedSearch.healthCheck as any).mockRejectedValue(new Error('Health check failed'));

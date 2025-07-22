@@ -136,15 +136,16 @@ describe('EmbeddingService Batch Optimization', () => {
 
     it('should handle single text input', async () => {
         const testTexts = ['Single text'];
-        const mockEmbeddings = [[0.1, 0.2, 0.3]];
+        const mockEmbedding = [0.1, 0.2, 0.3];
 
-        mockEmbedMany.mockResolvedValueOnce({
-            embeddings: mockEmbeddings
+        mockEmbed.mockResolvedValueOnce({
+            embedding: mockEmbedding
         });
 
         const results = await embeddingService.generateEmbeddingsBatch(testTexts, { cache: false });
 
-        expect(mockEmbedMany).toHaveBeenCalledTimes(1);
+        expect(mockEmbed).toHaveBeenCalledTimes(1);
+        expect(mockEmbedMany).not.toHaveBeenCalled();
         expect(results).toHaveLength(1);
         expect(results[0].embedding).toEqual([0.1, 0.2, 0.3]);
     });
@@ -169,7 +170,7 @@ describe('EmbeddingService Batch Optimization', () => {
     it('should handle errors gracefully', async () => {
         const testTexts = ['Text that will fail'];
 
-        mockEmbedMany.mockRejectedValueOnce(new Error('API Error'));
+        mockEmbed.mockRejectedValueOnce(new Error('API Error'));
 
         await expect(
             embeddingService.generateEmbeddingsBatch(testTexts, { cache: false })

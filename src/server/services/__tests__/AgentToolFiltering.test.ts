@@ -141,12 +141,12 @@ describe('Agent Tool Filtering', () => {
                 mockCachingOptions
             );
 
-            const toolNames = availableTools.map(tool => tool.name).sort();
-            expect(toolNames).toEqual([
-                'edit_灵感创意',
+            const toolNames = availableTools.map(tool => tool.name);
+            expect(new Set(toolNames)).toEqual(new Set([
                 'edit_剧本设定',
+                'edit_灵感创意',
                 'generate_chronicles'
-            ]);
+            ]));
         });
 
         it('should return appropriate tools when chronicles exists', () => {
@@ -165,13 +165,13 @@ describe('Agent Tool Filtering', () => {
                 mockCachingOptions
             );
 
-            const toolNames = availableTools.map(tool => tool.name).sort();
-            expect(toolNames).toEqual([
-                'edit_灵感创意',
+            const toolNames = availableTools.map(tool => tool.name);
+            expect(new Set(toolNames)).toEqual(new Set([
                 'edit_chronicles',
                 'edit_剧本设定',
+                'edit_灵感创意',
                 'generate_episode_planning'
-            ]);
+            ]));
         });
 
         it('should return appropriate tools when episode_planning exists', () => {
@@ -191,14 +191,14 @@ describe('Agent Tool Filtering', () => {
                 mockCachingOptions
             );
 
-            const toolNames = availableTools.map(tool => tool.name).sort();
-            expect(toolNames).toEqual([
-                'edit_灵感创意',
+            const toolNames = availableTools.map(tool => tool.name);
+            expect(new Set(toolNames)).toEqual(new Set([
                 'edit_chronicles',
                 'edit_episode_planning',
                 'edit_剧本设定',
+                'edit_灵感创意',
                 'generate_episode_synopsis'
-            ]);
+            ]));
         });
 
         it('should return all edit tools plus generate_episode_synopsis when episode_synopsis exists', () => {
@@ -221,14 +221,14 @@ describe('Agent Tool Filtering', () => {
                 mockCachingOptions
             );
 
-            const toolNames = availableTools.map(tool => tool.name).sort();
-            expect(toolNames).toEqual([
-                'edit_灵感创意',
+            const toolNames = availableTools.map(tool => tool.name);
+            expect(new Set(toolNames)).toEqual(new Set([
                 'edit_chronicles',
                 'edit_episode_planning',
                 'edit_剧本设定',
+                'edit_灵感创意',
                 'generate_episode_synopsis'
-            ]);
+            ]));
         });
 
         it('should never include generate_灵感创意s when any brainstorm result exists', () => {

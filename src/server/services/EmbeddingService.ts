@@ -125,8 +125,15 @@ export class EmbeddingService {
                         values: uncachedTexts
                     });
                     batchEmbeddings = result.embeddings;
+                } else if (uncachedTexts.length === 1) {
+                    // Use individual embedding call for single text
+                    const result = await embed({
+                        model: model,
+                        value: uncachedTexts[0]
+                    });
+                    batchEmbeddings = [result.embedding];
                 } else {
-                    // Use individual embedding calls for small batches
+                    // Use individual embedding calls for other cases
                     batchEmbeddings = [];
                     for (const text of uncachedTexts) {
                         const result = await embed({
@@ -162,6 +169,9 @@ export class EmbeddingService {
                     embedding = cached.embedding;
                 } else {
                     embedding = batchEmbeddings[batchIndex++];
+                    if (!embedding) {
+                        throw new Error(`Missing embedding at batch index ${batchIndex - 1} for text ${i}`);
+                    }
                 }
 
                 results.push({
