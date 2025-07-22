@@ -268,7 +268,6 @@ export type TypedJsondoc =
     | JsondocWithData<'outline_title', 'v1', OutlineTitleV1>
     | JsondocWithData<'outline_genre', 'v1', OutlineGenreV1>
     | JsondocWithData<'outline_selling_points', 'v1', OutlineSellingPointsV1>
-    | JsondocWithData<'outline_setting', 'v1', OutlineSettingV1>
     | JsondocWithData<'outline_synopsis', 'v1', OutlineSynopsisV1>
     | JsondocWithData<'outline_characters', 'v1', OutlineCharactersV1>
     | JsondocWithData<'json_patch', 'v1', JsonPatchV1>

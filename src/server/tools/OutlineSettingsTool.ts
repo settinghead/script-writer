@@ -332,7 +332,7 @@ export function createOutlineSettingsEditToolDefinition(
                     transformMetadata: {
                         toolName: 'edit_剧本设定',
                         source_jsondoc_id: canonicalOutlineSettingsJsondoc.id, // Use the canonical outline settings jsondoc ID
-                        canonical_outline_settings_id: canonicalOutlineSettingsJsondoc.id,
+                        canonical_剧本设定_id: canonicalOutlineSettingsJsondoc.id,
                         edit_requirements: params.editRequirements,
                         original_settings: originalSettings,
                         platform: targetPlatform,
