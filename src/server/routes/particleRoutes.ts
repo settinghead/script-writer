@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { createAuthMiddleware } from '../middleware/auth';
 import { AuthDatabase } from '../database/auth';
 import { getParticleSystem } from '../services/ParticleSystemInitializer';
@@ -150,7 +150,7 @@ router.get('/list', authMiddleware.authenticate, async (req, res) => {
 });
 
 /**
- * Search particles within a project (simplified version)
+ * Search particles within a project using embedding-based semantic search
  * GET /api/particles/search?query=text&projectId=id&limit=10
  */
 router.get('/search', authMiddleware.authenticate, async (req, res) => {
@@ -196,12 +196,12 @@ router.get('/search', authMiddleware.authenticate, async (req, res) => {
                 return;
             }
 
-            // Use real particle search
-            const searchResults = await particleSystem.particleService.searchParticles(
-                query,
-                projectId,
-                searchLimit
-            );
+            // Use unified search system with embedding-based search for API
+            const searchResults = await particleSystem.unifiedSearch.searchParticles(query, projectId, {
+                mode: 'embedding',
+                limit: searchLimit,
+                threshold: 0.0
+            });
 
             // Transform results to match frontend expectations
             const transformedResults = searchResults.map(particle => ({
@@ -338,6 +338,66 @@ router.get('/list', authMiddleware.authenticate, async (req, res) => {
             error: 'Particle list failed',
             details: error instanceof Error ? error.message : 'Unknown error'
         });
+    }
+});
+
+/**
+ * Fast string-based search for @mention system
+ * GET /api/particles/search-mention?query=text&projectId=id&limit=10
+ */
+router.get('/search-mention', authMiddleware.authenticate, async (req, res) => {
+    try {
+        const { query, projectId, limit = 10 } = req.query;
+        const user = authMiddleware.getCurrentUser(req);
+
+        if (!query || typeof query !== 'string') {
+            res.status(400).json({ error: 'Query parameter is required' });
+            return;
+        }
+
+        if (!projectId || typeof projectId !== 'string') {
+            res.status(400).json({ error: 'ProjectId parameter is required' });
+            return;
+        }
+
+        if (!user) {
+            res.status(401).json({ error: 'User not authenticated' });
+            return;
+        }
+
+        // Get particle system
+        const particleSystem = getParticleSystem();
+        if (!particleSystem) {
+            res.status(503).json({ error: 'Particle system not available' });
+            return;
+        }
+
+        const searchLimit = Math.min(parseInt(limit as string) || 10, 20);
+
+        // Use unified search system with string-based search for fast @mention
+        const searchResults = await particleSystem.unifiedSearch.searchParticles(query, projectId, {
+            mode: 'string',
+            limit: searchLimit
+        });
+
+        // Transform results to match frontend expectations (same format as main search)
+        const formattedResults = searchResults.map(particle => ({
+            id: particle.id,
+            title: particle.title,
+            type: particle.type,
+            content_preview: particle.content_text.substring(0, 200) + (particle.content_text.length > 200 ? '...' : ''),
+            jsondoc_id: particle.jsondoc_id,
+            path: particle.path,
+            similarity: particle.similarity,
+            created_at: particle.created_at,
+            updated_at: particle.updated_at
+        }));
+
+        console.log(`[API] String-based particle search found ${formattedResults.length} results for query: "${query}"`);
+        res.json(formattedResults);
+    } catch (error) {
+        console.error('[API] String-based particle search error:', error);
+        res.status(500).json({ error: 'Failed to search particles' });
     }
 });
 

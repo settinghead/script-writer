@@ -32,7 +32,8 @@ export const ParticleMentions: React.FC<ParticleMentionsProps> = ({
 
     const { particles, loading, error, searchParticles, clearResults } = useParticleSearch({
         projectId,
-        limit: 20
+        limit: 20,
+        mode: 'string' // Use fast string-based search for @mention
     });
 
     // Trigger search when debounced text changes

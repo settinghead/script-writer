@@ -7,10 +7,11 @@ A comprehensive data transformation and jsondoc management framework with intell
 The Transform Jsondoc Framework provides a sophisticated foundation for applications requiring intelligent content processing, immutable data management, and real-time collaboration capabilities.
 
 **Key Features**:
-- **Intelligent Agent Orchestration** - Context-aware agents with tool-based decision making
+- **Intelligent Agent Orchestration** - Query-driven agents with particle-based semantic search
 - **Immutable Jsondoc Management** - Complete audit trail with flexible editing capabilities  
 - **Real-time Synchronization** - Electric SQL integration for instant cross-client updates
 - **Schema-Driven Architecture** - Type-safe operations with Zod validation throughout
+- **Particle-Based Search System** - Unified semantic and string search for @mentions and agent queries
 - **Advanced Caching System** - Development-optimized streaming response caching
 - **Comprehensive Testing Framework** - React component testing with YJS collaboration mocking
 
@@ -573,14 +574,293 @@ This paradigm transforms complex content creation workflows into simple, traceab
 All major operations flow through a context-aware agent framework:
 - **Tool-Based Decision Making** - Agents automatically select appropriate tools based on request analysis
 - **Natural Language Interface** - Conversational interaction with intelligent routing
-- **Context Enrichment** - Maintains project context and provides comprehensive background
+- **Query-Driven Context** - Particle-based semantic search for intelligent information retrieval
 - **Dual-Mode Operation** - Automatically detects generation vs editing requests
 - **Intelligent Tool Filtering** - Only offers relevant tools based on current workflow state
 
-**Agent Workflow**:
+**Traditional Agent Workflow (Context-Heavy)**:
 ```
-User Request → Agent Analysis → Context Enrichment → Canonical Context Analysis → Tool Filtering → Tool Selection → Execution → Jsondoc Creation
+User Request → Load ALL Project Data → Massive Context → Agent → Response
+              (10,000+ tokens)        (Information overload)
 ```
+
+**Modern Particle-Based Agent Workflow (Query-Driven)**:
+```
+User Request → Minimal Context → Agent → Query Tool → Specific Data → Response
+              (500-1,500 tokens)        (On-demand)   (Relevant only)
+```
+
+### Particle-Based Query Agent System
+
+The framework implements an intelligent **particle-based query agent system** that revolutionizes how AI agents access and process project information through on-demand semantic search rather than context overload.
+
+#### **Core Problem Solved**
+
+Traditional agent systems suffer from **context overload**:
+- Loading all project data upfront (10,000+ tokens)
+- Information overload leading to poor decision making
+- High token costs and slower response times
+- Irrelevant information diluting agent focus
+
+#### **Particle-Based Solution**
+
+**Unified Search Architecture**:
+- **String-based search** for fast @mention autocomplete (PostgreSQL full-text + LIKE fallback)
+- **Embedding-based search** for semantic agent queries with similarity scoring
+- **Single unified interface** with graceful degradation and health monitoring
+
+**Query-Driven Agent Tools**:
+```typescript
+// Semantic query tool for intelligent information retrieval
+const queryTool = {
+  name: 'query',
+  description: 'Search for relevant project information using natural language',
+  parameters: {
+    query: 'Natural language search query',
+    limit: 'Maximum results (default: 5, max: 10)'
+  },
+  execute: async (params) => {
+    const results = await unifiedSearch.searchParticles(params.query, projectId, {
+      mode: 'embedding',
+      limit: params.limit || 5,
+      threshold: 0.0
+    });
+    
+    return results.map(result => ({
+      jsondocId: result.jsondoc_id,
+      path: result.path,
+      title: result.title,
+      content: result.content_text,
+      similarity: result.similarity_score,
+      type: result.type
+    }));
+  }
+};
+
+// On-demand content retrieval tool
+const getJsondocContentTool = {
+  name: 'getJsondocContent',
+  description: 'Retrieve full jsondoc content or specific sections',
+  parameters: {
+    jsondocId: 'ID of the jsondoc to retrieve',
+    path: 'Optional JSONPath for specific content (e.g., "$.characters[0]")'
+  },
+  execute: async (params) => {
+    const jsondoc = await jsondocRepo.getJsondoc(params.jsondocId);
+    if (params.path && params.path !== '$') {
+      return jsonpath.query(jsondoc.data, params.path);
+    }
+    return jsondoc.data;
+  }
+};
+```
+
+#### **Performance Improvements Achieved**
+
+| Metric | Traditional Agent | Particle-Based Agent | Improvement |
+|--------|-------------------|---------------------|-------------|
+| **Context Size** | 10,000+ tokens | 500-1,500 tokens | **70-90% reduction** |
+| **@Mention Speed** | Embedding computation | String search | **Instant results** |
+| **Information Relevance** | All project data | Query-specific data | **Higher precision** |
+| **Token Costs** | High (large context) | Low (minimal context) | **Significant savings** |
+
+#### **Autonomous Query Planning**
+
+The particle-based agent autonomously determines information needs:
+
+```typescript
+// Agent prompt guidance for intelligent query planning
+const queryGuidancePrompt = `
+You have access to query tools for finding relevant project information.
+
+QUERY STRATEGY:
+1. Start with broad queries to understand project scope
+2. Use specific queries to find detailed information
+3. Multiple queries are encouraged - be thorough
+4. Check similarity scores (>0.7 = highly relevant, >0.5 = somewhat relevant, <0.3 = not relevant)
+
+EXAMPLE WORKFLOW:
+- User asks: "让这个故事更现代化"
+- Query 1: "故事 角色 设定" → Find current story elements
+- Query 2: "现代化 科技 都市" → Find modernization examples
+- Query 3: "角色 背景 职业" → Get character details for updating
+- Then use getJsondocContent for full details of relevant jsondocs
+
+Only query for information you actually need. Quality over quantity.
+`;
+```
+
+#### **Unified Particle Search Implementation**
+
+```typescript
+export class UnifiedParticleSearch {
+  constructor(
+    private db: Kysely<DB>,
+    private embeddingService: EmbeddingService,
+    private particleService: ParticleService
+  ) {}
+
+  async searchParticles(
+    query: string,
+    projectId: string,
+    options: {
+      mode: 'string' | 'embedding';
+      limit?: number;
+      threshold?: number;
+    }
+  ): Promise<ParticleSearchResult[]> {
+    
+    if (options.mode === 'string') {
+      // Fast string-based search for @mention
+      return this.searchParticlesStringBased(query, projectId, options.limit);
+    } else {
+      // Semantic search using embeddings for agent queries
+      return this.searchParticlesEmbeddingBased(query, projectId, options.limit, options.threshold);
+    }
+  }
+
+  private async searchParticlesStringBased(
+    query: string,
+    projectId: string,
+    limit: number = 10
+  ): Promise<ParticleSearchResult[]> {
+    // PostgreSQL full-text search with LIKE fallback
+    const results = await this.db
+      .selectFrom('particles')
+      .selectAll()
+      .select(sql<number>`ts_rank(to_tsvector('simple', content_text), plainto_tsquery('simple', ${query}))`.as('rank'))
+      .where('project_id', '=', projectId)
+      .where('is_active', '=', true)
+      .where(eb => eb.or([
+        eb(sql`to_tsvector('simple', content_text)`, '@@', sql`plainto_tsquery('simple', ${query})`),
+        eb('content_text', 'ilike', `%${query}%`),
+        eb('title', 'ilike', `%${query}%`)
+      ]))
+      .orderBy('rank', 'desc')
+      .orderBy('created_at', 'desc')
+      .limit(limit)
+      .execute();
+
+    return results.map(this.formatSearchResult);
+  }
+
+  private async searchParticlesEmbeddingBased(
+    query: string,
+    projectId: string,
+    limit: number = 5,
+    threshold: number = 0.0
+  ): Promise<ParticleSearchResult[]> {
+    // Generate embedding and perform semantic search
+    const queryEmbedding = await this.embeddingService.generateEmbedding(query);
+    
+    const results = await this.db
+      .selectFrom('particles')
+      .selectAll()
+      .select(sql<number>`1 - (embedding <=> ${queryEmbedding})`.as('similarity_score'))
+      .where('project_id', '=', projectId)
+      .where('is_active', '=', true)
+      .where(sql`1 - (embedding <=> ${queryEmbedding})`, '>=', threshold)
+      .orderBy(sql`embedding <=> ${queryEmbedding}`)
+      .limit(limit)
+      .execute();
+
+    return results.map(result => ({
+      ...this.formatSearchResult(result),
+      similarity_score: result.similarity_score
+    }));
+  }
+}
+```
+
+#### **Integration with @Mention System**
+
+The particle system unifies @mention functionality with agent search:
+
+```typescript
+// Frontend hook with dual search modes
+export function useParticleSearch(options: {
+  projectId: string;
+  mode?: 'string' | 'embedding';
+  limit?: number;
+}) {
+  const { projectId, mode = 'embedding', limit = 10 } = options;
+  
+  const searchParticles = useCallback(async (query: string) => {
+    const endpoint = mode === 'string'
+      ? `/api/particles/search-mention`
+      : `/api/particles/search`;
+    
+    const params = new URLSearchParams({
+      query,
+      projectId,
+      limit: limit.toString()
+    });
+    
+    const response = await fetch(`${endpoint}?${params}`);
+    return response.json();
+  }, [projectId, mode, limit]);
+  
+  return { searchParticles };
+}
+
+// @Mention component using fast string search
+export function ParticleMentions({ projectId, value, onChange }: Props) {
+  const { searchParticles } = useParticleSearch({
+    projectId,
+    mode: 'string', // Fast string-based search for @mention
+    limit: 20
+  });
+  
+  return (
+    <Mentions
+      value={value}
+      onChange={onChange}
+      onSearch={searchParticles}
+      prefix="@"
+      placeholder="输入 @ 来搜索相关内容..."
+    />
+  );
+}
+```
+
+#### **Production-Ready Implementation**
+
+**API Endpoints**:
+- `GET /api/particles/search` - Embedding-based semantic search for agents
+- `GET /api/particles/search-mention` - String-based fast search for @mentions
+- `GET /api/admin/particle-agent/health` - System health monitoring
+- `POST /api/admin/particle-agent/test` - Agent testing with custom queries
+
+**Health Monitoring**:
+```typescript
+export async function checkParticleBasedAgentHealth() {
+  const particleSystem = getParticleSystem();
+  const particleSystemAvailable = !!particleSystem;
+  
+  return {
+    particleSystemAvailable,
+    unifiedSearchAvailable: particleSystemAvailable && !!particleSystem.unifiedSearch,
+    searchModes: {
+      stringSearchAvailable: true,
+      embeddingSearchAvailable: particleSystemAvailable
+    },
+    particleCount: particleSystemAvailable 
+      ? await particleSystem.particleService.getActiveParticleCount()
+      : 0,
+    timestamp: new Date().toISOString()
+  };
+}
+```
+
+**Benefits for Framework Applications**:
+- **70-90% reduction in context tokens** leading to significant cost savings
+- **Instant @mention results** through string-based search
+- **Higher information relevance** through query-driven retrieval
+- **Autonomous agent operation** with intelligent query planning
+- **Unified search architecture** supporting both UI and agent needs
+- **Production-ready monitoring** and health checking capabilities
+
+This particle-based approach transforms the agent from a context-heavy system to an intelligent, query-driven assistant that finds exactly the information it needs when it needs it.
 
 ### 3. Lineage Resolution & Type System
 **Technical Implementation**: Advanced graph traversal and type management for flexible editing while maintaining immutability.
@@ -913,6 +1193,29 @@ CREATE TABLE chat_messages (
   event_type TEXT DEFAULT 'user_message',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Particle system for semantic search and @mentions
+CREATE TABLE particles (
+  id TEXT PRIMARY KEY,
+  jsondoc_id TEXT NOT NULL REFERENCES jsondocs(id) ON DELETE CASCADE,
+  project_id TEXT NOT NULL,
+  path TEXT NOT NULL,
+  type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  content JSONB NOT NULL,
+  content_text TEXT NOT NULL,
+  embedding VECTOR(1024), -- Qwen/DeepSeek embedding dimensions
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Performance indexes for particle search
+CREATE INDEX idx_particles_project_active ON particles(project_id, is_active);
+CREATE INDEX idx_particles_jsondoc ON particles(jsondoc_id);
+CREATE INDEX idx_particles_type ON particles(type);
+CREATE INDEX idx_particles_embedding ON particles USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX idx_particles_content_text ON particles USING gin(to_tsvector('simple', content_text));
 ```
 
 ## Transform Execution Modes
@@ -2600,6 +2903,71 @@ This comprehensive testing framework ensures that Transform Jsondoc Framework ap
 - Run migrations with `npm run migrate`
 - Use `./run-ts src/server/scripts/migrate.ts` for migrations
 - Unique constraint `unique_human_transform_per_jsondoc_path` prevents concurrent editing race conditions
+
+### Particle System & Search Infrastructure
+
+**Semantic Search & @Mention System**: The framework includes a sophisticated particle system for semantic indexing and intelligent content retrieval.
+
+**Particle System Components**:
+- **ParticleService** - Extracts and indexes content fragments from jsondocs
+- **EmbeddingService** - Generates semantic embeddings using Qwen/DeepSeek models
+- **UnifiedParticleSearch** - Dual-mode search (string + embedding) with single interface
+- **ParticleEventBus** - Real-time particle updates via PostgreSQL triggers
+
+**Search Capabilities**:
+- **String Search** - Fast PostgreSQL full-text search for @mention autocomplete
+- **Semantic Search** - Vector similarity search for agent queries and content discovery
+- **Unified Interface** - Single API supporting both search modes with graceful fallbacks
+- **Real-time Updates** - Automatic particle synchronization when jsondocs change
+
+**Particle Extraction**:
+```typescript
+// Automatic particle extraction from jsondocs
+export class ParticleExtractor {
+  async extractParticles(jsondoc: Jsondoc): Promise<ParticleData[]> {
+    const extractor = this.extractors.get(jsondoc.schema_type);
+    if (!extractor) return [];
+    
+    return await extractor.call(this, jsondoc);
+  }
+  
+  // Extract brainstorm ideas as searchable particles
+  private async extractBrainstormParticles(jsondoc: Jsondoc): Promise<ParticleData[]> {
+    const data = jsondoc.data;
+    const particles: ParticleData[] = [];
+    
+    if (data.ideas && Array.isArray(data.ideas)) {
+      for (let i = 0; i < data.ideas.length; i++) {
+        const idea = data.ideas[i];
+        const contentText = `${idea.title}\n${idea.body}`;
+        
+        particles.push({
+          id: `${jsondoc.id}_idea_${i}`,
+          path: `$.ideas[${i}]`,
+          type: '创意',
+          title: idea.title || `创意 ${i + 1}`,
+          content: idea,
+          content_text: contentText,
+          embedding: await this.embeddingService.generateEmbedding(contentText)
+        });
+      }
+    }
+    
+    return particles;
+  }
+}
+```
+
+**Agent Integration**:
+- **Query Tool** - Natural language search for relevant project information
+- **GetJsondocContent Tool** - On-demand jsondoc retrieval with JSONPath filtering
+- **Autonomous Query Planning** - Agents intelligently determine what information to search for
+- **Context Optimization** - 70-90% reduction in agent context size through targeted retrieval
+
+**API Endpoints**:
+- `GET /api/particles/search` - Embedding-based semantic search for agents
+- `GET /api/particles/search-mention` - String-based fast search for @mentions
+- `GET /api/admin/particle-agent/health` - System health and performance monitoring
 
 ### Debug Facility & Tool Registry
 

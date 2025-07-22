@@ -17,6 +17,7 @@ export interface UseParticleSearchOptions {
     projectId: string;
     limit?: number;
     debounceMs?: number;
+    mode?: 'string' | 'embedding'; // Search mode: string for @mention, embedding for semantic
 }
 
 export interface UseParticleSearchReturn {
@@ -28,7 +29,7 @@ export interface UseParticleSearchReturn {
 }
 
 export function useParticleSearch(options: UseParticleSearchOptions): UseParticleSearchReturn {
-    const { projectId, limit = 10, debounceMs = 300 } = options;
+    const { projectId, limit = 10, debounceMs = 300, mode = 'embedding' } = options;
     const [particles, setParticles] = useState<ParticleSearchResult[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -49,7 +50,12 @@ export function useParticleSearch(options: UseParticleSearchOptions): UseParticl
                 limit: limit.toString()
             });
 
-            const response = await fetch(`/api/particles/search?${params.toString()}`);
+            // Choose endpoint based on search mode
+            const endpoint = mode === 'string'
+                ? `/api/particles/search-mention?${params.toString()}`
+                : `/api/particles/search?${params.toString()}`;
+
+            const response = await fetch(endpoint);
 
             if (!response.ok) {
                 throw new Error(`Search failed: ${response.status}`);

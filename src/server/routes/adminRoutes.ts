@@ -841,5 +841,96 @@ export function createAdminRoutes(
         }
     });
 
+    // Debug health check for particle-based agent
+    router.get('/particle-agent/health', async (req: Request, res: Response) => {
+        try {
+            const { checkParticleBasedAgentHealth } = await import('../services/ParticleBasedAgentService');
+            const health = await checkParticleBasedAgentHealth();
+            res.json({
+                status: 'ok',
+                timestamp: new Date().toISOString(),
+                health
+            });
+        } catch (error) {
+            console.error('[AdminRoutes] Particle agent health check failed:', error);
+            res.status(500).json({
+                status: 'error',
+                timestamp: new Date().toISOString(),
+                error: error instanceof Error ? error.message : 'Unknown error'
+            });
+        }
+    });
+
+    // Debug test for particle-based agent
+    router.post('/particle-agent/test', authMiddleware.authenticate, async (req: Request, res: Response) => {
+        try {
+            const { userRequest, projectId } = req.body;
+            const user = authMiddleware.getCurrentUser(req);
+
+            if (!userRequest || typeof userRequest !== 'string') {
+                res.status(400).json({ error: 'userRequest is required and must be a string' });
+                return;
+            }
+
+            if (!projectId || typeof projectId !== 'string') {
+                res.status(400).json({ error: 'projectId is required and must be a string' });
+                return;
+            }
+
+            if (!user) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
+
+            console.log(`[AdminRoutes] Testing particle-based agent for project: ${projectId}`);
+            console.log(`[AdminRoutes] User request: "${userRequest}"`);
+
+            const { runParticleBasedGeneralAgent } = await import('../services/ParticleBasedAgentService');
+
+            const result = await runParticleBasedGeneralAgent(
+                {
+                    userRequest,
+                    projectId,
+                    contextType: 'general'
+                },
+                projectId,
+                transformRepo,
+                jsondocRepo,
+                user.id,
+                {
+                    createChatMessages: false, // Debug mode - don't create chat messages
+                    enableCaching: false,
+                    maxTokens: 1000 // Limit tokens for debug
+                }
+            );
+
+            res.json({
+                status: 'success',
+                timestamp: new Date().toISOString(),
+                result: {
+                    finalResponse: result.finalResponse,
+                    toolCallCount: result.toolCallCount,
+                    toolResultCount: result.toolResultCount,
+                    contextSize: result.contextSize,
+                    finishReason: result.finishReason
+                },
+                metadata: {
+                    projectId,
+                    userId: user.id,
+                    userRequest
+                }
+            });
+
+        } catch (error) {
+            console.error('[AdminRoutes] Particle agent test failed:', error);
+            res.status(500).json({
+                status: 'error',
+                timestamp: new Date().toISOString(),
+                error: error instanceof Error ? error.message : 'Unknown error',
+                stack: error instanceof Error ? error.stack : undefined
+            });
+        }
+    });
+
     return router;
 } 

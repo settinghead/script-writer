@@ -4,6 +4,7 @@ import { ParticleExtractor } from './ParticleExtractor';
 import { ParticleService } from './ParticleService';
 import { ParticleEventBus } from './ParticleEventBus';
 import { ParticleTemplateProcessor } from './ParticleTemplateProcessor';
+import { UnifiedParticleSearch } from './UnifiedParticleSearch';
 
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
@@ -15,6 +16,7 @@ export interface ParticleSystemServices {
     particleService: ParticleService;
     particleEventBus: ParticleEventBus;
     particleTemplateProcessor: ParticleTemplateProcessor;
+    unifiedSearch: UnifiedParticleSearch;
 }
 
 let globalParticleSystem: ParticleSystemServices | null = null;
@@ -34,6 +36,9 @@ export async function initializeParticleSystem(db: Kysely<DB>): Promise<Particle
         const particleService = new ParticleService(db, embeddingService, particleExtractor, jsondocRepo, transformRepo);
         const particleTemplateProcessor = new ParticleTemplateProcessor(particleService);
 
+        // Setup unified search system
+        const unifiedSearch = new UnifiedParticleSearch(db, embeddingService, particleService);
+
         // Setup event bus for real-time updates
         const particleEventBus = new ParticleEventBus(db, particleService);
 
@@ -43,7 +48,8 @@ export async function initializeParticleSystem(db: Kysely<DB>): Promise<Particle
             particleExtractor,
             particleService,
             particleEventBus,
-            particleTemplateProcessor
+            particleTemplateProcessor,
+            unifiedSearch
         };
 
         // Try to start listening for jsondoc changes, but don't fail if it doesn't work
