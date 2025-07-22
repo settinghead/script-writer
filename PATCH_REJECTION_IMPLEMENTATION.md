@@ -68,7 +68,7 @@ Updated success message to show comprehensive deletion information:
 const patchCount = result.deletedPatchIds?.length || 0;
 const transformCount = result.deletedTransformIds?.length || 0;
 
-let successMessage = `补丁已删除！删除了 ${patchCount} 个补丁`;
+let successMessage = `修改提议已删除！删除了 ${patchCount} 个修改提议`;
 if (transformCount > 1) {
     successMessage += ` 和 ${transformCount - 1} 个相关的编辑版本`;
 }

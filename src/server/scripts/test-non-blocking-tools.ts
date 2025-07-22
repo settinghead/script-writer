@@ -49,7 +49,7 @@ async function testNonBlockingTools() {
         // Create test brainstorm idea jsondoc
         const testIdea = {
             title: '测试故事创意',
-            body: '这是一个测试用的故事创意，用于验证非阻塞补丁系统。男主是科技公司CEO，女主是AI工程师。'
+            body: '这是一个测试用的故事创意，用于验证非阻塞修改提议系统。男主是科技公司CEO，女主是AI工程师。'
         };
 
         const ideaJsondoc = await jsondocRepo.createJsondoc(

@@ -128,7 +128,7 @@ const PatchCard: React.FC<{
                         checked={isSelected}
                         onChange={(e) => onSelectionChange(e.target.checked)}
                     />
-                    <Text strong>补丁 #{patchItem.patchIndex + 1}</Text>
+                    <Text strong>修改提议 #{patchItem.patchIndex + 1}</Text>
                     <Tag color="blue">{originalJsondoc.schema_type}</Tag>
                     {sourceTransformMetadata?.toolName && (
                         <Tag color="green">{sourceTransformMetadata.toolName}</Tag>
@@ -195,7 +195,7 @@ const PatchCard: React.FC<{
                     );
                 })
             ) : (
-                <Text type="secondary">无补丁数据</Text>
+                <Text type="secondary">无修改提议数据</Text>
             )}
 
             {/* Show metadata if available */}
@@ -285,7 +285,7 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
 
             const result = await response.json();
             console.log('Patches approved:', result);
-            message.success(`补丁已批准！批准了 ${selectedPatches.size} 个补丁`);
+            message.success(`修改提议已批准！批准了 ${selectedPatches.size} 个修改提议`);
 
             // Close modal
             setModalVisible(false);
@@ -323,7 +323,7 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
 
             const result = await response.json();
             console.log('Patches rejected:', result);
-            message.success(`补丁已拒绝！拒绝了 ${selectedPatches.size} 个补丁`);
+            message.success(`修改提议已拒绝！拒绝了 ${selectedPatches.size} 个修改提议`);
 
             // Close modal
             setModalVisible(false);
@@ -348,8 +348,8 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
             title={
                 <Space>
                     <EditOutlined />
-                    <span>补丁审核</span>
-                    <Tag color="blue">{totalCount} 个待审核补丁</Tag>
+                    <span>修改提议审核</span>
+                    <Tag color="blue">{totalCount} 个待审核修改提议</Tag>
                 </Space>
             }
             open={modalVisible}
@@ -402,13 +402,13 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
         >
             {isLoading && (
                 <div style={{ textAlign: 'center', padding: 20 }}>
-                    <Text>加载补丁中...</Text>
+                    <Text>加载修改提议中...</Text>
                 </div>
             )}
 
             {error && (
                 <div style={{ textAlign: 'center', padding: 20 }}>
-                    <Text type="danger">加载补丁失败: {error.message}</Text>
+                    <Text type="danger">加载修改提议失败: {error.message}</Text>
                 </div>
             )}
 

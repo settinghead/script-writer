@@ -144,7 +144,7 @@ const JsondocNode: React.FC<{
                         {jsondoc.schema_type === 'json_patch' ? (
                             <div style={{ fontSize: '10px', background: '#262626', padding: '8px', borderRadius: '4px' }}>
                                 <div style={{ marginBottom: '8px' }}>
-                                    <strong>补丁数量:</strong> {parsedData.patches?.length || 0}
+                                    <strong>修改提议数量:</strong> {parsedData.patches?.length || 0}
                                 </div>
                                 <div style={{ marginBottom: '8px' }}>
                                     <strong>状态:</strong> {parsedData.applied ? '已应用' : '未应用'}
@@ -160,7 +160,7 @@ const JsondocNode: React.FC<{
                                     </div>
                                 )}
                                 <div style={{ marginTop: '8px' }}>
-                                    <strong>补丁内容:</strong>
+                                    <strong>修改提议内容:</strong>
                                 </div>
                                 <pre style={{ maxHeight: '150px', overflow: 'auto', fontSize: '9px', background: '#1a1a1a', padding: '4px', borderRadius: '2px' }}>
                                     {JSON.stringify(parsedData.patches, null, 2)}
@@ -239,9 +239,9 @@ const JsondocNode: React.FC<{
                                     if (data.patches && Array.isArray(data.patches)) {
                                         const patchCount = data.patches.length;
                                         const applied = data.applied ? '已应用' : '未应用';
-                                        preview = `${patchCount}个补丁 ${applied}`;
+                                        preview = `${patchCount}个修改提议 ${applied}`;
                                     } else {
-                                        preview = 'JSON补丁';
+                                        preview = 'JSON修改提议';
                                     }
                                 } else {
                                     // Generic preview for other types

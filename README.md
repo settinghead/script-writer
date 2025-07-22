@@ -174,7 +174,7 @@ UI Update: Real-time display with complete audit trail
 - **Debounced Auto-Save** - Real-time editing with 300ms debounce and automatic persistence
 - **Revert Functionality** - "恢复AI建议" button to reset to original AI suggestions
 - **Scrollable Content** - Max-height containers with proper overflow handling for long content
-- **Chinese Localization** - Complete interface in Chinese (补丁审批, 原始值, 建议值, etc.)
+- **Chinese Localization** - Complete interface in Chinese (修改提议审批, 原始值, 建议值, etc.)
 
 **Chat Interface with Assistant-UI Integration**:
 - **Auto-Scroll Functionality** - Smart auto-scroll to bottom when new messages arrive, with user control preservation

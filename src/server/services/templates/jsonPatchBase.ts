@@ -51,17 +51,22 @@ ${principlesText}
 
 ## 输出要求
 
-根据用户的编辑要求和原始${contentDescription}，生成RFC6902标准的JSON补丁格式修改指令。你需要分析原始内容和用户要求，然后生成精确的JSON补丁来实现所需的修改。
+根据用户的编辑要求和原始${contentDescription}，生成RFC6902标准的JSON修改提议格式修改指令。你需要分析原始内容和用户要求，然后生成精确的JSON修改提议来实现所需的修改。
 
 **重要步骤（请按顺序执行）：**
 1. **查看array_index_reference部分**：仔细查看参考数据中的array_index_reference，它详细标注了所有数组的索引信息
 2. **定位目标元素**：根据用户要求，在array_index_reference中找到需要修改的具体数组元素
 3. **构建精确路径**：使用array_index_reference中显示的索引来构建JSON指针路径
 4. **验证路径正确性**：确保路径格式正确，索引准确无误
+5. **数组操作特别注意**：
+   - 修改现有数组元素：使用 "replace" + "/arrayName/index"
+   - 在数组末尾添加：使用 "add" + "/arrayName/-"  
+   - 在数组特定位置插入：使用 "add" + "/arrayName/index"
+   - **危险：绝对不要用 "add" + "/arrayName" - 这会替换整个数组！**
 
-**重要：你必须严格按照RFC6902标准输出JSON补丁数组，不需要包装在对象中。**
+**重要：你必须严格按照RFC6902标准输出JSON修改提议数组，不需要包装在对象中。**
 
-输出格式必须是一个JSON补丁操作数组，每个操作包含：
+输出格式必须是一个JSON修改提议操作数组，每个操作包含：
 - op: 操作类型（"replace"用于修改现有字段，"add"用于添加新元素（仅限于Array; Object不可以添加新的字段)，"remove"用于删除字段）
 - path: JSON指针路径（如${examplePathsText}）- **必须基于array_index_reference中的索引信息**
 - value: 新的值（replace和add操作需要。注意新的值必须是完整的修改后的值，不要只修改部分字段）
@@ -81,7 +86,7 @@ ${principlesText}
 ]
 
 **注意：**
-- 直接输出JSON补丁数组，不要包装在{"patches": [...]}对象中
+- 直接输出JSON修改提议数组，不要包装在{"patches": [...]}对象中
 - 路径必须以"/"开头，使用JSON指针格式
 - **严格按照array_index_reference中的索引信息构建路径**
 - 只修改需要改变的字段，不要包含不需要修改的字段

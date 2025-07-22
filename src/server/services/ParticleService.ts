@@ -75,102 +75,113 @@ export class ParticleService {
         const isActive = await this.isJsondocActive(jsondocId);
         console.log(`[ParticleService] Jsondoc ${jsondocId} is ${isActive ? 'active' : 'inactive'}`);
 
-        // Get existing particles for this jsondoc with content_hash
-        const existingParticles = await this.db
-            .selectFrom('particles')
-            .select(['id', 'type', 'title', 'content_hash'])
-            .where('jsondoc_id', '=', jsondocId)
-            .execute();
-
-        const existingMap = new Map(existingParticles.map(p => [p.id, p]));
-
-        // Extract new particles (now includes content_hash)
+        // Extract new particles (outside transaction for performance)
         const newParticles = isActive ? await this.particleExtractor.extractParticles(jsondoc) : [];
         console.log(`[ParticleService] Generated ${newParticles.length} particles from jsondoc ${jsondocId}`);
 
-        const newMap = new Map(newParticles.map(p => [p.id, p]));
+        // Perform all database operations inside a single transaction to prevent race conditions
+        await this.db.transaction().execute(async (tx) => {
+            // Lock particles for this jsondoc to prevent concurrent updates
+            await tx
+                .selectFrom('particles')
+                .select('id')
+                .where('jsondoc_id', '=', jsondocId)
+                .forUpdate()
+                .execute();
 
-        // Compute changes
-        const toAdd = newParticles.filter(p => !existingMap.has(p.id));
-        const toRemoveIds = Array.from(existingMap.keys()).filter(id => !newMap.has(id));
+            // Get existing particles INSIDE the transaction (after lock)
+            const existingParticles = await tx
+                .selectFrom('particles')
+                .select(['id', 'type', 'title', 'content_hash'])
+                .where('jsondoc_id', '=', jsondocId)
+                .execute();
 
-        const toUpdate = newParticles.filter(p => {
-            const existing = existingMap.get(p.id);
-            return existing && existing.content_hash !== p.content_hash;
-        });
+            const existingMap = new Map(existingParticles.map(p => [p.id, p]));
+            const newMap = new Map(newParticles.map(p => [p.id, p]));
 
-        const unchangedCount = newParticles.length - toAdd.length - toUpdate.length;
+            // Compute changes INSIDE the transaction (after lock)
+            const toAdd = newParticles.filter(p => !existingMap.has(p.id));
+            const toRemoveIds = Array.from(existingMap.keys()).filter(id => !newMap.has(id));
+            const toUpdate = newParticles.filter(p => {
+                const existing = existingMap.get(p.id);
+                return existing && existing.content_hash !== p.content_hash;
+            });
 
-        console.log(`[ParticleService] Particle changes: ${toAdd.length} add, ${toRemoveIds.length} remove, ${toUpdate.length} update, ${unchangedCount} unchanged`);
+            const unchangedCount = newParticles.length - toAdd.length - toUpdate.length;
+            console.log(`[ParticleService] Particle changes: ${toAdd.length} add, ${toRemoveIds.length} remove, ${toUpdate.length} update, ${unchangedCount} unchanged`);
 
-        // Update database only if there are changes
-        if (toAdd.length > 0 || toRemoveIds.length > 0 || toUpdate.length > 0) {
-            await this.db.transaction().execute(async (tx) => {
-                // Lock particles for this jsondoc to prevent concurrent updates
-                await tx
-                    .selectFrom('particles')
-                    .select('id')
-                    .where('jsondoc_id', '=', jsondocId)
-                    .forUpdate()
+            // Only proceed if there are actual changes
+            if (toAdd.length === 0 && toRemoveIds.length === 0 && toUpdate.length === 0) {
+                return; // No changes, exit transaction early
+            }
+
+            // Remove old particles
+            if (toRemoveIds.length > 0) {
+                await tx.deleteFrom('particles')
+                    .where('id', 'in', toRemoveIds)
                     .execute();
+            }
 
-                // Remove old particles
-                if (toRemoveIds.length > 0) {
-                    await tx.deleteFrom('particles')
-                        .where('id', 'in', toRemoveIds)
-                        .execute();
-                }
+            // Add new particles
+            if (toAdd.length > 0) {
+                const inserts = toAdd.map(p => ({
+                    id: p.id,
+                    jsondoc_id: jsondocId,
+                    project_id: projectId,
+                    path: p.path,
+                    type: p.type,
+                    title: p.title,
+                    content: this.ensureJsonbCompatible(p.content),
+                    content_text: p.content_text,
+                    embedding: this.embeddingService.embeddingToVector(p.embedding),
+                    content_hash: p.content_hash,
+                    is_active: true
+                }));
 
-                // Add new particles
-                if (toAdd.length > 0) {
-                    const inserts = toAdd.map(p => ({
-                        id: p.id,
-                        jsondoc_id: jsondocId,
-                        project_id: projectId,
-                        path: p.path,
-                        type: p.type,
+                await tx.insertInto('particles').values(inserts).execute();
+            }
+
+            // Update changed particles
+            for (const p of toUpdate) {
+                await tx
+                    .updateTable('particles')
+                    .set({
                         title: p.title,
                         content: this.ensureJsonbCompatible(p.content),
                         content_text: p.content_text,
                         embedding: this.embeddingService.embeddingToVector(p.embedding),
                         content_hash: p.content_hash,
-                        is_active: true
-                    }));
-
-                    await tx.insertInto('particles').values(inserts).execute();
-                }
-
-                // Update changed particles
-                for (const p of toUpdate) {
-                    await tx
-                        .updateTable('particles')
-                        .set({
-                            title: p.title,
-                            content: this.ensureJsonbCompatible(p.content),
-                            content_text: p.content_text,
-                            embedding: this.embeddingService.embeddingToVector(p.embedding),
-                            content_hash: p.content_hash,
-                            updated_at: sql`CURRENT_TIMESTAMP`
-                        })
-                        .where('id', '=', p.id)
-                        .execute();
-                }
-            });
-        }
+                        updated_at: sql`CURRENT_TIMESTAMP`
+                    })
+                    .where('id', '=', p.id)
+                    .execute();
+            }
+        });
 
         // Backfill content_hash for existing particles if needed (one-time)
-        if (existingParticles.some(p => !p.content_hash)) {
-            console.log(`[ParticleService] Backfilling content_hash for jsondoc ${jsondocId}`);
+        // Check if any particles need backfilling by querying directly
+        const particlesNeedingBackfill = await this.db
+            .selectFrom('particles')
+            .select(['id', 'content_hash'])
+            .where('jsondoc_id', '=', jsondocId)
+            .where('content_hash', 'is', null)
+            .execute();
+
+        if (particlesNeedingBackfill.length > 0) {
+            console.log(`[ParticleService] Backfilling content_hash for ${particlesNeedingBackfill.length} particles in jsondoc ${jsondocId}`);
             // Re-extract and update hashes
             const backfillParticles = await this.particleExtractor.extractParticles(jsondoc);
-            for (const p of backfillParticles) {
-                if (existingMap.has(p.id) && !existingMap.get(p.id)!.content_hash) {
+            const backfillMap = new Map(backfillParticles.map(p => [p.id, p]));
+
+            for (const existing of particlesNeedingBackfill) {
+                const backfillParticle = backfillMap.get(existing.id);
+                if (backfillParticle) {
                     await this.db
                         .updateTable('particles')
                         .set({
-                            content_hash: p.content_hash
+                            content_hash: backfillParticle.content_hash
                         })
-                        .where('id', '=', p.id)
+                        .where('id', '=', existing.id)
                         .execute();
                 }
             }

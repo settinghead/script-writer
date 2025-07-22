@@ -77,7 +77,7 @@ export function createCachedStreamObjectMock() {
             } else if (prompt.includes('outline') || prompt.includes('Outline') || prompt.includes('大纲')) {
                 console.log('[Mock] Using generic outline fallback');
                 return createFallbackOutlineObject();
-            } else if (prompt.includes('JSON补丁') || prompt.includes('RFC6902') || prompt.includes('patch') || prompt.includes('补丁')) {
+            } else if (prompt.includes('JSON修改提议') || prompt.includes('RFC6902') || prompt.includes('patch') || prompt.includes('修改提议')) {
                 console.log('[Mock] Using patch edit fallback');
                 return createFallbackBrainstormEditObject();
             } else if (prompt.includes('edit') || prompt.includes('改进') || prompt.includes('修改')) {

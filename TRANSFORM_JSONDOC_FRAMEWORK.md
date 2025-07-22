@@ -1251,7 +1251,7 @@ finalJsondocData = config.transformLLMOutput
   : llmOutput;
 ```
 
-### 2. Patch Mode (补丁模式)
+### 2. Patch Mode (修改提议模式)
 
 **Use Case**: Making precise edits to existing content while preserving unchanged parts
 
@@ -1382,7 +1382,7 @@ Templates specifically designed to generate JSON Patch operations with explicit 
 ```typescript
 // Example: brainstorm_edit template  
 promptTemplate: `基于用户要求改进现有故事创意...
-请以JSON补丁(JSON Patch)格式返回修改操作：
+请以JSON修改提议(JSON Patch)格式返回修改操作：
 {
   "patches": [
     {

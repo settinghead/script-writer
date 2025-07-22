@@ -463,7 +463,7 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
             title={
                 <Space>
                     <Title level={4} style={{ margin: 0 }}>逐条修改器</Title>
-                    <Text type="secondary">编辑完整文档，系统将生成新的补丁</Text>
+                    <Text type="secondary">编辑完整文档，系统将生成新的修改提议</Text>
                 </Space>
             }
             extra={
@@ -520,7 +520,7 @@ export const PatchApprovalEditor: React.FC<PatchApprovalEditorProps> = ({
 
                             {patchPaths.length === 0 && (
                                 <div style={{ textAlign: 'center', color: '#999', padding: '32px' }}>
-                                    <Text type="secondary">没有找到可编辑的补丁字段</Text>
+                                    <Text type="secondary">没有找到可编辑的修改提议字段</Text>
                                 </div>
                             )}
                         </div>
