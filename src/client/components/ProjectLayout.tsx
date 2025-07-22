@@ -5,6 +5,7 @@ import { HomeOutlined, ProjectOutlined, EyeInvisibleOutlined, ApartmentOutlined,
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useProjectStore } from '../stores/projectStore';
 import { ProjectDataProvider } from '../contexts/ProjectDataContext';
+import { ScrollSyncProvider } from '../contexts/ScrollSyncContext';
 import { ChatSidebarWrapper } from './chat/ChatSidebarWrapper';
 import RawGraphVisualization from './RawGraphVisualization'; // Replace WorkflowVisualization
 import ProjectTreeView from './ProjectTreeView';
@@ -630,87 +631,89 @@ const ProjectLayout: React.FC = () => {
     };
 
     return (
-        <Layout style={{ height: '100%', overflow: 'hidden' }}>
-            {/* Mobile Drawer for Chat */}
-            {isMobile && (
-                <MobileChatDrawer
-                    open={mobileDrawerOpen}
-                    onClose={hideMobileDrawer}
-                    projectId={projectId!}
-                />
-            )}
-
-            {/* Desktop Sidebar */}
-            {!isMobile && (
-                <DesktopSidebar
-                    width={sidebarWidth}
-                    onResizeStart={handleSidebarMouseDown}
-                    isResizing={isResizingSidebar}
-                    projectId={projectId!}
-                />
-            )}
-
-            {/* Mobile Right Drawer with Tabs */}
-            {isMobile && (
-                <MobileRightDrawer
-                    open={mobileRightDrawerOpen}
-                    onClose={hideMobileRightDrawer}
-                    activeTab={activeRightTab}
-                    onTabChange={setActiveRightTab}
-                />
-            )}
-
-            <Layout style={{
-                flex: 1,
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'row',
-                padding: "0"
-            }}>
-                {/* Main Content Layout */}
-                <Layout style={{
-                    flex: 1,
-                    overflow: 'hidden',
-                }}>
-                    {/* Breadcrumb and Toggle Buttons Row */}
-                    {projectId && (
-                        <ProjectHeader
-                            projectId={projectId}
-                            isMobile={isMobile}
-                            sidebarWidth={sidebarWidth}
-                            rightSidebarVisible={rightSidebarVisible}
-                            rightSidebarWidth={rightSidebarWidth}
-                            onMobileRightDrawerOpen={showMobileRightDrawer}
-                        />
-                    )}
-
-                    {/* Main Content Area */}
-                    <MainContentArea
+        <ScrollSyncProvider>
+            <Layout style={{ height: '100%', overflow: 'hidden' }}>
+                {/* Mobile Drawer for Chat */}
+                {isMobile && (
+                    <MobileChatDrawer
+                        open={mobileDrawerOpen}
+                        onClose={hideMobileDrawer}
                         projectId={projectId!}
-                        scrollContainerRef={scrollContainerRef}
                     />
-                </Layout>
+                )}
 
-                {/* Right Sidebar - Desktop Only */}
+                {/* Desktop Sidebar */}
                 {!isMobile && (
-                    <DesktopRightSidebar
-                        visible={rightSidebarVisible}
-                        width={rightSidebarWidth}
-                        onResizeStart={handleRightSidebarMouseDown}
-                        isResizing={isResizingRightSidebar}
-                        onToggleVisibility={() => setRightSidebarVisible(!rightSidebarVisible)}
+                    <DesktopSidebar
+                        width={sidebarWidth}
+                        onResizeStart={handleSidebarMouseDown}
+                        isResizing={isResizingSidebar}
+                        projectId={projectId!}
+                    />
+                )}
+
+                {/* Mobile Right Drawer with Tabs */}
+                {isMobile && (
+                    <MobileRightDrawer
+                        open={mobileRightDrawerOpen}
+                        onClose={hideMobileRightDrawer}
                         activeTab={activeRightTab}
                         onTabChange={setActiveRightTab}
                     />
                 )}
+
+                <Layout style={{
+                    flex: 1,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'row',
+                    padding: "0"
+                }}>
+                    {/* Main Content Layout */}
+                    <Layout style={{
+                        flex: 1,
+                        overflow: 'hidden',
+                    }}>
+                        {/* Breadcrumb and Toggle Buttons Row */}
+                        {projectId && (
+                            <ProjectHeader
+                                projectId={projectId}
+                                isMobile={isMobile}
+                                sidebarWidth={sidebarWidth}
+                                rightSidebarVisible={rightSidebarVisible}
+                                rightSidebarWidth={rightSidebarWidth}
+                                onMobileRightDrawerOpen={showMobileRightDrawer}
+                            />
+                        )}
+
+                        {/* Main Content Area */}
+                        <MainContentArea
+                            projectId={projectId!}
+                            scrollContainerRef={scrollContainerRef}
+                        />
+                    </Layout>
+
+                    {/* Right Sidebar - Desktop Only */}
+                    {!isMobile && (
+                        <DesktopRightSidebar
+                            visible={rightSidebarVisible}
+                            width={rightSidebarWidth}
+                            onResizeStart={handleRightSidebarMouseDown}
+                            isResizing={isResizingRightSidebar}
+                            onToggleVisibility={() => setRightSidebarVisible(!rightSidebarVisible)}
+                            activeTab={activeRightTab}
+                            onTabChange={setActiveRightTab}
+                        />
+                    )}
+                </Layout>
+
+                {/* Patch Review Modal - Shows when there are pending patches */}
+                {projectId && <PatchReviewModal projectId={projectId} />}
+
+                {/* Debug: Electric SQL real-time updates */}
+                {/* {projectId && <ElectricSQLDebugger projectId={projectId} />} */}
             </Layout>
-
-            {/* Patch Review Modal - Shows when there are pending patches */}
-            {projectId && <PatchReviewModal projectId={projectId} />}
-
-            {/* Debug: Electric SQL real-time updates */}
-            {/* {projectId && <ElectricSQLDebugger projectId={projectId} />} */}
-        </Layout>
+        </ScrollSyncProvider>
     );
 };
 

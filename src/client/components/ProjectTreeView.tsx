@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useEffect, useState } from 'react';
 import { Tree, Typography, Space, Tag } from 'antd';
 import type { DataNode } from 'antd/es/tree';
 import {
@@ -10,13 +10,15 @@ import {
     LoadingOutlined,
     StarFilled,
     SettingOutlined,
-    ClockCircleOutlined
+    ClockCircleOutlined,
+    PlayCircleOutlined
 } from '@ant-design/icons';
 import { useProjectInitialMode } from '../transform-jsondoc-framework/useLineageResolution';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useCurrentSection, type CurrentSection } from '../hooks/useCurrentSection';
 import { useChosenBrainstormIdea } from '../hooks/useChosenBrainstormIdea';
 import { computeCanonicalJsondocsFromLineage } from '../../common/canonicalJsondocLogic';
+import { useScrollSync } from '../contexts/ScrollSyncContext';
 
 const { Text } = Typography;
 
@@ -39,6 +41,11 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
     const { isInitialMode, isLoading: initialModeLoading } = useProjectInitialMode();
     const projectData = useProjectData();
     const currentSection = useCurrentSection();
+    const { currentPosition, scrollTo } = useScrollSync();
+
+    // State for expanded keys and selected keys
+    const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
+    const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
 
     // Compute canonical context using the canonical logic
     const canonicalContext = useMemo(() => {
@@ -404,9 +411,75 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             sections.push(episodePlanningSection);
         }
 
-        // 6. EPISODE SYNOPSIS SECTION - only show if episode synopsis jsondocs exist
+        // 6. EPISODE SYNOPSIS SECTION - with hierarchical episodes
         if (jsondocChecks.hasEpisodeSynopsis) {
-            const episodeSynopsisHighlighted = shouldHighlightNode('#episode-synopsis');
+            const episodeSynopsisHighlighted = shouldHighlightNode('#episode-synopsis') ||
+                (currentPosition?.section === 'episode-synopsis' && !currentPosition?.subId);
+
+            // Extract all episodes from canonical episode synopsis list
+            const allEpisodes = useMemo(() => {
+                const episodes = [];
+                if (canonicalContext?.canonicalEpisodeSynopsisList) {
+                    for (const synopsisJsondoc of canonicalContext.canonicalEpisodeSynopsisList) {
+                        try {
+                            const data = typeof synopsisJsondoc.data === 'string'
+                                ? JSON.parse(synopsisJsondoc.data)
+                                : synopsisJsondoc.data;
+                            if (data.episodes && Array.isArray(data.episodes)) {
+                                episodes.push(...data.episodes.map((episode: any) => ({
+                                    ...episode,
+                                    groupTitle: data.groupTitle,
+                                    episodeRange: data.episodeRange,
+                                    jsondocId: synopsisJsondoc.id
+                                })));
+                            }
+                        } catch (error) {
+                            console.warn('Failed to parse episode synopsis data:', error);
+                        }
+                    }
+                }
+                return episodes.sort((a: any, b: any) => a.episodeNumber - b.episodeNumber);
+            }, [canonicalContext?.canonicalEpisodeSynopsisList]);
+
+            // Build episode children nodes
+            const episodeChildren: ProjectTreeNode[] = allEpisodes.map((episode: any) => {
+                const episodeId = `episode-${episode.episodeNumber}`;
+                const isEpisodeHighlighted = currentPosition?.section === 'episode-synopsis' &&
+                    currentPosition?.subId === episodeId;
+
+                return {
+                    key: episodeId,
+                    title: (
+                        <Space style={{
+                            padding: isEpisodeHighlighted ? '2px 6px' : '0',
+                            borderRadius: '4px',
+                            background: isEpisodeHighlighted ?
+                                'linear-gradient(135deg, rgba(24, 144, 255, 0.3) 0%, rgba(64, 169, 255, 0.2) 100%)' :
+                                'none',
+                            border: isEpisodeHighlighted ? '1px solid rgba(24, 144, 255, 0.5)' : 'none',
+                            transition: 'all 0.2s ease-in-out',
+                            display: 'inline-flex',
+                            alignItems: 'center'
+                        }}>
+                            <Text style={{
+                                color: isEpisodeHighlighted ? '#ffffff' : '#ccc',
+                                fontSize: '13px',
+                                fontWeight: isEpisodeHighlighted ? 600 : 400,
+                                textShadow: isEpisodeHighlighted ? '0 0 6px rgba(24, 144, 255, 0.6)' : 'none'
+                            }}>
+                                第{episode.episodeNumber}集: {episode.title}
+                            </Text>
+                        </Space>
+                    ),
+                    icon: <PlayCircleOutlined style={{
+                        color: isEpisodeHighlighted ? '#1890ff' : '#666',
+                        fontSize: '12px',
+                        filter: isEpisodeHighlighted ? 'drop-shadow(0 0 3px rgba(24, 144, 255, 0.6))' : 'none'
+                    }} />,
+                    selectable: true,
+                    navigationTarget: `#${episodeId}`
+                };
+            });
 
             const episodeSynopsisSection: ProjectTreeNode = {
                 key: 'episode-synopsis-section',
@@ -437,6 +510,18 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                             fontSize: '12px',
                             marginLeft: '4px'
                         }} />
+                        {allEpisodes.length > 0 && (
+                            <Tag
+                                color={episodeSynopsisHighlighted ? "blue" : "default"}
+                                style={{
+                                    boxShadow: episodeSynopsisHighlighted ? '0 0 8px rgba(24, 144, 255, 0.4)' : 'none',
+                                    border: episodeSynopsisHighlighted ? '1px solid rgba(24, 144, 255, 0.6)' : undefined,
+                                    marginLeft: '8px'
+                                }}
+                            >
+                                {allEpisodes.length}集
+                            </Tag>
+                        )}
                     </Space>
                 ),
                 icon: <BookOutlined style={{
@@ -444,7 +529,8 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                     filter: episodeSynopsisHighlighted ? 'drop-shadow(0 0 4px rgba(24, 144, 255, 0.6))' : 'none'
                 }} />,
                 selectable: true,
-                navigationTarget: '#episode-synopsis'
+                navigationTarget: '#episode-synopsis',
+                children: episodeChildren.length > 0 ? episodeChildren : undefined
             };
 
             sections.push(episodeSynopsisSection);
@@ -453,21 +539,68 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         return sections;
     }, [canonicalContext, initialModeLoading, isInitialMode, chosenIdea, jsondocChecks, shouldHighlightNode]);
 
-    // Handle tree node selection - scroll to corresponding section
+    // Handle tree node selection - scroll using scroll sync system
     const handleSelect = useCallback((selectedKeys: React.Key[], info: any) => {
         if (selectedKeys.length === 0) return;
 
         const node = info.node as ProjectTreeNode;
         if (node.navigationTarget) {
-            const targetElement = document.querySelector(node.navigationTarget);
-            if (targetElement) {
-                targetElement.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
+            // Parse navigation target to determine section and subId
+            if (node.navigationTarget.startsWith('#episode-')) {
+                // Episode sub-item
+                const episodeId = node.navigationTarget.substring(1); // Remove '#'
+                scrollTo('episode-synopsis', episodeId);
+            } else {
+                // Section-level navigation
+                const section = node.navigationTarget.substring(1); // Remove '#'
+                const sectionMapping: Record<string, string> = {
+                    'ideas': 'ideas',
+                    'ideation-edit': 'ideation-edit',
+                    'outline-settings': 'outline-settings',
+                    'chronicles': 'chronicles',
+                    'episode-planning': 'episode-planning',
+                    'episode-synopsis': 'episode-synopsis'
+                };
+
+                const mappedSection = sectionMapping[section] || section;
+                scrollTo(mappedSection);
             }
         }
-    }, []);
+    }, [scrollTo]);
+
+    // Sync tree state with current scroll position
+    useEffect(() => {
+        if (!currentPosition) return;
+
+        const { section, subId } = currentPosition;
+
+        // Update selected keys
+        if (subId) {
+            // Sub-item is selected
+            setSelectedKeys([subId]);
+
+            // Auto-expand parent section if needed
+            const parentSectionKey = `${section}-section`;
+            setExpandedKeys(prev => {
+                if (!prev.includes(parentSectionKey)) {
+                    return [...prev, parentSectionKey];
+                }
+                return prev;
+            });
+        } else {
+            // Section is selected
+            const sectionKey = `${section}-section`;
+            setSelectedKeys([sectionKey]);
+        }
+    }, [currentPosition]);
+
+    // Initialize expanded keys to show all sections by default
+    useEffect(() => {
+        if (treeData.length > 0 && expandedKeys.length === 0) {
+            const allSectionKeys = treeData.map(node => node.key);
+            setExpandedKeys(allSectionKeys);
+        }
+    }, [treeData, expandedKeys.length]);
 
     // Show empty tree when in initial mode or no sections exist
     if (isInitialMode || treeData.length === 0) {
@@ -493,12 +626,13 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                 showIcon={true}
                 selectable={true}
                 onSelect={handleSelect}
+                selectedKeys={selectedKeys}
+                expandedKeys={expandedKeys}
+                onExpand={setExpandedKeys}
                 style={{
                     background: 'transparent',
                     color: '#fff'
                 }}
-                expandedKeys={treeData.map(node => node.key)}
-                defaultExpandAll={true}
             />
         </div>
     );

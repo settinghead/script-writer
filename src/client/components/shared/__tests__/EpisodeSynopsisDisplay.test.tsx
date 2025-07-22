@@ -1,8 +1,30 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import EpisodeSynopsisDisplay from '../EpisodeSynopsisDisplay';
 import { ElectricJsondoc } from '@/common/types';
+import { ScrollSyncProvider } from '../../../contexts';
+
+// Mock IntersectionObserver
+const mockIntersectionObserver = vi.fn();
+const mockObserve = vi.fn();
+const mockUnobserve = vi.fn();
+const mockDisconnect = vi.fn();
+
+beforeEach(() => {
+    mockIntersectionObserver.mockImplementation((callback, options) => ({
+        observe: mockObserve,
+        unobserve: mockUnobserve,
+        disconnect: mockDisconnect,
+        root: null,
+        rootMargin: options?.rootMargin || '',
+        thresholds: Array.isArray(options?.threshold) ? options.threshold : [options?.threshold || 0]
+    }));
+
+    // @ts-ignore
+    global.IntersectionObserver = mockIntersectionObserver;
+    vi.clearAllMocks();
+});
 
 // Mock Ant Design components with a single comprehensive mock
 vi.mock('antd', () => {
@@ -92,8 +114,16 @@ describe('EpisodeSynopsisDisplay', () => {
         updated_at: '2024-01-01T00:00:00Z'
     });
 
+    const renderWithProvider = (episodeSynopsisList: ElectricJsondoc[]) => {
+        return render(
+            <ScrollSyncProvider>
+                <EpisodeSynopsisDisplay episodeSynopsisList={episodeSynopsisList} />
+            </ScrollSyncProvider>
+        );
+    };
+
     it('should render empty state when no episodes are provided', () => {
-        render(<EpisodeSynopsisDisplay episodeSynopsisList={[]} />);
+        renderWithProvider([]);
 
         expect(screen.getByTestId('title')).toHaveTextContent('每集大纲 (0集)');
         expect(screen.queryByTestId('card')).not.toBeInTheDocument();
@@ -114,7 +144,7 @@ describe('EpisodeSynopsisDisplay', () => {
         ];
 
         const mockJsondoc = createMockEpisodeSynopsisJsondoc('test-1', episodes);
-        render(<EpisodeSynopsisDisplay episodeSynopsisList={[mockJsondoc]} />);
+        renderWithProvider([mockJsondoc]);
 
         // Check main title
         expect(screen.getByTestId('title')).toHaveTextContent('每集大纲 (1集)');
@@ -173,7 +203,7 @@ describe('EpisodeSynopsisDisplay', () => {
         ];
 
         const mockJsondoc = createMockEpisodeSynopsisJsondoc('test-1', episodes);
-        render(<EpisodeSynopsisDisplay episodeSynopsisList={[mockJsondoc]} />);
+        renderWithProvider([mockJsondoc]);
 
         // Check that episodes are sorted by episode number
         const episodeTitles = screen.getAllByText(/第\d+集:/);
@@ -215,7 +245,7 @@ describe('EpisodeSynopsisDisplay', () => {
         const mockJsondoc1 = createMockEpisodeSynopsisJsondoc('test-1', jsondoc1Episodes);
         const mockJsondoc2 = createMockEpisodeSynopsisJsondoc('test-2', jsondoc2Episodes);
 
-        render(<EpisodeSynopsisDisplay episodeSynopsisList={[mockJsondoc1, mockJsondoc2]} />);
+        renderWithProvider([mockJsondoc1, mockJsondoc2]);
 
         // Check that all episodes are displayed
         expect(screen.getByTestId('title')).toHaveTextContent('每集大纲 (2集)');
@@ -238,7 +268,7 @@ describe('EpisodeSynopsisDisplay', () => {
         ];
 
         const mockJsondoc = createMockEpisodeSynopsisJsondoc('test-1', episodes);
-        render(<EpisodeSynopsisDisplay episodeSynopsisList={[mockJsondoc]} />);
+        renderWithProvider([mockJsondoc]);
 
         // Should render episode without suspense elements section
         expect(screen.getByText('第1集: 简单剧集')).toBeInTheDocument();
@@ -260,7 +290,7 @@ describe('EpisodeSynopsisDisplay', () => {
         ];
 
         const mockJsondoc = createMockEpisodeSynopsisJsondoc('test-1', episodes);
-        render(<EpisodeSynopsisDisplay episodeSynopsisList={[mockJsondoc]} />);
+        renderWithProvider([mockJsondoc]);
 
         expect(screen.getByText('第1集: 无悬念剧集')).toBeInTheDocument();
         expect(screen.queryByText('悬念元素:')).not.toBeInTheDocument();
@@ -279,7 +309,7 @@ describe('EpisodeSynopsisDisplay', () => {
         };
 
         // Should not crash and should show empty state
-        render(<EpisodeSynopsisDisplay episodeSynopsisList={[malformedJsondoc]} />);
+        renderWithProvider([malformedJsondoc]);
 
         expect(screen.getByTestId('title')).toHaveTextContent('每集大纲 (0集)');
         expect(screen.queryByTestId('card')).not.toBeInTheDocument();
@@ -301,7 +331,7 @@ describe('EpisodeSynopsisDisplay', () => {
             updated_at: '2024-01-01T00:00:00Z'
         };
 
-        render(<EpisodeSynopsisDisplay episodeSynopsisList={[jsondocWithoutEpisodes]} />);
+        renderWithProvider([jsondocWithoutEpisodes]);
 
         expect(screen.getByTestId('title')).toHaveTextContent('每集大纲 (0集)');
         expect(screen.queryByTestId('card')).not.toBeInTheDocument();
@@ -323,7 +353,7 @@ describe('EpisodeSynopsisDisplay', () => {
             updated_at: '2024-01-01T00:00:00Z'
         };
 
-        render(<EpisodeSynopsisDisplay episodeSynopsisList={[jsondocWithInvalidEpisodes]} />);
+        renderWithProvider([jsondocWithInvalidEpisodes]);
 
         expect(screen.getByTestId('title')).toHaveTextContent('每集大纲 (0集)');
         expect(screen.queryByTestId('card')).not.toBeInTheDocument();
@@ -344,7 +374,7 @@ describe('EpisodeSynopsisDisplay', () => {
         ];
 
         const mockJsondoc = createMockEpisodeSynopsisJsondoc('test-1', episodes);
-        const { container } = render(<EpisodeSynopsisDisplay episodeSynopsisList={[mockJsondoc]} />);
+        const { container } = renderWithProvider([mockJsondoc]);
 
         // Check that the component has the correct ID for navigation
         const elementWithId = container.querySelector('#episode-synopsis');
