@@ -231,15 +231,85 @@ export function createOutlineSettingsEditToolDefinition(
 
             const outputJsondocType: TypedJsondoc['schema_type'] = '剧本设定';
 
+            // Create enhanced input that includes the canonical 剧本设定 as the primary input
+            const enhancedInput = {
+                ...params,
+                jsondocs: [
+                    // 1. Always include the canonical 剧本设定 as the first (primary) input
+                    {
+                        jsondocId: canonicalOutlineSettingsJsondoc.id,
+                        description: '剧本设定',
+                        schemaType: '剧本设定'
+                    },
+                    // 2. Add all other input jsondocs as context (excluding the canonical one if it's already there)
+                    ...params.jsondocs.filter(jsondocRef => jsondocRef.jsondocId !== canonicalOutlineSettingsJsondoc.id)
+                ]
+            };
+
+            console.log(`[OutlineSettingsEditTool] Enhanced input jsondocs:`, enhancedInput.jsondocs.map(j => ({ id: j.jsondocId, description: j.description })));
+
             // Create config for JSON patch generation using patch template
             const config: StreamingTransformConfig<OutlineSettingsEditInput, any> = {
                 templateName: '剧本设定_edit_patch',
                 inputSchema: OutlineSettingsEditInputSchema,
                 outputSchema: JsonPatchOperationsSchema, // RFC6902 JSON patch array schema
                 prepareTemplateVariables: async (input) => {
-                    const defaultVars = await defaultPrepareTemplateVariables(input, jsondocRepo);
+                    console.log(`[OutlineSettingsEditTool] Preparing template variables with canonical 剧本设定 as patch target`);
+
+                    // Create a custom jsondocs object that clearly marks the patch target and includes context
+                    const templateJsondocs: Record<string, any> = {};
+
+                    // 1. Add the canonical 剧本设定 as the PATCH TARGET
+                    templateJsondocs['PATCH_TARGET_剧本设定'] = {
+                        id: canonicalOutlineSettingsJsondoc.id,
+                        schemaType: '剧本设定',
+                        schema_type: '剧本设定',
+                        content: originalSettings,
+                        data: originalSettings,
+                        role: 'PATCH_TARGET',
+                        description: 'This is the canonical 剧本设定 that should receive the patches'
+                    };
+
+                    // 2. Add all input jsondocs as CONTEXT (excluding the canonical one if it's already there)
+                    for (const jsondocRef of input.jsondocs) {
+                        const sourceJsondoc = await jsondocRepo.getJsondoc(jsondocRef.jsondocId);
+                        if (sourceJsondoc && sourceJsondoc.id !== canonicalOutlineSettingsJsondoc.id) {
+                            const contextKey = jsondocRef.description || sourceJsondoc.schema_type;
+                            templateJsondocs[`CONTEXT_${contextKey}`] = {
+                                id: sourceJsondoc.id,
+                                schemaType: sourceJsondoc.schema_type,
+                                schema_type: sourceJsondoc.schema_type,
+                                content: typeof sourceJsondoc.data === 'string'
+                                    ? JSON.parse(sourceJsondoc.data)
+                                    : sourceJsondoc.data,
+                                data: typeof sourceJsondoc.data === 'string'
+                                    ? JSON.parse(sourceJsondoc.data)
+                                    : sourceJsondoc.data,
+                                role: 'CONTEXT',
+                                description: `Context jsondoc: ${jsondocRef.description || sourceJsondoc.schema_type}`
+                            };
+                        }
+                    }
+
+                    console.log(`[OutlineSettingsEditTool] Template jsondocs keys:`, Object.keys(templateJsondocs));
+
+                    // Format jsondocs as YAML for the template
+                    const { dump } = await import('js-yaml');
+                    const jsondocsYaml = dump(templateJsondocs, {
+                        indent: 2,
+                        lineWidth: -1
+                    }).trim();
+
+                    // Prepare other parameters (excluding jsondocs)
+                    const { jsondocs, ...otherParams } = input;
+                    const paramsYaml = dump(otherParams, {
+                        indent: 2,
+                        lineWidth: -1
+                    }).trim();
+
                     return {
-                        ...defaultVars,
+                        jsondocs: jsondocsYaml,
+                        params: paramsYaml,
                         additionalContexts
                     };
                 }
@@ -249,7 +319,7 @@ export function createOutlineSettingsEditToolDefinition(
                 // Execute the streaming transform with patch mode
                 const result = await executeStreamingTransform({
                     config,
-                    input: params,
+                    input: enhancedInput, // Use the enhanced input
                     projectId,
                     userId,
                     transformRepo,

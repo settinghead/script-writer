@@ -113,16 +113,29 @@ export class EmbeddingService {
                 }
             }
 
-            // Generate embeddings for uncached texts using batch API
+            // Generate embeddings for uncached texts
             let batchEmbeddings: number[][] = [];
             if (uncachedTexts.length > 0) {
                 const model = await this.model;
-                const result = await embedMany({
-                    model: model,
-                    values: uncachedTexts
-                });
 
-                batchEmbeddings = result.embeddings;
+                // Use batch API only if we have between 2 and 10 texts, otherwise use individual calls
+                if (uncachedTexts.length >= 2 && uncachedTexts.length <= 10) {
+                    const result = await embedMany({
+                        model: model,
+                        values: uncachedTexts
+                    });
+                    batchEmbeddings = result.embeddings;
+                } else {
+                    // Use individual embedding calls for small batches
+                    batchEmbeddings = [];
+                    for (const text of uncachedTexts) {
+                        const result = await embed({
+                            model: model,
+                            value: text
+                        });
+                        batchEmbeddings.push(result.embedding);
+                    }
+                }
 
                 // Cache the new embeddings if caching is enabled
                 if (cache) {

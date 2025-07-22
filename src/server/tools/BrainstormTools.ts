@@ -409,7 +409,17 @@ export function createBrainstormEditToolDefinition(
                     outputJsondocType,
                     executionMode: {
                         mode: 'patch-approval',
-                        originalJsondoc: originalIdea
+                        originalJsondoc: {
+                            // Include the extracted idea data that the user wants to edit
+                            ...originalIdea,
+                            // Add the necessary metadata fields from the source jsondoc for patch creation
+                            id: sourceJsondoc.id,
+                            schema_type: sourceJsondoc.schema_type,
+                            project_id: sourceJsondoc.project_id,
+                            // Preserve other metadata that might be needed
+                            metadata: sourceJsondoc.metadata,
+                            origin_type: sourceJsondoc.origin_type
+                        }
                     },
                     transformMetadata: {
                         toolName: 'edit_brainstorm_idea',
