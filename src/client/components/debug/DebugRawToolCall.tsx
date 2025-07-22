@@ -56,8 +56,7 @@ const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
             };
         case 'generate_剧本设定':
             return {
-                title: '示例短剧标题',
-                requirements: '现代都市甜宠，去脸谱化，避免刻板印象'
+                '其他要求': ''
             };
         case 'edit_剧本设定':
             return {
