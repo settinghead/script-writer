@@ -10,6 +10,7 @@ export interface ParticleData {
     title: string;
     content: any;
     content_text: string;
+    content_hash: string; // New field
     embedding: number[];
 }
 
@@ -139,6 +140,14 @@ export class ParticleExtractor {
         return particleId;
     }
 
+    /**
+     * Generate a content hash for a particle
+     */
+    private generateContentHash(content: any, content_text: string): string {
+        const input = JSON.stringify(content) + '|' + content_text;
+        return createHash('sha256').update(input).digest('hex');
+    }
+
     private async extractBrainstormParticles(jsondoc: TypedJsondoc): Promise<ParticleData[]> {
         const data = jsondoc.data as any; // Use any for flexible access to data properties
         const particles: ParticleData[] = [];
@@ -162,6 +171,7 @@ export class ParticleExtractor {
                         title,
                         content,
                         content_text: contentText,
+                        content_hash: this.generateContentHash(idea, contentText), // Add content hash
                         embedding
                     });
                 }
@@ -195,6 +205,7 @@ export class ParticleExtractor {
                 title,
                 content: data,
                 content_text: contentText,
+                content_hash: this.generateContentHash(data, contentText), // Add content hash
                 embedding
             });
         }
@@ -222,6 +233,7 @@ export class ParticleExtractor {
                     title,
                     content,
                     content_text: contentText,
+                    content_hash: this.generateContentHash(content, contentText), // Add content hash
                     embedding
                 });
             }
@@ -253,6 +265,7 @@ export class ParticleExtractor {
                         title,
                         content: character,
                         content_text: contentText,
+                        content_hash: this.generateContentHash(character, contentText), // Add content hash
                         embedding
                     });
                 }
@@ -276,6 +289,7 @@ export class ParticleExtractor {
                     title,
                     content,
                     content_text: contentText,
+                    content_hash: this.generateContentHash(content, contentText), // Add content hash
                     embedding: await this.embeddingService.generateEmbedding(contentText)
                 });
             }
@@ -298,6 +312,7 @@ export class ParticleExtractor {
                     title,
                     content,
                     content_text: contentText,
+                    content_hash: this.generateContentHash(content, contentText), // Add content hash
                     embedding: await this.embeddingService.generateEmbedding(contentText)
                 });
             }
@@ -321,6 +336,7 @@ export class ParticleExtractor {
                     title,
                     content,
                     content_text: contentText,
+                    content_hash: this.generateContentHash(content, contentText), // Add content hash
                     embedding
                 });
             }
@@ -358,6 +374,7 @@ export class ParticleExtractor {
                         title,
                         content,
                         content_text: contentText,
+                        content_hash: this.generateContentHash(content, contentText), // Add content hash
                         embedding
                     });
                 }
@@ -397,6 +414,7 @@ export class ParticleExtractor {
                         title,
                         content,
                         content_text: contentText,
+                        content_hash: this.generateContentHash(content, contentText), // Add content hash
                         embedding
                     });
                 }
@@ -438,6 +456,7 @@ export class ParticleExtractor {
                         title,
                         content,
                         content_text: contentText,
+                        content_hash: this.generateContentHash(content, contentText), // Add content hash
                         embedding
                     });
                 }

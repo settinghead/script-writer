@@ -214,6 +214,7 @@ export interface Particles {
   content: Json;
   content_text: string;
   embedding: string | null; // pgvector type represented as string
+  content_hash: string | null; // New field
   is_active: Generated<boolean>;
   created_at: Generated<Timestamp>;
   updated_at: Generated<Timestamp>;
