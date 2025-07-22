@@ -844,7 +844,7 @@ export function createAdminRoutes(
     // Debug health check for particle-based agent
     router.get('/particle-agent/health', async (req: Request, res: Response) => {
         try {
-            const { checkParticleBasedAgentHealth } = await import('../services/ParticleBasedAgentService');
+            const { checkParticleBasedAgentHealth } = await import('../services/ParticleBasedAgentService.js');
             const health = await checkParticleBasedAgentHealth();
             res.json({
                 status: 'ok',
@@ -885,7 +885,7 @@ export function createAdminRoutes(
             console.log(`[AdminRoutes] Testing particle-based agent for project: ${projectId}`);
             console.log(`[AdminRoutes] User request: "${userRequest}"`);
 
-            const { runParticleBasedGeneralAgent } = await import('../services/ParticleBasedAgentService');
+            const { runParticleBasedGeneralAgent } = await import('../services/ParticleBasedAgentService.js');
 
             const result = await runParticleBasedGeneralAgent(
                 {
