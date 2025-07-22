@@ -68,6 +68,31 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         );
     }, [projectData]);
 
+    // Extract all episodes from canonical episode synopsis list at the top level
+    const allEpisodes = useMemo(() => {
+        const episodes = [];
+        if (canonicalContext?.canonicalEpisodeSynopsisList) {
+            for (const synopsisJsondoc of canonicalContext.canonicalEpisodeSynopsisList) {
+                try {
+                    const data = typeof synopsisJsondoc.data === 'string'
+                        ? JSON.parse(synopsisJsondoc.data)
+                        : synopsisJsondoc.data;
+                    if (data.episodes && Array.isArray(data.episodes)) {
+                        episodes.push(...data.episodes.map((episode: any) => ({
+                            ...episode,
+                            groupTitle: data.groupTitle,
+                            episodeRange: data.episodeRange,
+                            jsondocId: synopsisJsondoc.id
+                        })));
+                    }
+                } catch (error) {
+                    console.warn('Failed to parse episode synopsis data:', error);
+                }
+            }
+        }
+        return episodes.sort((a: any, b: any) => a.episodeNumber - b.episodeNumber);
+    }, [canonicalContext?.canonicalEpisodeSynopsisList]);
+
     // Function to determine if a tree node should be highlighted
     const shouldHighlightNode = useCallback((navigationTarget?: string): boolean => {
         if (!currentSection || !navigationTarget) {
@@ -416,30 +441,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             const episodeSynopsisHighlighted = shouldHighlightNode('#episode-synopsis') ||
                 (currentPosition?.section === 'episode-synopsis' && !currentPosition?.subId);
 
-            // Extract all episodes from canonical episode synopsis list
-            const allEpisodes = useMemo(() => {
-                const episodes = [];
-                if (canonicalContext?.canonicalEpisodeSynopsisList) {
-                    for (const synopsisJsondoc of canonicalContext.canonicalEpisodeSynopsisList) {
-                        try {
-                            const data = typeof synopsisJsondoc.data === 'string'
-                                ? JSON.parse(synopsisJsondoc.data)
-                                : synopsisJsondoc.data;
-                            if (data.episodes && Array.isArray(data.episodes)) {
-                                episodes.push(...data.episodes.map((episode: any) => ({
-                                    ...episode,
-                                    groupTitle: data.groupTitle,
-                                    episodeRange: data.episodeRange,
-                                    jsondocId: synopsisJsondoc.id
-                                })));
-                            }
-                        } catch (error) {
-                            console.warn('Failed to parse episode synopsis data:', error);
-                        }
-                    }
-                }
-                return episodes.sort((a: any, b: any) => a.episodeNumber - b.episodeNumber);
-            }, [canonicalContext?.canonicalEpisodeSynopsisList]);
+            // Use pre-computed episodes from top-level useMemo
 
             // Build episode children nodes
             const episodeChildren: ProjectTreeNode[] = allEpisodes.map((episode: any) => {
@@ -537,7 +539,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         }
 
         return sections;
-    }, [canonicalContext, initialModeLoading, isInitialMode, chosenIdea, jsondocChecks, shouldHighlightNode]);
+    }, [canonicalContext, initialModeLoading, isInitialMode, chosenIdea, jsondocChecks, shouldHighlightNode, currentPosition, allEpisodes]);
 
     // Handle tree node selection - scroll using scroll sync system
     const handleSelect = useCallback((selectedKeys: React.Key[], info: any) => {
@@ -618,22 +620,30 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                 backdropFilter: 'blur(8px)',
                 borderRight: '1px solid rgba(255, 255, 255, 0.1)',
                 padding: '16px 8px',
-                overflow: 'auto'
+                overflow: 'auto',
+                display: 'flex',
+                flexDirection: 'column'
             }}
         >
-            <Tree
-                treeData={treeData}
-                showIcon={true}
-                selectable={true}
-                onSelect={handleSelect}
-                selectedKeys={selectedKeys}
-                expandedKeys={expandedKeys}
-                onExpand={setExpandedKeys}
-                style={{
-                    background: 'transparent',
-                    color: '#fff'
-                }}
-            />
+            <div style={{
+                flex: 1,
+                overflow: 'auto',
+                minHeight: 0 // Important for flex child to be scrollable
+            }}>
+                <Tree
+                    treeData={treeData}
+                    showIcon={true}
+                    selectable={true}
+                    onSelect={handleSelect}
+                    selectedKeys={selectedKeys}
+                    expandedKeys={expandedKeys}
+                    onExpand={setExpandedKeys}
+                    style={{
+                        background: 'transparent',
+                        color: '#fff'
+                    }}
+                />
+            </div>
         </div>
     );
 };

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { useScrollSync } from '../contexts/ScrollSyncContext';
-import { useDebounce } from './useDebounce';
+import { useDebouncedCallback } from './useDebounce';
 
 export interface SubItem {
     id: string;
@@ -42,7 +42,7 @@ export const useScrollSyncObserver = (
         setPosition({ section, subId: mostVisibleId });
     }, [section, setPosition]);
 
-    const debouncedUpdatePosition = useDebounce(updatePosition, debounceMs);
+    const debouncedUpdatePosition = useDebouncedCallback(updatePosition, debounceMs);
 
     // Function to find the most visible sub-item
     const findMostVisible = useCallback((): string | undefined => {
