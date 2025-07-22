@@ -355,15 +355,46 @@ export function createPatchRoutes(
                         const hasApproval = hasApprovalInLineage(patchJsondoc.id);
 
                         if (!hasApproval) {
-                            // Find original jsondoc being edited
-                            const transformInputs = await jsondocRepo.getAllProjectTransformInputsForLineage(projectId);
-                            const inputsForTransform = transformInputs.filter((input: any) =>
-                                input.transform_id === transform.id
-                            );
+                            // Find original jsondoc being edited using targetJsondocId from patch data
+                            let originalJsondoc = null;
 
-                            const originalJsondoc = inputsForTransform.length > 0
-                                ? jsondocs.find((j: any) => j.id === inputsForTransform[0].jsondoc_id)
-                                : null;
+                            // First, try to get the target jsondoc from patch data
+                            let patchData: any = patchJsondoc.data;
+                            if (typeof patchData === 'string') {
+                                try {
+                                    patchData = JSON.parse(patchData);
+                                } catch (parseError) {
+                                    console.warn(`Failed to parse patch data for jsondoc ${patchJsondoc.id}:`, parseError);
+                                    patchData = null;
+                                }
+                            }
+
+                            if (patchData && typeof patchData === 'object' && patchData.targetJsondocId && patchData.targetJsondocId !== 'pending' && patchData.targetJsondocId !== 'unknown') {
+                                // Use the targetJsondocId from patch data
+                                originalJsondoc = jsondocs.find((j: any) => j.id === patchData.targetJsondocId);
+                                console.log(`[PatchRoutes] Using targetJsondocId from patch data: ${patchData.targetJsondocId}`);
+
+                                if (!originalJsondoc) {
+                                    console.error(`[PatchRoutes] Target jsondoc ${patchData.targetJsondocId} not found in project jsondocs`);
+                                    throw new Error(`Target jsondoc ${patchData.targetJsondocId} not found for patch ${patchJsondoc.id}`);
+                                }
+                            }
+
+                            // Fallback: Find original jsondoc from transform inputs (legacy behavior)
+                            if (!originalJsondoc) {
+                                const transformInputs = await jsondocRepo.getAllProjectTransformInputsForLineage(projectId);
+                                const inputsForTransform = transformInputs.filter((input: any) =>
+                                    input.transform_id === transform.id
+                                );
+
+                                originalJsondoc = inputsForTransform.length > 0
+                                    ? jsondocs.find((j: any) => j.id === inputsForTransform[0].jsondoc_id)
+                                    : null;
+
+                                if (originalJsondoc) {
+                                    console.log(`[PatchRoutes] Using fallback original jsondoc from transform inputs: ${originalJsondoc.id}`);
+                                }
+                            }
 
                             if (originalJsondoc) {
                                 pendingPatches.push({
@@ -373,6 +404,9 @@ export function createPatchRoutes(
                                     sourceTransformMetadata: transform.execution_context || {},
                                     patchIndex: pendingPatches.length
                                 });
+                            } else {
+                                console.error(`[PatchRoutes] No original jsondoc found for patch ${patchJsondoc.id}. Transform: ${transform.id}, Template: ${(transform.execution_context as any)?.template_name || 'unknown'}`);
+                                throw new Error(`Cannot determine target jsondoc for patch ${patchJsondoc.id}. This indicates a bug in patch creation or transform linkage.`);
                             }
                         }
                     }

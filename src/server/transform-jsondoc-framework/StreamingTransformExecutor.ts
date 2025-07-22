@@ -1082,8 +1082,12 @@ export class StreamingTransformExecutor {
                 const patch = patches[i];
                 const patchData = {
                     patches: [patch], // Single patch per jsondoc
-                    targetJsondocId: 'unknown', // Will be determined during approval
-                    targetSchemaType: 'unknown',
+                    targetJsondocId: originalJsondoc.id || (() => {
+                        throw new Error(`Missing originalJsondoc.id for streaming patch creation in template ${templateName}. originalJsondoc: ${JSON.stringify(originalJsondoc, null, 2)}`);
+                    })(),
+                    targetSchemaType: originalJsondoc.schema_type || (() => {
+                        throw new Error(`Missing originalJsondoc.schema_type for streaming patch creation in template ${templateName}. originalJsondoc: ${JSON.stringify(originalJsondoc, null, 2)}`);
+                    })(),
                     patchIndex: i,
                     applied: false,
                     chunkCount: chunkCount || 0,
@@ -1117,8 +1121,12 @@ export class StreamingTransformExecutor {
                             template_name: templateName,
                             patch_index: i,
                             applied: false,
-                            target_jsondoc_id: 'unknown',
-                            target_schema_type: 'unknown',
+                            target_jsondoc_id: originalJsondoc.id || (() => {
+                                throw new Error(`Missing originalJsondoc.id for streaming patch metadata in template ${templateName}. originalJsondoc: ${JSON.stringify(originalJsondoc, null, 2)}`);
+                            })(),
+                            target_schema_type: originalJsondoc.schema_type || (() => {
+                                throw new Error(`Missing originalJsondoc.schema_type for streaming patch metadata in template ${templateName}. originalJsondoc: ${JSON.stringify(originalJsondoc, null, 2)}`);
+                            })(),
                             chunk_count: chunkCount || 0,
                             streaming_creation: true
                         },
@@ -1207,8 +1215,12 @@ export class StreamingTransformExecutor {
 
                 const finalPatchData = {
                     patches: [patch], // Single patch per jsondoc
-                    targetJsondocId: 'unknown', // Will be determined during approval
-                    targetSchemaType: 'unknown',
+                    targetJsondocId: originalJsondoc.id || (() => {
+                        throw new Error(`Missing originalJsondoc.id for patch finalization in template ${templateName}. originalJsondoc: ${JSON.stringify(originalJsondoc, null, 2)}`);
+                    })(),
+                    targetSchemaType: originalJsondoc.schema_type || (() => {
+                        throw new Error(`Missing originalJsondoc.schema_type for patch finalization in template ${templateName}. originalJsondoc: ${JSON.stringify(originalJsondoc, null, 2)}`);
+                    })(),
                     patchIndex: i,
                     applied: false,
                     chunkCount: chunkCount || 0,
@@ -1291,8 +1303,12 @@ export class StreamingTransformExecutor {
                         'json_patch',
                         {
                             patches: [patch], // Wrap single patch in array as expected by schema
-                            targetJsondocId: 'pending', // Will be updated after approval
-                            targetSchemaType: originalJsondoc.schema_type || 'unknown',
+                            targetJsondocId: originalJsondoc.id || (() => {
+                                throw new Error(`Missing originalJsondoc.id for patch creation in template ${templateName}. originalJsondoc: ${JSON.stringify(originalJsondoc, null, 2)}`);
+                            })(),
+                            targetSchemaType: originalJsondoc.schema_type || (() => {
+                                throw new Error(`Missing originalJsondoc.schema_type for patch creation in template ${templateName}. originalJsondoc: ${JSON.stringify(originalJsondoc, null, 2)}`);
+                            })(),
                             patchIndex: i,
                             applied: false
                         },
@@ -1302,7 +1318,10 @@ export class StreamingTransformExecutor {
                             template_name: templateName,
                             retry_count: retryCount,
                             created_for_approval: true,
-                            execution_mode: 'patch-approval'
+                            execution_mode: 'patch-approval',
+                            target_jsondoc_id: originalJsondoc.id || (() => {
+                                throw new Error(`Missing originalJsondoc.id for patch metadata in template ${templateName}. originalJsondoc: ${JSON.stringify(originalJsondoc, null, 2)}`);
+                            })()
                         },
                         'completed',
                         'ai_generated'

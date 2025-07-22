@@ -81,7 +81,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             expect(result).toEqual({
                 status: 'error',
                 error: expect.stringContaining('Source jsondoc not found'),
-                originalIdea: { title: 'Unknown', body: 'Unknown' }
+                originalIdea: undefined
             });
         });
 
@@ -110,7 +110,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             expect(result).toEqual({
                 status: 'error',
                 error: expect.stringContaining('Access denied to source jsondoc'),
-                originalIdea: { title: 'Unknown', body: 'Unknown' }
+                originalIdea: undefined
             });
         });
 
@@ -139,7 +139,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             expect(result).toEqual({
                 status: 'error',
                 error: expect.stringContaining('Unsupported source jsondoc'),
-                originalIdea: { title: 'Unknown', body: 'Unknown' }
+                originalIdea: undefined
             });
         });
 
@@ -174,7 +174,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             expect(result).toEqual({
                 status: 'error',
                 error: expect.stringContaining('Failed to extract idea at index 5'),
-                originalIdea: { title: 'Unknown', body: 'Unknown' }
+                originalIdea: undefined
             });
         });
     });
@@ -189,6 +189,10 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 data: {
                     title: '测试标题',
                     body: '测试内容'
+                },
+                metadata: {
+                    platform: '抖音',
+                    genre: '现代甜宠'
                 }
             };
 
@@ -223,6 +227,10 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 data: {
                     title: '传统标题',
                     body: '传统内容'
+                },
+                metadata: {
+                    platform: '快手',
+                    genre: '古装甜宠'
                 }
             };
 
@@ -257,7 +265,9 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                     ideas: [
                         { title: '想法1', body: '内容1' },
                         { title: '想法2', body: '内容2' }
-                    ]
+                    ],
+                    platform: '小红书',
+                    genre: '复仇爽文'
                 }
             };
 
@@ -371,7 +381,11 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 id: 'test-jsondoc',
                 schema_type: 'brainstorm_idea',
                 project_id: 'test-project-1',
-                data: { title: 'test', body: 'test' }
+                data: { title: 'test', body: 'test' },
+                metadata: {
+                    platform: '抖音',
+                    genre: '现代甜宠'
+                }
             });
             mockJsondocRepo.userHasProjectAccess = vi.fn().mockResolvedValue(true);
 
@@ -418,7 +432,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
             expect(result).toEqual({
                 status: 'error',
                 error: expect.stringContaining('Access denied to source jsondoc'),
-                originalIdea: { title: 'Unknown', body: 'Unknown' }
+                originalIdea: undefined
             });
         });
     });
@@ -433,6 +447,10 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                 data: {
                     title: '测试标题',
                     body: '测试内容'
+                },
+                metadata: {
+                    platform: '抖音',
+                    genre: '现代甜宠'
                 }
             };
 

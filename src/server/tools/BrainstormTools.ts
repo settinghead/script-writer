@@ -166,8 +166,8 @@ async function extractSourceIdeaData(
 
     const sourceData = sourceJsondoc.data;
     let originalIdea: { title: string; body: string };
-    let targetPlatform = 'unknown';
-    let storyGenre = 'unknown';
+    let targetPlatform: string;
+    let storyGenre: string;
 
     if (sourceJsondoc.schema_type === 'brainstorm_collection') {
         const ideaPath = `$.ideas[${params.ideaIndex}]`;
@@ -182,9 +182,15 @@ async function extractSourceIdeaData(
                 body: extractedIdea.body
             };
 
-            // Get platform/genre from collection metadata
-            targetPlatform = sourceData.platform || 'unknown';
-            storyGenre = sourceData.genre || 'unknown';
+            // Get platform/genre from collection metadata - these are required
+            if (!sourceData.platform) {
+                throw new Error(`Missing platform in brainstorm_collection jsondoc ${sourceJsondoc.id}. sourceData: ${JSON.stringify(sourceData, null, 2)}`);
+            }
+            if (!sourceData.genre) {
+                throw new Error(`Missing genre in brainstorm_collection jsondoc ${sourceJsondoc.id}. sourceData: ${JSON.stringify(sourceData, null, 2)}`);
+            }
+            targetPlatform = sourceData.platform;
+            storyGenre = sourceData.genre;
         } catch (extractError) {
             throw new Error(`Failed to extract idea at index ${params.ideaIndex}: ${extractError instanceof Error ? extractError.message : String(extractError)}`);
         }
@@ -206,8 +212,16 @@ async function extractSourceIdeaData(
         };
 
         if (sourceJsondoc.metadata) {
-            targetPlatform = sourceJsondoc.metadata.platform || 'unknown';
-            storyGenre = sourceJsondoc.metadata.genre || 'unknown';
+            if (!sourceJsondoc.metadata.platform) {
+                throw new Error(`Missing platform in brainstorm_idea jsondoc metadata ${sourceJsondoc.id}. metadata: ${JSON.stringify(sourceJsondoc.metadata, null, 2)}`);
+            }
+            if (!sourceJsondoc.metadata.genre) {
+                throw new Error(`Missing genre in brainstorm_idea jsondoc metadata ${sourceJsondoc.id}. metadata: ${JSON.stringify(sourceJsondoc.metadata, null, 2)}`);
+            }
+            targetPlatform = sourceJsondoc.metadata.platform;
+            storyGenre = sourceJsondoc.metadata.genre;
+        } else {
+            throw new Error(`Missing metadata in brainstorm_idea jsondoc ${sourceJsondoc.id}. jsondoc: ${JSON.stringify(sourceJsondoc, null, 2)}`);
         }
         console.log(`[extractSourceIdeaData] Successfully extracted brainstorm_idea:`, { originalIdea, targetPlatform, storyGenre });
     } else if (sourceJsondoc.origin_type === 'user_input') {
@@ -233,10 +247,22 @@ async function extractSourceIdeaData(
         // Try to get platform/genre from original jsondoc metadata
         if (sourceJsondoc.metadata?.original_jsondoc_id) {
             const originalJsondoc = await jsondocRepo.getJsondoc(sourceJsondoc.metadata.original_jsondoc_id);
-            if (originalJsondoc?.metadata) {
-                targetPlatform = originalJsondoc.metadata.platform || 'unknown';
-                storyGenre = originalJsondoc.metadata.genre || 'unknown';
+            if (!originalJsondoc) {
+                throw new Error(`Original jsondoc ${sourceJsondoc.metadata.original_jsondoc_id} not found for user input jsondoc ${sourceJsondoc.id}`);
             }
+            if (!originalJsondoc.metadata) {
+                throw new Error(`Missing metadata in original jsondoc ${originalJsondoc.id} for user input jsondoc ${sourceJsondoc.id}`);
+            }
+            if (!originalJsondoc.metadata.platform) {
+                throw new Error(`Missing platform in original jsondoc metadata ${originalJsondoc.id}. metadata: ${JSON.stringify(originalJsondoc.metadata, null, 2)}`);
+            }
+            if (!originalJsondoc.metadata.genre) {
+                throw new Error(`Missing genre in original jsondoc metadata ${originalJsondoc.id}. metadata: ${JSON.stringify(originalJsondoc.metadata, null, 2)}`);
+            }
+            targetPlatform = originalJsondoc.metadata.platform;
+            storyGenre = originalJsondoc.metadata.genre;
+        } else {
+            throw new Error(`Missing original_jsondoc_id in user input jsondoc metadata ${sourceJsondoc.id}. metadata: ${JSON.stringify(sourceJsondoc.metadata, null, 2)}`);
         }
     } else {
         throw new Error(`Unsupported source jsondoc schema_type: ${sourceJsondoc.schema_type}, origin_type: ${sourceJsondoc.origin_type}`);
@@ -282,7 +308,7 @@ export function createBrainstormEditToolDefinition(
                 console.log(`[BrainstormEditTool] No user context available, using agent interpretation only`);
             }
 
-            let originalIdea: { title: string; body: string } = { title: 'Unknown', body: 'Unknown' };
+            let originalIdea: { title: string; body: string } | undefined;
 
             try {
                 // Extract source idea data for context
@@ -427,7 +453,7 @@ export function createBrainstormEditToolDefinition(
                 return {
                     status: 'error',
                     error: `Brainstorm edit failed: ${error instanceof Error ? error.message : String(error)}`,
-                    originalIdea
+                    originalIdea: originalIdea || undefined
                 };
             }
         }

@@ -7,6 +7,21 @@ import * as Diff from 'diff';
 
 const { Title, Text, Paragraph } = Typography;
 
+// Helper function to format values for display
+const formatValueForDisplay = (value: any): string => {
+    if (value === null) return 'null';
+    if (value === undefined) return 'undefined';
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+
+    // For objects and arrays, format as JSON with proper indentation
+    try {
+        return JSON.stringify(value, null, 2);
+    } catch (error) {
+        return String(value);
+    }
+};
+
 // Diff view component
 const DiffView: React.FC<{ oldValue: string; newValue: string }> = ({ oldValue, newValue }) => {
     const diff = Diff.diffWords(oldValue || '', newValue || '');
@@ -22,8 +37,8 @@ const DiffView: React.FC<{ oldValue: string; newValue: string }> = ({ oldValue, 
             fontFamily: 'monospace',
             fontSize: '14px',
             lineHeight: '1.4',
-            whiteSpace: 'auto',
-            textWrap: "wrap"
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word'
         }}>
             {diff.map((part, index) => {
                 if (part.removed) {
@@ -137,8 +152,8 @@ const PatchCard: React.FC<{
 
                             {patch.op === 'replace' && (
                                 <DiffView
-                                    oldValue={String(currentValue || '')}
-                                    newValue={String(newValue || '')}
+                                    oldValue={formatValueForDisplay(currentValue)}
+                                    newValue={formatValueForDisplay(newValue)}
                                 />
                             )}
 
@@ -151,9 +166,11 @@ const PatchCard: React.FC<{
                                     marginTop: '4px',
                                     color: '#95f985',
                                     fontFamily: 'monospace',
-                                    fontSize: '14px'
+                                    fontSize: '14px',
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word'
                                 }}>
-                                    {String(newValue || '')}
+                                    {formatValueForDisplay(newValue)}
                                 </pre>
                             )}
 
@@ -167,9 +184,11 @@ const PatchCard: React.FC<{
                                     color: '#ff7875',
                                     fontFamily: 'monospace',
                                     fontSize: '14px',
-                                    textDecoration: 'line-through'
+                                    textDecoration: 'line-through',
+                                    whiteSpace: 'pre-wrap',
+                                    wordBreak: 'break-word'
                                 }}>
-                                    {String(currentValue || '')}
+                                    {formatValueForDisplay(currentValue)}
                                 </pre>
                             )}
                         </div>

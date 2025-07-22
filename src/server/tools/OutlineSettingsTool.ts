@@ -116,6 +116,7 @@ async function extractSourceOutlineSettingsData(
     projectId: string
 ): Promise<{
     originalSettings: any;
+    canonicalOutlineSettingsJsondoc: any; // Add this to return the actual jsondoc
     additionalContexts: any[];
     targetPlatform: string;
     storyGenre: string;
@@ -187,10 +188,23 @@ async function extractSourceOutlineSettingsData(
         }
     }
 
-    const targetPlatform = originalSettings.platform || 'unknown';
-    const storyGenre = originalSettings.genre || 'unknown';
+    if (!originalSettings.platform) {
+        throw new Error(`Missing platform in canonical outline settings. originalSettings: ${JSON.stringify(originalSettings, null, 2)}`);
+    }
+    if (!originalSettings.genre) {
+        throw new Error(`Missing genre in canonical outline settings. originalSettings: ${JSON.stringify(originalSettings, null, 2)}`);
+    }
 
-    return { originalSettings, additionalContexts, targetPlatform, storyGenre };
+    const targetPlatform = originalSettings.platform;
+    const storyGenre = originalSettings.genre;
+
+    return {
+        originalSettings,
+        canonicalOutlineSettingsJsondoc: canonicalOutlineSettings, // Return the actual jsondoc
+        additionalContexts,
+        targetPlatform,
+        storyGenre
+    };
 }
 
 /**
@@ -219,7 +233,7 @@ export function createOutlineSettingsEditToolDefinition(
             console.log(`[OutlineSettingsEditTool] Starting JSON patch edit for jsondoc ${sourceJsondocRef.jsondocId}`);
 
             // Extract source 剧本设定 data for context
-            const { originalSettings, additionalContexts, targetPlatform, storyGenre } = await extractSourceOutlineSettingsData(params, jsondocRepo, userId, projectId);
+            const { originalSettings, canonicalOutlineSettingsJsondoc, additionalContexts, targetPlatform, storyGenre } = await extractSourceOutlineSettingsData(params, jsondocRepo, userId, projectId);
 
             // Determine output jsondoc type
             const sourceJsondoc = await jsondocRepo.getJsondoc(sourceJsondocRef.jsondocId);
@@ -255,11 +269,12 @@ export function createOutlineSettingsEditToolDefinition(
                     outputJsondocType,
                     executionMode: {
                         mode: 'patch-approval',
-                        originalJsondoc: originalSettings
+                        originalJsondoc: canonicalOutlineSettingsJsondoc // Pass the actual jsondoc, not just data
                     },
                     transformMetadata: {
                         toolName: 'edit_剧本设定',
                         source_jsondoc_id: sourceJsondocRef.jsondocId,
+                        canonical_outline_settings_id: canonicalOutlineSettingsJsondoc.id, // Add this for tracking
                         edit_requirements: params.editRequirements,
                         original_settings: originalSettings,
                         platform: targetPlatform,
