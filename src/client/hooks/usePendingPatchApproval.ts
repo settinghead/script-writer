@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import type { ElectricJsondoc } from '../../common/types';
 
@@ -24,17 +24,40 @@ export interface PendingPatchApprovalState {
  */
 export function usePendingPatchApproval(projectId: string): PendingPatchApprovalState {
     const projectData = useProjectData();
-    const [fallbackPatches, setFallbackPatches] = useState<PendingPatchItem[]>([]);
-    const [fallbackLoading, setFallbackLoading] = useState(false);
-    const [fallbackError, setFallbackError] = useState<Error | null>(null);
+
+    // Debug logging for project data state changes
+    useEffect(() => {
+        console.log(`[usePendingPatchApproval] ProjectData state changed:`, {
+            isLoading: projectData.isLoading,
+            jsondocsType: typeof projectData.jsondocs,
+            jsondocsLength: Array.isArray(projectData.jsondocs) ? projectData.jsondocs.length : 'not-array',
+            jsondocsValue: projectData.jsondocs === "pending" ? "pending" : projectData.jsondocs === "error" ? "error" : 'data',
+            transformsType: typeof projectData.transforms,
+            transformsLength: Array.isArray(projectData.transforms) ? projectData.transforms.length : 'not-array',
+            transformsValue: projectData.transforms === "pending" ? "pending" : projectData.transforms === "error" ? "error" : 'data',
+            transformInputsType: typeof projectData.transformInputs,
+            transformInputsLength: Array.isArray(projectData.transformInputs) ? projectData.transformInputs.length : 'not-array',
+            transformOutputsType: typeof projectData.transformOutputs,
+            transformOutputsLength: Array.isArray(projectData.transformOutputs) ? projectData.transformOutputs.length : 'not-array',
+        });
+    }, [
+        projectData.isLoading,
+        projectData.jsondocs,
+        projectData.transforms,
+        projectData.transformInputs,
+        projectData.transformOutputs
+    ]);
 
     // Compute pending patches from Electric SQL data in real-time
     const electricPatches = useMemo((): PendingPatchItem[] => {
-        if (projectData.isLoading ||
-            !projectData.jsondocs || projectData.jsondocs === "pending" || projectData.jsondocs === "error" ||
+        console.log(`[usePendingPatchApproval] Computing electricPatches...`);
+
+        // Check if data is available (not loading states like "pending" or "error")
+        if (!projectData.jsondocs || projectData.jsondocs === "pending" || projectData.jsondocs === "error" ||
             !projectData.transforms || projectData.transforms === "pending" || projectData.transforms === "error" ||
             !projectData.transformInputs || projectData.transformInputs === "pending" || projectData.transformInputs === "error" ||
             !projectData.transformOutputs || projectData.transformOutputs === "pending" || projectData.transformOutputs === "error") {
+            console.log(`[usePendingPatchApproval] Data not ready, returning empty array`);
             return [];
         }
 
@@ -43,8 +66,16 @@ export function usePendingPatchApproval(projectId: string): PendingPatchApproval
         const transformInputs = projectData.transformInputs;
         const transformOutputs = projectData.transformOutputs;
 
+        console.log(`[usePendingPatchApproval] Data available:`, {
+            jsondocsCount: jsondocs.length,
+            transformsCount: transforms.length,
+            transformInputsCount: transformInputs.length,
+            transformOutputsCount: transformOutputs.length,
+        });
+
         // Find all ai_patch transforms
         const aiPatchTransforms = transforms.filter((t: any) => t.type === 'ai_patch');
+        console.log(`[usePendingPatchApproval] Found ${aiPatchTransforms.length} ai_patch transforms`);
 
         // Helper function to check if a jsondoc has any human_patch_approval descendants
         function hasApprovalInLineage(jsondocId: string, visited = new Set<string>()): boolean {
@@ -96,12 +127,17 @@ export function usePendingPatchApproval(projectId: string): PendingPatchApproval
                 output.transform_id === transform.id
             );
 
+            console.log(`[usePendingPatchApproval] Transform ${transform.id} has ${transformOutputsForThisTransform.length} outputs`);
+
             for (const output of transformOutputsForThisTransform) {
                 const patchJsondoc = jsondocs.find((j: any) => j.id === output.jsondoc_id);
 
                 if (patchJsondoc && patchJsondoc.schema_type === 'json_patch') {
+                    console.log(`[usePendingPatchApproval] Found patch jsondoc ${patchJsondoc.id}, checking for approval...`);
+
                     // Check if this patch has any human_patch_approval descendants in its lineage
                     const hasApproval = hasApprovalInLineage(patchJsondoc.id);
+                    console.log(`[usePendingPatchApproval] Patch ${patchJsondoc.id} hasApproval: ${hasApproval}`);
 
                     if (!hasApproval) {
                         // Find original jsondoc being edited
@@ -114,6 +150,7 @@ export function usePendingPatchApproval(projectId: string): PendingPatchApproval
                             : null;
 
                         if (originalJsondoc) {
+                            console.log(`[usePendingPatchApproval] Adding pending patch for original jsondoc ${originalJsondoc.id}`);
                             pendingPatches.push({
                                 patchJsondoc,
                                 originalJsondoc,
@@ -121,6 +158,8 @@ export function usePendingPatchApproval(projectId: string): PendingPatchApproval
                                 sourceTransformMetadata: transform.execution_context || {},
                                 patchIndex: pendingPatches.length
                             });
+                        } else {
+                            console.log(`[usePendingPatchApproval] No original jsondoc found for transform ${transform.id}`);
                         }
                     }
                 }
@@ -130,59 +169,13 @@ export function usePendingPatchApproval(projectId: string): PendingPatchApproval
         console.log(`[usePendingPatchApproval] Electric SQL computed ${pendingPatches.length} pending patches for project ${projectId}`);
 
         return pendingPatches;
-    }, [projectData.jsondocs, projectData.transforms, projectData.transformInputs, projectData.transformOutputs, projectData.isLoading]);
+    }, [projectData.jsondocs, projectData.transforms, projectData.transformInputs, projectData.transformOutputs, projectId]);
 
-    // Use API fallback when Electric SQL data is not available
-    useEffect(() => {
-        // Only use fallback if Electric SQL is not providing data
-        if (electricPatches.length === 0 && !projectData.isLoading && !fallbackLoading) {
-            const fetchFallbackPatches = async () => {
-                try {
-                    setFallbackLoading(true);
-                    setFallbackError(null);
-
-                    const response = await fetch(`/api/patches/pending/${projectId}`, {
-                        headers: {
-                            'Authorization': 'Bearer debug-auth-token-script-writer-dev'
-                        },
-                        credentials: 'include'
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`Failed to fetch pending patches: ${response.status}`);
-                    }
-
-                    const data = await response.json();
-                    setFallbackPatches(data.patches || []);
-
-                } catch (fetchError) {
-                    console.error('[usePendingPatchApproval] Error fetching fallback patches:', fetchError);
-                    setFallbackError(fetchError instanceof Error ? fetchError : new Error('Unknown error fetching pending patches'));
-                    setFallbackPatches([]);
-                } finally {
-                    setFallbackLoading(false);
-                }
-            };
-
-            // Delay the fallback to give Electric SQL a chance
-            const timeoutId = setTimeout(fetchFallbackPatches, 2000);
-            return () => clearTimeout(timeoutId);
-        }
-    }, [projectId, electricPatches.length, projectData.isLoading, fallbackLoading]);
-
-    // Return Electric SQL data if available, otherwise fallback
-    const patches = electricPatches.length > 0 ? electricPatches : fallbackPatches;
-    const isLoading = projectData.isLoading || (electricPatches.length === 0 && fallbackLoading);
-    const error = projectData.error || fallbackError;
-
-    // Debug logging for patch changes
+    // Debug logging for hook result changes
     useEffect(() => {
         console.log(`[usePendingPatchApproval] Hook result changed for project ${projectId}:`, {
-            electricPatches: electricPatches.length,
-            fallbackPatches: fallbackPatches.length,
-            finalPatches: patches.length,
-            isLoading,
-            projectDataLoading: projectData.isLoading,
+            patches: electricPatches.length,
+            isLoading: projectData.isLoading,
             jsondocsCount: Array.isArray(projectData.jsondocs) ? projectData.jsondocs.length : 'not-array',
             transformsCount: Array.isArray(projectData.transforms) ? projectData.transforms.length : 'not-array',
             patchJsondocsInData: Array.isArray(projectData.jsondocs)
@@ -201,11 +194,11 @@ export function usePendingPatchApproval(projectId: string): PendingPatchApproval
                 })));
             }
         }
-    }, [patches.length, isLoading, electricPatches.length, fallbackPatches.length, projectId, projectData.isLoading, projectData.jsondocs?.length, projectData.transforms?.length]);
+    }, [electricPatches.length, projectData.isLoading, projectId]);
 
     return {
-        patches,
-        isLoading,
-        error
+        patches: electricPatches,
+        isLoading: projectData.isLoading,
+        error: projectData.error
     };
 } 

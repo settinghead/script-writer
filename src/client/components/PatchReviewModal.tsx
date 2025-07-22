@@ -2,11 +2,7 @@ import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Modal, Button, Space, Card, Typography, Checkbox, message, Tag, Divider } from 'antd';
 import { CheckOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons';
 import { usePendingPatchApproval, type PendingPatchItem } from '../hooks/usePendingPatchApproval';
-import { YJSJsondocProvider } from '../transform-jsondoc-framework/contexts/YJSJsondocContext';
-import { YJSTextField, YJSTextAreaField } from '../transform-jsondoc-framework/components/YJSField';
-import { PatchApprovalEditor } from './PatchApprovalEditor';
-import { useProjectData } from '../contexts/ProjectDataContext';
-import type { ElectricJsondoc } from '../../common/types';
+
 import * as Diff from 'diff';
 
 const { Title, Text, Paragraph } = Typography;
