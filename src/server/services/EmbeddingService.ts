@@ -1,4 +1,4 @@
-import { embed, EmbedResult } from 'ai';
+import { embed, EmbedResult, embedMany } from 'ai';
 import { createHash } from 'crypto';
 import { getEmbeddingCredentials, getEmbeddingModel } from '../transform-jsondoc-framework/LLMConfig';
 import { db } from '../database/connection';
@@ -75,25 +75,101 @@ export class EmbeddingService {
     }
 
     /**
-     * Generate embeddings for multiple texts in batch
+     * Generate embeddings for multiple texts using batch API (cost-optimized)
      */
-    async generateEmbeddings(texts: string[], options: { cache?: boolean } = {}): Promise<EmbeddingResult[]> {
+    async generateEmbeddingsBatch(texts: string[], options: { cache?: boolean } = {}): Promise<EmbeddingResult[]> {
+        const { cache = true } = options;
+
         try {
-            const results = await Promise.all(
-                texts.map(async (text) => {
-                    const embedding = await this.generateEmbedding(text, options);
-                    return {
-                        embedding,
-                        usage: { tokens: text.length } // Rough approximation
-                    };
-                })
-            );
+            // Check cache for all texts first
+            const cacheResults: Array<{ embedding: number[] | null; hash: string }> = [];
+            const uncachedTexts: string[] = [];
+            const uncachedIndices: number[] = [];
+
+            if (cache) {
+                for (let i = 0; i < texts.length; i++) {
+                    const text = texts[i];
+                    const contentHash = this.generateContentHash(text);
+                    const cachedEmbedding = await this.getCachedEmbedding(contentHash);
+
+                    cacheResults.push({ embedding: cachedEmbedding, hash: contentHash });
+
+                    if (!cachedEmbedding) {
+                        uncachedTexts.push(text);
+                        uncachedIndices.push(i);
+                    } else {
+                        // Update access statistics for cached items
+                        await this.updateCacheAccess(contentHash);
+                    }
+                }
+            } else {
+                // If caching is disabled, all texts need to be processed
+                for (let i = 0; i < texts.length; i++) {
+                    const text = texts[i];
+                    const contentHash = this.generateContentHash(text);
+                    cacheResults.push({ embedding: null, hash: contentHash });
+                    uncachedTexts.push(text);
+                    uncachedIndices.push(i);
+                }
+            }
+
+            // Generate embeddings for uncached texts using batch API
+            let batchEmbeddings: number[][] = [];
+            if (uncachedTexts.length > 0) {
+                const model = await this.model;
+                const result = await embedMany({
+                    model: model,
+                    values: uncachedTexts
+                });
+
+                batchEmbeddings = result.embeddings;
+
+                // Cache the new embeddings if caching is enabled
+                if (cache) {
+                    for (let i = 0; i < uncachedTexts.length; i++) {
+                        const text = uncachedTexts[i];
+                        const embedding = batchEmbeddings[i];
+                        const originalIndex = uncachedIndices[i];
+                        const contentHash = cacheResults[originalIndex].hash;
+
+                        await this.cacheEmbedding(contentHash, text, embedding);
+                    }
+                }
+            }
+
+            // Combine cached and newly generated embeddings in correct order
+            const results: EmbeddingResult[] = [];
+            let batchIndex = 0;
+
+            for (let i = 0; i < texts.length; i++) {
+                const cached = cacheResults[i];
+                let embedding: number[];
+
+                if (cached.embedding) {
+                    embedding = cached.embedding;
+                } else {
+                    embedding = batchEmbeddings[batchIndex++];
+                }
+
+                results.push({
+                    embedding,
+                    usage: { tokens: texts[i].length } // Rough approximation
+                });
+            }
 
             return results;
         } catch (error) {
-            console.error('Failed to generate embeddings:', error);
+            console.error('Failed to generate batch embeddings:', error);
             throw new Error(`Batch embedding generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
+    }
+
+    /**
+     * Generate embeddings for multiple texts in batch (backward compatible)
+     */
+    async generateEmbeddings(texts: string[], options: { cache?: boolean } = {}): Promise<EmbeddingResult[]> {
+        // Use the new batch method for better performance and cost efficiency
+        return this.generateEmbeddingsBatch(texts, options);
     }
 
     /**

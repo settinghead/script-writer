@@ -36,8 +36,23 @@ export class ParticleExtractor {
      */
     async extractParticles(jsondoc: TypedJsondoc): Promise<ParticleData[]> {
         const pathDefinitions = getParticlePathsForSchemaType(jsondoc.schema_type);
+        if (pathDefinitions.length === 0) {
+            return [];
+        }
+
         const particles: ParticleData[] = [];
         const seenIds = new Set<string>(); // Deduplication
+
+        // First pass: collect all particle data without embeddings
+        const particleDataList: Array<{
+            id: string;
+            path: string;
+            type: string;
+            title: string;
+            content: any;
+            content_text: string;
+            content_hash: string;
+        }> = [];
 
         for (const definition of pathDefinitions) {
             try {
@@ -81,26 +96,39 @@ export class ParticleExtractor {
                     }
                     seenIds.add(particleId);
 
-                    // Generate embedding
-                    const embedding = await this.embeddingService.generateEmbedding(contentText);
-
                     // Generate content hash
                     const contentHash = this.generateContentHash(content, contentText);
 
-                    particles.push({
+                    particleDataList.push({
                         id: particleId,
                         path: actualPath,
                         type: definition.type,
                         title,
                         content,
                         content_text: contentText,
-                        content_hash: contentHash,
-                        embedding
+                        content_hash: contentHash
                     });
                 }
             } catch (error) {
                 console.error(`[ParticleExtractor] Failed to process path ${definition.path} for schema ${jsondoc.schema_type}:`, error);
                 // Continue with other paths
+            }
+        }
+
+        // Second pass: generate all embeddings in batch for cost optimization
+        if (particleDataList.length > 0) {
+            const contentTexts = particleDataList.map(p => p.content_text);
+            const embeddingResults = await this.embeddingService.generateEmbeddingsBatch(contentTexts);
+
+            // Combine particle data with embeddings
+            for (let i = 0; i < particleDataList.length; i++) {
+                const particleData = particleDataList[i];
+                const embeddingResult = embeddingResults[i];
+
+                particles.push({
+                    ...particleData,
+                    embedding: embeddingResult.embedding
+                });
             }
         }
 
