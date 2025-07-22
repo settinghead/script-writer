@@ -75,7 +75,7 @@ export function generateCanonicalTree(
         const jsondoc = canonicalContext[type.key as keyof CanonicalJsondocContext] as ElectricJsondoc | null;
 
         if (jsondoc) {
-            lines.push(`${type.name} (${jsondoc.id}):`);
+            lines.push(`jsondoc type:${type.name} (ID: ${jsondoc.id}):`);
 
             try {
                 const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
@@ -123,13 +123,6 @@ export function generateCanonicalTree(
         });
         lines.push('');
     }
-
-    // Add workflow summary
-    lines.push('WORKFLOW STATUS:');
-    lines.push(`Active Transforms: ${canonicalContext.hasActiveTransforms ? 'Yes' : 'No'}`);
-    lines.push(`Workflow Nodes: ${canonicalContext.workflowNodes.length}`);
-    lines.push(`Root Nodes: ${canonicalContext.rootNodes.length}`);
-    lines.push(`Leaf Nodes: ${canonicalContext.leafNodes.length}`);
 
     return lines.join('\n');
 }

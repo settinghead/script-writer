@@ -60,7 +60,7 @@ async function buildMinimalContext(
  * Enhanced prompt with query guidance for the particle-based agent
  */
 function buildQueryGuidedPrompt(userRequest: string, minimalContext: string): string {
-    return `你是一个专业的AI短剧剧本创作和编辑助手。你拥有智能查询工具来按需获取项目信息。
+    return `你是一个专业的短剧剧本创作和编辑助手。你拥有智能查询工具来按需获取项目信息。
 
 **用户请求：** "${userRequest}"
 

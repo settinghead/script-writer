@@ -120,12 +120,21 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
 
             <Button
                 type="text"
+                icon={<ToolOutlined />}
+                onClick={toggleAgentContext}
+                style={{ color: showAgentContext ? '#52c41a' : '#1890ff' }}
+                size={isMobile ? 'small' : 'middle'}
+            >
+                {isMobile ? '' : (showAgentContext ? '关闭Agent上下文' : 'Agent上下文')}
+            </Button>
+            <Button
+                type="text"
                 icon={<FileTextOutlined />}
                 onClick={toggleRawContext}
                 style={{ color: showRawContext ? '#52c41a' : '#1890ff' }}
                 size={isMobile ? 'small' : 'middle'}
             >
-                {isMobile ? '' : (showRawContext ? '关闭Agent Tool' : '打开Agent Tool')}
+                {isMobile ? '' : (showRawContext ? '关闭工具调用' : '工具调用')}
             </Button>
             <Button
                 type="text"
@@ -137,15 +146,6 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
                 {isMobile ? '' : (showRawChat ? '关闭内部对话' : '打开内部对话')}
             </Button>
 
-            <Button
-                type="text"
-                icon={<ToolOutlined />}
-                onClick={toggleAgentContext}
-                style={{ color: showAgentContext ? '#52c41a' : '#1890ff' }}
-                size={isMobile ? 'small' : 'middle'}
-            >
-                {isMobile ? '' : (showAgentContext ? '关闭Agent上下文' : 'Agent上下文')}
-            </Button>
 
             <Button
                 type="text"

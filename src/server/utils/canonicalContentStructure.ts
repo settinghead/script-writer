@@ -72,8 +72,8 @@ export function generateCanonicalContentStructure(
         const jsondoc = canonicalContext[type.key as keyof CanonicalJsondocContext] as ElectricJsondoc | null;
 
         if (jsondoc) {
-            lines.push(`${type.name} (${jsondoc.id}):`);
-
+            lines.push(`jsondoc type:${type.name} (ID: ${jsondoc.id}):`);
+            lines.push("文档结构：")
             try {
                 const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
                 const paths = extractFieldPaths(type.name, data);
@@ -121,12 +121,6 @@ export function generateCanonicalContentStructure(
         lines.push('');
     }
 
-    // Add workflow summary
-    lines.push('WORKFLOW STATUS:');
-    lines.push(`Active Transforms: ${canonicalContext.hasActiveTransforms ? 'Yes' : 'No'}`);
-    lines.push(`Workflow Nodes: ${canonicalContext.workflowNodes.length}`);
-    lines.push(`Root Nodes: ${canonicalContext.rootNodes.length}`);
-    lines.push(`Leaf Nodes: ${canonicalContext.leafNodes.length}`);
 
     return lines.join('\n');
 }

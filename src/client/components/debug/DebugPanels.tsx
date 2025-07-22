@@ -37,7 +37,7 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
         debugTitle = '内部对话记录';
         debugContent = <RawChatMessages projectId={projectId} />;
     } else if (showRawContext) {
-        debugTitle = 'Agent Tool调试';
+        debugTitle = '工具调用调试';
         debugContent = <RawTooLCall projectId={projectId} />;
     } else if (showAgentContext) {
         debugTitle = 'Agent上下文';

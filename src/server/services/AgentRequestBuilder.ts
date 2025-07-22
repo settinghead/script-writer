@@ -8,6 +8,7 @@ import { createOutlineSettingsToolDefinition, createOutlineSettingsEditToolDefin
 import { createChroniclesToolDefinition, createChroniclesEditToolDefinition } from '../tools/ChroniclesTool';
 import { createEpisodePlanningToolDefinition, createEpisodePlanningEditToolDefinition } from '../tools/EpisodePlanningTool';
 import { createEpisodeSynopsisToolDefinition } from '../tools/EpisodeSynopsisTool';
+import { generateCanonicalContentStructure } from '../utils/canonicalContentStructure';
 import type { GeneralAgentRequest } from '../transform-jsondoc-framework/AgentService';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
 import { dump } from 'js-yaml';
@@ -59,8 +60,18 @@ export async function buildContextForRequestType(
         transformOutputs
     );
 
+    // Generate canonical content structure overview (table of contents)
+    const contentStructure = generateCanonicalContentStructure(canonicalContext, projectId);
+
     // Build agent context using the same flattened format as tools
     const contextLines: string[] = [];
+
+    // Add the canonical content structure overview at the beginning
+    contextLines.push('===项目内容结构概览 开始===');
+    contextLines.push(contentStructure);
+    contextLines.push('===项目内容结构概览 结束===');
+    contextLines.push('');
+    contextLines.push('===详细内容数据 开始===');
 
     // Helper to format jsondoc data - same as tools
     const formatJsondocForContext = (jsondoc: any, tag: string) => {
@@ -115,6 +126,8 @@ export async function buildContextForRequestType(
         });
     }
 
+    contextLines.push('===详细内容数据 结束===');
+
     // Join all context lines - same format as tools
     const contextString = contextLines.join('\n');
     console.log(`[ContextBuilder] Built context (${contextString.length} chars): ${contextString.substring(0, 100)}...`);
@@ -129,7 +142,7 @@ export function buildPromptForRequestType(
     userRequest: string,
     context: string
 ): string {
-    return `你是一个专业的AI短剧剧本创作和编辑助手，拥有专门的工具来帮助用户处理短剧剧本创作和编辑的请求。
+    return `你是一个专业的短剧剧本创作和编辑助手，拥有专门的工具来帮助用户处理短剧剧本创作和编辑的请求。
 
 **用户请求：** "${userRequest}"
 
