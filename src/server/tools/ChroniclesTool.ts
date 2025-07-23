@@ -135,11 +135,12 @@ export function createChroniclesEditToolDefinition(
 
             const outputJsondocType: TypedJsondoc['schema_type'] = 'chronicles';
 
-            // Create config for JSON patch generation using patch template
-            const config: StreamingTransformConfig<ChroniclesEditInput, any> = {
-                templateName: 'chronicles_edit_patch',
+            // Create config for unified diff patch generation
+            const UnifiedDiffSchema = z.string().describe('Unified diff patch string in git diff format');
+            const config: StreamingTransformConfig<ChroniclesEditInput, string> = {
+                templateName: 'chronicles_edit_diff',
                 inputSchema: ChroniclesEditInputSchema,
-                outputSchema: JsonPatchOperationsSchema, // RFC6902 JSON patch array schema
+                outputSchema: UnifiedDiffSchema, // String for LLM output
                 prepareTemplateVariables: async (input) => {
                     const defaultVars = await defaultPrepareTemplateVariables(input, jsondocRepo);
                     return {

@@ -339,11 +339,12 @@ export function createBrainstormEditToolDefinition(
                     outputJsondocType = '灵感创意'; // Legacy type
                 }
 
-                // Create config for unified patch generation using patch template
-                const config: StreamingTransformConfig<BrainstormEditInput, any> = {
-                    templateName: 'brainstorm_edit_patch',
+                // Create config for unified diff patch generation
+                const UnifiedDiffSchema = z.string().describe('Unified diff patch string in git diff format');
+                const config: StreamingTransformConfig<BrainstormEditInput, string> = {
+                    templateName: 'brainstorm_edit_diff',
                     inputSchema: BrainstormEditInputSchema,
-                    outputSchema: JsonPatchOperationsSchema, // RFC6902 JSON patch array schema
+                    outputSchema: UnifiedDiffSchema, // String for LLM output
                     // Custom template preparation to include user context
                     prepareTemplateVariables: async (input) => {
                         console.log(`[BrainstormEditTool] Preparing template variables for input:`, {

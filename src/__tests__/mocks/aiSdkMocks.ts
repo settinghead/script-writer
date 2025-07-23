@@ -503,6 +503,31 @@ function createFallbackOutlineObject() {
     };
 }
 
+export function createFallbackUnifiedDiffObject() {
+    return {
+        partialObjectStream: async function* () {
+            yield `--- original.json
++++ modified.json
+@@ -1,5 +1,5 @@
+ {
+-  "title": "误爱成宠",
++  "title": "误爱成宠（升级版）",
+   "body": "现代都市背景下的爱情故事..."
+ }`;
+        },
+        object: Promise.resolve(`--- original.json
++++ modified.json
+@@ -1,5 +1,5 @@
+ {
+-  "title": "误爱成宠",
++  "title": "误爱成宠（升级版）",
+   "body": "现代都市背景下的爱情故事..."
+ }`),
+        finishReason: Promise.resolve('stop'),
+        usage: Promise.resolve({ promptTokens: 10, completionTokens: 5, totalTokens: 15 })
+    };
+}
+
 async function* createAsyncIterator<T>(items: T[]) {
     for (const item of items) {
         console.log('[Mock] Yielding item:', JSON.stringify(item, null, 2));

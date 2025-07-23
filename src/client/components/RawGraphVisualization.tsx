@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { ReactFlow, Node, Edge, Background, Controls, MiniMap, useNodesState, useEdgesState, BackgroundVariant, MarkerType, Handle, Position, NodeTypes } from 'reactflow';
-import { Typography, Checkbox, Space, Tooltip, Spin, Button, message } from 'antd';
+import { Typography, Checkbox, Space, Tooltip, Spin, Button, message, Modal } from 'antd';
 import { DatabaseOutlined, UserOutlined, RobotOutlined, CloseOutlined, DeleteOutlined } from '@ant-design/icons';
 import dagre from 'dagre';
 import { useProjectData } from '../contexts/ProjectDataContext';
@@ -69,10 +69,12 @@ const JsondocNode: React.FC<{
     data: {
         jsondoc: ElectricJsondoc,
         isCanonical: boolean,
-        originType: string
+        originType: string,
+        fetchTransformConversation?: (transformId: string) => void,
+        projectData?: any
     }
 }> = ({ data }) => {
-    const { jsondoc, isCanonical, originType } = data;
+    const { jsondoc, isCanonical, originType, fetchTransformConversation, projectData } = data;
 
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -172,6 +174,32 @@ const JsondocNode: React.FC<{
                             </pre>
                         )}
                     </div>
+                    {jsondoc.schema_type === 'json_patch' && fetchTransformConversation && projectData && (
+                        <div style={{ marginTop: '12px', borderTop: '1px solid #444', paddingTop: '8px' }}>
+                            <div style={{ fontWeight: 'bold', color: '#52c41a', marginBottom: '4px' }}>
+                                Patch Transform History
+                            </div>
+                            <Button
+                                type="link"
+                                size="small"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    // Find the transform that created this patch jsondoc
+                                    const creatingTransform = projectData.transformOutputs
+                                        ?.find((output: any) => output.jsondoc_id === jsondoc.id);
+
+                                    if (creatingTransform) {
+                                        fetchTransformConversation(creatingTransform.transform_id);
+                                    } else {
+                                        message.warning('No transform found for this patch jsondoc');
+                                    }
+                                }}
+                                style={{ padding: 0, fontSize: '12px' }}
+                            >
+                                View Raw LLM Conversation →
+                            </Button>
+                        </div>
+                    )}
                     <div style={{ textAlign: 'center', borderTop: '1px solid #444', paddingTop: '8px' }}>
                         <Button
                             type="primary"
@@ -468,6 +496,39 @@ const RawGraphVisualization: React.FC = () => {
     const [showHumanTransforms, setShowHumanTransforms] = useState(true);
     const [showLLMTransforms, setShowLLMTransforms] = useState(true);
 
+    // Conversation history state
+    const [conversationHistory, setConversationHistory] = useState<any[]>([]);
+    const [loadingConversation, setLoadingConversation] = useState(false);
+    const [conversationModalVisible, setConversationModalVisible] = useState(false);
+
+    // Function to fetch conversation history for a transform
+    const fetchTransformConversation = useCallback(async (transformId: string) => {
+        setLoadingConversation(true);
+        setConversationModalVisible(true);
+        try {
+            const response = await fetch(`/api/transforms/${transformId}/conversation`, {
+                headers: {
+                    'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+                }
+            });
+
+            if (response.ok) {
+                const messages = await response.json();
+                setConversationHistory(messages);
+            } else {
+                console.error('Failed to fetch conversation history');
+                setConversationHistory([]);
+                message.error('Failed to fetch conversation history');
+            }
+        } catch (error) {
+            console.error('Error fetching conversation history:', error);
+            setConversationHistory([]);
+            message.error('Error fetching conversation history');
+        } finally {
+            setLoadingConversation(false);
+        }
+    }, []);
+
     // Process lineage data and convert to React Flow format
     const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
         // Handle loading/error states
@@ -539,7 +600,13 @@ const RawGraphVisualization: React.FC = () => {
                 nodes.push({
                     id: jsondoc.id,
                     type: 'jsondoc',
-                    data: { jsondoc, isCanonical, originType },
+                    data: {
+                        jsondoc,
+                        isCanonical,
+                        originType,
+                        fetchTransformConversation,
+                        projectData
+                    },
                     position: { x: 0, y: 0 }, // Will be set by layout
                 });
             });
@@ -816,6 +883,71 @@ const RawGraphVisualization: React.FC = () => {
                     maskColor="rgba(0, 0, 0, 0.8)"
                 />
             </ReactFlow>
+
+            {/* Conversation History Modal */}
+            <Modal
+                title="Transform Conversation History"
+                open={conversationModalVisible}
+                onCancel={() => setConversationModalVisible(false)}
+                footer={null}
+                width={800}
+                style={{ top: 20 }}
+            >
+                {loadingConversation ? (
+                    <div style={{ textAlign: 'center', padding: '20px' }}>
+                        <Spin /> Loading conversation...
+                    </div>
+                ) : (
+                    <div style={{ maxHeight: '600px', overflow: 'auto' }}>
+                        {conversationHistory.length > 0 ? (
+                            conversationHistory.map((message, index) => (
+                                <div key={index} style={{
+                                    marginBottom: '16px',
+                                    padding: '12px',
+                                    background: message.role === 'user' ? '#1a1a1a' : '#0a0a0a',
+                                    borderRadius: '8px',
+                                    border: `1px solid ${message.role === 'user' ? '#333' : '#555'}`
+                                }}>
+                                    <div style={{
+                                        fontWeight: 'bold',
+                                        marginBottom: '8px',
+                                        color: message.role === 'user' ? '#1890ff' : '#52c41a'
+                                    }}>
+                                        {message.role === 'user' ? 'User' : 'Assistant'}
+                                        {message.metadata?.content_type === 'unified_diff' &&
+                                            <span style={{ color: '#faad14', marginLeft: '8px' }}>
+                                                (Unified Diff)
+                                            </span>
+                                        }
+                                    </div>
+                                    <pre style={{
+                                        whiteSpace: 'pre-wrap',
+                                        fontSize: '12px',
+                                        color: '#fff',
+                                        margin: 0,
+                                        fontFamily: 'Monaco, Consolas, monospace'
+                                    }}>
+                                        {message.content}
+                                    </pre>
+                                    {message.metadata?.final_patches_count && (
+                                        <div style={{
+                                            marginTop: '8px',
+                                            fontSize: '11px',
+                                            color: '#888'
+                                        }}>
+                                            Generated {message.metadata.final_patches_count} JSON patches
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        ) : (
+                            <div style={{ textAlign: 'center', color: '#666', padding: '20px' }}>
+                                No conversation history found for this transform.
+                            </div>
+                        )}
+                    </div>
+                )}
+            </Modal>
         </div>
     );
 };

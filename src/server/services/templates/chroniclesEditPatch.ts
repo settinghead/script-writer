@@ -1,8 +1,8 @@
-import { createJsonPatchTemplate } from './jsonPatchBase';
+import { createUnifiedDiffTemplate } from './unifiedDiffBase';
 
-export const chroniclesEditPatchTemplate = createJsonPatchTemplate(
-    'chronicles_edit_patch',
-    'Chronicles Editing (JSON Patch)',
+export const chroniclesEditPatchTemplate = createUnifiedDiffTemplate(
+    'chronicles_edit_diff',
+    'Chronicles Editing (Unified Diff)',
     '故事宇宙编年史',
     '故事宇宙编年史',
     [
@@ -13,19 +13,5 @@ export const chroniclesEditPatchTemplate = createJsonPatchTemplate(
         '保持去脸谱化原则，避免刻板印象，创造复杂多面的角色',
         '使用绝对年份标记时间（现代剧用公历年份如2024年，古装剧用朝代年号如大昭39年），避免相对时间如"三年前"',
         '如果提供了附加上下文（如更新后的大纲设置），请整合这些变更到修改提议中，同时保持编年史的丰富性和扩展性'
-    ],
-    [
-        '/stages/0/title',
-        '/stages/0/stageSynopsis',
-        '/stages/0/event',
-        '/stages/1/emotionArcs/0/characters/0',
-        '/stages/1/emotionArcs/0/content',
-        '/stages/2/relationshipDevelopments/0/characters/0',
-        '/stages/2/relationshipDevelopments/0/content',
-        '/stages/0/insights/0',
-        '/stages/1/insights/1',
-        '/stages/2/title',
-        '/stages/3/event',
-        '/stages/4/stageSynopsis'
     ]
 ); 

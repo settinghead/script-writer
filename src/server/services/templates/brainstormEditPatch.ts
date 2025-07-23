@@ -1,10 +1,9 @@
-import { createJsonPatchTemplate } from './jsonPatchBase';
+import { createUnifiedDiffTemplate } from './unifiedDiffBase';
 
-export const brainstormEditPatchTemplate = createJsonPatchTemplate(
-  'brainstorm_edit_patch',
-  'Brainstorm Idea Editing (JSON Patch)',
+export const brainstormEditPatchTemplate = createUnifiedDiffTemplate(
+  'brainstorm_edit_diff',
+  'Brainstorm Idea Editing (Unified Diff)',
   '故事创意',
   '故事创意',
-  [], // No additional specific principles for brainstorm
-  ['/title', '/body'] // Specific paths for brainstorm editing
+  [] // No additional specific principles for brainstorm
 ); 

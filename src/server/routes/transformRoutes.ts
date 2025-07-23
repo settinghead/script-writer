@@ -2,6 +2,7 @@ import express from 'express';
 import { AuthMiddleware } from '../middleware/auth';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessageRepository';
 
 import {
     computeCanonicalPatchContext,
@@ -201,6 +202,52 @@ export function createTransformRoutes(
                 details: error.message,
                 timestamp: new Date().toISOString()
             });
+        }
+    });
+
+    // Add new route to fetch conversation history for a transform
+    router.get('/:transformId/conversation', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const { transformId } = req.params;
+            const userId = req.user?.id;
+
+            if (!userId) {
+                return res.status(401).json({ error: 'User not authenticated' });
+            }
+
+            // Get transform details to verify project access
+            const transform = await transformRepo.getTransform(transformId);
+            if (!transform) {
+                return res.status(404).json({ error: 'Transform not found' });
+            }
+
+            // Verify user has access to this project
+            const hasAccess = await jsondocRepo.userHasProjectAccess(userId, transform.project_id);
+            if (!hasAccess) {
+                return res.status(403).json({ error: 'Access denied' });
+            }
+
+            // Create ChatMessageRepository instance
+            const { db } = await import('../database/connection.js');
+            const chatMessageRepo = new ChatMessageRepository(db);
+
+            // Fetch raw messages associated with this transform
+            const rawMessages = await chatMessageRepo.getRawMessages(transform.project_id);
+
+            // Filter messages that belong to this transform
+            const transformMessages = rawMessages.filter(message =>
+                message.metadata?.transform_id === transformId
+            );
+
+            // Sort by creation time
+            transformMessages.sort((a, b) =>
+                new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            );
+
+            res.json(transformMessages);
+        } catch (error: any) {
+            console.error('Error fetching transform conversation:', error);
+            res.status(500).json({ error: 'Internal server error' });
         }
     });
 

@@ -248,11 +248,12 @@ export function createOutlineSettingsEditToolDefinition(
 
             console.log(`[OutlineSettingsEditTool] Enhanced input jsondocs:`, enhancedInput.jsondocs.map(j => ({ id: j.jsondocId, description: j.description })));
 
-            // Create config for JSON patch generation using patch template
-            const config: StreamingTransformConfig<OutlineSettingsEditInput, any> = {
-                templateName: '剧本设定_edit_patch',
+            // Create config for unified diff patch generation
+            const UnifiedDiffSchema = z.string().describe('Unified diff patch string in git diff format');
+            const config: StreamingTransformConfig<OutlineSettingsEditInput, string> = {
+                templateName: '剧本设定_edit_diff',
                 inputSchema: OutlineSettingsEditInputSchema,
-                outputSchema: JsonPatchOperationsSchema, // RFC6902 JSON patch array schema
+                outputSchema: UnifiedDiffSchema, // String for LLM output
                 prepareTemplateVariables: async (input) => {
                     console.log(`[OutlineSettingsEditTool] Preparing template variables with canonical 剧本设定 as patch target`);
 

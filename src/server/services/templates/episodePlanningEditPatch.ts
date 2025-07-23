@@ -1,8 +1,8 @@
-import { createJsonPatchTemplate } from './jsonPatchBase';
+import { createUnifiedDiffTemplate } from './unifiedDiffBase';
 
-export const episodePlanningEditPatchTemplate = createJsonPatchTemplate(
-    'episode_planning_edit_patch',
-    'Episode Planning Editing (JSON Patch)',
+export const episodePlanningEditPatchTemplate = createUnifiedDiffTemplate(
+    'episode_planning_edit_diff',
+    'Episode Planning Editing (Unified Diff)',
     '剧集框架',
     '剧集框架',
     [
@@ -11,19 +11,5 @@ export const episodePlanningEditPatchTemplate = createJsonPatchTemplate(
         '维护悬念钩子的连贯性和有效性',
         '确保情感节拍符合短剧观众的期待',
         '如果提供了附加上下文（如更新后的时间顺序大纲），请整合这些变更到修改提议中'
-    ],
-    [
-        '/totalEpisodes',
-        '/overallStrategy',
-        '/episodeGroups/0/groupTitle',
-        '/episodeGroups/0/episodes',
-        '/episodeGroups/0/keyEvents/0',
-        '/episodeGroups/0/hooks/0',
-        '/episodeGroups/0/emotionalBeats/0',
-        '/episodeGroups/1/groupTitle',
-        '/episodeGroups/1/keyEvents/1',
-        '/episodeGroups/1/hooks/1',
-        '/episodeGroups/2/emotionalBeats/0',
-        '/episodeGroups/2/keyEvents/0'
     ]
 ); 

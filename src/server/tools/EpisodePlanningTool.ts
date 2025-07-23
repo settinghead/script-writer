@@ -118,11 +118,12 @@ export function createEpisodePlanningEditToolDefinition(
 
             const outputJsondocType: TypedJsondoc['schema_type'] = 'episode_planning';
 
-            // Create config for JSON patch generation using patch template
-            const config: StreamingTransformConfig<EpisodePlanningEditInput, any> = {
-                templateName: 'episode_planning_edit_patch',
+            // Create config for unified diff patch generation
+            const UnifiedDiffSchema = z.string().describe('Unified diff patch string in git diff format');
+            const config: StreamingTransformConfig<EpisodePlanningEditInput, string> = {
+                templateName: 'episode_planning_edit_diff',
                 inputSchema: EpisodePlanningEditInputSchema,
-                outputSchema: JsonPatchOperationsSchema, // RFC6902 JSON patch array schema
+                outputSchema: UnifiedDiffSchema, // String for LLM output
                 prepareTemplateVariables: async (input) => {
                     const defaultVars = await defaultPrepareTemplateVariables(input, jsondocRepo);
                     return {

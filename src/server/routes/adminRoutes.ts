@@ -57,7 +57,7 @@ export function createAdminRoutes(
                     }
                 },
                 'edit_灵感创意': {
-                    templateName: 'brainstorm_edit_patch',
+                    templateName: 'brainstorm_edit_diff',
                     outputJsondocType: '灵感创意',
                     schemas: {
                         inputSchema: () => import('@/common/schemas/transforms.js').then(m => m.BrainstormEditInputSchema),
@@ -73,7 +73,7 @@ export function createAdminRoutes(
                     }
                 },
                 'edit_剧本设定': {
-                    templateName: '剧本设定_edit_patch',
+                    templateName: '剧本设定_edit_diff',
                     outputJsondocType: '剧本设定',
                     schemas: {
                         inputSchema: () => import('@/common/schemas/transforms.js').then(m => m.OutlineSettingsEditInputSchema),
@@ -89,7 +89,7 @@ export function createAdminRoutes(
                     }
                 },
                 'edit_chronicles': {
-                    templateName: 'chronicles_edit_patch',
+                    templateName: 'chronicles_edit_diff',
                     outputJsondocType: 'chronicles',
                     schemas: {
                         inputSchema: () => import('@/common/schemas/transforms.js').then(m => m.ChroniclesEditInputSchema),
@@ -105,7 +105,7 @@ export function createAdminRoutes(
                     }
                 },
                 'edit_episode_planning': {
-                    templateName: 'episode_planning_edit_patch',
+                    templateName: 'episode_planning_edit_diff',
                     outputJsondocType: 'episode_planning',
                     schemas: {
                         inputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.EpisodePlanningEditInputSchema),
@@ -189,13 +189,13 @@ export function createAdminRoutes(
             // Also list available templates
             const templates = [
                 'brainstorming',
-                'brainstorm_edit_patch',
+                'brainstorm_edit_diff',
                 '剧本设定',
-                '剧本设定_edit_patch',
+                '剧本设定_edit_diff',
                 'chronicles',
-                'chronicles_edit_patch',
+                'chronicles_edit_diff',
                 'episode_planning',
-                'episode_planning_edit_patch',
+                'episode_planning_edit_diff',
                 'episode_synopsis_generation',
                 'script_generation'
             ].map(templateId => {
