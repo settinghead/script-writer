@@ -525,26 +525,9 @@ export class StreamingTransformExecutor {
                                     jsondocData = executionMode.originalJsondoc;
                                 }
                             } else if (executionMode?.mode === 'patch-approval') {
-                                // In patch-approval mode, create/update patch jsondocs progressively
-                                try {
-                                    await this.createStreamingPatchApprovalJsondocs(
-                                        partialData as TOutput,
-                                        executionMode.originalJsondoc,
-                                        config.templateName,
-                                        retryCount,
-                                        projectId,
-                                        userId,
-                                        jsondocRepo,
-                                        transformId,
-                                        transformRepo,
-                                        dryRun,
-                                        chunkCount
-                                    );
-                                    console.log(`[StreamingTransformExecutor] Updated streaming patches at chunk ${chunkCount}`);
-                                } catch (patchError) {
-                                    console.warn(`[StreamingTransformExecutor] Streaming patch update failed at chunk ${chunkCount}, continuing...`);
-                                    console.warn(`[StreamingTransformExecutor] Patch content: ${JSON.stringify(partialData)}`);
-                                }
+                                // In patch-approval mode, patch jsondocs are already created during eager processing
+                                // Skip redundant streaming updates to prevent re-parsing failures
+                                console.log(`[StreamingTransformExecutor] Patch-approval mode: Skipping streaming update at chunk ${chunkCount}`);
                                 jsondocData = null; // Skip regular jsondoc updates in patch-approval mode
                             } else {
                                 // Transform LLM output to final jsondoc format if needed
@@ -1708,15 +1691,44 @@ export class StreamingTransformExecutor {
         }
 
         try {
-            // Convert unified diff to JSON patches
-            const patches = await this.convertUnifiedDiffToJsonPatches(
-                llmOutput,
-                originalJsondoc,
-                templateName,
-                retryCount,
-                this.llmService,
-                [] // Empty messages for streaming context
-            );
+            // For streaming patch approval, we might already have JSON patches in the llmOutput
+            // Try to extract them directly first, fallback to unified diff conversion if needed
+            let patches: any[] = [];
+
+            // Check if llmOutput is already an array of patches (from eager parsing)
+            if (Array.isArray(llmOutput) && llmOutput.length > 0) {
+                // Validate that it looks like JSON patches
+                const isJsonPatchArray = llmOutput.every((item: any) =>
+                    item && typeof item === 'object' &&
+                    'op' in item && 'path' in item &&
+                    ['add', 'remove', 'replace', 'move', 'copy', 'test'].includes(item.op)
+                );
+
+                if (isJsonPatchArray) {
+                    patches = llmOutput;
+                    console.log(`[StreamingTransformExecutor] Using ${patches.length} patches directly from streaming data`);
+                } else {
+                    console.log(`[StreamingTransformExecutor] LLM output is array but not JSON patches, attempting diff conversion`);
+                }
+            }
+
+            // If we don't have patches yet, try the unified diff approach
+            if (patches.length === 0) {
+                try {
+                    patches = await this.convertUnifiedDiffToJsonPatches(
+                        llmOutput,
+                        originalJsondoc,
+                        templateName,
+                        retryCount,
+                        this.llmService,
+                        [] // Empty messages for streaming context
+                    );
+                } catch (diffError) {
+                    console.warn(`[StreamingTransformExecutor] Unified diff conversion failed during streaming, skipping patch jsondoc creation:`, diffError);
+                    // Don't throw - just skip patch jsondoc creation for this chunk
+                    return;
+                }
+            }
 
             if (!patches || patches.length === 0) {
                 console.log(`[StreamingTransformExecutor] No patches found in streaming LLM output at chunk ${chunkCount}`);

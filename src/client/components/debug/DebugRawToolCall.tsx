@@ -6,7 +6,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useDebugParams } from '../../hooks/useDebugParams';
 import { computeCanonicalJsondocsFromLineage, extractCanonicalJsondocIds } from '../../../common/canonicalJsondocLogic';
 import { buildLineageGraph } from '../../../common/transform-jsondoc-framework/lineageResolution';
-import { applyPatch } from 'fast-json-patch';
+import { applyPatch, deepClone } from 'fast-json-patch';
 import * as Diff from 'diff';
 import { applyContextDiffToJSON, applyContextDiffAndGeneratePatches } from '../../../common/contextDiff';
 import type {
@@ -21,7 +21,7 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
-// Diff view component (similar to PatchReviewModal)
+// Diff view component - same as PatchReviewModal
 const DiffView: React.FC<{ oldValue: string; newValue: string }> = ({ oldValue, newValue }) => {
     const diff = Diff.diffWords(oldValue || '', newValue || '');
 
@@ -241,18 +241,12 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
     const [nonPersistentRunStatus, setNonPersistentRunStatus] = useState<string>('');
     const [rawTextStream, setRawTextStream] = useState<string>('');
     const [streamingChunks, setStreamingChunks] = useState<StreamingChunk[]>([]);
-    const [eagerPatchHistory, setEagerPatchHistory] = useState<StreamingChunk[]>([]);
     const [finalPatches, setFinalPatches] = useState<any[]>([]);
 
-    // JSON diff state for edit tools
+    // Real-time patch-applied JSON state
     const [originalJsonString, setOriginalJsonString] = useState<string>('');
-    const [patchedJsonString, setPatchedJsonString] = useState<string>('');
-    const [contextDiffResult, setContextDiffResult] = useState<{
-        success: boolean;
-        modifiedJson?: string;
-        rfc6902Patches?: any[];
-        error?: string;
-    } | null>(null);
+    const [currentPatchedJsonString, setCurrentPatchedJsonString] = useState<string>('');
+    const [currentPatches, setCurrentPatches] = useState<any[]>([]);
 
     // Use the debug params hook for persistence
     const {
@@ -544,6 +538,48 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
         }
     }, [debouncedRequestPayload]);
 
+    // Function to apply patches to original JSON and return the result
+    const applyPatchesToOriginal = useCallback((patches: any[], original: string): string => {
+        console.log('[DebugRawToolCall] applyPatchesToOriginal called:', {
+            patchesCount: patches?.length,
+            originalLength: original?.length,
+            patches: patches
+        });
+
+        if (!patches || patches.length === 0 || !original) {
+            console.warn('[DebugRawToolCall] Early return from applyPatchesToOriginal:', {
+                hasPatches: !!patches,
+                patchesLength: patches?.length,
+                hasOriginal: !!original
+            });
+            return original;
+        }
+
+        try {
+            const originalData = JSON.parse(original);
+            const originalCopy = deepClone(originalData);
+            console.log('[DebugRawToolCall] About to apply patches:', patches);
+            const patchResults = applyPatch(originalCopy, patches);
+
+            console.log('[DebugRawToolCall] Patch results:', patchResults);
+
+            // Check if all patches applied successfully
+            const failedPatches = patchResults.filter(r => r.test === false);
+            if (failedPatches.length > 0) {
+                console.warn(`[DebugRawToolCall] ${failedPatches.length} patches failed to apply:`, failedPatches);
+            } else {
+                console.log(`[DebugRawToolCall] All ${patches.length} patches applied successfully`);
+            }
+
+            const result = JSON.stringify(originalCopy, null, 2);
+            console.log('[DebugRawToolCall] Final result length:', result.length);
+            return result;
+        } catch (error) {
+            console.error('[DebugRawToolCall] Failed to apply patches:', error);
+            return original;
+        }
+    }, []);
+
     // Non-persistent run function - updated for new streaming system
     const runNonPersistentRun = async (toolName: string, input: any) => {
         setNonPersistentRunLoading(true);
@@ -551,15 +587,14 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
         setNonPersistentRunStatus('开始非持久化运行...');
         setRawTextStream('');
         setStreamingChunks([]);
-        setEagerPatchHistory([]);
         setFinalPatches([]);
-        setOriginalJsonString('');
-        setPatchedJsonString('');
-        setContextDiffResult(null);
+        setCurrentPatches([]);
 
         // If this is an edit tool, capture the original JSON for diff comparison
         const isEdit = isEditTool(toolName);
         console.log('[DebugRawToolCall] Edit tool check:', { toolName, isEdit, hasJsondocs: input.jsondocs?.length > 0, rawJsondocsCount: Array.isArray(rawJsondocs) ? rawJsondocs.length : 'loading' });
+
+        let capturedOriginalJsonString = '';  // Local variable to avoid state race conditions
 
         if (isEdit && input.jsondocs && input.jsondocs.length > 0) {
             try {
@@ -591,25 +626,31 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
 
                         if (originalData === undefined || originalData === null) {
                             console.warn('[DebugRawToolCall] Original data is null/undefined, using fallback');
-                            setOriginalJsonString('// Original jsondoc data is undefined or null\n// Jsondoc ID: ' + targetJsondocId + '\n// Schema: ' + targetJsondoc.schema_type);
+                            capturedOriginalJsonString = '// Original jsondoc data is undefined or null\n// Jsondoc ID: ' + targetJsondocId + '\n// Schema: ' + targetJsondoc.schema_type;
                         } else {
                             const jsonString = JSON.stringify(originalData, null, 2);
                             console.log('[DebugRawToolCall] JSON.stringify successful, length:', jsonString.length);
                             console.log('[DebugRawToolCall] Setting originalJsonString preview:', jsonString.substring(0, 100) + '...');
-                            setOriginalJsonString(jsonString);
+                            capturedOriginalJsonString = jsonString;
                         }
                     } catch (parseError) {
                         console.error('[DebugRawToolCall] Failed to parse jsondoc data:', parseError);
-                        setOriginalJsonString('// Failed to parse jsondoc data: ' + parseError);
+                        capturedOriginalJsonString = '// Failed to parse jsondoc data: ' + parseError;
                     }
                 } else {
                     console.warn('[DebugRawToolCall] Jsondoc not found in context:', targetJsondocId);
-                    setOriginalJsonString('// Jsondoc not found: ' + targetJsondocId);
+                    capturedOriginalJsonString = '// Jsondoc not found: ' + targetJsondocId;
                 }
             } catch (error) {
                 console.warn('[DebugRawToolCall] Failed to capture original JSON for diff:', error);
+                capturedOriginalJsonString = '// Failed to capture original JSON: ' + error;
             }
         }
+
+        // Set state variables after capturing (avoid race conditions)
+        console.log('[DebugRawToolCall] Setting state with captured original JSON:', capturedOriginalJsonString.length, 'characters');
+        setOriginalJsonString(capturedOriginalJsonString);
+        setCurrentPatchedJsonString(capturedOriginalJsonString || ''); // Initialize with original
 
         try {
             const response = await fetch(`/api/admin/tools/${toolName}/non-persistent`, {
@@ -647,92 +688,76 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                         try {
                             const data = JSON.parse(line.slice(6));
 
+                            // Debug all received data
+                            if (currentEvent === 'finalPatches') {
+                                console.log('[DebugRawToolCall] Raw SSE data for finalPatches:', {
+                                    currentEvent,
+                                    data: data,
+                                    dataType: typeof data,
+                                    dataKeys: Object.keys(data || {}),
+                                    rawLine: line
+                                });
+                            }
+
                             if (currentEvent === 'rawText') {
                                 // Handle raw text streaming for debugging
                                 setRawTextStream(prev => prev + data.textDelta);
                                 setNonPersistentRunStatus(`接收原始文本... (第${data.chunkCount}块)`);
 
-                                // Add to streaming chunks
-                                const streamingChunk: StreamingChunk = {
-                                    type: 'rawText',
-                                    chunkCount: data.chunkCount,
-                                    textDelta: data.textDelta,
-                                    accumulatedText: data.accumulatedText
-                                };
-                                setStreamingChunks(prev => [...prev, streamingChunk]);
-
                             } else if (currentEvent === 'eagerPatches') {
-                                // Handle eager patch data - FIXED!
+                                // Handle eager patch data - apply patches in real-time
                                 setNonPersistentRunStatus(`接收急切补丁... (第${data.chunkCount}块, ${data.patches?.length || 0}个补丁, 尝试${data.attempt})`);
 
-                                const eagerChunk: StreamingChunk = {
-                                    type: 'eagerPatches',
-                                    chunkCount: data.chunkCount,
-                                    patches: data.patches,
-                                    source: data.source,
-                                    attempt: data.attempt,
-                                    newPatchCount: data.newPatchCount
-                                };
-                                setEagerPatchHistory(prev => [...prev, eagerChunk]);
-
-                                // Also update the current results with eager patches
-                                if (data.patches && data.patches.length > 0) {
-                                    setNonPersistentRunResults(data.patches);
+                                if (data.patches && data.patches.length > 0 && capturedOriginalJsonString && !capturedOriginalJsonString.startsWith('//')) {
+                                    // Apply patches and update current view
+                                    const patchedJson = applyPatchesToOriginal(data.patches, capturedOriginalJsonString);
+                                    setCurrentPatchedJsonString(patchedJson);
+                                    setCurrentPatches(data.patches);
                                 }
 
                             } else if (currentEvent === 'patches') {
                                 // Handle regular patch data
                                 setNonPersistentRunStatus(`接收补丁数据... (第${data.chunkCount}块, ${data.patches?.length || 0}个补丁)`);
 
-                                const patchChunk: StreamingChunk = {
-                                    type: 'patches',
-                                    chunkCount: data.chunkCount,
-                                    patches: data.patches,
-                                    source: data.source
-                                };
-                                setStreamingChunks(prev => [...prev, patchChunk]);
+                                if (data.patches && data.patches.length > 0 && capturedOriginalJsonString && !capturedOriginalJsonString.startsWith('//')) {
+                                    // Apply patches and update current view
+                                    const patchedJson = applyPatchesToOriginal(data.patches, capturedOriginalJsonString);
+                                    setCurrentPatchedJsonString(patchedJson);
+                                    setCurrentPatches(data.patches);
+                                }
 
                             } else if (currentEvent === 'finalPatches') {
                                 // Handle final patches
+                                console.log('[DebugRawToolCall] Received finalPatches:', {
+                                    dataPatches: data.patches,
+                                    patchesLength: data.patches?.length,
+                                    patchesType: typeof data.patches,
+                                    capturedOriginalJsonStringExists: !!capturedOriginalJsonString,
+                                    capturedOriginalJsonStringStartsWithComment: capturedOriginalJsonString?.startsWith('//'),
+                                    capturedOriginalJsonStringLength: capturedOriginalJsonString?.length
+                                });
+
                                 setFinalPatches(data.patches || []);
                                 setNonPersistentRunResults(data.patches);
                                 setNonPersistentRunStatus(`接收最终补丁... (${data.patches?.length || 0}个补丁)`);
 
-                                // If this is an edit tool, apply context diff using the same 4-step approach as debug script
-                                if (isEditTool(toolName) && originalJsonString && !originalJsonString.startsWith('//') && rawTextStream) {
-                                    console.log('[DebugRawToolCall] Applying context diff with final patches using simplified approach...');
-                                    try {
-                                        // STEP 1 & 2: Apply text diff and parse JSON (with jsonrepair)
-                                        const modifiedJson = applyContextDiffToJSON(originalJsonString, rawTextStream);
-
-                                        if (modifiedJson && modifiedJson !== originalJsonString) {
-                                            console.log('[DebugRawToolCall] Context diff applied successfully');
-                                            setPatchedJsonString(modifiedJson);
-
-                                            // STEP 3 & 4: Generate RFC6902 patches 
-                                            const rfc6902Patches = applyContextDiffAndGeneratePatches(originalJsonString, rawTextStream);
-
-                                            setContextDiffResult({
-                                                success: true,
-                                                modifiedJson,
-                                                rfc6902Patches: Array.isArray(rfc6902Patches) ? rfc6902Patches : []
-                                            });
-                                        } else {
-                                            console.log('[DebugRawToolCall] No changes detected in context diff');
-                                            setContextDiffResult({
-                                                success: false,
-                                                error: 'No changes detected in unified diff'
-                                            });
-                                            setPatchedJsonString('// No changes detected\n\n' + rawTextStream);
-                                        }
-                                    } catch (error) {
-                                        console.error('[DebugRawToolCall] Failed to process context diff:', error);
-                                        setContextDiffResult({
-                                            success: false,
-                                            error: error instanceof Error ? error.message : String(error)
-                                        });
-                                        setPatchedJsonString('// Failed to process context diff: ' + error + '\n\nRaw diff:\n' + rawTextStream);
-                                    }
+                                if (data.patches && data.patches.length > 0 && capturedOriginalJsonString && !capturedOriginalJsonString.startsWith('//')) {
+                                    console.log('[DebugRawToolCall] Applying final patches:', data.patches.length, 'patches to original JSON');
+                                    // Apply final patches
+                                    const patchedJson = applyPatchesToOriginal(data.patches, capturedOriginalJsonString);
+                                    console.log('[DebugRawToolCall] Patch application result:', {
+                                        originalLength: capturedOriginalJsonString.length,
+                                        patchedLength: patchedJson.length,
+                                        changed: patchedJson !== capturedOriginalJsonString
+                                    });
+                                    setCurrentPatchedJsonString(patchedJson);
+                                    setCurrentPatches(data.patches);
+                                } else {
+                                    console.warn('[DebugRawToolCall] Final patches not applied - conditions not met:', {
+                                        hasPatches: !!(data.patches && data.patches.length > 0),
+                                        hasCapturedOriginalJson: !!capturedOriginalJsonString,
+                                        capturedoriginalJsonValid: capturedOriginalJsonString && !capturedOriginalJsonString.startsWith('//')
+                                    });
                                 }
 
                             } else if (currentEvent === 'chunk' && data.data) {
@@ -1109,141 +1134,23 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                 </div>
             )}
 
-            {/* Eager Patch History - NEW! */}
-            {eagerPatchHistory.length > 0 && (
-                <div style={{ marginTop: 24 }}>
-                    <Title level={4} style={{ display: 'flex', alignItems: 'center', color: '#fff', marginBottom: 16 }}>
-                        <DatabaseOutlined style={{ marginRight: 8 }} />
-                        急切解析补丁历史 (实时流处理)
-                        <Text type="secondary" style={{ marginLeft: 8, fontSize: '14px' }}>
-                            ({eagerPatchHistory.length} 次尝试)
-                        </Text>
-                    </Title>
-
-                    {eagerPatchHistory.map((eagerChunk, index) => (
-                        <div key={index} style={{ marginBottom: 16 }}>
-                            <Text strong style={{ color: '#52c41a' }}>
-                                急切解析 #{eagerChunk.attempt} (块 #{eagerChunk.chunkCount})
-                                {eagerChunk.patches && eagerChunk.patches.length > 0 && ` - ${eagerChunk.patches.length} 个补丁`}
-                                {eagerChunk.newPatchCount && ` (+${eagerChunk.newPatchCount} 新增)`}
-                            </Text>
-                            <div style={{
-                                maxHeight: '200px',
-                                overflow: 'auto',
-                                backgroundColor: '#1a4a1a',
-                                border: '1px solid #52c41a',
-                                borderRadius: '6px',
-                                marginTop: 8
-                            }}>
-                                <pre style={{
-                                    margin: '0',
-                                    width: '100%',
-                                    fontSize: '11px',
-                                    whiteSpace: 'pre-wrap',
-                                    wordWrap: 'break-word',
-                                    overflowWrap: 'break-word',
-                                    color: '#e6e6e6',
-                                    fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
-                                    padding: '12px'
-                                }}>
-                                    {JSON.stringify(eagerChunk.patches, null, 2)}
-                                </pre>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* Regular Streaming Chunks */}
-            {streamingChunks.filter(chunk => chunk.type === 'patches').length > 0 && (
-                <div style={{ marginTop: 24 }}>
-                    <Title level={4} style={{ display: 'flex', alignItems: 'center', color: '#fff', marginBottom: 16 }}>
-                        <DatabaseOutlined style={{ marginRight: 8 }} />
-                        常规JSON补丁流
-                        <Text type="secondary" style={{ marginLeft: 8, fontSize: '14px' }}>
-                            ({streamingChunks.filter(chunk => chunk.type === 'patches').length} 个块)
-                        </Text>
-                    </Title>
-
-                    {streamingChunks.filter(chunk => chunk.type === 'patches').map((patchChunk, index) => (
-                        <div key={index} style={{ marginBottom: 16 }}>
-                            <Text strong style={{ color: '#1890ff' }}>
-                                块 #{patchChunk.chunkCount} ({patchChunk.source})
-                                {patchChunk.patches && patchChunk.patches.length > 0 && ` - ${patchChunk.patches.length} 个补丁`}
-                            </Text>
-                            <div style={{
-                                maxHeight: '200px',
-                                overflow: 'auto',
-                                backgroundColor: '#1a1a1a',
-                                border: '1px solid #434343',
-                                borderRadius: '6px',
-                                marginTop: 8
-                            }}>
-                                <pre style={{
-                                    margin: '0',
-                                    width: '100%',
-                                    fontSize: '11px',
-                                    whiteSpace: 'pre-wrap',
-                                    wordWrap: 'break-word',
-                                    overflowWrap: 'break-word',
-                                    color: '#e6e6e6',
-                                    fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
-                                    padding: '12px'
-                                }}>
-                                    {JSON.stringify(patchChunk.patches, null, 2)}
-                                </pre>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* JSON Diff View for Edit Tools - FIXED! */}
-            {originalJsonString && selectedTool && isEditTool(selectedTool) && (
+            {/* Real-time Patch-Applied JSON View - NEW! */}
+            {originalJsonString && currentPatchedJsonString && selectedTool && isEditTool(selectedTool) && (
                 <div style={{ marginTop: 24 }}>
                     <Title level={4} style={{ display: 'flex', alignItems: 'center', color: '#fff', marginBottom: 16 }}>
                         <FileTextOutlined style={{ marginRight: 8 }} />
-                        JSON对比视图 (原始 → 修改后)
+                        实时补丁应用视图
                         <Text type="secondary" style={{ marginLeft: 8, fontSize: '14px' }}>
-                            显示上下文差异如何影响JSON结构
+                            {currentPatches.length} 个补丁已应用
                         </Text>
                     </Title>
 
-                    {contextDiffResult?.success && patchedJsonString ? (
-                        <>
-                            <DiffView
-                                oldValue={originalJsonString}
-                                newValue={patchedJsonString}
-                            />
-
-                            {/* Show RFC6902 JSON Patches */}
-                            {contextDiffResult.rfc6902Patches && Array.isArray(contextDiffResult.rfc6902Patches) && contextDiffResult.rfc6902Patches.length > 0 && (
-                                <div style={{ marginTop: 16 }}>
-                                    <Title level={5} style={{ color: '#fff' }}>RFC6902 JSON Patches</Title>
-                                    <div style={{
-                                        backgroundColor: '#1a1a1a',
-                                        border: '1px solid #434343',
-                                        borderRadius: '6px',
-                                        padding: '12px',
-                                        maxHeight: '300px',
-                                        overflow: 'auto'
-                                    }}>
-                                        <pre style={{
-                                            margin: 0,
-                                            fontSize: '12px',
-                                            color: '#e6e6e6',
-                                            fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace'
-                                        }}>
-                                            {JSON.stringify(contextDiffResult.rfc6902Patches, null, 2)}
-                                        </pre>
-                                    </div>
-                                    <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginTop: 8 }}>
-                                        这些是通过RFC6902标准计算得出的JSON补丁，描述了从原始JSON到修改后JSON所需的操作。
-                                    </Text>
-                                </div>
-                            )}
-                        </>
-                    ) : contextDiffResult?.error ? (
+                    {!originalJsonString.startsWith('//') ? (
+                        <DiffView
+                            oldValue={originalJsonString}
+                            newValue={currentPatchedJsonString}
+                        />
+                    ) : (
                         <div style={{
                             padding: 16,
                             backgroundColor: '#4a1a1a',
@@ -1251,70 +1158,34 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                             borderRadius: '6px'
                         }}>
                             <Text style={{ color: '#ff7875' }}>
-                                上下文差异应用失败: {contextDiffResult.error}
-                            </Text>
-                            {patchedJsonString && (
-                                <div style={{ marginTop: 12 }}>
-                                    <Title level={5} style={{ color: '#fff' }}>调试信息</Title>
-                                    <div style={{
-                                        maxHeight: '200px',
-                                        overflow: 'auto',
-                                        backgroundColor: '#1a1a1a',
-                                        border: '1px solid #434343',
-                                        borderRadius: '6px',
-                                        padding: '12px'
-                                    }}>
-                                        <pre style={{
-                                            margin: 0,
-                                            fontSize: '11px',
-                                            color: '#e6e6e6',
-                                            fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace'
-                                        }}>
-                                            {patchedJsonString}
-                                        </pre>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <div style={{
-                            padding: 16,
-                            backgroundColor: '#262626',
-                            border: '1px solid #434343',
-                            borderRadius: '6px',
-                            textAlign: 'center'
-                        }}>
-                            <Text type="secondary">
-                                {rawTextStream ? '正在等待最终补丁数据...' : '等待上下文差异数据...'}
+                                无法显示差异: {originalJsonString}
                             </Text>
                         </div>
                     )}
 
-                    {/* Show original JSON for reference */}
-                    <div style={{ marginTop: 16 }}>
-                        <Title level={5} style={{ color: '#fff' }}>原始JSON数据</Title>
-                        <div style={{
-                            maxHeight: '300px',
-                            overflow: 'auto',
-                            backgroundColor: '#1a1a1a',
-                            border: '1px solid #434343',
-                            borderRadius: '6px'
-                        }}>
-                            <pre style={{
-                                margin: '0',
-                                width: '100%',
-                                fontSize: '11px',
-                                whiteSpace: 'pre-wrap',
-                                wordWrap: 'break-word',
-                                overflowWrap: 'break-word',
-                                color: '#e6e6e6',
-                                fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
-                                padding: '12px'
+                    {/* Show current patches info */}
+                    {currentPatches.length > 0 && (
+                        <div style={{ marginTop: 16 }}>
+                            <Title level={5} style={{ color: '#fff' }}>当前应用的补丁</Title>
+                            <div style={{
+                                backgroundColor: '#1a1a1a',
+                                border: '1px solid #434343',
+                                borderRadius: '6px',
+                                padding: '12px',
+                                maxHeight: '200px',
+                                overflow: 'auto'
                             }}>
-                                {originalJsonString}
-                            </pre>
+                                <pre style={{
+                                    margin: 0,
+                                    fontSize: '12px',
+                                    color: '#e6e6e6',
+                                    fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace'
+                                }}>
+                                    {JSON.stringify(currentPatches, null, 2)}
+                                </pre>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             )}
 
