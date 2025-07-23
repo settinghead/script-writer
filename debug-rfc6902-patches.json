@@ -1,12 +1,1 @@
-[
-  {
-    "op": "replace",
-    "path": "/characters/0/occupation",
-    "value": "\"全职外卖骑手兼夜间搏击馆陪练\""
-  },
-  {
-    "op": "replace",
-    "path": "/characters/2/occupation",
-    "value": "\"自由涂鸦艺术家，兼职奶茶店员与地下情绪疗愈工作坊引导者\""
-  }
-]
+[]

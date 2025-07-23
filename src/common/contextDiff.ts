@@ -495,11 +495,11 @@ function applyChangeToJSONObject(obj: any, removal: string, addition: string): b
 
     console.log(`[JSONDiff]     Raw removal: "${removal.trim()}"`);
     console.log(`[JSONDiff]     Raw addition: "${addition.trim()}"`);
-    console.log(`[JSONDiff]     Extracted removal value: "${removalValue}"`);
-    console.log(`[JSONDiff]     Extracted addition value: "${additionValue}"`);
+    console.log(`[JSONDiff]     Extracted removal value: "${removalValue}" (type: ${typeof removalValue}, truthy: ${!!removalValue})`);
+    console.log(`[JSONDiff]     Extracted addition value: "${additionValue}" (type: ${typeof additionValue}, truthy: ${!!additionValue})`);
 
     if (!removalValue || !additionValue) {
-        console.log(`[JSONDiff]     Skipping: Could not extract values from diff lines`);
+        console.log(`[JSONDiff]     Skipping: Could not extract values from diff lines (removal: ${removalValue}, addition: ${additionValue})`);
         return false;
     }
 

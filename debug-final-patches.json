@@ -1,52 +1,33 @@
 [
   {
-    "op": "remove",
-    "path": "/occupation"
+    "op": "add",
+    "path": "/name",
+    "value": "弗利沙沙"
+  },
+  {
+    "op": "add",
+    "path": "/type",
+    "value": "final_boss"
+  },
+  {
+    "op": "add",
+    "path": "/description",
+    "value": "宇宙级霸主，外星侵略军最高统帅，45岁（地球年龄），真实形态为银白色流线型异形躯体，常态伪装成儒雅西装男子。性格极度自负且追求完美战斗美学，视王千榕为唯一值得认真对待的对手。他亲临地球不仅为征服，更为寻找能激发自己极限的战士。当王千榕在南京眼摩天轮顶层密室决战中因小雨重伤而暴怒，首次变身超级赛亚人时，金色气焰冲天而起，弗利沙沙狂笑：‘终于，有人让我认真了！’"
+  },
+  {
+    "op": "add",
+    "path": "/age",
+    "value": "45岁"
+  },
+  {
+    "op": "add",
+    "path": "/gender",
+    "value": "男"
   },
   {
     "op": "add",
     "path": "/occupation",
-    "value": "全职外卖骑手兼夜间搏击馆陪练"
-  },
-  {
-    "op": "remove",
-    "path": "/personality_traits"
-  },
-  {
-    "op": "add",
-    "path": "/personality_traits",
-    "value": "["
-  },
-  {
-    "op": "remove",
-    "path": "/occupation"
-  },
-  {
-    "op": "add",
-    "path": "/occupation",
-    "value": "自由涂鸦艺术家，兼职奶茶店员与地下情绪疗愈工作坊引导者"
-  },
-  {
-    "op": "remove",
-    "path": "/personality_traits"
-  },
-  {
-    "op": "add",
-    "path": "/personality_traits",
-    "value": "["
-  },
-  {
-    "op": "remove",
-    "path": "/personality_traits"
-  },
-  {
-    "op": "add",
-    "path": "/personality_traits",
-    "value": "["
-  },
-  {
-    "op": "remove",
-    "path": "/personality_traits"
+    "value": "宇宙霸主/外星远征军总指挥"
   },
   {
     "op": "add",
@@ -55,63 +36,32 @@
   },
   {
     "op": "add",
-    "path": "/backstory_hint",
-    "value": "家乡星球已被母文明抛弃，他实为流亡者，渴望在地球制造混乱以吸引母星注意"
-  },
-  {
-    "op": "remove",
-    "path": "/personality_traits"
+    "path": "/character_arc",
+    "value": "从俯视众生的绝对统治者，到被凡人之怒击穿信念的败者，展现神明般存在也会因轻视情感之力而陨落的悲剧性。"
   },
   {
     "op": "add",
-    "path": "/personality_traits",
-    "value": "["
+    "path": "/relationships",
+    "value": "{"
   },
   {
     "op": "add",
-    "path": "/emotional_motivation",
-    "value": "唯一牵挂是留在母星的弟弟，战斗只为攒够资源送他逃离压迫体制"
-  },
-  {
-    "op": "remove",
-    "path": "/personality_traits"
+    "path": "/王千榕",
+    "value": "猎物→宿命之敌→唯一认可的对手"
   },
   {
     "op": "add",
-    "path": "/personality_traits",
-    "value": "["
+    "path": "/艾莉娅",
+    "value": "下属→背叛者→失望棋子"
   },
   {
     "op": "add",
-    "path": "/hidden_depth",
-    "value": "通过追剧模仿人类情感，逐渐发展出真实共情能力，最终为救小雨主动暴露位置"
-  },
-  {
-    "op": "remove",
-    "path": "/personality_traits"
+    "path": "/邵夫特·金",
+    "value": "代理人→弃子"
   },
   {
     "op": "add",
-    "path": "/personality_traits",
-    "value": "["
-  },
-  {
-    "op": "add",
-    "path": "/inner_conflict",
-    "value": "幻象能力实为精神分裂症状，长期压抑导致人格碎片化，最终在广场舞中找到情绪出口"
-  },
-  {
-    "op": "remove",
-    "path": "/personality_traits"
-  },
-  {
-    "op": "add",
-    "path": "/personality_traits",
-    "value": "["
-  },
-  {
-    "op": "add",
-    "path": "/poetic_voice",
-    "value": "通过诗歌记录战争创伤与对和平的渴望，其诗句后期成为地球抵抗军的精神象征"
+    "path": "/卡拉克斯",
+    "value": "部下→无能执行者"
   }
 ]

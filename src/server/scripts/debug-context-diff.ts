@@ -80,7 +80,7 @@ async function debugContextDiff(): Promise<void> {
                 description: '剧本设定',
                 schemaType: '剧本设定'
             }],
-            editRequirements: '调整剧本设定，优化角色设定和故事背景，增强角色的深度和复杂性'
+            editRequirements: '增加一个角色，弗利沙沙，是大boss，王千榕最终决斗的对象，王和弗对决时第一次变成超级赛亚人。'
         };
 
         console.log('[Debug] Input prepared:', input);
