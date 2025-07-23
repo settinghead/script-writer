@@ -1280,6 +1280,9 @@ npm run dev
 - **Prompt Inspection** - View complete generated prompts with YAML template variables
 - **Schema Viewer** - Inspect tool input/output schemas and validation rules
 - **Real-time Validation** - Immediate feedback on input validation errors
+- **🆕 Tool Call History** - Browse recent tool call conversations with dropdown selection
+- **🆕 Raw Conversation Viewer** - View detailed LLM conversations including unified diffs, retry attempts, and streaming chunks
+- **🆕 Session ID Logging** - All tool executions now log session/conversation IDs for easier debugging
 
 **Example Debug Workflow**:
 1. Select "brainstorm_edit" tool from dropdown
@@ -1287,11 +1290,21 @@ npm run dev
 3. Add parameters: `{"userRequest": "让这些故事更现代一些，加入科技元素"}`
 4. View generated prompt with %%jsondocs%% and %%params%% variables
 5. Inspect YAML-formatted template variables for LLM processing
+6. **🆕 View raw conversation**: Use Tool Call History tab to see actual LLM interactions
+
+**🆕 Command-Line Debug Utilities**:
+- **View Conversation by Session**: `./run-ts src/server/scripts/view-conversation-by-session.ts <session-id>`
+  - Takes toolCallId, transformId, or message ID as input
+  - Displays complete conversation history with formatted output
+  - Shows tool parameters, results, metadata, and timing information
+  - Example: `./run-ts src/server/scripts/view-conversation-by-session.ts call_abc123def456`
 
 **Debug API Endpoints**:
 - `GET /api/admin/tools` - List all registered tools
 - `POST /api/admin/tools/:toolName/prompt` - Generate prompt for inspection
 - `GET /api/admin/jsondocs/:projectId` - Get project jsondocs for selection
+- **🆕 `GET /api/admin/tool-conversations/:projectId`** - Get grouped tool call conversations
+- **🆕 `GET /api/admin/raw-messages/:projectId`** - Get all raw messages for debugging
 
 ## API Reference
 
