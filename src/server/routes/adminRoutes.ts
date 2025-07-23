@@ -465,6 +465,29 @@ export function createAdminRoutes(
                 ...(additionalParams || {})
             };
 
+            // Determine execution mode for edit tools
+            let executionMode: any = undefined;
+            const isEditTool = toolName.includes('edit') || toolInfo.templateName.endsWith('_diff');
+
+            if (isEditTool && input.jsondocs && input.jsondocs.length > 0) {
+                // For edit tools, get the original jsondoc being edited (first one in the array)
+                const originalJsondocId = input.jsondocs[0].jsondocId;
+                sendSSE('status', { message: `Loading original jsondoc ${originalJsondocId} for edit tool...` });
+
+                const originalJsondoc = await jsondocRepo.getJsondoc(originalJsondocId);
+                if (originalJsondoc) {
+                    executionMode = {
+                        mode: 'patch-approval',  // Use patch-approval mode for debug/non-persistent runs
+                        originalJsondoc: originalJsondoc
+                    };
+                    console.log(`[AdminRoutes] Set execution mode for edit tool ${toolName}: patch-approval with jsondoc ${originalJsondocId}`);
+                } else {
+                    sendSSE('error', { message: `Original jsondoc ${originalJsondocId} not found for edit tool` });
+                    res.end();
+                    return;
+                }
+            }
+
             // Execute the streaming transform with dryRun: true and streaming callback
             const result = await executeStreamingTransform({
                 config,
@@ -475,6 +498,7 @@ export function createAdminRoutes(
                 jsondocRepo,
                 outputJsondocType: toolInfo.outputJsondocType as any,
                 transformMetadata,
+                executionMode,  // Add the execution mode
                 dryRun: true,  // This will skip database operations but still call LLM
                 onStreamChunk: async (chunk: any, chunkCount: number) => {
                     // Handle new streaming format with both rawText and patches
@@ -489,9 +513,30 @@ export function createAdminRoutes(
                                 templateName: chunk.templateName,
                                 toolName
                             });
-                        } else if (chunk.type === 'patches' || chunk.type === 'finalPatches') {
-                            // Send patch data
+                        } else if (chunk.type === 'eagerPatches') {
+                            // Send eager patch data - NEW!
+                            sendSSE('eagerPatches', {
+                                chunkCount,
+                                patches: chunk.patches,
+                                source: chunk.source,
+                                attempt: chunk.attempt,
+                                newPatchCount: chunk.newPatchCount,
+                                templateName: chunk.templateName,
+                                toolName
+                            });
+                        } else if (chunk.type === 'patches') {
+                            // Send regular patch data
                             sendSSE('patches', {
+                                chunkCount,
+                                patches: chunk.patches,
+                                source: chunk.source,
+                                templateName: chunk.templateName,
+                                rawText: chunk.rawText,
+                                toolName
+                            });
+                        } else if (chunk.type === 'finalPatches') {
+                            // Send final patch data
+                            sendSSE('finalPatches', {
                                 chunkCount,
                                 patches: chunk.patches,
                                 source: chunk.source,

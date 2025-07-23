@@ -272,7 +272,7 @@ export function computeAvailableToolsFromCanonicalContext(
                     addTool(() => createGetJsondocContentToolDefinition(jsondocRepo, projectId, userId));
                 }
             });
-            console.log(`[AgentRequestBuilder] Added particle search tools (${particleSearchTools.length}):`, particleSearchTools);
+            // console.log(`[AgentRequestBuilder] Added particle search tools (${particleSearchTools.length}):`, particleSearchTools);
         } else {
             console.log('[AgentRequestBuilder] Particle system not available, skipping particle search tools');
         }

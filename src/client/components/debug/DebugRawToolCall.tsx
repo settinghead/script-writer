@@ -8,7 +8,7 @@ import { computeCanonicalJsondocsFromLineage, extractCanonicalJsondocIds } from 
 import { buildLineageGraph } from '../../../common/transform-jsondoc-framework/lineageResolution';
 import { applyPatch } from 'fast-json-patch';
 import * as Diff from 'diff';
-import { applyContextDiffAndGeneratePatches } from '../../../common/contextDiff';
+import { applyContextDiffToJSON, applyContextDiffAndGeneratePatches } from '../../../common/contextDiff';
 import type {
     ElectricJsondoc,
     ElectricTransform,
@@ -111,6 +111,20 @@ interface PromptResult {
     templateVariables: Record<string, string>;
     fieldTitles: Record<string, string>;
     prompt: string;
+}
+
+// Streaming chunk data structure
+interface StreamingChunk {
+    type: 'rawText' | 'eagerPatches' | 'patches' | 'finalPatches' | 'chunk' | 'result' | 'status' | 'error';
+    chunkCount?: number;
+    patches?: any[];
+    source?: string;
+    textDelta?: string;
+    accumulatedText?: string;
+    attempt?: number;
+    newPatchCount?: number;
+    data?: any;
+    message?: string;
 }
 
 // Helper function to provide default parameters for tools
@@ -221,16 +235,24 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
     const [toolsLoading, setToolsLoading] = useState(true);
     const [jsondocsLoading, setJsondocsLoading] = useState(true);
 
-    // Dry run state
+    // Dry run state - updated for new streaming system
     const [nonPersistentRunLoading, setNonPersistentRunLoading] = useState(false);
     const [nonPersistentRunResults, setNonPersistentRunResults] = useState<any>(null);
     const [nonPersistentRunStatus, setNonPersistentRunStatus] = useState<string>('');
     const [rawTextStream, setRawTextStream] = useState<string>('');
-    const [patchStream, setPatchStream] = useState<any[]>([]);
+    const [streamingChunks, setStreamingChunks] = useState<StreamingChunk[]>([]);
+    const [eagerPatchHistory, setEagerPatchHistory] = useState<StreamingChunk[]>([]);
+    const [finalPatches, setFinalPatches] = useState<any[]>([]);
 
     // JSON diff state for edit tools
     const [originalJsonString, setOriginalJsonString] = useState<string>('');
     const [patchedJsonString, setPatchedJsonString] = useState<string>('');
+    const [contextDiffResult, setContextDiffResult] = useState<{
+        success: boolean;
+        modifiedJson?: string;
+        rfc6902Patches?: any[];
+        error?: string;
+    } | null>(null);
 
     // Use the debug params hook for persistence
     const {
@@ -522,15 +544,18 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
         }
     }, [debouncedRequestPayload]);
 
-    // Non-persistent run function
+    // Non-persistent run function - updated for new streaming system
     const runNonPersistentRun = async (toolName: string, input: any) => {
         setNonPersistentRunLoading(true);
         setNonPersistentRunResults(null);
         setNonPersistentRunStatus('开始非持久化运行...');
         setRawTextStream('');
-        setPatchStream([]);
+        setStreamingChunks([]);
+        setEagerPatchHistory([]);
+        setFinalPatches([]);
         setOriginalJsonString('');
         setPatchedJsonString('');
+        setContextDiffResult(null);
 
         // If this is an edit tool, capture the original JSON for diff comparison
         const isEdit = isEditTool(toolName);
@@ -626,69 +651,90 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                                 // Handle raw text streaming for debugging
                                 setRawTextStream(prev => prev + data.textDelta);
                                 setNonPersistentRunStatus(`接收原始文本... (第${data.chunkCount}块)`);
-                            } else if (currentEvent === 'patches') {
-                                // Handle patch data
-                                setPatchStream(prev => [...prev, {
+
+                                // Add to streaming chunks
+                                const streamingChunk: StreamingChunk = {
+                                    type: 'rawText',
+                                    chunkCount: data.chunkCount,
+                                    textDelta: data.textDelta,
+                                    accumulatedText: data.accumulatedText
+                                };
+                                setStreamingChunks(prev => [...prev, streamingChunk]);
+
+                            } else if (currentEvent === 'eagerPatches') {
+                                // Handle eager patch data - FIXED!
+                                setNonPersistentRunStatus(`接收急切补丁... (第${data.chunkCount}块, ${data.patches?.length || 0}个补丁, 尝试${data.attempt})`);
+
+                                const eagerChunk: StreamingChunk = {
+                                    type: 'eagerPatches',
                                     chunkCount: data.chunkCount,
                                     patches: data.patches,
                                     source: data.source,
-                                    rawText: data.rawText
-                                }]);
-                                setNonPersistentRunResults(data.patches);
+                                    attempt: data.attempt,
+                                    newPatchCount: data.newPatchCount
+                                };
+                                setEagerPatchHistory(prev => [...prev, eagerChunk]);
+
+                                // Also update the current results with eager patches
+                                if (data.patches && data.patches.length > 0) {
+                                    setNonPersistentRunResults(data.patches);
+                                }
+
+                            } else if (currentEvent === 'patches') {
+                                // Handle regular patch data
                                 setNonPersistentRunStatus(`接收补丁数据... (第${data.chunkCount}块, ${data.patches?.length || 0}个补丁)`);
 
-                                // If this is an edit tool and we have final patches, apply the context diff correctly
-                                if (isEditTool(toolName) && data.source === 'final') {
-                                    console.log('[DebugRawToolCall] Final patches received, applying context diff...');
-                                    console.log('[DebugRawToolCall] Raw diff text available:', !!rawTextStream);
-                                    console.log('[DebugRawToolCall] Original JSON available:', !!originalJsonString);
-                                    console.log('[DebugRawToolCall] JSON patches (for reference):', data.patches);
+                                const patchChunk: StreamingChunk = {
+                                    type: 'patches',
+                                    chunkCount: data.chunkCount,
+                                    patches: data.patches,
+                                    source: data.source
+                                };
+                                setStreamingChunks(prev => [...prev, patchChunk]);
 
+                            } else if (currentEvent === 'finalPatches') {
+                                // Handle final patches
+                                setFinalPatches(data.patches || []);
+                                setNonPersistentRunResults(data.patches);
+                                setNonPersistentRunStatus(`接收最终补丁... (${data.patches?.length || 0}个补丁)`);
+
+                                // If this is an edit tool, apply context diff using the same 4-step approach as debug script
+                                if (isEditTool(toolName) && originalJsonString && !originalJsonString.startsWith('//') && rawTextStream) {
+                                    console.log('[DebugRawToolCall] Applying context diff with final patches using simplified approach...');
                                     try {
-                                        if (originalJsonString && !originalJsonString.startsWith('//') && rawTextStream) {
-                                            // Apply context-based diff directly to the JSON string using common function
-                                            const diffResult = applyContextDiffAndGeneratePatches(originalJsonString, rawTextStream);
+                                        // STEP 1 & 2: Apply text diff and parse JSON (with jsonrepair)
+                                        const modifiedJson = applyContextDiffToJSON(originalJsonString, rawTextStream);
 
-                                            if (diffResult.success && diffResult.modifiedJson) {
-                                                console.log('[DebugRawToolCall] Context diff applied successfully');
-                                                setPatchedJsonString(diffResult.modifiedJson);
+                                        if (modifiedJson && modifiedJson !== originalJsonString) {
+                                            console.log('[DebugRawToolCall] Context diff applied successfully');
+                                            setPatchedJsonString(modifiedJson);
 
-                                                // Store the RFC6902 patches for display
-                                                if (diffResult.rfc6902Patches) {
-                                                    console.log('[DebugRawToolCall] RFC6902 JSON patches created:', diffResult.rfc6902Patches);
-                                                    setNonPersistentRunResults({
-                                                        ...nonPersistentRunResults,
-                                                        rfc6902Patches: diffResult.rfc6902Patches
-                                                    });
-                                                }
-                                            } else {
-                                                // Context diff failed, show error info
-                                                let errorInfo = '// Failed to apply context diff\n';
-                                                errorInfo += `// Error: ${diffResult.error}\n\n`;
-                                                errorInfo += '// Raw context diff:\n';
-                                                errorInfo += rawTextStream ? `/*\n${rawTextStream}\n*/\n\n` : '// No raw diff available\n\n';
-                                                errorInfo += '// Generated JSON patches (fallback):\n';
-                                                errorInfo += data.patches ? JSON.stringify(data.patches, null, 2) : '// No patches generated';
+                                            // STEP 3 & 4: Generate RFC6902 patches 
+                                            const rfc6902Patches = applyContextDiffAndGeneratePatches(originalJsonString, rawTextStream);
 
-                                                setPatchedJsonString(errorInfo);
-                                            }
+                                            setContextDiffResult({
+                                                success: true,
+                                                modifiedJson,
+                                                rfc6902Patches: Array.isArray(rfc6902Patches) ? rfc6902Patches : []
+                                            });
                                         } else {
-                                            // Show detailed info when original JSON or raw diff is not available
-                                            let reconstructionInfo = '// Cannot apply context diff\n';
-                                            reconstructionInfo += '// Original JSON status: ' + (originalJsonString ? originalJsonString.startsWith('//') ? 'fallback message' : 'available' : 'undefined') + '\n';
-                                            reconstructionInfo += '// Raw diff available: ' + (rawTextStream ? 'yes' : 'no') + '\n\n';
-                                            reconstructionInfo += '// Raw context diff:\n';
-                                            reconstructionInfo += rawTextStream ? `/*\n${rawTextStream}\n*/\n\n` : '// No raw diff available\n\n';
-                                            reconstructionInfo += '// Generated JSON patches (reference):\n';
-                                            reconstructionInfo += data.patches ? JSON.stringify(data.patches, null, 2) : '// No patches generated';
-
-                                            setPatchedJsonString(reconstructionInfo);
+                                            console.log('[DebugRawToolCall] No changes detected in context diff');
+                                            setContextDiffResult({
+                                                success: false,
+                                                error: 'No changes detected in unified diff'
+                                            });
+                                            setPatchedJsonString('// No changes detected\n\n' + rawTextStream);
                                         }
                                     } catch (error) {
                                         console.error('[DebugRawToolCall] Failed to process context diff:', error);
-                                        setPatchedJsonString('// Failed to process context diff: ' + error + '\n\nRaw diff:\n' + (rawTextStream || 'No raw diff available') + '\n\nJSON Patches:\n' + JSON.stringify(data.patches, null, 2));
+                                        setContextDiffResult({
+                                            success: false,
+                                            error: error instanceof Error ? error.message : String(error)
+                                        });
+                                        setPatchedJsonString('// Failed to process context diff: ' + error + '\n\nRaw diff:\n' + rawTextStream);
                                     }
                                 }
+
                             } else if (currentEvent === 'chunk' && data.data) {
                                 // Handle both array and object data structures
                                 if (Array.isArray(data.data)) {
@@ -721,8 +767,6 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
             setNonPersistentRunLoading(false);
         }
     };
-
-
 
     const renderCodeBlock = (content: string, maxHeight = '800px') => (
         <div style={{
@@ -987,7 +1031,6 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                         生成结果
                     </Title>
 
-
                     <Title level={5} style={{ color: '#fff', marginTop: 20 }}>完整提示词</Title>
                     {renderCodeBlock(promptResult.prompt, '800px')}
 
@@ -1066,22 +1109,67 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                 </div>
             )}
 
-            {/* Patch Stream */}
-            {patchStream.length > 0 && (
+            {/* Eager Patch History - NEW! */}
+            {eagerPatchHistory.length > 0 && (
                 <div style={{ marginTop: 24 }}>
                     <Title level={4} style={{ display: 'flex', alignItems: 'center', color: '#fff', marginBottom: 16 }}>
                         <DatabaseOutlined style={{ marginRight: 8 }} />
-                        转换的JSON补丁流
+                        急切解析补丁历史 (实时流处理)
                         <Text type="secondary" style={{ marginLeft: 8, fontSize: '14px' }}>
-                            ({patchStream.length} 个块)
+                            ({eagerPatchHistory.length} 次尝试)
                         </Text>
                     </Title>
 
-                    {patchStream.map((patchData, index) => (
+                    {eagerPatchHistory.map((eagerChunk, index) => (
+                        <div key={index} style={{ marginBottom: 16 }}>
+                            <Text strong style={{ color: '#52c41a' }}>
+                                急切解析 #{eagerChunk.attempt} (块 #{eagerChunk.chunkCount})
+                                {eagerChunk.patches && eagerChunk.patches.length > 0 && ` - ${eagerChunk.patches.length} 个补丁`}
+                                {eagerChunk.newPatchCount && ` (+${eagerChunk.newPatchCount} 新增)`}
+                            </Text>
+                            <div style={{
+                                maxHeight: '200px',
+                                overflow: 'auto',
+                                backgroundColor: '#1a4a1a',
+                                border: '1px solid #52c41a',
+                                borderRadius: '6px',
+                                marginTop: 8
+                            }}>
+                                <pre style={{
+                                    margin: '0',
+                                    width: '100%',
+                                    fontSize: '11px',
+                                    whiteSpace: 'pre-wrap',
+                                    wordWrap: 'break-word',
+                                    overflowWrap: 'break-word',
+                                    color: '#e6e6e6',
+                                    fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
+                                    padding: '12px'
+                                }}>
+                                    {JSON.stringify(eagerChunk.patches, null, 2)}
+                                </pre>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Regular Streaming Chunks */}
+            {streamingChunks.filter(chunk => chunk.type === 'patches').length > 0 && (
+                <div style={{ marginTop: 24 }}>
+                    <Title level={4} style={{ display: 'flex', alignItems: 'center', color: '#fff', marginBottom: 16 }}>
+                        <DatabaseOutlined style={{ marginRight: 8 }} />
+                        常规JSON补丁流
+                        <Text type="secondary" style={{ marginLeft: 8, fontSize: '14px' }}>
+                            ({streamingChunks.filter(chunk => chunk.type === 'patches').length} 个块)
+                        </Text>
+                    </Title>
+
+                    {streamingChunks.filter(chunk => chunk.type === 'patches').map((patchChunk, index) => (
                         <div key={index} style={{ marginBottom: 16 }}>
                             <Text strong style={{ color: '#1890ff' }}>
-                                块 #{patchData.chunkCount} ({patchData.source})
-                                {patchData.patches?.length > 0 && ` - ${patchData.patches.length} 个补丁`}
+                                块 #{patchChunk.chunkCount} ({patchChunk.source})
+                                {patchChunk.patches && patchChunk.patches.length > 0 && ` - ${patchChunk.patches.length} 个补丁`}
                             </Text>
                             <div style={{
                                 maxHeight: '200px',
@@ -1102,7 +1190,7 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                                     fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
                                     padding: '12px'
                                 }}>
-                                    {JSON.stringify(patchData.patches, null, 2)}
+                                    {JSON.stringify(patchChunk.patches, null, 2)}
                                 </pre>
                             </div>
                         </div>
@@ -1110,22 +1198,7 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                 </div>
             )}
 
-            {/* Debug info for diff state */}
-            {selectedTool && isEditTool(selectedTool) && (
-                <div style={{ marginTop: 24, padding: 12, backgroundColor: '#262626', borderRadius: 6 }}>
-                    <Text strong style={{ color: '#1890ff' }}>Debug Info:</Text>
-                    <br />
-                    <Text style={{ fontSize: '12px', color: '#ccc' }}>
-                        Tool: {selectedTool} | IsEdit: {isEditTool(selectedTool) ? 'Yes' : 'No'} |
-                        OriginalJSON: {originalJsonString ? `${originalJsonString.length} chars` : 'Not set'} |
-                        PatchedJSON: {patchedJsonString ? `${patchedJsonString.length} chars` : 'Not set'} |
-                        RawJsondocs: {Array.isArray(rawJsondocs) ? rawJsondocs.length : 'loading'} |
-                        Selected: {selectedJsondocs.length}
-                    </Text>
-                </div>
-            )}
-
-            {/* JSON Diff View for Edit Tools */}
+            {/* JSON Diff View for Edit Tools - FIXED! */}
             {originalJsonString && selectedTool && isEditTool(selectedTool) && (
                 <div style={{ marginTop: 24 }}>
                     <Title level={4} style={{ display: 'flex', alignItems: 'center', color: '#fff', marginBottom: 16 }}>
@@ -1136,15 +1209,15 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                         </Text>
                     </Title>
 
-                    {patchedJsonString ? (
+                    {contextDiffResult?.success && patchedJsonString ? (
                         <>
                             <DiffView
                                 oldValue={originalJsonString}
                                 newValue={patchedJsonString}
                             />
 
-                            {/* Show RFC6902 JSON Patches if available */}
-                            {nonPersistentRunResults?.rfc6902Patches && Array.isArray(nonPersistentRunResults.rfc6902Patches) && (
+                            {/* Show RFC6902 JSON Patches */}
+                            {contextDiffResult.rfc6902Patches && Array.isArray(contextDiffResult.rfc6902Patches) && contextDiffResult.rfc6902Patches.length > 0 && (
                                 <div style={{ marginTop: 16 }}>
                                     <Title level={5} style={{ color: '#fff' }}>RFC6902 JSON Patches</Title>
                                     <div style={{
@@ -1161,7 +1234,7 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                                             color: '#e6e6e6',
                                             fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace'
                                         }}>
-                                            {JSON.stringify(nonPersistentRunResults.rfc6902Patches, null, 2)}
+                                            {JSON.stringify(contextDiffResult.rfc6902Patches, null, 2)}
                                         </pre>
                                     </div>
                                     <Text type="secondary" style={{ fontSize: '12px', display: 'block', marginTop: 8 }}>
@@ -1170,6 +1243,39 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                                 </div>
                             )}
                         </>
+                    ) : contextDiffResult?.error ? (
+                        <div style={{
+                            padding: 16,
+                            backgroundColor: '#4a1a1a',
+                            border: '1px solid #ff4d4f',
+                            borderRadius: '6px'
+                        }}>
+                            <Text style={{ color: '#ff7875' }}>
+                                上下文差异应用失败: {contextDiffResult.error}
+                            </Text>
+                            {patchedJsonString && (
+                                <div style={{ marginTop: 12 }}>
+                                    <Title level={5} style={{ color: '#fff' }}>调试信息</Title>
+                                    <div style={{
+                                        maxHeight: '200px',
+                                        overflow: 'auto',
+                                        backgroundColor: '#1a1a1a',
+                                        border: '1px solid #434343',
+                                        borderRadius: '6px',
+                                        padding: '12px'
+                                    }}>
+                                        <pre style={{
+                                            margin: 0,
+                                            fontSize: '11px',
+                                            color: '#e6e6e6',
+                                            fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace'
+                                        }}>
+                                            {patchedJsonString}
+                                        </pre>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     ) : (
                         <div style={{
                             padding: 16,
@@ -1212,8 +1318,8 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                 </div>
             )}
 
-            {/* Non-Persistent Run Results */}
-            {nonPersistentRunResults && (
+            {/* Final Results */}
+            {finalPatches.length > 0 && (
                 <div style={{ marginTop: 24 }}>
                     <Title level={4} style={{ display: 'flex', alignItems: 'center', color: '#fff', marginBottom: 16 }}>
                         <PlayCircleOutlined style={{ marginRight: 8 }} />
@@ -1242,7 +1348,7 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                             fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
                             padding: '12px'
                         }}>
-                            {JSON.stringify(nonPersistentRunResults, null, 2)}
+                            {JSON.stringify(finalPatches, null, 2)}
                         </pre>
                     </div>
                 </div>

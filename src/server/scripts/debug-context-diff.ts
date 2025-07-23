@@ -140,6 +140,9 @@ async function debugContextDiff(): Promise<void> {
             },
             dryRun: true, // Don't save to database
             onStreamChunk: async (chunk: any, chunkCount: number) => {
+                // DEBUG: Log every chunk type for debugging
+                console.log(`[DEBUG-CHUNK] Received chunk ${chunkCount}: type=${chunk?.type}, source=${chunk?.source}, patches=${chunk?.patches?.length || 'N/A'}`);
+
                 // Capture raw text for debugging - handle different streaming formats
                 if (chunk?.type === 'rawText') {
                     // New format with rawText chunks
@@ -161,16 +164,25 @@ async function debugContextDiff(): Promise<void> {
                     rawLLMOutput += chunk;
                 }
 
-                // Capture final patches
+                // Capture ONLY final patches, ignore intermediate broken patches
                 if (chunk?.type === 'finalPatches' && chunk?.patches) {
                     finalPatches = chunk.patches;
-                } else if (chunk?.type === 'patches' && chunk?.patches) {
-                    // Also capture intermediate patches
-                    finalPatches = chunk.patches;
-                } else if (Array.isArray(chunk)) {
-                    // Direct patches array
+                    console.log(`[Debug] Captured finalPatches: ${finalPatches.length} patches from source: ${chunk.source}`);
+                    console.log(`[Debug] FinalPatches preview:`, JSON.stringify(finalPatches.slice(0, 1), null, 2));
+                } else if (Array.isArray(chunk) && !chunk.some(p => p?.type)) {
+                    // Direct patches array (only if it doesn't contain streaming metadata)
                     finalPatches = chunk;
+                    console.log(`[Debug] Captured direct patches array: ${finalPatches.length} patches`);
+                } else if (chunk?.type === 'finalPatches') {
+                    console.log(`[Debug] FinalPatches chunk received but no patches:`, {
+                        type: chunk.type,
+                        hasPatches: !!chunk.patches,
+                        patchesType: typeof chunk.patches,
+                        patchesLength: chunk.patches?.length,
+                        source: chunk.source
+                    });
                 }
+                // IGNORE intermediate 'patches' type - these are from broken eager parsing!
 
                 // Log progress every 10 chunks to see what's happening
                 if (chunkCount % 10 === 1) {
@@ -319,6 +331,7 @@ async function debugContextDiff(): Promise<void> {
         console.log('\n================================================================================');
         console.log('📊 SUMMARY');
         console.log('================================================================================');
+        console.log(`[DEBUG-SUMMARY] finalPatches type: ${typeof finalPatches}, length: ${finalPatches?.length}, value:`, finalPatches);
         console.log(`✅ Original JSON saved: ${originalJsonString.length} chars`);
         console.log(`${rawLLMOutput ? '✅' : '❌'} Raw LLM output saved: ${rawLLMOutput.length} chars`);
         console.log(`${finalPatches.length > 0 ? '✅' : '❌'} Final patches saved: ${finalPatches.length} patches`);
