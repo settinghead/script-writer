@@ -66,7 +66,6 @@ export function createUserContextMiddleware(
 
     return {
         transformParams: async ({ params }) => {
-            console.log('[UserContextMiddleware] Injecting user context into LLM call');
 
             // Inject user context into provider metadata
             // This will be accessible throughout the LLM call chain
@@ -89,26 +88,14 @@ export function createUserContextMiddleware(
         },
 
         wrapStream: async ({ doStream }) => {
-            console.log('[UserContextMiddleware] Processing streaming LLM call with user context');
 
-            // Log context injection for debugging
-            console.log('[UserContextMiddleware] User context available:', {
-                originalRequestLength: contextOptions.originalUserRequest.length,
-                projectId: contextOptions.projectId,
-                userId: contextOptions.userId,
-                timestamp: contextOptions.timestamp
-            });
+
 
             return await doStream();
         },
 
         wrapGenerate: async ({ doGenerate }) => {
-            // Log context injection for debugging  
-            console.log('[UserContextMiddleware] User context available:', {
-                originalRequestLength: contextOptions.originalUserRequest.length,
-                projectId: contextOptions.projectId,
-                userId: contextOptions.userId
-            });
+
 
             return await doGenerate();
         }

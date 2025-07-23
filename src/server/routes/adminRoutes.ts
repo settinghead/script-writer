@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
+import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessageRepository';
 import { TemplateService } from '../services/templates/TemplateService';
 import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTools';
 import { createOutlineSettingsToolDefinition, createOutlineSettingsEditToolDefinition } from '../tools/OutlineSettingsTool';
@@ -916,6 +917,96 @@ export function createAdminRoutes(
                 status: 'error',
                 timestamp: new Date().toISOString(),
                 error: error instanceof Error ? error.message : 'Unknown error'
+            });
+        }
+    });
+
+    // Get tool call conversations for a project (using raw messages grouped by tool call ID)
+    router.get('/tool-conversations/:projectId', async (req: any, res: any) => {
+        try {
+            const { projectId } = req.params;
+
+            // Create ChatMessageRepository instance and get raw messages
+            const { db } = await import('../database/connection.js');
+            const chatMessageRepo = new ChatMessageRepository(db);
+            const rawMessages = await chatMessageRepo.getRawMessages(projectId);
+
+            // Group messages by tool call ID
+            const conversationGroups: Record<string, any[]> = {};
+
+            for (const message of rawMessages) {
+                let metadata;
+                try {
+                    metadata = typeof message.metadata === 'string'
+                        ? JSON.parse(message.metadata)
+                        : message.metadata;
+                } catch {
+                    metadata = {};
+                }
+
+                const toolCallId = metadata?.toolCallId || metadata?.tool_call_id;
+                if (toolCallId && message.tool_name) {
+                    if (!conversationGroups[toolCallId]) {
+                        conversationGroups[toolCallId] = [];
+                    }
+                    conversationGroups[toolCallId].push({
+                        ...message,
+                        metadata
+                    });
+                }
+            }
+
+            // Convert to array format expected by frontend
+            const conversations = Object.entries(conversationGroups).map(([toolCallId, messages]) => {
+                const sortedMessages = messages.sort((a, b) =>
+                    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                );
+                const firstMessage = sortedMessages[0];
+
+                return {
+                    id: toolCallId,
+                    tool_name: firstMessage.tool_name,
+                    tool_call_id: toolCallId,
+                    messages: sortedMessages,
+                    created_at: firstMessage.created_at,
+                    updated_at: sortedMessages[sortedMessages.length - 1].created_at
+                };
+            }).sort((a, b) =>
+                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
+
+            res.json({
+                success: true,
+                conversations
+            });
+        } catch (error: any) {
+            console.error('Error fetching tool conversations:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message || 'Internal server error'
+            });
+        }
+    });
+
+    // Get raw messages for a project
+    router.get('/raw-messages/:projectId', async (req: any, res: any) => {
+        try {
+            const { projectId } = req.params;
+
+            // Create ChatMessageRepository instance and get raw messages
+            const { db } = await import('../database/connection.js');
+            const chatMessageRepo = new ChatMessageRepository(db);
+            const messages = await chatMessageRepo.getRawMessages(projectId);
+
+            res.json({
+                success: true,
+                messages
+            });
+        } catch (error: any) {
+            console.error('Error fetching raw messages:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message || 'Internal server error'
             });
         }
     });

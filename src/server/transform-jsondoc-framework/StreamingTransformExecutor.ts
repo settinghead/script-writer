@@ -860,6 +860,10 @@ ${JSON.stringify(parsedResult, null, 2)}
             // Get the corrected diff from LLM response
             const correctedDiff = await retryResponse.object;
 
+            if (!correctedDiff || typeof correctedDiff !== 'string') {
+                throw new Error(`LLM returned invalid diff response: ${typeof correctedDiff} - ${correctedDiff}`);
+            }
+
             console.log(`[StreamingTransformExecutor] LLM provided corrected diff:`, correctedDiff.substring(0, 200) + '...');
 
             return correctedDiff;

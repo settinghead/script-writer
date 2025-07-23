@@ -49,7 +49,8 @@ export const TransformRegistry = {
       body: z.string()
     }),
     outputType: '灵感创意'
-  }
+  },
+
 } as const;
 
 // Type for transform registry keys

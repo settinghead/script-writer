@@ -4,7 +4,7 @@ import { Card, Button } from 'antd';
 import { CloseOutlined } from '@ant-design/icons';
 import RawGraphVisualization from '../RawGraphVisualization';
 import RawChatMessages from '../RawChatMessages';
-import RawTooLCall from './DebugRawToolCall';
+import DebugToolCallTabs from './DebugToolCallTabs';
 import { YJSDebugComponent } from './YJSDebugComponent';
 import { ParticleDebugComponent } from './ParticleDebugComponent';
 import { useDebugState } from './DebugMenu';
@@ -38,7 +38,7 @@ export const DebugPanels: React.FC<DebugPanelsProps> = ({ projectId }) => {
         debugContent = <RawChatMessages projectId={projectId} />;
     } else if (showRawContext) {
         debugTitle = '工具调用调试';
-        debugContent = <RawTooLCall projectId={projectId} />;
+        debugContent = <DebugToolCallTabs projectId={projectId} />;
     } else if (showAgentContext) {
         debugTitle = 'Agent上下文';
         debugContent = <AgentContextView projectId={projectId} />;

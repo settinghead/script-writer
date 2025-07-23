@@ -463,6 +463,25 @@ export class ChatMessageRepository {
     }
 
     /**
+     * Get all conversations for a project (for debugging)
+     */
+    async getAllConversationsForProject(projectId: string): Promise<any[]> {
+        const results = await this.db
+            .selectFrom('chat_conversations')
+            .selectAll()
+            .where('project_id', '=', projectId)
+            .orderBy('created_at', 'desc')
+            .execute();
+
+        return results.map(row => ({
+            ...row,
+            messages: typeof row.messages === 'string' ? JSON.parse(row.messages) : row.messages,
+            created_at: row.created_at.toISOString(),
+            updated_at: row.updated_at.toISOString()
+        }));
+    }
+
+    /**
      * Delete conversations for a project (cleanup)
      */
     async deleteConversationsForProject(projectId: string): Promise<void> {
