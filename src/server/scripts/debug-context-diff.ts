@@ -3,6 +3,12 @@
 /**
  * Debug script to capture raw LLM output and original JSON for context diff debugging
  * Saves files for isolated testing
+ * 
+ * Usage:
+ *   ./run-ts src/server/scripts/debug-context-diff.ts
+ *   ./run-ts src/server/scripts/debug-context-diff.ts "增加一个新角色，小明，是王千榕的好朋友"
+ *   ./run-ts src/server/scripts/debug-context-diff.ts "修改艾莉娅的职业为心理学家"
+ *   ./run-ts src/server/scripts/debug-context-diff.ts "删除所有配角，只保留主角"
  */
 
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository.js';
@@ -22,18 +28,41 @@ const JSONDOC_ID = '2f812a07-019a-40a4-8d4c-5a867e7a427b';
 const TOOL_NAME = 'edit_剧本设定';
 const USER_ID = 'test-user-1';
 
+// Default edit requirement
+const DEFAULT_EDIT_REQUIREMENT = '增加一个角色，弗利沙沙，是大boss，王千榕最终决斗的对象，王和弗对决时第一次变成超级赛亚人。';
+
+/**
+ * Parse command line arguments
+ */
+function parseArguments(): string {
+    const args = process.argv.slice(2);
+
+    if (args.length === 0) {
+        console.log('📝 Using default edit requirement');
+        return DEFAULT_EDIT_REQUIREMENT;
+    }
+
+    const customRequirement = args[0];
+    console.log('📝 Using custom edit requirement:', customRequirement);
+    return customRequirement;
+}
+
 /**
  * Main debug function
  */
 async function debugContextDiff(): Promise<void> {
     try {
+        const editRequirement = parseArguments();
+
         console.log('================================================================================');
         console.log('🐛 CAPTURE RAW LLM OUTPUT & ORIGINAL JSON');
         console.log('================================================================================');
         console.log(`Project ID: ${PROJECT_ID}`);
         console.log(`Jsondoc ID: ${JSONDOC_ID}`);
         console.log(`Tool: ${TOOL_NAME}`);
-        console.log(`User ID: ${USER_ID}\n`);
+        console.log(`User ID: ${USER_ID}`);
+        console.log(`Edit Requirement: "${editRequirement}"`);
+        console.log();
 
         console.log('🔧 Step 1: Setting up repositories...');
         const { db } = await import('../database/connection.js');
@@ -80,7 +109,7 @@ async function debugContextDiff(): Promise<void> {
                 description: '剧本设定',
                 schemaType: '剧本设定'
             }],
-            editRequirements: '增加一个角色，弗利沙沙，是大boss，王千榕最终决斗的对象，王和弗对决时第一次变成超级赛亚人。'
+            editRequirements: editRequirement
         };
 
         console.log('[Debug] Input prepared:', input);
@@ -211,22 +240,40 @@ async function debugContextDiff(): Promise<void> {
                 console.log('[Debug] Testing RFC6902 patch generation...');
                 const patchResult = applyContextDiffAndGeneratePatches(originalJsonString, testDiffText);
 
-                if (patchResult && patchResult.rfc6902Patches) {
+                // Type guard to handle the return type properly
+                if (Array.isArray(patchResult)) {
+                    // Direct array of patches
                     console.log(`✅ RFC6902 patches generated successfully:`);
-                    console.log(`   - Number of patches: ${patchResult.rfc6902Patches.length}`);
-                    console.log(`   - Changes applied: ${patchResult.appliedChanges || 0}`);
-                    if (patchResult.totalChanges) {
-                        console.log(`   - Success rate: ${((patchResult.appliedChanges || 0) / patchResult.totalChanges * 100).toFixed(1)}%`);
-                    }
+                    console.log(`   - Number of patches: ${patchResult.length}`);
 
                     // Save RFC6902 patches
                     const rfc6902PatchesPath = join(process.cwd(), 'debug-rfc6902-patches.json');
-                    writeFileSync(rfc6902PatchesPath, JSON.stringify(patchResult.rfc6902Patches, null, 2), 'utf8');
+                    writeFileSync(rfc6902PatchesPath, JSON.stringify(patchResult, null, 2), 'utf8');
                     console.log(`✅ Saved RFC6902 patches to: ${rfc6902PatchesPath}`);
 
                     // Show sample patches
                     console.log('\n📋 Sample patches:');
-                    patchResult.rfc6902Patches.slice(0, 3).forEach((patch: any, i: number) => {
+                    patchResult.slice(0, 3).forEach((patch: any, i: number) => {
+                        console.log(`   ${i + 1}. ${patch.op} at "${patch.path}" → "${patch.value?.toString().substring(0, 50)}..."`);
+                    });
+                } else if (patchResult && typeof patchResult === 'object' && 'rfc6902Patches' in patchResult) {
+                    // Object with rfc6902Patches property
+                    const patches = (patchResult as any).rfc6902Patches;
+                    console.log(`✅ RFC6902 patches generated successfully:`);
+                    console.log(`   - Number of patches: ${patches.length}`);
+                    console.log(`   - Changes applied: ${(patchResult as any).appliedChanges || 0}`);
+                    if ((patchResult as any).totalChanges) {
+                        console.log(`   - Success rate: ${(((patchResult as any).appliedChanges || 0) / (patchResult as any).totalChanges * 100).toFixed(1)}%`);
+                    }
+
+                    // Save RFC6902 patches
+                    const rfc6902PatchesPath = join(process.cwd(), 'debug-rfc6902-patches.json');
+                    writeFileSync(rfc6902PatchesPath, JSON.stringify(patches, null, 2), 'utf8');
+                    console.log(`✅ Saved RFC6902 patches to: ${rfc6902PatchesPath}`);
+
+                    // Show sample patches
+                    console.log('\n📋 Sample patches:');
+                    patches.slice(0, 3).forEach((patch: any, i: number) => {
                         console.log(`   ${i + 1}. ${patch.op} at "${patch.path}" → "${patch.value?.toString().substring(0, 50)}..."`);
                     });
                 } else {
@@ -253,9 +300,13 @@ async function debugContextDiff(): Promise<void> {
         const rfc6902PatchesPath = join(process.cwd(), 'debug-rfc6902-patches.json');
         try {
             const patchResult = applyContextDiffAndGeneratePatches(originalJsonString, testDiffText);
-            if (patchResult && patchResult.rfc6902Patches) {
-                writeFileSync(rfc6902PatchesPath, JSON.stringify(patchResult.rfc6902Patches, null, 2), 'utf8');
-                console.log(`✅ Saved RFC6902 patches to: ${rfc6902PatchesPath} (${patchResult.rfc6902Patches.length} patches)`);
+            if (Array.isArray(patchResult)) {
+                writeFileSync(rfc6902PatchesPath, JSON.stringify(patchResult, null, 2), 'utf8');
+                console.log(`✅ Saved RFC6902 patches to: ${rfc6902PatchesPath} (${patchResult.length} patches)`);
+            } else if (patchResult && typeof patchResult === 'object' && 'rfc6902Patches' in patchResult) {
+                const patches = (patchResult as any).rfc6902Patches;
+                writeFileSync(rfc6902PatchesPath, JSON.stringify(patches, null, 2), 'utf8');
+                console.log(`✅ Saved RFC6902 patches to: ${rfc6902PatchesPath} (${patches.length} patches)`);
             } else {
                 writeFileSync(rfc6902PatchesPath, '[]', 'utf8');
                 console.log(`❌ Saved empty RFC6902 patches to: ${rfc6902PatchesPath}`);
@@ -271,6 +322,7 @@ async function debugContextDiff(): Promise<void> {
         console.log(`✅ Original JSON saved: ${originalJsonString.length} chars`);
         console.log(`${rawLLMOutput ? '✅' : '❌'} Raw LLM output saved: ${rawLLMOutput.length} chars`);
         console.log(`${finalPatches.length > 0 ? '✅' : '❌'} Final patches saved: ${finalPatches.length} patches`);
+        console.log(`📝 Edit requirement: "${editRequirement}"`);
         console.log('\n🎯 FILES CREATED:');
         console.log('- debug-original.json (original jsondoc data)');
         console.log('- debug-raw-llm-output.txt (raw LLM diff output)');
