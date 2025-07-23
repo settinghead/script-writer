@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, Typography, Tabs, Spin, Alert, Select, Button, Space, Form, Input, Divider } from 'antd';
 import { ToolOutlined, BugOutlined, FileTextOutlined, DatabaseOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
@@ -231,10 +231,6 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
     // JSON diff state for edit tools
     const [originalJsonString, setOriginalJsonString] = useState<string>('');
     const [patchedJsonString, setPatchedJsonString] = useState<string>('');
-
-    // Refs to track current values for event handler access (fix React closure issue)
-    const rawTextStreamRef = useRef('');
-    const originalJsonStringRef = useRef('');
 
     // Use the debug params hook for persistence
     const {
@@ -536,10 +532,6 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
         setOriginalJsonString('');
         setPatchedJsonString('');
 
-        // Clear refs for new run
-        rawTextStreamRef.current = '';
-        originalJsonStringRef.current = '';
-
         // If this is an edit tool, capture the original JSON for diff comparison
         const isEdit = isEditTool(toolName);
         console.log('[DebugRawToolCall] Edit tool check:', { toolName, isEdit, hasJsondocs: input.jsondocs?.length > 0, rawJsondocsCount: Array.isArray(rawJsondocs) ? rawJsondocs.length : 'loading' });
@@ -574,27 +566,20 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
 
                         if (originalData === undefined || originalData === null) {
                             console.warn('[DebugRawToolCall] Original data is null/undefined, using fallback');
-                            const fallbackString = '// Original jsondoc data is undefined or null\n// Jsondoc ID: ' + targetJsondocId + '\n// Schema: ' + targetJsondoc.schema_type;
-                            setOriginalJsonString(fallbackString);
-                            originalJsonStringRef.current = fallbackString;
+                            setOriginalJsonString('// Original jsondoc data is undefined or null\n// Jsondoc ID: ' + targetJsondocId + '\n// Schema: ' + targetJsondoc.schema_type);
                         } else {
                             const jsonString = JSON.stringify(originalData, null, 2);
                             console.log('[DebugRawToolCall] JSON.stringify successful, length:', jsonString.length);
                             console.log('[DebugRawToolCall] Setting originalJsonString preview:', jsonString.substring(0, 100) + '...');
                             setOriginalJsonString(jsonString);
-                            originalJsonStringRef.current = jsonString;
                         }
                     } catch (parseError) {
                         console.error('[DebugRawToolCall] Failed to parse jsondoc data:', parseError);
-                        const errorString = '// Failed to parse jsondoc data: ' + parseError;
-                        setOriginalJsonString(errorString);
-                        originalJsonStringRef.current = errorString;
+                        setOriginalJsonString('// Failed to parse jsondoc data: ' + parseError);
                     }
                 } else {
                     console.warn('[DebugRawToolCall] Jsondoc not found in context:', targetJsondocId);
-                    const notFoundString = '// Jsondoc not found: ' + targetJsondocId;
-                    setOriginalJsonString(notFoundString);
-                    originalJsonStringRef.current = notFoundString;
+                    setOriginalJsonString('// Jsondoc not found: ' + targetJsondocId);
                 }
             } catch (error) {
                 console.warn('[DebugRawToolCall] Failed to capture original JSON for diff:', error);
@@ -639,11 +624,8 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
 
                             if (currentEvent === 'rawText') {
                                 // Handle raw text streaming for debugging
-                                const newRawTextStream = rawTextStreamRef.current + data.textDelta;
-                                setRawTextStream(newRawTextStream);
-                                rawTextStreamRef.current = newRawTextStream;
+                                setRawTextStream(prev => prev + data.textDelta);
                                 setNonPersistentRunStatus(`接收原始文本... (第${data.chunkCount}块)`);
-                                console.log('[DebugRawToolCall] rawText event - current rawTextStream length:', rawTextStreamRef.current.length, 'new delta length:', data.textDelta?.length);
                             } else if (currentEvent === 'patches') {
                                 // Handle patch data
                                 setPatchStream(prev => [...prev, {
@@ -655,37 +637,17 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                                 setNonPersistentRunResults(data.patches);
                                 setNonPersistentRunStatus(`接收补丁数据... (第${data.chunkCount}块, ${data.patches?.length || 0}个补丁)`);
 
-                                console.log('[DebugRawToolCall] patches event - source:', data.source, 'patches count:', data.patches?.length);
-                                console.log('[DebugRawToolCall] State check at patches event:');
-                                console.log('  - originalJsonString available:', !!originalJsonStringRef.current, 'length:', originalJsonStringRef.current?.length, 'starts with //:', originalJsonStringRef.current?.startsWith('//'));
-                                console.log('  - rawTextStream available:', !!rawTextStreamRef.current, 'length:', rawTextStreamRef.current?.length);
-                                console.log('  - isEditTool:', isEditTool(toolName), 'toolName:', toolName);
-                                console.log('  - data.source === final:', data.source === 'final');
-
                                 // If this is an edit tool and we have final patches, apply the context diff correctly
                                 if (isEditTool(toolName) && data.source === 'final') {
                                     console.log('[DebugRawToolCall] Final patches received, applying context diff...');
-                                    console.log('[DebugRawToolCall] DETAILED STATE CHECK:');
-                                    console.log('  - originalJsonString type:', typeof originalJsonStringRef.current);
-                                    console.log('  - originalJsonString value preview:', originalJsonStringRef.current?.substring(0, 100));
-                                    console.log('  - rawTextStream type:', typeof rawTextStreamRef.current);
-                                    console.log('  - rawTextStream value preview:', rawTextStreamRef.current?.substring(0, 100));
-                                    console.log('  - Condition check: originalJsonString &&', !!originalJsonStringRef.current, '!originalJsonString.startsWith("//")', !originalJsonStringRef.current?.startsWith('//'), 'rawTextStream', !!rawTextStreamRef.current);
+                                    console.log('[DebugRawToolCall] Raw diff text available:', !!rawTextStream);
+                                    console.log('[DebugRawToolCall] Original JSON available:', !!originalJsonString);
+                                    console.log('[DebugRawToolCall] JSON patches (for reference):', data.patches);
 
                                     try {
-                                        if (originalJsonStringRef.current && !originalJsonStringRef.current.startsWith('//') && rawTextStreamRef.current) {
-                                            console.log('[DebugRawToolCall] All conditions met, calling applyContextDiffAndGeneratePatches...');
+                                        if (originalJsonString && !originalJsonString.startsWith('//') && rawTextStream) {
                                             // Apply context-based diff directly to the JSON string using common function
-                                            const diffResult = applyContextDiffAndGeneratePatches(originalJsonStringRef.current, rawTextStreamRef.current);
-
-                                            console.log('[DebugRawToolCall] Diff result:', {
-                                                success: diffResult.success,
-                                                hasModifiedJson: !!diffResult.modifiedJson,
-                                                modifiedJsonLength: diffResult.modifiedJson?.length,
-                                                hasRfc6902Patches: !!diffResult.rfc6902Patches,
-                                                rfc6902PatchesCount: diffResult.rfc6902Patches?.length,
-                                                error: diffResult.error
-                                            });
+                                            const diffResult = applyContextDiffAndGeneratePatches(originalJsonString, rawTextStream);
 
                                             if (diffResult.success && diffResult.modifiedJson) {
                                                 console.log('[DebugRawToolCall] Context diff applied successfully');
@@ -700,31 +662,23 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                                                     });
                                                 }
                                             } else {
-                                                console.log('[DebugRawToolCall] Context diff failed:', diffResult.error);
                                                 // Context diff failed, show error info
                                                 let errorInfo = '// Failed to apply context diff\n';
                                                 errorInfo += `// Error: ${diffResult.error}\n\n`;
                                                 errorInfo += '// Raw context diff:\n';
-                                                errorInfo += rawTextStreamRef.current ? `/*\n${rawTextStreamRef.current}\n*/\n\n` : '// No raw diff available\n\n';
+                                                errorInfo += rawTextStream ? `/*\n${rawTextStream}\n*/\n\n` : '// No raw diff available\n\n';
                                                 errorInfo += '// Generated JSON patches (fallback):\n';
                                                 errorInfo += data.patches ? JSON.stringify(data.patches, null, 2) : '// No patches generated';
 
                                                 setPatchedJsonString(errorInfo);
                                             }
                                         } else {
-                                            console.log('[DebugRawToolCall] Conditions not met for diff application');
-                                            console.log('  - Missing originalJsonString:', !originalJsonStringRef.current);
-                                            console.log('  - originalJsonString starts with //:', originalJsonStringRef.current?.startsWith('//'));
-                                            console.log('  - Missing rawTextStream:', !rawTextStreamRef.current);
-
                                             // Show detailed info when original JSON or raw diff is not available
                                             let reconstructionInfo = '// Cannot apply context diff\n';
-                                            reconstructionInfo += '// Original JSON status: ' + (originalJsonStringRef.current ? originalJsonStringRef.current.startsWith('//') ? 'fallback message' : 'available' : 'undefined') + '\n';
-                                            reconstructionInfo += '// Raw diff available: ' + (rawTextStreamRef.current ? 'yes' : 'no') + '\n';
-                                            reconstructionInfo += '// Raw diff length: ' + (rawTextStreamRef.current?.length || 0) + '\n';
-                                            reconstructionInfo += '// Original JSON length: ' + (originalJsonStringRef.current?.length || 0) + '\n\n';
+                                            reconstructionInfo += '// Original JSON status: ' + (originalJsonString ? originalJsonString.startsWith('//') ? 'fallback message' : 'available' : 'undefined') + '\n';
+                                            reconstructionInfo += '// Raw diff available: ' + (rawTextStream ? 'yes' : 'no') + '\n\n';
                                             reconstructionInfo += '// Raw context diff:\n';
-                                            reconstructionInfo += rawTextStreamRef.current ? `/*\n${rawTextStreamRef.current}\n*/\n\n` : '// No raw diff available\n\n';
+                                            reconstructionInfo += rawTextStream ? `/*\n${rawTextStream}\n*/\n\n` : '// No raw diff available\n\n';
                                             reconstructionInfo += '// Generated JSON patches (reference):\n';
                                             reconstructionInfo += data.patches ? JSON.stringify(data.patches, null, 2) : '// No patches generated';
 
@@ -732,7 +686,7 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                                         }
                                     } catch (error) {
                                         console.error('[DebugRawToolCall] Failed to process context diff:', error);
-                                        setPatchedJsonString('// Failed to process context diff: ' + error + '\n\nRaw diff:\n' + (rawTextStreamRef.current || 'No raw diff available') + '\n\nJSON Patches:\n' + JSON.stringify(data.patches, null, 2));
+                                        setPatchedJsonString('// Failed to process context diff: ' + error + '\n\nRaw diff:\n' + (rawTextStream || 'No raw diff available') + '\n\nJSON Patches:\n' + JSON.stringify(data.patches, null, 2));
                                     }
                                 }
                             } else if (currentEvent === 'chunk' && data.data) {

@@ -2,523 +2,480 @@ import { jsonrepair } from 'jsonrepair';
 import { createPatch } from 'rfc6902';
 
 /**
- * Context-based diff modification structure
+ * TypeScript types for parsed diff
  */
-export interface ContextModification {
+export interface ParsedDiff {
     context: string;
     removals: string[];
     additions: string[];
 }
 
 /**
- * Location information for applying modifications
+ * Smart match result interface
  */
-export interface ContextLocation {
-    type: 'array' | 'object';
-    parent: any;
-    key: string;
-    array?: any[];
-    object?: any;
+export interface SmartMatchResult {
+    index: number;
+    score: number;
+    matchedText: string;
+    method: string;
 }
 
 /**
- * Result of applying context-based diff
+ * Parse the context diff string into structured parts
+ * @param contextDiff - The raw diff text
+ * @returns ParsedDiff or null if failed
  */
-export interface ContextDiffResult {
-    success: boolean;
-    result?: any;
-    error?: string;
-}
+export function parseContextDiff(contextDiff: string): ParsedDiff | null {
+    try {
+        const lines = contextDiff.split('\n');
 
-/**
- * Parse context-based diff format into structured modifications
- */
-export function parseContextBasedDiff(diffString: string): ContextModification[] {
-    const modifications: ContextModification[] = [];
-
-    // Split by CONTEXT: markers
-    const blocks = diffString.split(/CONTEXT:\s*/i).filter(block => block.trim());
-
-    for (const block of blocks) {
-        const lines = block.split('\n');
-        const contextLine = lines[0].trim();
-
+        // Find context section (before any - or + lines)
+        const contextLines: string[] = [];
         const removals: string[] = [];
         const additions: string[] = [];
-        let currentMultiLineRemoval = '';
-        let currentMultiLineAddition = '';
-        let inRemoval = false;
-        let inAddition = false;
 
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i];
+        let inContext = true;
 
-            if (line.startsWith('- ')) {
-                // Start of removal
-                if (currentMultiLineAddition) {
-                    additions.push(currentMultiLineAddition.trim());
-                    currentMultiLineAddition = '';
-                }
-                inRemoval = true;
-                inAddition = false;
-                currentMultiLineRemoval = line.substring(2) + '\n';
-            } else if (line.startsWith('+ ')) {
-                // Start of addition
-                if (currentMultiLineRemoval) {
-                    removals.push(currentMultiLineRemoval.trim());
-                    currentMultiLineRemoval = '';
-                }
-                inRemoval = false;
-                inAddition = true;
-                currentMultiLineAddition = line.substring(2) + '\n';
-            } else if (line.startsWith('-')) {
-                // Continuation of removal
-                if (inRemoval) {
-                    currentMultiLineRemoval += line.substring(1) + '\n';
-                }
+        for (const line of lines) {
+            if (line.startsWith('-')) {
+                inContext = false;
+                removals.push(line.substring(1)); // Remove the '-' prefix
             } else if (line.startsWith('+')) {
-                // Continuation of addition
-                if (inAddition) {
-                    currentMultiLineAddition += line.substring(1) + '\n';
-                }
-            } else if (line.trim() === '') {
-                // Empty line - might continue multiline blocks
-                if (inRemoval) {
-                    currentMultiLineRemoval += '\n';
-                } else if (inAddition) {
-                    currentMultiLineAddition += '\n';
-                }
-            } else {
-                // Context line or end of modification block
-                if (currentMultiLineRemoval) {
-                    removals.push(currentMultiLineRemoval.trim());
-                    currentMultiLineRemoval = '';
-                    inRemoval = false;
-                }
-                if (currentMultiLineAddition) {
-                    additions.push(currentMultiLineAddition.trim());
-                    currentMultiLineAddition = '';
-                    inAddition = false;
-                }
+                inContext = false;
+                additions.push(line.substring(1)); // Remove the '+' prefix
+            } else if (inContext && line.trim()) {
+                contextLines.push(line);
             }
         }
 
-        // Handle any remaining multiline content
-        if (currentMultiLineRemoval) {
-            removals.push(currentMultiLineRemoval.trim());
-        }
-        if (currentMultiLineAddition) {
-            additions.push(currentMultiLineAddition.trim());
-        }
+        const context = contextLines.join('\n');
 
-        if (removals.length > 0 || additions.length > 0) {
-            modifications.push({
-                context: contextLine,
-                removals,
-                additions
+        if (!context || removals.length === 0 || additions.length === 0) {
+            console.log('[ParseDiff] Missing required sections:', {
+                hasContext: !!context,
+                removalsCount: removals.length,
+                additionsCount: additions.length
             });
-        }
-    }
-
-    return modifications;
-}
-
-/**
- * Find the location in JSON data where the context appears
- */
-export function findContextLocation(data: any, context: string): ContextLocation | null {
-    try {
-        console.log('[ContextDiff] Looking for context:', context.substring(0, 200) + '...');
-
-        // Clean up context and remove extra whitespace for better matching
-        const cleanContext = context.trim();
-
-        // Try different strategies to find the context
-
-        // Strategy 1: Look for array patterns like "characters": [
-        const arrayMatch = cleanContext.match(/"([^"]+)":\s*\[/);
-        if (arrayMatch) {
-            const arrayKey = arrayMatch[1];
-            console.log('[ContextDiff] Trying array pattern for key:', arrayKey);
-            if (data[arrayKey] && Array.isArray(data[arrayKey])) {
-                console.log('[ContextDiff] Found array location:', arrayKey);
-                return {
-                    type: 'array',
-                    parent: data,
-                    key: arrayKey,
-                    array: data[arrayKey]
-                };
-            }
+            return null;
         }
 
-        // Strategy 2: Look for object patterns like "characters": {
-        const objectMatch = cleanContext.match(/"([^"]+)":\s*\{/);
-        if (objectMatch) {
-            const objectKey = objectMatch[1];
-            console.log('[ContextDiff] Trying object pattern for key:', objectKey);
-            if (data[objectKey] && typeof data[objectKey] === 'object') {
-                console.log('[ContextDiff] Found object location:', objectKey);
-                return {
-                    type: 'object',
-                    parent: data,
-                    key: objectKey,
-                    object: data[objectKey]
-                };
-            }
-        }
-
-        // Strategy 3: Look for string field patterns like "description": "some content"
-        const stringFieldMatch = cleanContext.match(/"([^"]+)":\s*"([^"]*)/);
-        if (stringFieldMatch) {
-            const fieldKey = stringFieldMatch[1];
-            const fieldValueStart = stringFieldMatch[2];
-            console.log('[ContextDiff] Trying string field pattern for key:', fieldKey, 'value start:', fieldValueStart.substring(0, 50) + '...');
-
-            // Search for this field in the data structure
-            const location = findFieldInData(data, fieldKey, fieldValueStart);
-            if (location) {
-                console.log('[ContextDiff] Found string field location');
-                return location;
-            }
-        }
-
-        // Strategy 4: Look for any quoted key pattern and search for it in the data
-        const keyMatch = cleanContext.match(/"([^"]+)":/);
-        if (keyMatch) {
-            const key = keyMatch[1];
-            console.log('[ContextDiff] Trying general key search for:', key);
-
-            const location = findKeyInData(data, key);
-            if (location) {
-                console.log('[ContextDiff] Found general key location');
-                return location;
-            }
-        }
-
-        console.log('[ContextDiff] No context location found');
-        return null;
+        return {
+            context,
+            removals,
+            additions
+        };
     } catch (error) {
-        console.warn('[ContextDiff] Failed to parse context:', error);
+        console.error('[ParseDiff] Error parsing context diff:', error);
         return null;
     }
 }
 
 /**
- * Recursively find a field with a specific key and value start in nested data
+ * Smart match a substring in text using multiple strategies
+ * @param needle - String to find
+ * @param haystack - Text to search in
+ * @param threshold - Minimum score threshold (default 0.7)
+ * @returns Best match with index, score, and method or null
  */
-function findFieldInData(data: any, fieldKey: string, fieldValueStart: string): ContextLocation | null {
-    // Helper to normalize text for comparison (remove extra whitespace, line breaks)
-    const normalizeText = (text: string): string => {
-        return text.replace(/\s+/g, ' ').trim();
-    };
+export function smartMatch(needle: string, haystack: string, threshold = 0.7): SmartMatchResult | null {
+    if (!needle || !haystack) return null;
 
-    // Recursive search function
-    const searchInObject = (obj: any, path: string[] = []): ContextLocation | null => {
-        if (!obj || typeof obj !== 'object') return null;
+    console.log(`[SmartMatch] Searching for needle (${needle.length} chars) in haystack (${haystack.length} chars)`);
 
-        // Check if this object has the field we're looking for
-        if (obj[fieldKey] && typeof obj[fieldKey] === 'string') {
-            const objFieldValue = normalizeText(obj[fieldKey]);
-            const targetValueStart = normalizeText(fieldValueStart);
-
-            // Check if the field value starts with our target (be tolerant of formatting)
-            if (objFieldValue.startsWith(targetValueStart) || objFieldValue.includes(targetValueStart)) {
-                console.log('[ContextDiff] Found matching field at path:', path.join('.') + '.' + fieldKey);
-                return {
-                    type: 'object',
-                    parent: obj,
-                    key: fieldKey,
-                    object: obj
-                };
-            }
-        }
-
-        // Recursively search in child objects and arrays
-        for (const [key, value] of Object.entries(obj)) {
-            if (Array.isArray(value)) {
-                for (let i = 0; i < value.length; i++) {
-                    const result = searchInObject(value[i], [...path, key, i.toString()]);
-                    if (result) return result;
-                }
-            } else if (value && typeof value === 'object') {
-                const result = searchInObject(value, [...path, key]);
-                if (result) return result;
-            }
-        }
-
-        return null;
-    };
-
-    return searchInObject(data);
-}
-
-/**
- * Recursively find any occurrence of a key in nested data
- */
-function findKeyInData(data: any, targetKey: string): ContextLocation | null {
-    const searchInObject = (obj: any, path: string[] = []): ContextLocation | null => {
-        if (!obj || typeof obj !== 'object') return null;
-
-        // Check if this object has the target key
-        if (obj.hasOwnProperty(targetKey)) {
-            console.log('[ContextDiff] Found key at path:', path.join('.') + '.' + targetKey);
-
-            if (Array.isArray(obj[targetKey])) {
-                return {
-                    type: 'array',
-                    parent: obj,
-                    key: targetKey,
-                    array: obj[targetKey]
-                };
-            } else if (typeof obj[targetKey] === 'object') {
-                return {
-                    type: 'object',
-                    parent: obj,
-                    key: targetKey,
-                    object: obj[targetKey]
-                };
-            } else {
-                // String or primitive field
-                return {
-                    type: 'object',
-                    parent: obj,
-                    key: targetKey,
-                    object: obj
-                };
-            }
-        }
-
-        // Recursively search in child objects and arrays
-        for (const [key, value] of Object.entries(obj)) {
-            if (Array.isArray(value)) {
-                for (let i = 0; i < value.length; i++) {
-                    const result = searchInObject(value[i], [...path, key, i.toString()]);
-                    if (result) return result;
-                }
-            } else if (value && typeof value === 'object') {
-                const result = searchInObject(value, [...path, key]);
-                if (result) return result;
-            }
-        }
-
-        return null;
-    };
-
-    return searchInObject(data);
-}
-
-/**
- * Check if two objects match (for finding items to remove)
- */
-export function objectsMatch(obj1: any, obj2: any): boolean {
-    if (typeof obj1 !== typeof obj2) return false;
-    if (obj1 === null || obj2 === null) return obj1 === obj2;
-    if (typeof obj1 !== 'object') return obj1 === obj2;
-
-    // For objects, check if obj2's properties all match obj1
-    for (const [key, value] of Object.entries(obj2)) {
-        if (obj1[key] !== value) return false;
+    // Strategy 1: Exact match
+    const exactIndex = haystack.indexOf(needle);
+    if (exactIndex !== -1) {
+        console.log('[SmartMatch] Found exact match at index:', exactIndex);
+        return {
+            index: exactIndex,
+            score: 1.0,
+            matchedText: needle,
+            method: 'exact'
+        };
     }
 
-    return true;
+    // Strategy 2: Normalized match (whitespace and case)
+    const normalizedNeedle = needle.replace(/\s+/g, ' ').toLowerCase().trim();
+    const normalizedHaystack = haystack.replace(/\s+/g, ' ').toLowerCase();
+    const normalizedIndex = normalizedHaystack.indexOf(normalizedNeedle);
+    if (normalizedIndex !== -1) {
+        // Map back to original haystack position
+        const originalIndex = mapNormalizedToOriginal(haystack, normalizedHaystack, normalizedIndex);
+        console.log('[SmartMatch] Found normalized match at index:', originalIndex);
+        return {
+            index: originalIndex,
+            score: 0.95,
+            matchedText: haystack.substring(originalIndex, originalIndex + needle.length),
+            method: 'normalized'
+        };
+    }
+
+    // Strategy 2b: Aggressive normalization for long text blocks
+    if (needle.length > 100) {
+        const aggressiveNeedle = needle.replace(/[\s\n\r]+/g, ' ').replace(/[""]/g, '"').trim();
+        const aggressiveHaystack = haystack.replace(/[\s\n\r]+/g, ' ').replace(/[""]/g, '"');
+        const aggressiveIndex = aggressiveHaystack.indexOf(aggressiveNeedle);
+        if (aggressiveIndex !== -1) {
+            const originalIndex = mapNormalizedToOriginal(haystack, aggressiveHaystack, aggressiveIndex);
+            console.log('[SmartMatch] Found aggressive normalized match at index:', originalIndex);
+            return {
+                index: originalIndex,
+                score: 0.9,
+                matchedText: haystack.substring(originalIndex, originalIndex + needle.length),
+                method: 'aggressive'
+            };
+        }
+    }
+
+    // Strategy 3: Find significant unique substrings
+    const significantParts = needle.split(/[\n\r]/).filter(line => line.trim().length > 20);
+    for (const part of significantParts) {
+        const trimmedPart = part.trim();
+        const partIndex = haystack.indexOf(trimmedPart);
+        if (partIndex !== -1) {
+            console.log('[SmartMatch] Found significant part match at index:', partIndex);
+            // Try to find the start of the full needle around this position
+            const searchStart = Math.max(0, partIndex - needle.length);
+            const searchEnd = Math.min(haystack.length, partIndex + needle.length);
+            const searchRegion = haystack.substring(searchStart, searchEnd);
+
+            // Look for the beginning of our needle pattern
+            const needleStart = needle.substring(0, Math.min(50, needle.length));
+            const startIndex = searchRegion.indexOf(needleStart);
+            if (startIndex !== -1) {
+                const absoluteIndex = searchStart + startIndex;
+                return {
+                    index: absoluteIndex,
+                    score: 0.8,
+                    matchedText: haystack.substring(absoluteIndex, absoluteIndex + needle.length),
+                    method: 'partial'
+                };
+            }
+        }
+    }
+
+    // Strategy 4: Quoted text matching for descriptions
+    if (needle.includes('"') && needle.length > 50) {
+        const quotedParts = needle.match(/"[^"]+"/g);
+        if (quotedParts) {
+            for (const quotedPart of quotedParts) {
+                const quotedIndex = haystack.indexOf(quotedPart);
+                if (quotedIndex !== -1) {
+                    console.log('[SmartMatch] Found quoted text match at index:', quotedIndex);
+                    // Try to find the full needle around this quoted part
+                    const beforeQuoted = needle.substring(0, needle.indexOf(quotedPart));
+                    const searchStart = Math.max(0, quotedIndex - beforeQuoted.length - 10);
+                    const searchEnd = Math.min(haystack.length, quotedIndex + needle.length + 10);
+                    const searchRegion = haystack.substring(searchStart, searchEnd);
+
+                    const regionIndex = searchRegion.indexOf(beforeQuoted);
+                    if (regionIndex !== -1) {
+                        const absoluteIndex = searchStart + regionIndex;
+                        return {
+                            index: absoluteIndex,
+                            score: 0.85,
+                            matchedText: haystack.substring(absoluteIndex, absoluteIndex + needle.length),
+                            method: 'quoted'
+                        };
+                    }
+                }
+            }
+        }
+    }
+
+    // Strategy 5: Punctuation normalization
+    const punctNeedle = needle.replace(/[。，！？]/g, match => {
+        const map: Record<string, string> = { '。': '.', '，': ',', '！': '!', '？': '?' };
+        return map[match] || match;
+    });
+
+    if (punctNeedle !== needle) {
+        const punctIndex = haystack.indexOf(punctNeedle);
+        if (punctIndex !== -1) {
+            console.log('[SmartMatch] Found punctuation normalized match at index:', punctIndex);
+            return {
+                index: punctIndex,
+                score: 0.9,
+                matchedText: haystack.substring(punctIndex, punctIndex + punctNeedle.length),
+                method: 'punctuation'
+            };
+        }
+    }
+
+    // Strategy 6: Try first and last lines
+    const needleLines = needle.split('\n').filter(l => l.trim());
+    if (needleLines.length > 2) {
+        const firstLine = needleLines[0].trim();
+        const lastLine = needleLines[needleLines.length - 1].trim();
+
+        const firstIndex = haystack.indexOf(firstLine);
+        const lastIndex = haystack.indexOf(lastLine);
+
+        if (firstIndex !== -1 && lastIndex !== -1 && lastIndex > firstIndex) {
+            console.log('[SmartMatch] Found first/last line match at index:', firstIndex);
+            return {
+                index: firstIndex,
+                score: 0.75,
+                matchedText: haystack.substring(firstIndex, lastIndex + lastLine.length),
+                method: 'firstlast'
+            };
+        }
+    }
+
+    console.log('[SmartMatch] No suitable match found');
+    return null;
 }
 
 /**
- * Apply modifications at a specific location
+ * Map normalized string index back to original string index
  */
-export function applyModificationAtLocation(
-    data: any,
-    location: ContextLocation,
-    removals: string[],
-    additions: string[]
-): any {
+function mapNormalizedToOriginal(original: string, normalized: string, normalizedIndex: number): number {
+    let originalIndex = 0;
+    let normalizedPos = 0;
+
+    while (normalizedPos < normalizedIndex && originalIndex < original.length) {
+        const originalChar = original[originalIndex];
+        const normalizedChar = normalized[normalizedPos];
+
+        if (originalChar.toLowerCase() === normalizedChar) {
+            normalizedPos++;
+        }
+        originalIndex++;
+    }
+
+    return Math.max(0, originalIndex - 1);
+}
+
+/**
+ * Extract meaningful value from a diff line (removes JSON syntax)
+ * @param diffLine - A line from the diff (removal or addition)
+ * @returns Extracted value or null if no meaningful content
+ */
+export function extractValueFromDiffLine(diffLine: string): string | null {
+    const trimmed = diffLine.trim();
+
+    // Skip structural elements
+    if (trimmed.match(/^[{}\[\],]$/) ||
+        trimmed.match(/^"[^"]*":\s*[{\[]$/) ||
+        trimmed.match(/^],?$/) ||
+        trimmed.match(/^},?$/)) {
+        return null;
+    }
+
+    // Extract quoted string values
+    const quotedMatch = trimmed.match(/^"([^"]*)"[,]?$/);
+    if (quotedMatch) {
+        return quotedMatch[1];
+    }
+
+    // Extract field values like "field": "value"
+    const fieldValueMatch = trimmed.match(/^"[^"]*":\s*"([^"]*)"[,]?$/);
+    if (fieldValueMatch) {
+        return fieldValueMatch[1];
+    }
+
+    // Extract multi-line string content (remove quotes and commas)
+    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+        return trimmed.slice(1, -1);
+    }
+    if (trimmed.startsWith('"') && trimmed.endsWith('",')) {
+        return trimmed.slice(1, -2);
+    }
+
+    return trimmed;
+}
+
+/**
+ * Apply context-based diff to JSON by parsing, modifying the object, and re-stringifying
+ * @param originalText - The original JSON text string
+ * @param contextDiff - The context-based diff string
+ * @returns Modified JSON string or null if failed
+ */
+export function applyContextDiffToJSON(originalText: string, contextDiff: string): string | null {
     try {
-        const modifiedData = JSON.parse(JSON.stringify(data)); // Deep clone
+        console.log('[JSONDiff] Starting JSON-aware diff application...');
+        console.log('[JSONDiff] Original text length:', originalText.length);
+        console.log('[JSONDiff] Context diff length:', contextDiff.length);
 
-        console.log('[ContextDiff] Applying modifications at location type:', location.type, 'key:', location.key);
-        console.log('[ContextDiff] Removals:', removals);
-        console.log('[ContextDiff] Additions:', additions);
+        // Step 1: Parse the context diff
+        const parsedDiff = parseContextDiff(contextDiff);
+        if (!parsedDiff) {
+            console.log('[JSONDiff] Failed to parse context diff');
+            return null;
+        }
 
-        if (location.type === 'array') {
-            const array = modifiedData[location.key];
+        console.log('[JSONDiff] Parsed diff:', {
+            context_length: parsedDiff.context.length,
+            removals_count: parsedDiff.removals.length,
+            additions_count: parsedDiff.additions.length
+        });
 
-            // Process removals
-            for (const removal of removals) {
-                try {
-                    const removalObj = JSON.parse(removal);
-                    const index = array.findIndex((item: any) =>
-                        objectsMatch(item, removalObj)
-                    );
-                    if (index !== -1) {
-                        console.log('[ContextDiff] Removing array item at index:', index);
-                        array.splice(index, 1);
-                    }
-                } catch (error) {
-                    console.warn('[ContextDiff] Failed to parse removal:', removal, error);
+        // Step 2: Parse the original JSON
+        let jsonObj: any;
+        try {
+            jsonObj = JSON.parse(originalText);
+        } catch (parseError) {
+            console.log('[JSONDiff] Original text is not valid JSON, attempting repair...');
+            const repairedText = jsonrepair(originalText);
+            jsonObj = JSON.parse(repairedText);
+        }
+
+        // Step 3: Apply changes to the JSON object
+        let changesApplied = 0;
+        for (let i = 0; i < Math.max(parsedDiff.removals.length, parsedDiff.additions.length); i++) {
+            const removal = parsedDiff.removals[i] || '';
+            const addition = parsedDiff.additions[i] || '';
+
+            if (removal && addition) {
+                console.log(`[JSONDiff] Processing change ${i + 1}:`);
+                console.log(`[JSONDiff]   Remove: "${removal.substring(0, 50)}..."`);
+                console.log(`[JSONDiff]   Add: "${addition.substring(0, 50)}..."`);
+
+                // Skip identical operations (structural no-ops)
+                if (removal.trim() === addition.trim()) {
+                    console.log(`[JSONDiff]   SKIPPED: Identical removal and addition (no change needed)`);
+                    changesApplied++; // Count as successful since no change was needed
+                    continue;
                 }
-            }
 
-            // Process additions
-            for (const addition of additions) {
-                try {
-                    const additionObj = JSON.parse(addition);
-                    console.log('[ContextDiff] Adding to array:', additionObj);
-                    array.push(additionObj);
-                } catch (error) {
-                    console.warn('[ContextDiff] Failed to parse addition:', addition, error);
-                }
-            }
-        } else if (location.type === 'object') {
-            // Handle different types of object modifications
-
-            // Strategy 1: Direct field value replacement with proper value extraction
-            if (removals.length > 0 && additions.length > 0) {
-                const target = location.object || modifiedData[location.key];
-
-                for (let i = 0; i < removals.length && i < additions.length; i++) {
-                    const removal = removals[i].trim();
-                    const addition = additions[i].trim();
-
-                    console.log('[ContextDiff] Trying direct field replacement:', removal, '->', addition);
-
-                    // Extract field values from JSON-formatted strings like "description": "value"
-                    const extractFieldValue = (jsonString: string): string | null => {
-                        try {
-                            // Try to parse as a complete JSON object like {"description": "value"}
-                            if (jsonString.startsWith('{') && jsonString.endsWith('}')) {
-                                const parsed = JSON.parse(jsonString);
-                                const values = Object.values(parsed);
-                                return values.length > 0 ? String(values[0]) : null;
-                            }
-
-                            // Try to extract value from "field": "value", format
-                            const match = jsonString.match(/"([^"]+)":\s*"([^"]*(?:\\.[^"]*)*)"/);
-                            if (match && match[2]) {
-                                return match[2];
-                            }
-
-                            // If no pattern matches, return the original string (might be a plain value)
-                            return jsonString.replace(/^["']|["']$/g, ''); // Remove surrounding quotes
-                        } catch (error) {
-                            return jsonString.replace(/^["']|["']$/g, ''); // Fallback: remove quotes
-                        }
-                    };
-
-                    const oldValue = extractFieldValue(removal);
-                    const newValue = extractFieldValue(addition);
-
-                    if (oldValue && newValue && oldValue !== newValue) {
-                        console.log('[ContextDiff] Extracted values - Old:', oldValue.substring(0, 100), '| New:', newValue.substring(0, 100));
-
-                        // Try to replace the exact value in the target object
-                        const replaced = replaceInObject(target, oldValue, newValue);
-                        if (replaced) {
-                            console.log('[ContextDiff] Successfully applied direct field replacement');
-                            continue; // Move to next modification
-                        }
-                    }
-                }
-            }
-
-            // Strategy 2: JSON object property modifications (fallback)
-            for (const removal of removals) {
-                try {
-                    const removalObj = JSON.parse(removal);
-                    const target = location.object || modifiedData[location.key];
-
-                    // Remove matching properties
-                    for (const [key, value] of Object.entries(removalObj)) {
-                        if (target[key] === value) {
-                            console.log('[ContextDiff] Removing object property:', key);
-                            delete target[key];
-                        }
-                    }
-                } catch (error) {
-                    // Not valid JSON, might be a string replacement
-                    console.log('[ContextDiff] Removal not valid JSON, treating as string:', removal);
-                }
-            }
-
-            for (const addition of additions) {
-                try {
-                    const additionObj = JSON.parse(addition);
-                    const target = location.object || modifiedData[location.key];
-                    console.log('[ContextDiff] Adding object properties:', additionObj);
-                    Object.assign(target, additionObj);
-                } catch (error) {
-                    // Not valid JSON, might be a string replacement
-                    console.log('[ContextDiff] Addition not valid JSON, treating as string:', addition);
+                // Try to apply the change to the JSON object
+                if (applyChangeToJSONObject(jsonObj, removal, addition)) {
+                    changesApplied++;
+                    console.log(`[JSONDiff]   SUCCESS: Applied change ${i + 1}`);
+                } else {
+                    console.log(`[JSONDiff]   WARNING: Could not apply change ${i + 1}`);
                 }
             }
         }
 
-        return modifiedData;
+        console.log(`[JSONDiff] Applied ${changesApplied} out of ${parsedDiff.removals.length} changes`);
+
+        // Step 4: Convert back to JSON string
+        const modifiedText = JSON.stringify(jsonObj, null, 2);
+        console.log('[JSONDiff] Modified text length:', modifiedText.length);
+
+        return modifiedText;
+
     } catch (error) {
-        console.error('[ContextDiff] Failed to apply modification at location:', error);
-        throw error;
+        console.error('[JSONDiff] Error applying context diff:', error);
+        return null;
     }
 }
 
 /**
- * Replace text content within an object, handling string fields and arrays
+ * Apply a single change to a JSON object
  */
-function replaceInObject(obj: any, oldText: string, newText: string): boolean {
-    if (!obj || typeof obj !== 'object') return false;
+function applyChangeToJSONObject(obj: any, removal: string, addition: string): boolean {
+    // Extract the value from removal and addition strings
+    const removalValue = extractValueFromDiffLine(removal);
+    const additionValue = extractValueFromDiffLine(addition);
 
+    console.log(`[JSONDiff]     Raw removal: "${removal.trim()}"`);
+    console.log(`[JSONDiff]     Raw addition: "${addition.trim()}"`);
+    console.log(`[JSONDiff]     Extracted removal value: "${removalValue}"`);
+    console.log(`[JSONDiff]     Extracted addition value: "${additionValue}"`);
+
+    if (!removalValue || !additionValue) {
+        console.log(`[JSONDiff]     Skipping: Could not extract values from diff lines`);
+        return false;
+    }
+
+    console.log(`[JSONDiff]     Looking for value: "${removalValue}"`);
+    console.log(`[JSONDiff]     Replacing with: "${additionValue}"`);
+
+    // Try to find and replace the value in the object
+    const replaced = replaceValueInObject(obj, removalValue, additionValue);
+
+    if (!replaced) {
+        console.log(`[JSONDiff]     Could not find removal value in JSON object`);
+    }
+
+    return replaced;
+}
+
+/**
+ * Recursively find and replace a value in a JSON object
+ */
+function replaceValueInObject(obj: any, oldValue: string, newValue: string): boolean {
     let replaced = false;
 
-    // Clean up text for comparison (normalize whitespace)
-    const normalizeText = (text: string): string => {
-        return text.replace(/\s+/g, ' ').trim();
-    };
+    if (Array.isArray(obj)) {
+        for (let i = 0; i < obj.length; i++) {
+            if (typeof obj[i] === 'string') {
+                // Direct string match
+                if (obj[i] === oldValue) {
+                    obj[i] = newValue;
+                    console.log(`[JSONDiff]       Replaced array item [${i}]: "${oldValue}" -> "${newValue}"`);
+                    replaced = true;
+                }
+                // Partial string match for longer texts  
+                else if (obj[i].includes(oldValue) && oldValue.length > 10) {
+                    obj[i] = obj[i].replace(oldValue, newValue);
+                    console.log(`[JSONDiff]       Partial replace in array item [${i}]`);
+                    replaced = true;
+                }
+                // Fuzzy matching for similar strings (normalize punctuation and whitespace)
+                else if (oldValue.length > 20) {
+                    const normalizedValue = obj[i].replace(/[。，、；：！？]/g, '.').replace(/\s+/g, ' ').trim();
+                    const normalizedOldValue = oldValue.replace(/[。，、；：！？]/g, '.').replace(/\s+/g, ' ').trim();
 
-    const normalizedOldText = normalizeText(oldText);
-    const normalizedNewText = normalizeText(newText);
-
-    // Search through all properties
-    for (const [key, value] of Object.entries(obj)) {
-        if (typeof value === 'string') {
-            const normalizedValue = normalizeText(value);
-
-            // Check for exact match
-            if (normalizedValue === normalizedOldText) {
-                console.log('[ContextDiff] Found exact string match in field:', key);
-                obj[key] = newText;
-                replaced = true;
-            }
-            // Check for partial match and replace
-            else if (normalizedValue.includes(normalizedOldText)) {
-                console.log('[ContextDiff] Found partial string match in field:', key);
-                // Replace in the original value to preserve original formatting
-                const updatedValue = value.replace(new RegExp(oldText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), newText);
-                obj[key] = updatedValue;
-                replaced = true;
-            }
-        } else if (Array.isArray(value)) {
-            // Search in array elements
-            for (let i = 0; i < value.length; i++) {
-                if (typeof value[i] === 'string') {
-                    const normalizedValue = normalizeText(value[i]);
-                    if (normalizedValue === normalizedOldText) {
-                        console.log('[ContextDiff] Found exact string match in array index:', i);
-                        value[i] = newText;
-                        replaced = true;
-                    } else if (normalizedValue.includes(normalizedOldText)) {
-                        console.log('[ContextDiff] Found partial string match in array index:', i);
-                        const updatedValue = value[i].replace(new RegExp(oldText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), newText);
-                        value[i] = updatedValue;
+                    if (normalizedValue === normalizedOldValue) {
+                        obj[i] = newValue;
+                        console.log(`[JSONDiff]       Fuzzy replaced array item [${i}] (punctuation normalized)`);
                         replaced = true;
                     }
-                } else if (value[i] && typeof value[i] === 'object') {
-                    if (replaceInObject(value[i], oldText, newText)) {
+                    // Similarity check for very close matches
+                    else if (normalizedValue.includes(normalizedOldValue.substring(0, 50)) &&
+                        normalizedOldValue.includes(normalizedValue.substring(0, 50))) {
+                        obj[i] = newValue;
+                        console.log(`[JSONDiff]       Fuzzy replaced array item [${i}] (similarity match)`);
                         replaced = true;
                     }
                 }
+            } else if (typeof obj[i] === 'object' && obj[i] !== null) {
+                if (replaceValueInObject(obj[i], oldValue, newValue)) {
+                    replaced = true;
+                }
             }
-        } else if (value && typeof value === 'object') {
-            // Recursively search in nested objects
-            if (replaceInObject(value, oldText, newText)) {
-                replaced = true;
+        }
+    } else if (typeof obj === 'object' && obj !== null) {
+        for (const key in obj) {
+            const value = obj[key];
+            if (typeof value === 'string') {
+                // Direct string match
+                if (value === oldValue) {
+                    obj[key] = newValue;
+                    console.log(`[JSONDiff]       Replaced field "${key}": "${oldValue}" -> "${newValue}"`);
+                    replaced = true;
+                }
+                // Partial string match for longer texts
+                else if (value.includes(oldValue) && oldValue.length > 10) {
+                    obj[key] = value.replace(oldValue, newValue);
+                    console.log(`[JSONDiff]       Partial replace in field "${key}"`);
+                    replaced = true;
+                }
+                // Fuzzy matching for similar strings (normalize punctuation and whitespace)
+                else if (oldValue.length > 20) {
+                    const normalizedValue = value.replace(/[。，、；：！？]/g, '.').replace(/\s+/g, ' ').trim();
+                    const normalizedOldValue = oldValue.replace(/[。，、；：！？]/g, '.').replace(/\s+/g, ' ').trim();
+
+                    if (normalizedValue === normalizedOldValue) {
+                        obj[key] = newValue;
+                        console.log(`[JSONDiff]       Fuzzy replaced field "${key}" (punctuation normalized)`);
+                        replaced = true;
+                    }
+                    // Similarity check for very close matches
+                    else if (normalizedValue.includes(normalizedOldValue.substring(0, 50)) &&
+                        normalizedOldValue.includes(normalizedValue.substring(0, 50))) {
+                        obj[key] = newValue;
+                        console.log(`[JSONDiff]       Fuzzy replaced field "${key}" (similarity match)`);
+                        replaced = true;
+                    }
+                }
+            } else if (typeof value === 'object' && value !== null) {
+                if (replaceValueInObject(value, oldValue, newValue)) {
+                    replaced = true;
+                }
             }
         }
     }
@@ -527,146 +484,20 @@ function replaceInObject(obj: any, oldText: string, newText: string): boolean {
 }
 
 /**
- * Apply a single context-based modification to JSON data
+ * Normalize text for fuzzy comparison
  */
-export function applyContextModification(
-    data: any,
-    modification: ContextModification
-): any {
-    const { context, removals, additions } = modification;
-
-    // Find the location in the JSON where this context appears
-    const location = findContextLocation(data, context);
-    if (!location) {
-        console.warn('[ContextDiff] Could not find context location:', context);
-        return data;
-    }
-
-    // Apply removals and additions at the found location
-    return applyModificationAtLocation(data, location, removals, additions);
+function normalizeForComparison(text: string): string {
+    return text
+        .replace(/[。，！？]/g, match => {
+            const map: Record<string, string> = { '。': '.', '，': ',', '！': '!', '？': '?' };
+            return map[match] || match;
+        })
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 /**
- * Apply context-based modifications to JSON data
- */
-export function applyContextBasedModifications(
-    originalData: any,
-    modifications: ContextModification[]
-): any {
-    try {
-        let modifiedData = JSON.parse(JSON.stringify(originalData)); // Deep clone
-
-        for (const modification of modifications) {
-            modifiedData = applyContextModification(modifiedData, modification);
-        }
-
-        return modifiedData;
-    } catch (error) {
-        console.error('[ContextDiff] Failed to apply context-based modifications:', error);
-        throw error;
-    }
-}
-
-/**
- * Apply context-based diff to JSON string using enhanced logic
- */
-export function applyContextDiffToJsonString(
-    originalJsonString: string,
-    contextDiff: string
-): ContextDiffResult {
-    try {
-        console.log('[ContextDiff] Applying context diff to JSON string...');
-        console.log('[ContextDiff] Original JSON length:', originalJsonString.length);
-        console.log('[ContextDiff] Context diff:', contextDiff.substring(0, 500) + '...');
-
-        // Parse the original JSON
-        const originalData = JSON.parse(originalJsonString);
-
-        // Parse context-based diff format into modifications using enhanced logic
-        const modifications = parseContextBasedDiff(contextDiff);
-        if (!modifications || modifications.length === 0) {
-            throw new Error('No valid modifications found in context-based diff');
-        }
-
-        console.log('[ContextDiff] Found', modifications.length, 'modifications');
-
-        // Apply each modification using enhanced logic
-        let modifiedData = JSON.parse(JSON.stringify(originalData)); // Deep clone
-
-        for (const modification of modifications) {
-            console.log('[ContextDiff] Looking for context:', modification.context.substring(0, 200) + '...');
-
-            // Find the location for this modification
-            const location = findContextLocation(modifiedData, modification.context);
-            if (!location) {
-                console.warn('[ContextDiff] Could not find context location for:', modification.context.substring(0, 100));
-                continue;
-            }
-
-            // Apply the modification at the found location
-            modifiedData = applyModificationAtLocation(
-                modifiedData,
-                location,
-                modification.removals,
-                modification.additions
-            );
-        }
-
-        // Use jsonrepair to fix any JSON issues after modification
-        const repairedJsonString = jsonrepair(JSON.stringify(modifiedData, null, 2));
-        console.log('[ContextDiff] Context diff applied successfully, result length:', repairedJsonString.length);
-
-        return { success: true, result: repairedJsonString };
-    } catch (error) {
-        console.error('[ContextDiff] Failed to apply context diff:', error);
-        return {
-            success: false,
-            error: error instanceof Error ? error.message : String(error)
-        };
-    }
-}
-
-/**
- * Create RFC6902 patch operations from original and modified JSON strings
- * @param originalJsonString - Original JSON string
- * @param modifiedJsonString - Modified JSON string  
- * @returns Array of RFC6902 patch operations
- */
-export function createRFC6902Patches(
-    originalJsonString: string,
-    modifiedJsonString: string
-): any[] {
-    try {
-        console.log('[ContextDiff] Creating RFC6902 patches...');
-        console.log('[ContextDiff] Original JSON length:', originalJsonString.length);
-        console.log('[ContextDiff] Modified JSON length:', modifiedJsonString.length);
-
-        // Check if strings are different
-        if (originalJsonString === modifiedJsonString) {
-            console.log('[ContextDiff] JSON strings are identical - no patches needed');
-            return [];
-        }
-
-        console.log('[ContextDiff] Strings are different, generating patches...');
-        const originalJson = JSON.parse(originalJsonString);
-        const modifiedJson = JSON.parse(modifiedJsonString);
-
-        const patches = createPatch(originalJson, modifiedJson);
-        console.log('[ContextDiff] Generated', patches.length, 'RFC6902 patches');
-
-        if (patches.length > 0) {
-            console.log('[ContextDiff] First patch:', JSON.stringify(patches[0], null, 2));
-        }
-
-        return patches;
-    } catch (error) {
-        console.error('[ContextDiff] Failed to create RFC6902 patches:', error);
-        return [];
-    }
-}
-
-/**
- * Apply context diff and generate RFC6902 patches in one operation
+ * Complete context diff pipeline: apply diff and generate RFC6902 patches
  * @param originalJsonString - Original JSON string
  * @param contextDiff - Context-based diff text
  * @returns Result with modified JSON and RFC6902 patches
@@ -678,28 +509,46 @@ export function applyContextDiffAndGeneratePatches(
     success: boolean;
     modifiedJson?: string;
     rfc6902Patches?: any[];
+    appliedChanges?: number;
+    totalChanges?: number;
     error?: string;
 } {
     try {
-        // Apply context diff
-        const diffResult = applyContextDiffToJsonString(originalJsonString, contextDiff);
+        console.log('[ContextDiffPipeline] Starting complete pipeline...');
 
-        if (!diffResult.success || !diffResult.result) {
+        // Step 1: Apply context diff
+        const modifiedJson = applyContextDiffToJSON(originalJsonString, contextDiff);
+
+        if (!modifiedJson) {
             return {
                 success: false,
-                error: diffResult.error || 'Failed to apply context diff'
+                error: 'Failed to apply context diff to JSON'
             };
         }
 
-        // Generate RFC6902 patches
-        const rfc6902Patches = createRFC6902Patches(originalJsonString, diffResult.result);
+        // Step 2: Parse both JSONs
+        const originalData = JSON.parse(originalJsonString);
+        const modifiedData = JSON.parse(modifiedJson);
+
+        // Step 3: Generate RFC6902 patches
+        const rfc6902Patches = createPatch(originalData, modifiedData);
+
+        console.log('[ContextDiffPipeline] Generated', rfc6902Patches.length, 'RFC6902 patches');
+
+        // Extract success metrics from the diff application
+        const parsedDiff = parseContextDiff(contextDiff);
+        const totalChanges = parsedDiff ? parsedDiff.removals.length : 0;
 
         return {
             success: true,
-            modifiedJson: diffResult.result,
-            rfc6902Patches
+            modifiedJson,
+            rfc6902Patches,
+            appliedChanges: rfc6902Patches.length,
+            totalChanges,
         };
+
     } catch (error) {
+        console.error('[ContextDiffPipeline] Pipeline failed:', error);
         return {
             success: false,
             error: error instanceof Error ? error.message : String(error)

@@ -2,11 +2,11 @@ import z from "zod";
 
 // Define types locally to avoid path issues
 interface LLMTemplate {
-    id: string;
-    name: string;
-    promptTemplate: string;
-    outputFormat: string;
-    responseWrapper?: string;
+  id: string;
+  name: string;
+  promptTemplate: string;
+  outputFormat: string;
+  responseWrapper?: string;
 }
 
 /**
@@ -14,82 +14,60 @@ interface LLMTemplate {
  * Generates unified diffs instead of JSON patches for better LLM reliability
  */
 export function createUnifiedDiffTemplate(
-    templateId: string,
-    templateName: string,
-    contentType: string,
-    contentDescription: string,
-    specificPrinciples: string[] = []
+  templateName: string,
+  description: string,
+  outputJsondocType: any,
+  targetTypeName: string,
+  additionalInstructions: string[] = []
 ): LLMTemplate {
-    const principlesText = specificPrinciples.length > 0
-        ? specificPrinciples.map((p, i) => `${i + 6}. ${p}`).join('\n')
-        : '';
+  const baseInstructions = [`
+    基于用户提供的编辑要求，对剧本设定进行精确修改。
+    输出格式：只输出基于上下文的差异补丁（context diff），不要添加任何额外解释或格式。
+    差异补丁格式：
+    1. 使用CONTEXT: 后跟几行上下文来定位修改位置（包括字段名和周围结构）。
+    2. 使用- 表示要删除的内容。
+    3. 使用+ 表示要添加的内容。
+    4. 保持JSON格式的完整性，包括引号和逗号。
+    5. 对于数组修改，包含数组索引或足够的上下文来定位。
+    6. 如果需要替换整个字段，删除旧值并添加新值。
+    示例：
+    假设原始JSON：
 
-    return {
-        id: templateId,
-        name: templateName,
-        promptTemplate: `你是一位专门从事中国社交媒体平台短视频内容的创意总监。你的任务是根据用户的具体要求，对现有的${contentDescription}进行精准的编辑和优化。
-
-## 核心原则
-1. 根据用户的具体要求进行针对性修改
-2. 保持${contentType}除了被修改之外的原有内容
-3. 确保编辑后的内容仍然符合平台特点和类型要求
-4. 保持${contentType}的连贯性和逻辑性
-5. 遵循去脸谱化原则：避免刻板印象，创造复杂、多维的角色
-${principlesText}
-
-## 输入参数
-%%params%%
-
-## 参考数据
-%%jsondocs%%
-
-## 输出要求
-
-根据用户的编辑要求和原始${contentDescription}，生成标准的统一差异格式补丁。
-
-**重要说明**：
-- 你需要仔细比较原始内容和用户要求
-- 重复显示旧值和新值以确保准确性（这有助于你更好地校准修改）
-- 生成的差异补丁将被应用到JSON字符串上
-
-**输出格式必须是基于上下文的差异格式**：
-
-\`\`\`diff
-CONTEXT: <足够的周围内容作为定位锚点>
-- <要删除的内容>
-+ <要添加的内容>
+\`\`\`json
+    {
+      "title": "Old Title",
+      "characters": [
+        {
+          "name": "John",
+          "age": 30
+        }
+      ]
+    }
 \`\`\`
 
-**示例输出**：
-\`\`\`diff
-CONTEXT: "characters": [
-  {
-    "name": "现有角色1",
-    "type": "male_lead"
-  },
-- {
--   "name": "要删除的角色",
--   "type": "antagonist"
-- },
-+ {
-+   "name": "新添加的角色", 
-+   "type": "final_boss",
-+   "description": "详细描述..."
-+ },
-  {
-    "name": "现有角色2",
-    "type": "female_lead"
-  }
-]
+要将age改为35，并添加新字段role:
+\`\`\`json
+    CONTEXT:   "characters": [
+        {
+            "name": "John",
+            "age": 30
+        }
+    ]
+    -        "age": 30
+    +        "age": 35,
+    +        "role": "hero"
 \`\`\`
+    差异补丁必须基于提供的jsondocs中的内容。
+    确保修改符合故事整体逻辑和用户要求。
+    ${additionalInstructions.join('\n')}
+`
+  ];
 
-**注意事项**：
-- 必须使用基于上下文的差异格式
-- 包含足够的上下文行以确保准确应用
-- 确保JSON结构的完整性
-- 只修改需要改变的部分
-- 保持正确的缩进和格式`,
-        outputFormat: 'text',
-        responseWrapper: '```diff\n%%content%%\n```'
-    };
+  return {
+    id: templateName,
+    name: description,
+    promptTemplate: `${baseInstructions.join('\n')}\n\n编辑要求: {{editRequirements}}\n\n当前jsondocs: {{jsondocs}}\n\n生成基于上下文的差异补丁:`,
+    outputFormat: 'text',
+    responseWrapper: '%%content%%'
+  };
 } 

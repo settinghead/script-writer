@@ -13,9 +13,9 @@ import * as Diff from 'diff';
 import { jsonrepair } from 'jsonrepair';
 import * as rfc6902 from 'rfc6902';
 import {
-    parseContextBasedDiff,
-    applyContextBasedModifications,
-    type ContextModification
+    parseContextDiff,
+    applyContextDiffToJSON,
+    type ParsedDiff
 } from '../../common/contextDiff';
 
 /**
@@ -422,7 +422,7 @@ export class StreamingTransformExecutor {
                                         dryRun,
                                         chunkCount
                                     );
-                                    // console.log(`[StreamingTransformExecutor] Updated streaming patches at chunk ${chunkCount}`);
+                                    console.log(`[StreamingTransformExecutor] Updated streaming patches at chunk ${chunkCount}`);
                                 } catch (patchError) {
                                     console.warn(`[StreamingTransformExecutor] Streaming patch update failed at chunk ${chunkCount}, continuing...`);
                                     console.warn(`[StreamingTransformExecutor] Patch content: ${JSON.stringify(partialData)}`);
@@ -698,9 +698,6 @@ export class StreamingTransformExecutor {
         llmService: any,
         originalMessages: any[]
     ): Promise<Operation[]> {
-        // Import the enhanced context diff functions
-        const { applyContextDiffAndGeneratePatches } = await import('../../common/contextDiff.js');
-
         const maxValidationRetries = 3;
         let currentMessages = [...originalMessages];
 
@@ -710,24 +707,34 @@ export class StreamingTransformExecutor {
             throw new Error('No context-based diff found in LLM output');
         }
 
-        console.log(`[StreamingTransformExecutor] Converting unified diff to JSON patches for ${templateName}`);
-        console.log(`[StreamingTransformExecutor] Diff text (${diffString.length} chars): ${diffString.substring(0, 200)}...`);
-
         for (let attempt = 0; attempt <= maxValidationRetries; attempt++) {
             try {
-                // Use the enhanced context diff function that properly handles nested paths
-                const originalJsonString = JSON.stringify(originalJsondoc.data || originalJsondoc, null, 2);
-                const result = applyContextDiffAndGeneratePatches(originalJsonString, diffString);
+                // 1. Apply context-based diff to the original JSON
+                const originalData = originalJsondoc.data || originalJsondoc;
+                const originalText = JSON.stringify(originalData, null, 2);
+                const modifiedText = applyContextDiffToJSON(originalText, diffString);
 
-                if (!result.success) {
-                    const errorMsg = `Context diff application failed: ${result.error}`;
+                if (!modifiedText) {
+                    throw new Error('Failed to apply context-based diff to JSON');
+                }
+
+                // 2. Parse the modified JSON
+                let modifiedData;
+                try {
+                    modifiedData = JSON.parse(modifiedText);
+                } catch (parseError) {
+                    throw new Error(`Failed to parse modified JSON: ${parseError}`);
+                }
+
+                if (!modifiedData) {
+                    const errorMsg = 'Failed to apply context-based diff modifications';
                     if (attempt < maxValidationRetries) {
                         console.log(`[StreamingTransformExecutor] Context diff application failed (attempt ${attempt + 1}), retrying...`);
                         const correctedDiff = await this.retryDiffGeneration(
                             currentMessages,
                             llmService,
                             errorMsg,
-                            originalJsonString,
+                            JSON.stringify(originalData, null, 2),
                             diffString
                         );
                         return await this.convertUnifiedDiffToJsonPatches(
@@ -743,16 +750,37 @@ export class StreamingTransformExecutor {
                     }
                 }
 
-                // Generate JSON patches using RFC6902
-                const jsonPatches = result.rfc6902Patches || [];
-                console.log(`[StreamingTransformExecutor] Generated ${jsonPatches.length} basic patch operations for ${templateName}`);
-
-                if (jsonPatches.length === 0) {
-                    console.log(`[StreamingTransformExecutor] No patches generated - content may be unchanged`);
+                // 3. Generate JSON patches from original and modified objects
+                try {
+                    const originalData = originalJsondoc.data || originalJsondoc;
+                    const jsonPatches = rfc6902.createPatch(originalData, modifiedData);
+                    console.log(`[StreamingTransformExecutor] Successfully converted context-based diff to ${jsonPatches.length} JSON patches for ${templateName}`);
+                    return jsonPatches;
+                } catch (patchError: any) {
+                    const errorMsg = `JSON patch generation failed: ${patchError.message}`;
+                    if (attempt < maxValidationRetries) {
+                        console.log(`[StreamingTransformExecutor] JSON patch generation failed (attempt ${attempt + 1}), retrying...`);
+                        const correctedDiff = await this.retryDiffGeneration(
+                            currentMessages,
+                            llmService,
+                            errorMsg,
+                            JSON.stringify(originalData, null, 2),
+                            diffString,
+                            undefined,
+                            modifiedData
+                        );
+                        return await this.convertUnifiedDiffToJsonPatches(
+                            correctedDiff,
+                            originalJsondoc,
+                            templateName,
+                            retryCount,
+                            llmService,
+                            originalMessages
+                        );
+                    } else {
+                        throw new Error(errorMsg);
+                    }
                 }
-
-                console.log(`[StreamingTransformExecutor] Final conversion successful for ${templateName}: ${jsonPatches.length} patches`);
-                return jsonPatches;
 
             } catch (error: any) {
                 if (attempt < maxValidationRetries) {
@@ -773,13 +801,13 @@ export class StreamingTransformExecutor {
                         originalMessages
                     );
                 } else {
-                    console.error(`[StreamingTransformExecutor] All diff conversion attempts failed for ${templateName}:`, error.message);
-                    throw new Error(`Failed to convert diff to JSON patches after ${maxValidationRetries + 1} attempts: ${error.message}`);
+                    console.error(`[StreamingTransformExecutor] All ${maxValidationRetries + 1} diff validation attempts failed:`, error);
+                    throw error;
                 }
             }
         }
 
-        throw new Error(`Failed to convert diff to JSON patches after ${maxValidationRetries + 1} attempts`);
+        throw new Error('Unexpected end of validation retry loop');
     }
 
     /**

@@ -1,0 +1,11 @@
+[
+  {
+    "op": "remove",
+    "path": "/background"
+  },
+  {
+    "op": "add",
+    "path": "/background",
+    "value": "昆仑秘境归来的医学天才，身负上古医仙传承，为寻失踪师尊潜入都市"
+  }
+]
