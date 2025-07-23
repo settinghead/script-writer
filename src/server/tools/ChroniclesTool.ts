@@ -10,7 +10,8 @@ import {
 import {
     ChroniclesEditInputSchema,
     ChroniclesEditInput,
-    JsonPatchOperationsSchema
+    JsonPatchOperationsSchema,
+    JsonPatchOperation
 } from '../../common/schemas/transforms';
 import {
     executeStreamingTransform,
@@ -135,12 +136,11 @@ export function createChroniclesEditToolDefinition(
 
             const outputJsondocType: TypedJsondoc['schema_type'] = 'chronicles';
 
-            // Create config for unified diff patch generation
-            const UnifiedDiffSchema = z.string().describe('Unified diff patch string in git diff format');
-            const config: StreamingTransformConfig<ChroniclesEditInput, string> = {
+            // Create config for JSON patch generation
+            const config: StreamingTransformConfig<ChroniclesEditInput, JsonPatchOperation[]> = {
                 templateName: 'chronicles_edit_diff',
                 inputSchema: ChroniclesEditInputSchema,
-                outputSchema: UnifiedDiffSchema, // String for LLM output
+                outputSchema: JsonPatchOperationsSchema, // JSON patch operations for external output
                 prepareTemplateVariables: async (input) => {
                     const defaultVars = await defaultPrepareTemplateVariables(input, jsondocRepo);
                     return {

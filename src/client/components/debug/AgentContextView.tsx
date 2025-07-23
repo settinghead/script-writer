@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Input, Card, Typography, Alert, Spin, Tag, Divider, Select } from 'antd';
+import { Input, Card, Typography, Alert, Spin, Tag, Divider, Select, Button, Collapse } from 'antd';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useAgentContextParams } from '../../hooks/useAgentContextParams';
 import { useDebounce } from '../../hooks/useDebounce';
 import { computeUnifiedWorkflowState } from '../../utils/actionComputation';
 import { computeCanonicalJsondocsFromLineage } from '../../../common/canonicalJsondocLogic';
 import type { CanonicalJsondocContext } from '../../../common/canonicalJsondocLogic';
-import { getAllToolNames, getParticleSearchToolNames, getWorkflowTools, type WorkflowStage } from '../../../common/schemas/tools';
+import { getAllToolNames, getParticleSearchToolNames, getWorkflowTools, ALL_AGENT_TOOLS, type WorkflowStage } from '../../../common/schemas/tools';
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -72,6 +72,317 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
 
     // Remove duplicates and return
     return [...new Set(availableTools)];
+}
+
+/**
+ * Generate AI SDK tool format for a given tool name
+ * This shows how the tool would be passed to the AI SDK
+ */
+function generateAISDKToolFormat(toolName: string): any {
+    const toolDef = ALL_AGENT_TOOLS.find(tool => tool.name === toolName);
+    if (!toolDef) {
+        return { error: `Tool ${toolName} not found in registry` };
+    }
+
+    // Mock parameter schemas based on tool type - in real implementation, 
+    // these would come from the actual Zod schemas
+    const mockParameterSchemas: Record<string, any> = {
+        'queryJsondocs': {
+            type: 'object',
+            properties: {
+                query: {
+                    type: 'string',
+                    description: '自然语言查询，描述你需要什么信息'
+                },
+                limit: {
+                    type: 'number',
+                    minimum: 1,
+                    maximum: 10,
+                    default: 5,
+                    description: '返回结果的数量限制'
+                }
+            },
+            required: ['query']
+        },
+        'getJsondocContent': {
+            type: 'object',
+            properties: {
+                jsondoc_id: {
+                    type: 'string',
+                    description: '要获取的jsondoc的ID'
+                },
+                path: {
+                    type: 'string',
+                    description: '可选的JSONPath，用于获取jsondoc中的特定部分 (例如: "$.characters[0]")'
+                }
+            },
+            required: ['jsondoc_id']
+        },
+        'generate_灵感创意s': {
+            type: 'object',
+            properties: {
+                jsondocs: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            jsondocId: { type: 'string' },
+                            description: { type: 'string' },
+                            schemaType: { type: 'string' }
+                        },
+                        required: ['jsondocId', 'description']
+                    },
+                    description: '引用的jsondoc列表，作为工具执行的上下文和参考资料'
+                }
+            },
+            required: ['jsondocs']
+        },
+        'edit_灵感创意': {
+            type: 'object',
+            properties: {
+                jsondocs: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            jsondocId: { type: 'string' },
+                            description: { type: 'string' },
+                            schemaType: { type: 'string' }
+                        },
+                        required: ['jsondocId', 'description']
+                    },
+                    description: '引用的jsondoc列表，作为工具执行的上下文和参考资料'
+                },
+                editRequirements: {
+                    type: 'string',
+                    description: '具体的编辑要求，如：扩展内容、调整风格、修改情节、增加元素等'
+                },
+                ideaIndex: {
+                    type: 'number',
+                    minimum: 0,
+                    description: '要编辑的故事创意在集合中的索引位置（从0开始）'
+                },
+                agentInstructions: {
+                    type: 'string',
+                    description: '给AI的特殊指令或约束条件'
+                }
+            },
+            required: ['jsondocs', 'editRequirements']
+        },
+        'generate_剧本设定': {
+            type: 'object',
+            properties: {
+                jsondocs: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            jsondocId: { type: 'string' },
+                            description: { type: 'string' },
+                            schemaType: { type: 'string' }
+                        },
+                        required: ['jsondocId', 'description']
+                    },
+                    description: '引用的jsondoc列表，作为工具执行的上下文和参考资料'
+                },
+                title: {
+                    type: 'string',
+                    description: '故事标题'
+                },
+                requirements: {
+                    type: 'string',
+                    description: '故事要求'
+                }
+            },
+            required: ['jsondocs', 'title', 'requirements']
+        },
+        'edit_剧本设定': {
+            type: 'object',
+            properties: {
+                jsondocs: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            jsondocId: { type: 'string' },
+                            description: { type: 'string' },
+                            schemaType: { type: 'string' }
+                        },
+                        required: ['jsondocId', 'description']
+                    },
+                    description: '引用的jsondoc列表，作为工具执行的上下文和参考资料'
+                },
+                editRequirements: {
+                    type: 'string',
+                    description: '具体的编辑要求，如：修改角色设定、调整卖点、更新故事背景等'
+                },
+                agentInstructions: {
+                    type: 'string',
+                    description: '给AI的特殊指令或约束条件'
+                }
+            },
+            required: ['jsondocs', 'editRequirements']
+        },
+        'generate_chronicles': {
+            type: 'object',
+            properties: {
+                jsondocs: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            jsondocId: { type: 'string' },
+                            description: { type: 'string' },
+                            schemaType: { type: 'string' }
+                        },
+                        required: ['jsondocId', 'description']
+                    },
+                    description: '引用的jsondoc列表，作为工具执行的上下文和参考资料'
+                },
+                requirements: {
+                    type: 'string',
+                    description: '时间顺序大纲生成要求'
+                }
+            },
+            required: ['jsondocs', 'requirements']
+        },
+        'edit_chronicles': {
+            type: 'object',
+            properties: {
+                jsondocs: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            jsondocId: { type: 'string' },
+                            description: { type: 'string' },
+                            schemaType: { type: 'string' }
+                        },
+                        required: ['jsondocId', 'description']
+                    },
+                    description: '引用的jsondoc列表，作为工具执行的上下文和参考资料'
+                },
+                editRequirements: {
+                    type: 'string',
+                    description: '具体的编辑要求，如：修改时间线、调整角色发展、更新情节推进等'
+                },
+                agentInstructions: {
+                    type: 'string',
+                    description: '给AI的特殊指令或约束条件'
+                }
+            },
+            required: ['jsondocs', 'editRequirements']
+        },
+        'generate_episode_planning': {
+            type: 'object',
+            properties: {
+                jsondocs: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            jsondocId: { type: 'string' },
+                            description: { type: 'string' },
+                            schemaType: { type: 'string' }
+                        },
+                        required: ['jsondocId', 'description']
+                    },
+                    description: '引用的jsondoc列表，作为工具执行的上下文和参考资料'
+                },
+                requirements: {
+                    type: 'string',
+                    description: '剧集框架生成要求'
+                }
+            },
+            required: ['jsondocs', 'requirements']
+        },
+        'edit_episode_planning': {
+            type: 'object',
+            properties: {
+                jsondocs: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            jsondocId: { type: 'string' },
+                            description: { type: 'string' },
+                            schemaType: { type: 'string' }
+                        },
+                        required: ['jsondocId', 'description']
+                    },
+                    description: '引用的jsondoc列表，作为工具执行的上下文和参考资料'
+                },
+                editRequirements: {
+                    type: 'string',
+                    description: '具体的编辑要求，如：调整剧集分组、修改情感节拍、更新关键事件等'
+                },
+                agentInstructions: {
+                    type: 'string',
+                    description: '给AI的特殊指令或约束条件'
+                }
+            },
+            required: ['jsondocs', 'editRequirements']
+        },
+        'generate_episode_synopsis': {
+            type: 'object',
+            properties: {
+                jsondocs: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            jsondocId: { type: 'string' },
+                            description: { type: 'string' },
+                            schemaType: { type: 'string' }
+                        },
+                        required: ['jsondocId', 'description']
+                    },
+                    description: '引用的jsondoc列表，作为工具执行的上下文和参考资料'
+                },
+                groupIndex: {
+                    type: 'number',
+                    minimum: 0,
+                    description: '要生成分集大纲的剧集组索引'
+                },
+                episodeCount: {
+                    type: 'number',
+                    minimum: 1,
+                    maximum: 20,
+                    default: 5,
+                    description: '生成的分集数量'
+                },
+                requirements: {
+                    type: 'string',
+                    description: '分集大纲生成要求'
+                }
+            },
+            required: ['jsondocs', 'groupIndex', 'requirements']
+        }
+    };
+
+    return {
+        name: toolName,
+        description: toolDef.description,
+        parameters: mockParameterSchemas[toolName] || {
+            type: 'object',
+            properties: {
+                jsondocs: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            jsondocId: { type: 'string' },
+                            description: { type: 'string' },
+                            schemaType: { type: 'string' }
+                        },
+                        required: ['jsondocId', 'description']
+                    },
+                    description: '引用的jsondoc列表，作为工具执行的上下文和参考资料'
+                }
+            },
+            required: ['jsondocs']
+        }
+    };
 }
 
 export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId }) => {
@@ -197,6 +508,8 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
         debugLog('Intent change:', value);
         updateIntent(value === '' ? undefined : value);
     }, [updateIntent, debugLog]);
+
+
 
     // Fetch available intents
     useEffect(() => {
@@ -368,12 +681,49 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
 
                 <div style={{ marginBottom: '12px' }}>
                     <Text strong style={{ color: '#52c41a' }}>可用工具 ({filteredTools.length}): </Text>
-                    <div style={{ marginTop: '4px' }}>
-                        {filteredTools.map(tool => (
-                            <Tag key={tool} color="green" style={{ marginBottom: '4px' }}>
-                                {tool}
-                            </Tag>
-                        ))}
+                    <div style={{ marginTop: '12px' }}>
+                        <Collapse
+                            size="small"
+                            ghost
+                            items={filteredTools.map(tool => ({
+                                key: tool,
+                                label: (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <Tag color="green">
+                                            {tool}
+                                        </Tag>
+                                        <Text style={{ color: '#999', fontSize: '12px' }}>
+                                            AI SDK格式
+                                        </Text>
+                                    </div>
+                                ),
+                                children: (
+                                    <div style={{
+                                        padding: '12px',
+                                        backgroundColor: '#0d1117',
+                                        border: '1px solid #30363d',
+                                        borderRadius: '6px',
+                                        maxHeight: '400px',
+                                        overflow: 'auto'
+                                    }}>
+                                        <pre style={{
+                                            fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
+                                            fontSize: '12px',
+                                            color: '#e6e6e6',
+                                            margin: 0,
+                                            whiteSpace: 'pre-wrap',
+                                            wordBreak: 'break-word'
+                                        }}>
+                                            {JSON.stringify(generateAISDKToolFormat(tool), null, 2)}
+                                        </pre>
+                                    </div>
+                                )
+                            }))}
+                            style={{
+                                backgroundColor: 'transparent',
+                                border: 'none'
+                            }}
+                        />
                     </div>
                 </div>
 

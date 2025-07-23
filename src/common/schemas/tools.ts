@@ -50,7 +50,7 @@ export const ALL_AGENT_TOOLS: ToolDefinition[] = [
     {
         name: 'edit_剧本设定',
         category: 'outline',
-        description: '编辑剧本设定，包含基本信息、目标观众、主题、卖点、故事设定、角色等等'
+        description: '编辑剧本设定，包含角色设定、基本信息、目标观众、主题、卖点、故事设定等等'
     },
 
     // === CHRONICLES TOOLS ===

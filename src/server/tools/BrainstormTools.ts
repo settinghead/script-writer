@@ -6,7 +6,8 @@ import { StreamingTransformConfig, executeStreamingTransform } from '../transfor
 import {
     BrainstormEditInputSchema,
     BrainstormEditInput,
-    JsonPatchOperationsSchema
+    JsonPatchOperationsSchema,
+    JsonPatchOperation
 } from '@/common/schemas/transforms';
 import {
     IdeationInputSchema,
@@ -339,12 +340,11 @@ export function createBrainstormEditToolDefinition(
                     outputJsondocType = '灵感创意'; // Legacy type
                 }
 
-                // Create config for unified diff patch generation
-                const UnifiedDiffSchema = z.string().describe('Unified diff patch string in git diff format');
-                const config: StreamingTransformConfig<BrainstormEditInput, string> = {
+                // Create config for JSON patch generation
+                const config: StreamingTransformConfig<BrainstormEditInput, JsonPatchOperation[]> = {
                     templateName: 'brainstorm_edit_diff',
                     inputSchema: BrainstormEditInputSchema,
-                    outputSchema: UnifiedDiffSchema, // String for LLM output
+                    outputSchema: JsonPatchOperationsSchema, // JSON patch operations for external output
                     // Custom template preparation to include user context
                     prepareTemplateVariables: async (input) => {
                         console.log(`[BrainstormEditTool] Preparing template variables for input:`, {

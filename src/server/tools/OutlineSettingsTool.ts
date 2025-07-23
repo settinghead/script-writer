@@ -69,7 +69,8 @@ import {
 import {
     OutlineSettingsEditInputSchema,
     OutlineSettingsEditInput,
-    JsonPatchOperationsSchema
+    JsonPatchOperationsSchema,
+    JsonPatchOperation
 } from '../../common/schemas/transforms';
 import {
     executeStreamingTransform,
@@ -248,12 +249,11 @@ export function createOutlineSettingsEditToolDefinition(
 
             console.log(`[OutlineSettingsEditTool] Enhanced input jsondocs:`, enhancedInput.jsondocs.map(j => ({ id: j.jsondocId, description: j.description })));
 
-            // Create config for unified diff patch generation
-            const UnifiedDiffSchema = z.string().describe('Unified diff patch string in git diff format');
-            const config: StreamingTransformConfig<OutlineSettingsEditInput, string> = {
+            // Create config for JSON patch generation
+            const config: StreamingTransformConfig<OutlineSettingsEditInput, JsonPatchOperation[]> = {
                 templateName: '剧本设定_edit_diff',
                 inputSchema: OutlineSettingsEditInputSchema,
-                outputSchema: UnifiedDiffSchema, // String for LLM output
+                outputSchema: JsonPatchOperationsSchema, // JSON patch operations for external output
                 prepareTemplateVariables: async (input) => {
                     console.log(`[OutlineSettingsEditTool] Preparing template variables with canonical 剧本设定 as patch target`);
 

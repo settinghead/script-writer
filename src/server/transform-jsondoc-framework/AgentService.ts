@@ -3,7 +3,7 @@ import { streamText, wrapLanguageModel } from 'ai';
 import { TransformRepository } from './TransformRepository';
 import { JsondocRepository } from './JsondocRepository';
 import { createAgentTool } from './StreamingAgentFramework';
-import { buildAgentConfiguration, buildContextForRequestType, buildPromptForRequestType } from '../services/AgentRequestBuilder';
+import { buildAgentConfiguration, buildPromptForRequestType } from '../services/AgentRequestBuilder';
 import { getLLMModel } from './LLMConfig';
 import { createUserContextMiddleware } from '../middleware/UserContextMiddleware';
 import { getParticleSystem } from '../services/ParticleSystemInitializer';
@@ -283,16 +283,34 @@ ${minimalContext}
     private buildMultiMessagePrompt(conversationHistory: Array<{ role: string; content: string }>): string {
         // Convert conversation history to a single prompt that preserves the conversation structure
         // This maintains compatibility with the existing streamText interface while enabling caching
-        const conversationText = conversationHistory.map(msg => {
-            const roleLabel = msg.role === 'user' ? '用户' : msg.role === 'assistant' ? '助手' : '系统';
-            return `[${roleLabel}]: ${msg.content}`;
+
+        console.log(`[AgentService] Building continuation prompt from ${conversationHistory.length} previous messages`);
+
+        const conversationText = conversationHistory.map((msg, index) => {
+            const roleLabel = msg.role === 'user' ? '用户' :
+                msg.role === 'assistant' ? '助手' :
+                    msg.role === 'system' ? '系统' : '未知';
+
+            // For system messages, add a marker to indicate it was the previous system prompt
+            const prefix = msg.role === 'system' ? '[之前的系统提示]' : `[${roleLabel}]`;
+
+            // Truncate very long messages for logging
+            const contentPreview = msg.content.length > 200 ?
+                msg.content.substring(0, 200) + '...' : msg.content;
+            console.log(`[AgentService] Conversation history ${index + 1}: ${prefix} (${msg.content.length} chars): ${contentPreview}`);
+
+            return `${prefix}: ${msg.content}`;
         }).join('\n\n');
 
-        return `以下是之前的对话历史，请基于此上下文继续处理用户的新请求：
+        const continuationPrompt = `以下是之前的对话历史，请基于此上下文继续处理用户的新请求：
 
 ${conversationText}
 
 请根据上述对话历史和最新的用户请求，继续执行相应的工具调用。`;
+
+        console.log(`[AgentService] Final continuation prompt length: ${continuationPrompt.length} characters`);
+
+        return continuationPrompt;
     }
 
     /**
@@ -302,15 +320,17 @@ ${conversationText}
         projectId: string,
         toolName: string,
         toolCallId: string,
-        originalPrompt: string,
+        systemPromptSentToLLM: string,
         toolResult: any,
         assistantResponse: string
     ): Promise<void> {
         if (!this.chatMessageRepo) return;
 
+        // Save the complete conversation that was sent to/from the LLM
+        // This represents the actual conversation format: system prompt -> assistant response
         const messages = [
-            { role: 'user', content: originalPrompt },
-            { role: 'assistant', content: assistantResponse }
+            { role: 'system', content: systemPromptSentToLLM }, // The complete system prompt sent to LLM
+            { role: 'assistant', content: assistantResponse }   // The assistant's response
         ];
 
         await this.chatMessageRepo.saveConversation(projectId, toolName, toolCallId, messages);
@@ -338,6 +358,10 @@ ${conversationText}
         let computationMessageId: string | undefined;
         let responseMessageId: string | undefined;
         let accumulatedResponse = '';
+
+        // Generate unique execution ID to correlate all messages in this agent run
+        const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        console.log(`[AgentService] Starting agent execution with ID: ${executionId}`);
 
         try {
             // Handle chat messages based on options
@@ -450,7 +474,23 @@ ${conversationText}
                     projectId,
                     'user',
                     request.userRequest,
-                    { metadata: { source: 'streaming_agent' } }
+                    { metadata: { source: 'streaming_agent', executionId } }
+                );
+
+                // Save the complete system prompt sent to the LLM
+                await this.chatMessageRepo.createRawMessage(
+                    projectId,
+                    'system',
+                    completePrompt,
+                    {
+                        metadata: {
+                            source: 'streaming_agent',
+                            executionId,
+                            promptType: isContinuation ? 'continuation_prompt' : 'initial_prompt',
+                            useParticleSearch: useParticleSearchApproach,
+                            conversationHistoryLength: conversationHistory.length
+                        }
+                    }
                 );
             }
 
@@ -568,7 +608,8 @@ ${conversationText}
                                     toolParameters: delta.args,
                                     metadata: {
                                         toolCallId: delta.toolCallId,
-                                        source: 'streaming_agent'
+                                        source: 'streaming_agent',
+                                        executionId
                                     }
                                 }
                             );
@@ -599,7 +640,8 @@ ${conversationText}
                                     toolResult: delta.result,
                                     metadata: {
                                         toolCallId: delta.toolCallId,
-                                        source: 'streaming_agent'
+                                        source: 'streaming_agent',
+                                        executionId
                                     }
                                 }
                             );
@@ -610,7 +652,7 @@ ${conversationText}
                                     projectId,
                                     currentToolCall.toolName,
                                     delta.toolCallId,
-                                    completePrompt,
+                                    completePrompt, // The complete system prompt that was sent to the LLM
                                     delta.result,
                                     accumulatedResponse || 'Tool executed successfully'
                                 );
@@ -707,7 +749,7 @@ ${conversationText}
                     projectId,
                     'assistant',
                     finalResponse.trim(),
-                    { metadata: { source: 'streaming_agent' } }
+                    { metadata: { source: 'streaming_agent', executionId } }
                 );
             }
 
@@ -757,7 +799,7 @@ ${conversationText}
                     projectId,
                     'assistant',
                     `Error: ${error instanceof Error ? error.message : String(error)}`,
-                    { metadata: { source: 'streaming_agent', error: true } }
+                    { metadata: { source: 'streaming_agent', error: true, executionId } }
                 );
             }
 

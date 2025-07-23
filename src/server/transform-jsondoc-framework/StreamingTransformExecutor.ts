@@ -12,6 +12,11 @@ import { dump } from 'js-yaml';
 import * as Diff from 'diff';
 import { jsonrepair } from 'jsonrepair';
 import * as rfc6902 from 'rfc6902';
+import {
+    parseContextBasedDiff,
+    applyContextBasedModifications,
+    type ContextModification
+} from '../../common/contextDiff';
 
 /**
  * Configuration for a streaming transform - minimal interface that tools provide
@@ -178,8 +183,10 @@ export class StreamingTransformExecutor {
                         toolCallId
                     );
                     transformId = transform.id;
+                    console.log(`[StreamingTransformExecutor] Created transform ${transformId} with session ID: ${toolCallId || 'no-session'}`);
                 } else if (!dryRun && transformId) {
                     // Update retry count on existing transform
+                    console.log(`[StreamingTransformExecutor] Updating transform ${transformId} with session ID: ${toolCallId || 'no-session'} (retry ${retryCount})`);
                     await transformRepo.updateTransform(transformId, {
                         status: 'running',
                         retry_count: retryCount,
@@ -191,7 +198,7 @@ export class StreamingTransformExecutor {
                         }
                     });
                 } else if (dryRun) {
-                    console.log(`[StreamingTransformExecutor] Dry run: Skipping transform creation/update for ${config.templateName}`);
+                    // console.log(`[StreamingTransformExecutor] Dry run: Skipping transform creation/update for ${config.templateName}`);
                 }
 
                 // 3. Handle input jsondocs: both source jsondocs and tool input (only on first attempt)
@@ -215,7 +222,7 @@ export class StreamingTransformExecutor {
                     if (!dryRun && transformId) {
                         await transformRepo.addTransformInputs(transformId, transformInputs, projectId);
                     } else if (dryRun) {
-                        console.log(`[StreamingTransformExecutor] Dry run: Skipping transform inputs for ${config.templateName}`);
+                        // console.log(`[StreamingTransformExecutor] Dry run: Skipping transform inputs for ${config.templateName}`);
                     }
                 }
 
@@ -248,7 +255,7 @@ export class StreamingTransformExecutor {
                     );
                     outputJsondocId = outputJsondoc.id;
                 } else if (dryRun) {
-                    console.log(`[StreamingTransformExecutor] Dry run: Skipping initial output jsondoc creation for ${config.templateName}`);
+                    // console.log(`[StreamingTransformExecutor] Dry run: Skipping initial output jsondoc creation for ${config.templateName}`);
                 }
 
                 // 5. Template rendering
@@ -273,8 +280,20 @@ export class StreamingTransformExecutor {
                     await transformRepo.addLLMPrompts(transformId, [
                         { promptText: finalPrompt, promptRole: 'primary' }
                     ], projectId);
+
+                    // Store the initial user prompt as a real-time message
+                    const { db } = await import('../database/connection.js');
+                    const chatMessageRepo = new ChatMessageRepository(db);
+                    await this.storeMessageRealTime(
+                        transformId,
+                        projectId,
+                        'user',
+                        finalPrompt,
+                        { content_type: 'initial_prompt', template_name: config.templateName },
+                        chatMessageRepo
+                    );
                 } else if (dryRun) {
-                    console.log(`[StreamingTransformExecutor] Dry run: Skipping adding LLM prompt storage for ${config.templateName}`);
+                    // console.log(`[StreamingTransformExecutor] Dry run: Skipping adding LLM prompt storage for ${config.templateName}`);
                 }
 
                 // 7. Execute streaming with internal retry (this handles LLM-level retries)
@@ -286,22 +305,77 @@ export class StreamingTransformExecutor {
                     seed,
                     temperature,
                     topP,
-                    maxTokens
+                    maxTokens,
+                    executionMode // Pass execution mode for better streaming strategy detection
                 });
 
                 // 8. Process stream and update jsondoc periodically
                 let chunkCount = 0;
                 let updateCount = 0;
                 let lastData: TOutput | null = null;
+                let chatMessageRepo: ChatMessageRepository | null = null;
+
+                // Initialize chat message repo for real-time saving (only once)
+                if (!dryRun && transformId) {
+                    const { db } = await import('../database/connection.js');
+                    chatMessageRepo = new ChatMessageRepository(db);
+                }
 
                 for await (const partialData of stream) {
                     chunkCount++;
-                    lastData = partialData as TOutput;
+
+                    // Handle different stream data formats
+                    let actualData: TOutput;
+                    let streamingInfo: any = null;
+
+                    if (partialData && typeof partialData === 'object' && 'type' in partialData) {
+                        // New format with rawText and patches
+                        streamingInfo = partialData;
+
+                        if (partialData.type === 'finalPatches' || partialData.type === 'patches') {
+                            actualData = partialData.patches as TOutput;
+                        } else {
+                            // For rawText chunks, keep the last actual data
+                            actualData = (lastData || []) as TOutput;
+                        }
+                    } else {
+                        // Standard format
+                        actualData = partialData as TOutput;
+                    }
+
+                    lastData = actualData;
+
+                    // Store real-time LLM output chunk (every 5 chunks to avoid spam)
+                    if (!dryRun && transformId && chatMessageRepo && chunkCount % 5 === 1) {
+                        try {
+                            const chunkContent = streamingInfo
+                                ? JSON.stringify(streamingInfo, null, 2)
+                                : (typeof actualData === 'string' ? actualData : JSON.stringify(actualData, null, 2));
+
+                            await this.storeMessageRealTime(
+                                transformId,
+                                projectId,
+                                'assistant',
+                                chunkContent,
+                                {
+                                    content_type: 'streaming_chunk',
+                                    chunk_number: chunkCount,
+                                    template_name: config.templateName,
+                                    stream_type: streamingInfo?.type || 'standard'
+                                },
+                                chatMessageRepo
+                            );
+                        } catch (chunkSaveError) {
+                            console.warn(`[StreamingTransformExecutor] Failed to save real-time chunk ${chunkCount}:`, chunkSaveError);
+                        }
+                    }
 
                     // Call streaming callback if provided
                     if (onStreamChunk) {
                         try {
-                            await onStreamChunk(lastData, chunkCount);
+                            // Pass both the processed data and raw streaming info for debugging
+                            const callbackData = streamingInfo || actualData;
+                            await onStreamChunk(callbackData, chunkCount);
                         } catch (callbackError) {
                             console.warn(`[StreamingTransformExecutor] Streaming callback error at chunk ${chunkCount}:`, callbackError);
                         }
@@ -348,7 +422,7 @@ export class StreamingTransformExecutor {
                                         dryRun,
                                         chunkCount
                                     );
-                                    console.log(`[StreamingTransformExecutor] Updated streaming patches at chunk ${chunkCount}`);
+                                    // console.log(`[StreamingTransformExecutor] Updated streaming patches at chunk ${chunkCount}`);
                                 } catch (patchError) {
                                     console.warn(`[StreamingTransformExecutor] Streaming patch update failed at chunk ${chunkCount}, continuing...`);
                                     console.warn(`[StreamingTransformExecutor] Patch content: ${JSON.stringify(partialData)}`);
@@ -387,7 +461,7 @@ export class StreamingTransformExecutor {
                                     }
                                 }
                             } else if (dryRun) {
-                                console.log(`[StreamingTransformExecutor] Dry run: Skipping jsondoc update for ${config.templateName} at chunk ${chunkCount}`);
+                                // console.log(`[StreamingTransformExecutor] Dry run: Skipping jsondoc update for ${config.templateName} at chunk ${chunkCount}`);
                             } else if (executionMode?.mode === 'patch-approval') {
                                 // In patch-approval mode, we don't update during streaming, only at completion
                                 console.log(`[StreamingTransformExecutor] Patch-approval mode: Skipping streaming update at chunk ${chunkCount}`);
@@ -543,7 +617,7 @@ export class StreamingTransformExecutor {
                         }
                     }
                 } else if (dryRun) {
-                    console.log(`[StreamingTransformExecutor] Dry run: Skipping all database operations for ${config.templateName}`);
+                    // console.log(`[StreamingTransformExecutor] Dry run: Skipping all database operations for ${config.templateName}`);
                 }
 
                 return {
@@ -614,7 +688,7 @@ export class StreamingTransformExecutor {
     }
 
     /**
-     * Convert unified diff to JSON patches with validation and retry
+     * Convert context-based diff to JSON patches with validation and retry
      */
     private async convertUnifiedDiffToJsonPatches(
         llmOutput: any,
@@ -624,32 +698,36 @@ export class StreamingTransformExecutor {
         llmService: any,
         originalMessages: any[]
     ): Promise<Operation[]> {
+        // Import the enhanced context diff functions
+        const { applyContextDiffAndGeneratePatches } = await import('../../common/contextDiff.js');
+
         const maxValidationRetries = 3;
         let currentMessages = [...originalMessages];
 
-        // Extract unified diff from LLM output
+        // Extract context-based diff from LLM output
         const diffString = this.extractUnifiedDiff(llmOutput);
         if (!diffString) {
-            throw new Error('No unified diff found in LLM output');
+            throw new Error('No context-based diff found in LLM output');
         }
+
+        console.log(`[StreamingTransformExecutor] Converting unified diff to JSON patches for ${templateName}`);
+        console.log(`[StreamingTransformExecutor] Diff text (${diffString.length} chars): ${diffString.substring(0, 200)}...`);
 
         for (let attempt = 0; attempt <= maxValidationRetries; attempt++) {
             try {
-                // 1. Stringify original JSON
-                const originalText = JSON.stringify(originalJsondoc.data || originalJsondoc, null, 2);
+                // Use the enhanced context diff function that properly handles nested paths
+                const originalJsonString = JSON.stringify(originalJsondoc.data || originalJsondoc, null, 2);
+                const result = applyContextDiffAndGeneratePatches(originalJsonString, diffString);
 
-                // 2. Apply unified diff
-                const patchedText = Diff.applyPatch(originalText, diffString);
-
-                if (!patchedText) {
-                    const errorMsg = 'Failed to apply unified diff - patch hunks did not match the original text';
+                if (!result.success) {
+                    const errorMsg = `Context diff application failed: ${result.error}`;
                     if (attempt < maxValidationRetries) {
-                        console.log(`[StreamingTransformExecutor] Diff application failed (attempt ${attempt + 1}), retrying...`);
+                        console.log(`[StreamingTransformExecutor] Context diff application failed (attempt ${attempt + 1}), retrying...`);
                         const correctedDiff = await this.retryDiffGeneration(
                             currentMessages,
                             llmService,
                             errorMsg,
-                            originalText,
+                            originalJsonString,
                             diffString
                         );
                         return await this.convertUnifiedDiffToJsonPatches(
@@ -665,102 +743,16 @@ export class StreamingTransformExecutor {
                     }
                 }
 
-                // 3. Repair JSON if needed
-                let repairedJson: string;
-                try {
-                    // First try direct parsing
-                    JSON.parse(patchedText);
-                    repairedJson = patchedText;
-                } catch (parseError) {
-                    console.log(`[StreamingTransformExecutor] JSON repair needed for ${templateName}`);
-                    try {
-                        repairedJson = jsonrepair(patchedText);
-                    } catch (repairError: any) {
-                        const errorMsg = `JSON repair failed after diff application: ${repairError.message}`;
-                        if (attempt < maxValidationRetries) {
-                            console.log(`[StreamingTransformExecutor] JSON repair failed (attempt ${attempt + 1}), retrying...`);
-                            const correctedDiff = await this.retryDiffGeneration(
-                                currentMessages,
-                                llmService,
-                                errorMsg,
-                                originalText,
-                                diffString,
-                                patchedText
-                            );
-                            return await this.convertUnifiedDiffToJsonPatches(
-                                correctedDiff,
-                                originalJsondoc,
-                                templateName,
-                                retryCount,
-                                llmService,
-                                originalMessages
-                            );
-                        } else {
-                            throw new Error(errorMsg);
-                        }
-                    }
+                // Generate JSON patches using RFC6902
+                const jsonPatches = result.rfc6902Patches || [];
+                console.log(`[StreamingTransformExecutor] Generated ${jsonPatches.length} basic patch operations for ${templateName}`);
+
+                if (jsonPatches.length === 0) {
+                    console.log(`[StreamingTransformExecutor] No patches generated - content may be unchanged`);
                 }
 
-                // 4. Parse back to object
-                let result: any;
-                try {
-                    result = JSON.parse(repairedJson);
-                } catch (parseError: any) {
-                    const errorMsg = `Final JSON parsing failed: ${parseError.message}`;
-                    if (attempt < maxValidationRetries) {
-                        console.log(`[StreamingTransformExecutor] Final parsing failed (attempt ${attempt + 1}), retrying...`);
-                        const correctedDiff = await this.retryDiffGeneration(
-                            currentMessages,
-                            llmService,
-                            errorMsg,
-                            originalText,
-                            diffString,
-                            repairedJson
-                        );
-                        return await this.convertUnifiedDiffToJsonPatches(
-                            correctedDiff,
-                            originalJsondoc,
-                            templateName,
-                            retryCount,
-                            llmService,
-                            originalMessages
-                        );
-                    } else {
-                        throw new Error(errorMsg);
-                    }
-                }
-
-                // 5. Generate JSON patches from original and modified objects
-                try {
-                    const originalData = originalJsondoc.data || originalJsondoc;
-                    const jsonPatches = rfc6902.createPatch(originalData, result);
-                    console.log(`[StreamingTransformExecutor] Successfully converted unified diff to ${jsonPatches.length} JSON patches for ${templateName}`);
-                    return jsonPatches;
-                } catch (patchError: any) {
-                    const errorMsg = `JSON patch generation failed: ${patchError.message}`;
-                    if (attempt < maxValidationRetries) {
-                        console.log(`[StreamingTransformExecutor] JSON patch generation failed (attempt ${attempt + 1}), retrying...`);
-                        const correctedDiff = await this.retryDiffGeneration(
-                            currentMessages,
-                            llmService,
-                            errorMsg,
-                            originalText,
-                            diffString,
-                            repairedJson,
-                            result
-                        );
-                        return await this.convertUnifiedDiffToJsonPatches(
-                            correctedDiff,
-                            originalJsondoc,
-                            templateName,
-                            retryCount,
-                            llmService,
-                            originalMessages
-                        );
-                    } else {
-                        throw new Error(errorMsg);
-                    }
-                }
+                console.log(`[StreamingTransformExecutor] Final conversion successful for ${templateName}: ${jsonPatches.length} patches`);
+                return jsonPatches;
 
             } catch (error: any) {
                 if (attempt < maxValidationRetries) {
@@ -781,13 +773,13 @@ export class StreamingTransformExecutor {
                         originalMessages
                     );
                 } else {
-                    console.error(`[StreamingTransformExecutor] All ${maxValidationRetries + 1} diff validation attempts failed:`, error);
-                    throw error;
+                    console.error(`[StreamingTransformExecutor] All diff conversion attempts failed for ${templateName}:`, error.message);
+                    throw new Error(`Failed to convert diff to JSON patches after ${maxValidationRetries + 1} attempts: ${error.message}`);
                 }
             }
         }
 
-        throw new Error('Unexpected end of validation retry loop');
+        throw new Error(`Failed to convert diff to JSON patches after ${maxValidationRetries + 1} attempts`);
     }
 
     /**
@@ -803,7 +795,7 @@ export class StreamingTransformExecutor {
         parsedResult?: any
     ): Promise<string> {
         // Construct detailed error feedback for the LLM
-        let feedbackMessage = `你刚才生成的统一差异补丁存在问题：
+        let feedbackMessage = `你刚才生成的基于上下文的差异补丁存在问题：
 
 **错误信息**: ${errorMessage}
 
@@ -837,12 +829,14 @@ ${JSON.stringify(parsedResult, null, 2)}
 
         feedbackMessage += `
 
-请重新生成一个正确的统一差异补丁，确保：
-1. 差异补丁的行号和上下文完全匹配原始文本
-2. 应用后的JSON格式正确且有效
-3. 结果符合预期的数据结构schema
+请重新生成一个正确的基于上下文的差异补丁，确保：
+1. 使用 CONTEXT: 标识提供足够的上下文定位
+2. 使用 - 标识要删除的内容，+ 标识要添加的内容
+3. 上下文必须与原始JSON完全匹配
+4. 修改的内容格式正确且有效
+5. 结果符合预期的数据结构schema
 
-请直接输出修正后的统一差异补丁：`;
+请直接输出修正后的基于上下文的差异补丁：`;
 
         // Add error feedback to conversation
         const updatedMessages = [
@@ -850,26 +844,98 @@ ${JSON.stringify(parsedResult, null, 2)}
             { role: 'user', content: feedbackMessage }
         ];
 
-        // Call LLM again with error feedback
+        // Call LLM again with error feedback using streamText (since diffs are text-based)
         try {
-            const retryResponse = await llmService.streamObject({
+            console.log(`[StreamingTransformExecutor] Calling LLM for diff retry with ${updatedMessages.length} messages using streamText`);
+
+            // Import streamText from AI SDK
+            const { streamText } = await import('ai');
+            const { getLLMModel } = await import('./LLMConfig.js');
+            const model = await getLLMModel();
+
+            const retryResponse = await streamText({
+                model: model,
                 messages: updatedMessages,
-                schema: z.string().describe('修正后的统一差异补丁')
+                system: "You are an expert at generating unified diff patches for JSON data. Generate ONLY the unified diff patch, with no additional explanation or formatting."
             });
 
-            // Get the corrected diff from LLM response
-            const correctedDiff = await retryResponse.object;
+            console.log(`[StreamingTransformExecutor] LLM retry text response received, collecting text...`);
 
-            if (!correctedDiff || typeof correctedDiff !== 'string') {
-                throw new Error(`LLM returned invalid diff response: ${typeof correctedDiff} - ${correctedDiff}`);
+            // Collect all text chunks into final diff string
+            let correctedDiff = '';
+            for await (const textDelta of retryResponse.textStream) {
+                correctedDiff += textDelta;
             }
 
-            console.log(`[StreamingTransformExecutor] LLM provided corrected diff:`, correctedDiff.substring(0, 200) + '...');
+            console.log(`[StreamingTransformExecutor] LLM retry text collected:`, {
+                type: typeof correctedDiff,
+                isString: typeof correctedDiff === 'string',
+                isNull: correctedDiff === null,
+                isUndefined: correctedDiff === undefined,
+                length: correctedDiff?.length,
+                preview: typeof correctedDiff === 'string' ? correctedDiff.substring(0, 100) : String(correctedDiff)
+            });
+
+            if (!correctedDiff || typeof correctedDiff !== 'string') {
+                const errorDetails = {
+                    type: typeof correctedDiff,
+                    value: correctedDiff,
+                    isNull: correctedDiff === null,
+                    isUndefined: correctedDiff === undefined,
+                    stringified: String(correctedDiff)
+                };
+
+                console.error(`[StreamingTransformExecutor] Invalid LLM diff response details:`, errorDetails);
+                throw new Error(`LLM returned invalid diff response: type=${typeof correctedDiff}, value=${String(correctedDiff)}, details=${JSON.stringify(errorDetails)}`);
+            }
+
+            if (correctedDiff.length === 0) {
+                console.warn(`[StreamingTransformExecutor] LLM returned empty diff string`);
+                throw new Error(`LLM returned empty diff response`);
+            }
+
+            console.log(`[StreamingTransformExecutor] LLM provided valid corrected diff (${correctedDiff.length} chars):`, correctedDiff.substring(0, 200) + '...');
 
             return correctedDiff;
         } catch (retryError: any) {
-            console.error(`[StreamingTransformExecutor] Failed to get corrected diff from LLM:`, retryError);
-            throw new Error(`LLM retry failed: ${retryError.message}`);
+            console.error(`[StreamingTransformExecutor] Failed to get corrected diff from LLM:`, {
+                error: retryError,
+                message: retryError?.message,
+                stack: retryError?.stack,
+                name: retryError?.name
+            });
+            throw new Error(`LLM retry failed: ${retryError.message || 'Unknown error'}`);
+        }
+    }
+
+    /**
+     * Store a single message in real-time during streaming
+     */
+    private async storeMessageRealTime(
+        transformId: string,
+        projectId: string,
+        role: 'user' | 'assistant' | 'tool' | 'system',
+        content: string,
+        metadata: any = {},
+        chatMessageRepo: ChatMessageRepository
+    ): Promise<void> {
+        try {
+            await chatMessageRepo.createRawMessage(
+                projectId,
+                role,
+                content,
+                {
+                    metadata: {
+                        transform_id: transformId,
+                        streaming: true,
+                        timestamp: new Date().toISOString(),
+                        ...metadata
+                    }
+                }
+            );
+            console.log(`[StreamingTransformExecutor] Stored real-time ${role} message for transform ${transformId}`);
+        } catch (error) {
+            console.error(`[StreamingTransformExecutor] Failed to store real-time message:`, error);
         }
     }
 
@@ -983,7 +1049,7 @@ ${JSON.stringify(parsedResult, null, 2)}
         dryRun?: boolean
     ): Promise<string | null> {
         if (dryRun || !projectId || !userId || !jsondocRepo || !transformRepo) {
-            console.log(`[StreamingTransformExecutor] Dry run or missing dependencies: Skipping patch jsondoc creation`);
+            // console.log(`[StreamingTransformExecutor] Dry run or missing dependencies: Skipping patch jsondoc creation`);
             return null;
         }
 
@@ -1197,6 +1263,7 @@ ${JSON.stringify(parsedResult, null, 2)}
 
     /**
      * Execute streaming with single retry on failure
+     * Automatically detects JSON patch operations and uses streamText for diff generation
      */
     private async executeStreamingWithRetry<TOutput>(options: {
         prompt: string;
@@ -1207,6 +1274,7 @@ ${JSON.stringify(parsedResult, null, 2)}
         temperature?: number;
         topP?: number;
         maxTokens?: number;
+        executionMode?: StreamingExecutionMode;
     }) {
         const {
             prompt,
@@ -1216,10 +1284,39 @@ ${JSON.stringify(parsedResult, null, 2)}
             seed,
             temperature,
             topP,
-            maxTokens
+            maxTokens,
+            executionMode
         } = options;
 
-        // Get model instance for explicit parameter passing
+        // Check if this should use streamText for diff generation
+        // 1. JSON patch operations schema detection
+        const isJsonPatchOperations = this.isJsonPatchOperationsSchema(schema);
+
+        // 2. Execution mode-based detection (patch modes should use streamText for diffs)
+        const isPatchMode = executionMode?.mode === 'patch' ||
+            executionMode?.mode === 'patch-approval';
+
+        // 3. Template name pattern detection (templates ending with _diff should use streamText)
+        const isDiffTemplate = templateName.endsWith('_diff') ||
+            templateName.includes('_edit_diff');
+
+        const shouldUseStreamText = isJsonPatchOperations || isPatchMode || isDiffTemplate;
+
+        if (shouldUseStreamText) {
+            console.log(`[StreamingTransformExecutor] Using streamText for ${templateName} - Schema: ${isJsonPatchOperations}, Mode: ${isPatchMode}, Template: ${isDiffTemplate}`);
+            return this.executeStreamTextForPatches({
+                prompt,
+                templateName,
+                seed,
+                temperature,
+                topP,
+                maxTokens
+            });
+        }
+
+        // Standard object streaming for non-patch operations
+        console.log(`[StreamingTransformExecutor] Using streamObject for ${templateName} - Schema: ${isJsonPatchOperations}, Mode: ${isPatchMode}, Template: ${isDiffTemplate}`);
+
         const { getLLMModel } = await import('./LLMConfig.js');
         const model = await getLLMModel();
 
@@ -1253,6 +1350,296 @@ ${JSON.stringify(parsedResult, null, 2)}
                 throw retryError;
             }
         }
+    }
+
+    /**
+     * Check if schema is JsonPatchOperationsSchema (array of patch operations)
+     */
+    private isJsonPatchOperationsSchema(schema: z.ZodSchema<any>): boolean {
+        try {
+            // Check if it's a ZodArray
+            if (!(schema instanceof z.ZodArray)) {
+                return false;
+            }
+
+            // Check if the array element is a ZodObject with patch operation structure
+            const elementSchema = schema.element;
+            if (!(elementSchema instanceof z.ZodObject)) {
+                return false;
+            }
+
+            const shape = elementSchema.shape;
+            // Check for typical JSON patch operation fields
+            return 'op' in shape && 'path' in shape &&
+                (shape.op instanceof z.ZodEnum || shape.op instanceof z.ZodLiteral) &&
+                shape.path instanceof z.ZodString;
+        } catch (error) {
+            console.warn('[StreamingTransformExecutor] Error checking JSON patch schema:', error);
+            return false;
+        }
+    }
+
+    /**
+     * Execute streamText for patch generation and convert to JSON patch operations
+     */
+    private async executeStreamTextForPatches(options: {
+        prompt: string;
+        templateName: string;
+        seed?: number;
+        temperature?: number;
+        topP?: number;
+        maxTokens?: number;
+    }): Promise<AsyncIterable<any>> {
+        const { prompt, templateName, seed, temperature, topP, maxTokens } = options;
+
+        console.log(`[StreamingTransformExecutor] Using streamText for ${templateName} diff generation`);
+
+        // Get model instance
+        const { getLLMModel } = await import('./LLMConfig.js');
+        const model = await getLLMModel();
+
+        // Import streamText from AI SDK
+        const { streamText } = await import('ai');
+
+        try {
+            const response = await streamText({
+                model: model,
+                messages: [{
+                    role: 'user',
+                    content: prompt
+                }],
+                system: "You are an expert at generating unified diff patches for JSON data. Generate ONLY the unified diff patch, with no additional explanation or formatting.",
+                seed,
+                temperature,
+                topP,
+                maxTokens
+            });
+
+            // Convert text stream to JSON patch operations stream
+            return this.convertTextStreamToJsonPatches(response.textStream, templateName);
+
+        } catch (error) {
+            console.warn(`[StreamingTransformExecutor] First streamText attempt failed for ${templateName}, retrying...`, error);
+
+            // Single retry
+            try {
+                const retryResponse = await streamText({
+                    model: model,
+                    messages: [{
+                        role: 'user',
+                        content: prompt
+                    }],
+                    system: "You are an expert at generating unified diff patches for JSON data. Generate ONLY the unified diff patch, with no additional explanation or formatting.",
+                    seed,
+                    temperature,
+                    topP,
+                    maxTokens
+                });
+
+                return this.convertTextStreamToJsonPatches(retryResponse.textStream, templateName);
+            } catch (retryError) {
+                console.error(`[StreamingTransformExecutor] StreamText retry failed for ${templateName}:`, retryError);
+                throw retryError;
+            }
+        }
+    }
+
+    /**
+     * Convert text stream (unified diffs) to JSON patch operations stream
+     * Now yields objects with both rawText and patches for debugging
+     */
+    private async *convertTextStreamToJsonPatches(
+        textStream: AsyncIterable<string>,
+        templateName: string
+    ): AsyncGenerator<any, void, unknown> {
+        let accumulatedText = '';
+        let lastValidPatches: any[] = [];
+
+        console.log(`[StreamingTransformExecutor] Starting text stream to JSON patches conversion for ${templateName}`);
+
+        try {
+            for await (const textDelta of textStream) {
+                accumulatedText += textDelta;
+
+                // Always yield the raw text chunk for debugging
+                yield {
+                    type: 'rawText',
+                    textDelta,
+                    accumulatedText,
+                    templateName
+                };
+
+                // Try to convert accumulated text to JSON patches periodically
+                try {
+                    // For streaming, we need to get patches from the current accumulated diff
+                    // This is a simplified approach - in practice, you might want to wait for complete hunks
+                    if (accumulatedText.includes('@@') && accumulatedText.includes('\n')) {
+                        // Try to parse as a complete diff
+                        const patches = await this.convertUnifiedDiffTextToJsonPatches(accumulatedText, templateName);
+                        if (patches && patches.length > 0) {
+                            lastValidPatches = patches;
+                            yield {
+                                type: 'patches',
+                                patches,
+                                templateName,
+                                source: 'streaming'
+                            };
+                        }
+                    }
+                } catch (conversionError) {
+                    // Continue streaming, we'll try again with more text
+                    console.debug(`[StreamingTransformExecutor] Partial conversion failed for ${templateName}, continuing...`);
+                }
+            }
+
+            // Final conversion with complete text
+            try {
+                const finalPatches = await this.convertUnifiedDiffTextToJsonPatches(accumulatedText, templateName);
+                if (finalPatches && finalPatches.length > 0) {
+                    console.log(`[StreamingTransformExecutor] Final conversion successful for ${templateName}: ${finalPatches.length} patches`);
+                    yield {
+                        type: 'finalPatches',
+                        patches: finalPatches,
+                        templateName,
+                        source: 'final',
+                        rawText: accumulatedText
+                    };
+                } else if (lastValidPatches.length > 0) {
+                    console.log(`[StreamingTransformExecutor] Using last valid patches for ${templateName}: ${lastValidPatches.length} patches`);
+                    yield {
+                        type: 'finalPatches',
+                        patches: lastValidPatches,
+                        templateName,
+                        source: 'lastValid',
+                        rawText: accumulatedText
+                    };
+                } else {
+                    console.warn(`[StreamingTransformExecutor] No valid patches generated for ${templateName}`);
+                    yield {
+                        type: 'finalPatches',
+                        patches: [],
+                        templateName,
+                        source: 'empty',
+                        rawText: accumulatedText
+                    };
+                }
+            } catch (finalError) {
+                console.error(`[StreamingTransformExecutor] Final conversion failed for ${templateName}:`, finalError);
+                yield {
+                    type: 'finalPatches',
+                    patches: lastValidPatches.length > 0 ? lastValidPatches : [],
+                    templateName,
+                    source: 'error',
+                    rawText: accumulatedText,
+                    error: finalError instanceof Error ? finalError.message : String(finalError)
+                };
+            }
+        } catch (streamError) {
+            console.error(`[StreamingTransformExecutor] Text stream error for ${templateName}:`, streamError);
+            yield {
+                type: 'error',
+                patches: lastValidPatches.length > 0 ? lastValidPatches : [],
+                templateName,
+                rawText: accumulatedText,
+                error: streamError instanceof Error ? streamError.message : String(streamError)
+            };
+        }
+    }
+
+    /**
+ * Convert unified diff text to JSON patch operations  
+ */
+    private async convertUnifiedDiffTextToJsonPatches(diffText: string, templateName: string): Promise<any[]> {
+        try {
+            console.log(`[StreamingTransformExecutor] Converting unified diff to JSON patches for ${templateName}`);
+            console.log(`[StreamingTransformExecutor] Diff text (${diffText.length} chars):`, diffText.substring(0, 200) + '...');
+
+            // This method needs access to the original JSON to generate proper patches
+            // For now, we'll need to store the original data context or restructure this approach
+
+            // As a temporary solution, parse the diff and create simple patch operations
+            // This is a simplified implementation that extracts basic patch information
+            const patches: any[] = [];
+
+            // Try to extract patch information from the unified diff
+            const lines = diffText.split('\n');
+            let currentPath: string | null = null;
+
+            for (const line of lines) {
+                // Extract file paths (simplified)
+                if (line.startsWith('---') || line.startsWith('+++')) {
+                    // Skip file headers for now
+                    continue;
+                }
+
+                // Extract hunk headers
+                if (line.startsWith('@@')) {
+                    // Parse hunk header to understand what's being changed
+                    // Format: @@ -oldStart,oldCount +newStart,newCount @@
+                    continue;
+                }
+
+                // Process actual changes
+                if (line.startsWith('+') && !line.startsWith('+++')) {
+                    // Addition - try to extract the JSON path and value
+                    const content = line.substring(1).trim();
+                    if (content.includes(':')) {
+                        // This looks like a JSON property
+                        const [key, ...valueParts] = content.split(':');
+                        const value = valueParts.join(':').trim().replace(/,$/, '').replace(/"/g, '');
+
+                        patches.push({
+                            op: 'add',
+                            path: `/${key.trim().replace(/"/g, '')}`,
+                            value: this.parseJsonValue(value)
+                        });
+                    }
+                } else if (line.startsWith('-') && !line.startsWith('---')) {
+                    // Deletion - try to extract the JSON path
+                    const content = line.substring(1).trim();
+                    if (content.includes(':')) {
+                        const [key] = content.split(':');
+                        patches.push({
+                            op: 'remove',
+                            path: `/${key.trim().replace(/"/g, '')}`
+                        });
+                    }
+                }
+            }
+
+            console.log(`[StreamingTransformExecutor] Generated ${patches.length} basic patch operations for ${templateName}`);
+
+            return patches;
+        } catch (error) {
+            console.error(`[StreamingTransformExecutor] Failed to convert unified diff to JSON patches for ${templateName}:`, error);
+            return [];
+        }
+    }
+
+    /**
+     * Parse a string value to appropriate JSON type
+     */
+    private parseJsonValue(value: string): any {
+        if (!value || value === 'null') return null;
+        if (value === 'true') return true;
+        if (value === 'false') return false;
+        if (/^\d+$/.test(value)) return parseInt(value, 10);
+        if (/^\d+\.\d+$/.test(value)) return parseFloat(value);
+        if (value.startsWith('[') && value.endsWith(']')) {
+            try {
+                return JSON.parse(value);
+            } catch {
+                return value;
+            }
+        }
+        if (value.startsWith('{') && value.endsWith('}')) {
+            try {
+                return JSON.parse(value);
+            } catch {
+                return value;
+            }
+        }
+        return value;
     }
 
 
@@ -1292,7 +1679,7 @@ ${JSON.stringify(parsedResult, null, 2)}
         chunkCount?: number
     ): Promise<void> {
         if (dryRun || !jsondocRepo || !projectId || !transformId || !transformRepo) {
-            console.log(`[StreamingTransformExecutor] Dry run or missing dependencies: Skipping streaming patch jsondoc creation`);
+            // console.log(`[StreamingTransformExecutor] Dry run or missing dependencies: Skipping streaming patch jsondoc creation`);
             return;
         }
 
@@ -1432,7 +1819,7 @@ ${JSON.stringify(parsedResult, null, 2)}
         chunkCount?: number
     ): Promise<void> {
         if (dryRun || !jsondocRepo || !projectId || !transformId || !transformRepo) {
-            console.log(`[StreamingTransformExecutor] Dry run or missing dependencies: Skipping patch jsondoc finalization`);
+            // console.log(`[StreamingTransformExecutor] Dry run or missing dependencies: Skipping patch jsondoc finalization`);
             return;
         }
 
@@ -1523,121 +1910,8 @@ ${JSON.stringify(parsedResult, null, 2)}
         }
     }
 
-    /**
-     * Create individual patch jsondocs for approval workflow
-     */
-    private async createPatchApprovalJsondocs<TOutput>(
-        llmOutput: TOutput,
-        originalJsondoc: any,
-        templateName: string,
-        retryCount: number,
-        projectId?: string,
-        userId?: string,
-        jsondocRepo?: JsondocRepository,
-        transformId?: string | null,
-        transformRepo?: TransformRepository,
-        dryRun?: boolean
-    ): Promise<any> {
-        try {
-            // Convert unified diff to JSON patches
-            const patches = await this.convertUnifiedDiffToJsonPatches(
-                llmOutput,
-                originalJsondoc,
-                templateName,
-                retryCount,
-                this.llmService,
-                [] // Empty messages for patch approval context
-            );
 
-            if (!patches || patches.length === 0) {
-                console.warn(`[StreamingTransformExecutor] No patches found in LLM output for patch-approval mode`);
-                return originalJsondoc;
-            }
 
-            console.log(`[StreamingTransformExecutor] Creating ${patches.length} individual patch jsondocs for approval`);
-
-            // Create individual patch jsondocs for each patch operation
-            const patchJsondocIds: string[] = [];
-            for (let i = 0; i < patches.length; i++) {
-                const patch = patches[i];
-
-                if (!dryRun && jsondocRepo && projectId) {
-                    // Create a json_patch jsondoc for this specific patch
-                    const patchJsondoc = await jsondocRepo.createJsondoc(
-                        projectId,
-                        'json_patch',
-                        {
-                            patches: [patch], // Wrap single patch in array as expected by schema
-                            targetJsondocId: originalJsondoc.id || (() => {
-                                throw new Error(`Missing originalJsondoc.id for patch creation in template ${templateName}. originalJsondoc: ${JSON.stringify(originalJsondoc, null, 2)}`);
-                            })(),
-                            targetSchemaType: originalJsondoc.schema_type || (() => {
-                                throw new Error(`Missing originalJsondoc.schema_type for patch creation in template ${templateName}. originalJsondoc: ${JSON.stringify(originalJsondoc, null, 2)}`);
-                            })(),
-                            patchIndex: i,
-                            applied: false
-                        },
-                        'v1',
-                        {
-                            patch_index: i,
-                            template_name: templateName,
-                            retry_count: retryCount,
-                            created_for_approval: true,
-                            execution_mode: 'patch-approval',
-                            target_jsondoc_id: originalJsondoc.id || (() => {
-                                throw new Error(`Missing originalJsondoc.id for patch metadata in template ${templateName}. originalJsondoc: ${JSON.stringify(originalJsondoc, null, 2)}`);
-                            })()
-                        },
-                        'completed',
-                        'ai_generated'
-                    );
-
-                    if (patchJsondoc && transformId && transformRepo) {
-                        // Link this patch jsondoc as output of the ai_patch transform
-                        await transformRepo.addTransformOutputs(transformId, [{ jsondocId: patchJsondoc.id }], projectId);
-                        patchJsondocIds.push(patchJsondoc.id);
-                    }
-                } else if (dryRun) {
-                    console.log(`[StreamingTransformExecutor] Dry run: Would create patch jsondoc for patch ${i}:`, patch);
-                }
-            }
-
-            // Return original jsondoc data (patches will be applied after approval)
-            return originalJsondoc;
-
-        } catch (error) {
-            console.error(`[StreamingTransformExecutor] Error creating patch approval jsondocs:`, error);
-            throw error;
-        }
-    }
-
-    /**
-     * Helper method to get value at a specific JSON path
-     */
-    private getValueAtPath(obj: any, path: string): any {
-        try {
-            const pathParts = path.split('/').filter(part => part !== '');
-            let current = obj;
-
-            for (const part of pathParts) {
-                if (current === null || current === undefined) {
-                    return undefined;
-                }
-
-                // Handle array indices
-                if (Array.isArray(current) && /^\d+$/.test(part)) {
-                    current = current[parseInt(part, 10)];
-                } else {
-                    current = current[part];
-                }
-            }
-
-            return current;
-        } catch (error) {
-            console.warn(`[StreamingTransformExecutor] Error getting value at path ${path}:`, error);
-            return undefined;
-        }
-    }
 }
 
 /**

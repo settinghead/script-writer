@@ -477,12 +477,55 @@ export function createAdminRoutes(
                 transformMetadata,
                 dryRun: true,  // This will skip database operations but still call LLM
                 onStreamChunk: async (chunk: any, chunkCount: number) => {
-                    // Send each chunk as SSE event
-                    sendSSE('chunk', {
-                        chunkCount,
-                        data: chunk,
-                        toolName
-                    });
+                    // Handle new streaming format with both rawText and patches
+                    if (chunk && typeof chunk === 'object' && 'type' in chunk) {
+                        // New format with detailed streaming info
+                        if (chunk.type === 'rawText') {
+                            // Send raw text chunks for debugging
+                            sendSSE('rawText', {
+                                chunkCount,
+                                textDelta: chunk.textDelta,
+                                accumulatedText: chunk.accumulatedText,
+                                templateName: chunk.templateName,
+                                toolName
+                            });
+                        } else if (chunk.type === 'patches' || chunk.type === 'finalPatches') {
+                            // Send patch data
+                            sendSSE('patches', {
+                                chunkCount,
+                                patches: chunk.patches,
+                                source: chunk.source,
+                                templateName: chunk.templateName,
+                                rawText: chunk.rawText,
+                                toolName
+                            });
+                        } else if (chunk.type === 'error') {
+                            // Send error information
+                            sendSSE('error', {
+                                chunkCount,
+                                patches: chunk.patches,
+                                rawText: chunk.rawText,
+                                error: chunk.error,
+                                templateName: chunk.templateName,
+                                toolName
+                            });
+                        }
+
+                        // Also send the standard chunk format for compatibility
+                        sendSSE('chunk', {
+                            chunkCount,
+                            data: chunk.patches || chunk,
+                            streamType: chunk.type,
+                            toolName
+                        });
+                    } else {
+                        // Standard format - send as before
+                        sendSSE('chunk', {
+                            chunkCount,
+                            data: chunk,
+                            toolName
+                        });
+                    }
                 }
             });
 
@@ -646,6 +689,182 @@ export function createAdminRoutes(
             console.error('Error fetching jsondocs:', error);
             res.status(500).json({
                 error: 'Failed to fetch jsondocs',
+                details: error instanceof Error ? error.message : String(error)
+            });
+        }
+    });
+
+    // GET /api/admin/transforms/:projectId - Get transforms for a project
+    router.get('/transforms/:projectId', authMiddleware.authenticate, async (req: Request, res: Response) => {
+        try {
+            const { projectId } = req.params;
+            const userId = req.user?.id;
+
+            if (!userId) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
+
+            // Check if user has access to this project
+            const hasAccess = await jsondocRepo.userHasProjectAccess(userId, projectId);
+            if (!hasAccess) {
+                res.status(403).json({ error: 'Access denied to project' });
+                return;
+            }
+
+            // Get transforms for the project
+            const transforms = await transformRepo.getProjectTransforms(projectId);
+
+            res.json({
+                success: true,
+                projectId,
+                transforms
+            });
+
+        } catch (error) {
+            console.error('Error fetching transforms:', error);
+            res.status(500).json({
+                error: 'Failed to fetch transforms',
+                details: error instanceof Error ? error.message : String(error)
+            });
+        }
+    });
+
+    // GET /api/admin/human-transforms/:projectId - Get human transforms for a project
+    router.get('/human-transforms/:projectId', authMiddleware.authenticate, async (req: Request, res: Response) => {
+        try {
+            const { projectId } = req.params;
+            const userId = req.user?.id;
+
+            if (!userId) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
+
+            // Check if user has access to this project
+            const hasAccess = await jsondocRepo.userHasProjectAccess(userId, projectId);
+            if (!hasAccess) {
+                res.status(403).json({ error: 'Access denied to project' });
+                return;
+            }
+
+            // Get human transforms for the project using direct database query
+            const { db } = await import('../database/connection.js');
+            const humanTransforms = await db
+                .selectFrom('human_transforms as ht')
+                .innerJoin('transforms as t', 't.id', 'ht.transform_id')
+                .selectAll(['ht', 't'])
+                .where('t.project_id', '=', projectId)
+                .orderBy('t.created_at', 'desc')
+                .execute();
+
+            const mappedHumanTransforms = humanTransforms.map(row => ({
+                id: row.id,
+                transform_id: row.transform_id,
+                action_type: row.action_type,
+                interface_context: row.interface_context ? JSON.parse(row.interface_context) : null,
+                change_description: row.change_description,
+                source_jsondoc_id: row.source_jsondoc_id,
+                derivation_path: row.derivation_path,
+                derived_jsondoc_id: row.derived_jsondoc_id,
+                transform_name: row.transform_name,
+                project_id: row.project_id,
+                created_at: row.created_at?.toISOString() || new Date().toISOString(),
+                updated_at: row.updated_at?.toISOString() || new Date().toISOString()
+            }));
+
+            res.json({
+                success: true,
+                projectId,
+                humanTransforms: mappedHumanTransforms
+            });
+
+        } catch (error) {
+            console.error('Error fetching human transforms:', error);
+            res.status(500).json({
+                error: 'Failed to fetch human transforms',
+                details: error instanceof Error ? error.message : String(error)
+            });
+        }
+    });
+
+    // GET /api/admin/transform-inputs/:projectId - Get transform inputs for a project
+    router.get('/transform-inputs/:projectId', authMiddleware.authenticate, async (req: Request, res: Response) => {
+        try {
+            const { projectId } = req.params;
+            const userId = req.user?.id;
+
+            if (!userId) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
+
+            // Check if user has access to this project
+            const hasAccess = await jsondocRepo.userHasProjectAccess(userId, projectId);
+            if (!hasAccess) {
+                res.status(403).json({ error: 'Access denied to project' });
+                return;
+            }
+
+            // Get transform inputs for the project using direct database query
+            const { db } = await import('../database/connection.js');
+            const inputs = await db
+                .selectFrom('transform_inputs')
+                .selectAll()
+                .where('project_id', '=', projectId)
+                .execute();
+
+            res.json({
+                success: true,
+                projectId,
+                inputs
+            });
+
+        } catch (error) {
+            console.error('Error fetching transform inputs:', error);
+            res.status(500).json({
+                error: 'Failed to fetch transform inputs',
+                details: error instanceof Error ? error.message : String(error)
+            });
+        }
+    });
+
+    // GET /api/admin/transform-outputs/:projectId - Get transform outputs for a project
+    router.get('/transform-outputs/:projectId', authMiddleware.authenticate, async (req: Request, res: Response) => {
+        try {
+            const { projectId } = req.params;
+            const userId = req.user?.id;
+
+            if (!userId) {
+                res.status(401).json({ error: 'User not authenticated' });
+                return;
+            }
+
+            // Check if user has access to this project
+            const hasAccess = await jsondocRepo.userHasProjectAccess(userId, projectId);
+            if (!hasAccess) {
+                res.status(403).json({ error: 'Access denied to project' });
+                return;
+            }
+
+            // Get transform outputs for the project using direct database query
+            const { db } = await import('../database/connection.js');
+            const outputs = await db
+                .selectFrom('transform_outputs')
+                .selectAll()
+                .where('project_id', '=', projectId)
+                .execute();
+
+            res.json({
+                success: true,
+                projectId,
+                outputs
+            });
+
+        } catch (error) {
+            console.error('Error fetching transform outputs:', error);
+            res.status(500).json({
+                error: 'Failed to fetch transform outputs',
                 details: error instanceof Error ? error.message : String(error)
             });
         }

@@ -19,7 +19,7 @@ import type { StreamingToolDefinition } from '../transform-jsondoc-framework/Str
 import { TypedJsondoc } from '@/common/jsondocs';
 import { defaultPrepareTemplateVariables } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import { createJsondocProcessor } from './shared/JsondocProcessor';
-import { JsonPatchOperationsSchema } from '@/common/schemas/transforms';
+import { JsonPatchOperationsSchema, JsonPatchOperation } from '@/common/schemas/transforms';
 
 const EpisodePlanningToolResultSchema = z.object({
     outputJsondocId: z.string(),
@@ -118,12 +118,11 @@ export function createEpisodePlanningEditToolDefinition(
 
             const outputJsondocType: TypedJsondoc['schema_type'] = 'episode_planning';
 
-            // Create config for unified diff patch generation
-            const UnifiedDiffSchema = z.string().describe('Unified diff patch string in git diff format');
-            const config: StreamingTransformConfig<EpisodePlanningEditInput, string> = {
+            // Create config for JSON patch generation
+            const config: StreamingTransformConfig<EpisodePlanningEditInput, JsonPatchOperation[]> = {
                 templateName: 'episode_planning_edit_diff',
                 inputSchema: EpisodePlanningEditInputSchema,
-                outputSchema: UnifiedDiffSchema, // String for LLM output
+                outputSchema: JsonPatchOperationsSchema, // JSON patch operations for external output
                 prepareTemplateVariables: async (input) => {
                     const defaultVars = await defaultPrepareTemplateVariables(input, jsondocRepo);
                     return {
