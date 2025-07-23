@@ -9,6 +9,7 @@ import { episodePlanningEditPatchTemplate } from './episodePlanningEditPatch.js'
 import { episodeSynopsisTemplate } from './episodeSynopsis.js';
 import { ParticleTemplateProcessor } from '../ParticleTemplateProcessor';
 import { dump } from 'js-yaml';
+import { addLineNumbers } from '../../../common/contextDiff';
 
 // Define types locally to avoid path issues
 interface LLMTemplate {
@@ -17,6 +18,33 @@ interface LLMTemplate {
   promptTemplate: string;
   outputFormat: string;
   responseWrapper?: string;
+}
+
+/**
+ * Extract field paths from a JSON object for debugging
+ */
+function extractFieldPaths(obj: any, prefix = ''): string[] {
+  const paths: string[] = [];
+
+  if (typeof obj === 'object' && obj !== null) {
+    for (const [key, value] of Object.entries(obj)) {
+      const currentPath = prefix ? `${prefix}.${key}` : key;
+      paths.push(currentPath);
+
+      if (Array.isArray(value)) {
+        paths.push(`${currentPath}[*]`);
+        if (value.length > 0 && typeof value[0] === 'object') {
+          const subPaths = extractFieldPaths(value[0], `${currentPath}[*]`);
+          paths.push(...subPaths);
+        }
+      } else if (typeof value === 'object' && value !== null) {
+        const subPaths = extractFieldPaths(value, currentPath);
+        paths.push(...subPaths);
+      }
+    }
+  }
+
+  return paths;
 }
 
 // Template context for the new generic format
@@ -82,6 +110,13 @@ function isJsonPatchTemplate(templateId: string): boolean {
   return templateId.includes('_edit_patch');
 }
 
+/**
+ * Check if a template is a unified diff template
+ */
+function isUnifiedDiffTemplate(templateId: string): boolean {
+  return templateId.includes('_edit_diff') || templateId.includes('_diff');
+}
+
 export class TemplateService {
   private templates: Map<string, LLMTemplate> = new Map();
   private particleProcessor?: ParticleTemplateProcessor;
@@ -133,14 +168,16 @@ export class TemplateService {
     if (context.params) {
       const paramsYaml = dump(context.params, {
         indent: 2,
-        lineWidth: -1 // Disable line wrapping
-      }).trim();
-      result = result.replace(/%%params%%/g, paramsYaml);
+        lineWidth: -1,
+        noRefs: true
+      });
+      result = result.replace(/%%params%%/g, paramsYaml.trim());
     }
 
     // Replace %%jsondocs%% with enhanced format for JSON patch templates
     if (context.jsondocs) {
       const isJsonPatch = isJsonPatchTemplate(template.id);
+      const isUnifiedDiff = isUnifiedDiffTemplate(template.id);
       let jsondocsOutput = '';
 
       // Handle case where jsondocs might be a YAML string instead of an object
@@ -151,71 +188,101 @@ export class TemplateService {
         });
         // If it's a YAML string, we should not process it as individual jsondocs
         // Instead, replace %%jsondocs%% directly with the YAML content
-        result = result.replace(/%%jsondocs%%/g, context.jsondocs);
+
+        // For unified diff templates, add line numbers to the string content
+        if (isUnifiedDiff) {
+          const numberedContent = addLineNumbers(context.jsondocs);
+          result = result.replace(/%%jsondocs%%/g, numberedContent);
+        } else {
+          result = result.replace(/%%jsondocs%%/g, context.jsondocs);
+        }
         return result;
       }
 
       for (const [key, jsondoc] of Object.entries(jsondocsObject)) {
         // Create a more descriptive label based on schema type
         const schemaTypeLabels: Record<string, string> = {
-          '灵感创意': '故事创意',
-          'brainstorm_collection': '创意集合',
-          'brainstorm_input_params': '头脑风暴参数',
-          '剧本设定': '剧本设定',
+          'brainstorm_idea_collection': '故事创意集合',
+          'outline_settings': '剧本设定',
           'chronicles': '时间顺序大纲',
           'episode_planning': '剧集框架',
-          'episode_synopsis': '分集大纲',
+          'episode_synopsis': '剧集梗概',
+          'script': '剧本',
           'user_input': '用户输入'
         };
 
-        console.log(`[TemplateService] Processing jsondoc for template:`, {
-          jsondoc_type: typeof jsondoc,
-          jsondoc_keys: Object.keys(jsondoc || {}),
-          jsondoc_preview: JSON.stringify(jsondoc).substring(0, 200) + '...'
-        });
+        const jsondocData = (jsondoc as any)?.data || jsondoc;
+        const schemaType = (jsondoc as any)?.schema_type || 'unknown';
+        const label = schemaTypeLabels[schemaType] || schemaType;
 
-        const jsondocTyped = jsondoc as any;
-        const schemaType = jsondocTyped.schema_type || jsondocTyped.schemaType;
-        if (!schemaType) {
-          console.log(`[TemplateService] ERROR: Missing schema_type field in jsondoc:`, {
-            full_jsondoc: JSON.stringify(jsondocTyped, null, 2),
-            jsondoc_keys: Object.keys(jsondocTyped || {}),
-            jsondoc_type: typeof jsondocTyped
-          });
-          throw new Error(`Jsondoc missing schema_type field. This indicates a data integrity issue. Jsondoc: ${JSON.stringify(jsondocTyped, null, 2)}`);
-        }
-        const displayLabel = schemaTypeLabels[schemaType];
-        if (!displayLabel) {
-          throw new Error(`Unknown schema type '${schemaType}'. Please add it to schemaTypeLabels in TemplateService.ts`);
-        }
+        if (isJsonPatch) {
+          // For JSON patch templates, include the raw JSON with field path annotations
+          jsondocsOutput += `=== ${label} ===\n`;
 
-        jsondocsOutput += `[jsondoc] ${displayLabel}:\n`;
+          // Convert to JSON with proper formatting
+          const jsonString = JSON.stringify(jsondocData, null, 2);
+          jsondocsOutput += jsonString;
+          jsondocsOutput += '\n\n';
 
-        // Handle each field in the jsondoc
-        for (const [field, value] of Object.entries(jsondoc as any)) {
-          if (field === 'data') {
-            // For data field, output the JSON string with proper indentation
-            jsondocsOutput += `  ${field}: |\n`;
-            // Handle both string and object data types
-            const jsonString = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
-            // Indent each line of the JSON string
-            const indentedJson = jsonString.split('\n').map(line => `    ${line}`).join('\n');
-            jsondocsOutput += `${indentedJson}\n`;
+          // Add field path annotations for complex objects
+          if (typeof jsondocData === 'object' && jsondocData !== null) {
+            const fieldPaths = extractFieldPaths(jsondocData);
+            if (fieldPaths.length > 0) {
+              jsondocsOutput += `字段路径说明:\n`;
+              for (const path of fieldPaths) {
+                jsondocsOutput += `  ${path}\n`;
+              }
+              jsondocsOutput += '\n';
+            }
+          }
+        } else if (isUnifiedDiff) {
+          // For unified diff templates, add line numbers to JSON content
+          jsondocsOutput += `=== ${label} ===\n`;
 
-            // For JSON patch templates, add array index annotations
-            if (isJsonPatch && typeof value === 'object' && value !== null) {
-              const arrayAnnotations = annotateArraysWithIndices(value);
-              if (arrayAnnotations.trim()) {
-                jsondocsOutput += `\n  array_index_reference (for accurate JSON patch paths):\n`;
+          // Convert to JSON with proper formatting and add line numbers
+          const jsonString = JSON.stringify(jsondocData, null, 2);
+          const numberedJson = addLineNumbers(jsonString);
+          jsondocsOutput += numberedJson;
+          jsondocsOutput += '\n\n';
+        } else {
+          // For other templates, use YAML format
+          jsondocsOutput += `=== ${label} ===\n`;
+
+          // Process each field in the jsondoc
+          for (const [field, value] of Object.entries(jsondocData)) {
+            if (Array.isArray(value)) {
+              // For arrays, provide detailed annotations
+              jsondocsOutput += `  ${field}:\n`;
+              for (let i = 0; i < value.length; i++) {
+                const item = value[i];
+                if (typeof item === 'object' && item !== null) {
+                  // For object arrays, provide structured annotations
+                  jsondocsOutput += `    - # ${field}[${i}]\n`;
+                  for (const [subField, subValue] of Object.entries(item)) {
+                    jsondocsOutput += `      ${subField}: ${typeof subValue === 'string' ? `"${subValue}"` : subValue}\n`;
+                  }
+                } else {
+                  jsondocsOutput += `    - "${item}" # ${field}[${i}]\n`;
+                }
+              }
+            } else if (typeof value === 'object' && value !== null) {
+              // For nested objects, provide path annotations
+              jsondocsOutput += `  ${field}: # Object with fields: ${Object.keys(value).join(', ')}\n`;
+              const arrayAnnotations = dump(value, {
+                indent: 2,
+                lineWidth: -1,
+                noRefs: true
+              });
+              if (arrayAnnotations) {
                 const indentedAnnotations = arrayAnnotations.split('\n').map(line =>
                   line ? `    ${line}` : ''
                 ).join('\n');
                 jsondocsOutput += `${indentedAnnotations}\n`;
               }
+            } else {
+              // For other fields, use regular YAML formatting
+              jsondocsOutput += `  ${field}: ${value}\n`;
             }
-          } else {
-            // For other fields, use regular YAML formatting
-            jsondocsOutput += `  ${field}: ${value}\n`;
           }
         }
         jsondocsOutput += '\n'; // Add spacing between jsondocs

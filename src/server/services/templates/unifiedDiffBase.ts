@@ -11,106 +11,76 @@ interface LLMTemplate {
 
 /**
  * Base unified diff template that can be reused for different content types
- * Generates unified diffs instead of JSON patches for better LLM reliability
+ * Generates standard unified diffs optimized for jsdiff library
  */
 export function createUnifiedDiffTemplate(
   { templateName, description, outputJsondocType, targetTypeName, additionalInstructions = [] }: { templateName: string; description: string; outputJsondocType: any; targetTypeName: string; additionalInstructions?: string[]; }): LLMTemplate {
   const baseInstructions = [`
       基于用户提供的编辑要求，对剧本设定进行精确修改。
       
-      重要：直接输出context diff格式，不要使用代码块包装（不要用\`\`\`json或\`\`\`），不要添加任何解释。
+      重要：直接输出标准unified diff格式，不要使用代码块包装（不要用\`\`\`json或\`\`\`），不要添加任何解释。
       
-      差异补丁格式：
-      1. 使用CONTEXT: 前面提供3-5行，后跟3-5行上下文来定位修改位置（包括字段名和周围结构）。
-      2. 使用- 表示要删除的内容。
-      3. 使用+ 表示要添加的内容。
-      4. 每个修改区域都要以CONTEXT:开头。
-      5. 保持JSON格式的完整性，包括引号和逗号。
-      6. **重要：对于数组字段替换（如personality_traits），必须提供完整的数组块替换，包括字段名、完整的旧数组和完整的新数组。**
-      7. **数组替换示例：**
-         -          "personality_traits": [
-                      "旧特征1",
-                      "旧特征2"
-                    ],
-         +          "personality_traits": [
-                      "新特征1",
-                      "新特征2",
-                      "新特征3"
-                    ],
-    示例：
-    假设原始JSON：
+      输入JSON已添加行号以帮助定位。生成diff时请忽略行号，只处理实际的JSON内容。
+      
+      标准unified diff格式：
+      1. 文件头：--- a/file.json 和 +++ b/file.json
+      2. 区块头：@@ -起始行,行数 +起始行,行数 @@
+      3. 使用 - 表示要删除的行
+      4. 使用 + 表示要添加的行  
+      5. 使用空格表示上下文行（不变的行）
+      6. 提供足够的上下文行（前后各3-5行）
+      
+      示例：
+      假设要将title从"旧标题"改为"新标题"：
+      
+      --- a/file.json
+      +++ b/file.json
+      @@ -1,5 +1,5 @@
+       {
+      -  "title": "旧标题",
+      +  "title": "新标题",
+         "genre": "都市奇幻爽文",
+         "platform": "抖音"
+       }
+      
+      对于数组修改，替换整个数组：
+      
+      --- a/file.json
+      +++ b/file.json
+      @@ -5,8 +5,8 @@
+           "name": "张三",
+      -    "personality_traits": [
+      -      "冷漠自私",
+      -      "嘴硬心软"
+      -    ]
+      +    "personality_traits": [
+      +      "温柔善良", 
+      +      "聪明机智"
+      +    ]
+         }
+      
+      注意：
+      - 只修改需要改变的内容
+      - 保持JSON格式完整性
+      - 提供足够的上下文定位
+      - 行号仅用于理解位置，diff中不包含行号
+    `];
 
-\`\`\`json
-    {
-      "title": "Old Title",
-      "characters": [
-        {
-          "name": "John",
-          "age": 30
-        }
-      ],
-      "events": [
-        {
-          "name": "Event 1",
-          "description": "Event 1 description"
-        }
-      ]
-    }
-\`\`\`
-
-要将age改为35，并添加新字段role:
-\`\`\`json
-    CONTEXT:   "characters": [
-     {
-        "name": "John",
--        "age": 30
-+        "age": 35,
-+        "role": "hero"
-     }
-  ],
-  "events": [
-    {
-\`\`\`
-
-要添加一个character:
-\`\`\`json
-    CONTEXT:   "characters": [
-        {
-            "name": "John",
-            "age": 30
-        }，
-+        {
-+            "name": "Mary",
-+            "age": 24
-+        },
-  ],
-    "events": [
-      {
-]
-
-要删除一个character:
-\`\`\`json
-    CONTEXT:   "characters": [
--        {
--            "name": "John",
--            "age": 30
--        }
-    ],
-    "events": [
-      {
-\`\`\`
-
-    差异补丁必须基于提供的jsondocs中的内容。
-    确保修改符合故事整体逻辑和用户要求。
-    ${additionalInstructions.join('\n')}
-`
-  ];
+  const allInstructions = [...baseInstructions, ...additionalInstructions].join('\n');
 
   return {
     id: templateName,
     name: description,
-    promptTemplate: `${baseInstructions.join('\n')}\n\n编辑要求: %%params%%\n\n当前jsondocs: %%jsondocs%%\n\n生成基于上下文的差异补丁:`,
-    outputFormat: 'text',
-    responseWrapper: '%%content%%'
+    promptTemplate: `
+      ${allInstructions}
+      
+      **编辑要求：**
+      %%params%%
+      
+      **当前${targetTypeName}设定（带行号）：**
+      %%jsondocs%%
+    `,
+    outputFormat: "unified_diff",
+    responseWrapper: "直接输出unified diff，无需包装"
   };
 } 
