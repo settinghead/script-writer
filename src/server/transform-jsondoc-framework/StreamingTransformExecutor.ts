@@ -50,14 +50,13 @@ export async function defaultPrepareTemplateVariables<TInput>(
             if (jsondoc) {
                 // Use description as key, fallback to schema type or jsondoc ID
                 const key = jsondocRef.description || jsondocRef.schemaType || jsondocRef.jsondocId;
-                // For JSON patch templates, flatten the structure and stringify the data
-                // This allows the LLM to see the data structure clearly while generating correct paths
+                // Don't stringify the data here - let TemplateService handle formatting based on template type
                 jsondocs[key] = {
                     id: jsondoc.id,
                     description: jsondocRef.description,
                     schemaType: jsondocRef.schemaType,
                     schema_type: jsondoc.schema_type,
-                    data: JSON.stringify(jsondoc.data, null, 2)
+                    data: jsondoc.data
                 };
             }
         }

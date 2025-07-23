@@ -1,62 +1,20 @@
 [
   {
-    "op": "add",
-    "path": "/name",
-    "value": "弗利沙沙"
+    "op": "remove",
+    "path": "/occupation"
   },
   {
-    "op": "add",
-    "path": "/type",
-    "value": "final_boss"
-  },
-  {
-    "op": "add",
-    "path": "/description",
-    "value": "宇宙级大boss，外星帝王级战士，拥有毁灭星球的力量。外表华丽阴柔，性格极度自负残忍，视生命如草芥。作为王千榕宿命中的终极对手，他降临地球只为亲手摧毁觉醒的赛亚人血脉。王千榕在与他决战时，因目睹小雨重伤濒死，情绪爆发首次变身超级赛亚人，开启战力跃迁的传奇时刻。"
-  },
-  {
-    "op": "add",
-    "path": "/age",
-    "value": "未知（外星帝王年龄）"
-  },
-  {
-    "op": "add",
-    "path": "/gender",
-    "value": "男"
+    "op": "remove",
+    "path": "/personality_traits"
   },
   {
     "op": "add",
     "path": "/occupation",
-    "value": "宇宙暴君"
+    "value": "心理学家（伪装身份）"
   },
   {
     "op": "add",
-    "path": "/personality_traits",
+    "path": "/skills",
     "value": "["
-  },
-  {
-    "op": "add",
-    "path": "/character_arc",
-    "value": "从不可一世的宇宙统治者，到首次遭遇赛亚人怒火反噬的挫败者，其不可战胜的神话被南京外卖员打破。"
-  },
-  {
-    "op": "add",
-    "path": "/relationships",
-    "value": "{"
-  },
-  {
-    "op": "add",
-    "path": "/王千榕",
-    "value": "猎物→宿命之敌→被超越的对象"
-  },
-  {
-    "op": "add",
-    "path": "/邵夫特·金",
-    "value": "代理人→弃子"
-  },
-  {
-    "op": "add",
-    "path": "/艾莉娅",
-    "value": "部下→背叛者"
   }
 ]
