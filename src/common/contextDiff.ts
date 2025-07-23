@@ -35,17 +35,66 @@ export function parseContextDiff(contextDiff: string): ParsedDiff | null {
         const additions: string[] = [];
 
         let inContext = true;
+        let currentRemoval: string[] = [];
+        let currentAddition: string[] = [];
+        let collectingRemovals = false;
+        let collectingAdditions = false;
 
         for (const line of lines) {
             if (line.startsWith('-')) {
                 inContext = false;
-                removals.push(line.substring(1)); // Remove the '-' prefix
+                // If we were collecting additions, save them first
+                if (collectingAdditions && currentAddition.length > 0) {
+                    additions.push(currentAddition.join('\n'));
+                    currentAddition = [];
+                    collectingAdditions = false;
+                }
+                currentRemoval.push(line.substring(1)); // Remove the '-' prefix
+                collectingRemovals = true;
             } else if (line.startsWith('+')) {
                 inContext = false;
-                additions.push(line.substring(1)); // Remove the '+' prefix
+                // If we were collecting removals, save them first
+                if (collectingRemovals && currentRemoval.length > 0) {
+                    removals.push(currentRemoval.join('\n'));
+                    currentRemoval = [];
+                    collectingRemovals = false;
+                }
+                currentAddition.push(line.substring(1)); // Remove the '+' prefix
+                collectingAdditions = true;
             } else if (inContext && line.trim()) {
                 contextLines.push(line);
+            } else if (!inContext) {
+                // We're in a diff section - continue collecting lines for current block
+                if (collectingRemovals) {
+                    currentRemoval.push(line);
+                } else if (collectingAdditions) {
+                    currentAddition.push(line);
+
+                    // Check if this line ends a JSON structure (ends with }, or ],)
+                    const trimmedLine = line.trim();
+                    if (trimmedLine.endsWith('},') || trimmedLine.endsWith('],') || trimmedLine.endsWith('}') || trimmedLine.endsWith(']')) {
+                        // This might be the end of the addition block
+                        // Let's finalize this addition and prepare for next block
+                        additions.push(currentAddition.join('\n'));
+                        currentAddition = [];
+                        collectingAdditions = false;
+                    }
+                }
+
+                // Check if this is an empty line that might indicate end of diff section
+                if (line.trim() === '' && currentRemoval.length > 0 && currentAddition.length > 0) {
+                    // We have both blocks and an empty line - this might be end of section
+                    // But let's be conservative and only finalize at section boundaries
+                }
             }
+        }
+
+        // Don't forget to save any remaining blocks
+        if (currentRemoval.length > 0) {
+            removals.push(currentRemoval.join('\n'));
+        }
+        if (currentAddition.length > 0) {
+            additions.push(currentAddition.join('\n'));
         }
 
         const context = contextLines.join('\n');
@@ -247,6 +296,78 @@ function mapNormalizedToOriginal(original: string, normalized: string, normalize
 }
 
 /**
+ * Extract meaningful value from a multi-line diff block
+ * @param diffBlock - A multi-line block from the diff
+ * @returns Extracted value or null if no meaningful content
+ */
+export function extractValueFromDiffBlock(diffBlock: string): string | null {
+    const lines = diffBlock.split('\n');
+
+    // Look for field assignment pattern: "field": value
+    const firstLine = lines[0].trim();
+    const fieldMatch = firstLine.match(/^"([^"]+)":\s*(.*)$/);
+
+    if (fieldMatch) {
+        const fieldName = fieldMatch[1];
+        const valueStart = fieldMatch[2];
+
+        // For array or object values that span multiple lines
+        if (valueStart.trim() === '[' || valueStart.trim() === '{') {
+            // Find the matching closing bracket
+            let depth = 0;
+            let valueLines: string[] = [];
+            let foundStart = false;
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+
+                if (!foundStart && (trimmed === '[' || trimmed === '{' || trimmed.endsWith('['))) {
+                    foundStart = true;
+                    if (trimmed === '[') {
+                        valueLines.push('[');
+                    } else if (trimmed === '{') {
+                        valueLines.push('{');
+                    } else {
+                        // Line ends with [, extract just the bracket part
+                        const bracketPart = trimmed.substring(trimmed.lastIndexOf('['));
+                        valueLines.push(bracketPart);
+                    }
+                    depth = 1;
+                } else if (foundStart) {
+                    valueLines.push(line);
+
+                    // Count brackets to find the end
+                    for (const char of trimmed) {
+                        if (char === '[' || char === '{') depth++;
+                        if (char === ']' || char === '}') depth--;
+                    }
+
+                    if (depth === 0) {
+                        // Remove trailing comma if present
+                        let lastLine = valueLines[valueLines.length - 1];
+                        if (lastLine.trim().endsWith(',')) {
+                            lastLine = lastLine.trim().slice(0, -1);
+                            valueLines[valueLines.length - 1] = lastLine;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (valueLines.length > 0) {
+                return valueLines.join('\n').trim();
+            }
+        }
+
+        // For simple single-line values
+        return valueStart.replace(/,$/, '').trim();
+    }
+
+    // If no field pattern, return the whole block
+    return diffBlock.trim();
+}
+
+/**
  * Extract meaningful value from a diff line (removes JSON syntax)
  * @param diffLine - A line from the diff (removal or addition)
  * @returns Extracted value or null if no meaningful content
@@ -334,6 +455,8 @@ export function applyContextDiffToJSON(originalText: string, contextDiff: string
                 // Skip identical operations (structural no-ops)
                 if (removal.trim() === addition.trim()) {
                     console.log(`[JSONDiff]   SKIPPED: Identical removal and addition (no change needed)`);
+                    console.log(`[JSONDiff]     Removal: "${removal}"`);
+                    console.log(`[JSONDiff]     Addition: "${addition}"`);
                     changesApplied++; // Count as successful since no change was needed
                     continue;
                 }
@@ -366,9 +489,9 @@ export function applyContextDiffToJSON(originalText: string, contextDiff: string
  * Apply a single change to a JSON object
  */
 function applyChangeToJSONObject(obj: any, removal: string, addition: string): boolean {
-    // Extract the value from removal and addition strings
-    const removalValue = extractValueFromDiffLine(removal);
-    const additionValue = extractValueFromDiffLine(addition);
+    // Extract the value from removal and addition strings (use block extractor for multi-line)
+    const removalValue = removal.includes('\n') ? extractValueFromDiffBlock(removal) : extractValueFromDiffLine(removal);
+    const additionValue = addition.includes('\n') ? extractValueFromDiffBlock(addition) : extractValueFromDiffLine(addition);
 
     console.log(`[JSONDiff]     Raw removal: "${removal.trim()}"`);
     console.log(`[JSONDiff]     Raw addition: "${addition.trim()}"`);

@@ -269,11 +269,36 @@ export class StreamingTransformExecutor {
                     ? await config.prepareTemplateVariables(validatedInput, { jsondocRepo })
                     : await defaultPrepareTemplateVariables(validatedInput, jsondocRepo);
 
+                // DEBUG: Log template context structure
+                if (config.templateName.includes('edit_diff')) {
+                    console.log(`[DEBUG] Raw template context:`, JSON.stringify(templateContext, null, 2).substring(0, 500) + '...');
+                }
+
                 const finalPrompt = await this.templateService.renderTemplate(
                     template,
                     templateContext,
                     { projectId, userId } // Particle context
                 );
+
+                // DEBUG: Save the actual prompt being sent to LLM
+                if (config.templateName.includes('edit_diff')) {
+                    try {
+                        const { writeFileSync } = await import('fs');
+                        const { join } = await import('path');
+                        const debugPromptPath = join(process.cwd(), 'debug-llm-prompt.txt');
+                        writeFileSync(debugPromptPath, finalPrompt, 'utf8');
+                        console.log(`[DEBUG] Saved LLM prompt to: ${debugPromptPath}`);
+                        console.log(`[DEBUG] Prompt length: ${finalPrompt.length} chars`);
+                        console.log(`[DEBUG] Template context keys:`, Object.keys(templateContext));
+                        console.log(`[DEBUG] Template context.params:`, templateContext.params);
+                        if (templateContext.jsondocs) {
+                            console.log(`[DEBUG] Jsondocs keys:`, Object.keys(templateContext.jsondocs));
+                            console.log(`[DEBUG] First jsondoc:`, Object.keys(templateContext.jsondocs)[0], 'has keys:', Object.keys(templateContext.jsondocs[Object.keys(templateContext.jsondocs)[0]]));
+                        }
+                    } catch (debugError) {
+                        console.warn(`[DEBUG] Failed to save prompt:`, debugError);
+                    }
+                }
 
                 // 6. Store the prompt (only on first attempt)
                 if (!dryRun && retryCount === 0 && transformId) {
@@ -505,7 +530,7 @@ export class StreamingTransformExecutor {
                 } else if (executionMode?.mode === 'patch-approval') {
                     // Finalize streaming patch jsondocs - mark them as completed
                     await this.finalizeStreamingPatchApprovalJsondocs(
-                        finalValidatedData,
+                        finalValidatedData as Operation[],
                         executionMode.originalJsondoc,
                         config.templateName,
                         retryCount,
@@ -543,16 +568,10 @@ export class StreamingTransformExecutor {
                             });
                         }
 
-                        // 12. Mark ai_patch transform as completed (CRITICAL FIX)
+                        // 12. Mark ai_patch transform as completed (CRITICAL FIX)  
                         if (transformId) {
-                            const finalPatches = await this.convertUnifiedDiffToJsonPatches(
-                                finalValidatedData,
-                                executionMode.originalJsondoc,
-                                config.templateName,
-                                retryCount,
-                                this.llmService,
-                                [] // Empty messages for completion context
-                            );
+                            // finalValidatedData is already the processed JSON patches array
+                            const finalPatches = finalValidatedData as Operation[];
                             await transformRepo.updateTransform(transformId, {
                                 status: 'completed',
                                 execution_context: {
@@ -1834,7 +1853,7 @@ ${JSON.stringify(parsedResult, null, 2)}
      * Finalize streaming patch jsondocs - mark them as completed and clean up
      */
     private async finalizeStreamingPatchApprovalJsondocs<TOutput>(
-        llmOutput: TOutput,
+        finalPatches: Operation[], // This is already the processed JSON patches array
         originalJsondoc: any,
         templateName: string,
         retryCount: number,
@@ -1852,15 +1871,7 @@ ${JSON.stringify(parsedResult, null, 2)}
         }
 
         try {
-            // Convert unified diff to final JSON patches
-            const finalPatches = await this.convertUnifiedDiffToJsonPatches(
-                llmOutput,
-                originalJsondoc,
-                templateName,
-                retryCount,
-                this.llmService,
-                [] // Empty messages for finalization context
-            );
+            // finalPatches is already the processed JSON patches array - no need to convert again
 
             if (!finalPatches || finalPatches.length === 0) {
                 console.log(`[StreamingTransformExecutor] No final patches found for finalization`);

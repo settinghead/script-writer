@@ -189,6 +189,7 @@ function createStreamTextFromCache(cachedResponse: CachedResponse) {
 
     return {
         fullStream: createAsyncIterator(streamEvents),
+        textStream: createAsyncIterator(chunks.map(chunk => chunk.data)), // Add textStream for diff generation
         finishReason: Promise.resolve('stop'),
         usage: Promise.resolve({ promptTokens: 100, completionTokens: 50, totalTokens: 150 }),
         toolCalls: Promise.resolve([
@@ -270,12 +271,17 @@ function createFallbackStreamText(options?: { onToolCall?: (toolName: string, ar
         setTimeout(() => options.onToolCall!(toolName, args), 0);
     }
 
+    const fallbackDiffText = `CONTEXT: "title": "测试标题"
+- "title": "测试标题"  
++ "title": "改进的测试标题"`;
+
     return {
         fullStream: createAsyncIterator([
             { type: 'tool-call', toolName, toolCallId: 'tool-call-1', args },
             { type: 'tool-result', toolCallId: 'tool-call-1', result: { outputJsondocId: 'test-brainstorm-output' } },
             { type: 'text-delta', textDelta: 'I have generated some brainstorm ideas for you.' }
         ]),
+        textStream: createAsyncIterator([fallbackDiffText]), // Add textStream for diff generation
         finishReason: Promise.resolve('stop'),
         usage: Promise.resolve({ promptTokens: 10, completionTokens: 5, totalTokens: 15 }),
         toolCalls: Promise.resolve([

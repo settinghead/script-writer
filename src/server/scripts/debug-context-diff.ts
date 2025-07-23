@@ -154,84 +154,115 @@ async function debugContextDiff(): Promise<void> {
 
         console.log('💾 Step 4: Saving captured data...');
 
-        // Save raw LLM output
+        // Always save raw LLM output (even if empty for debugging)
+        const rawOutputPath = join(process.cwd(), 'debug-raw-llm-output.txt');
+        writeFileSync(rawOutputPath, rawLLMOutput || '(No raw output captured)', 'utf8');
         if (rawLLMOutput) {
-            const rawOutputPath = join(process.cwd(), 'debug-raw-llm-output.txt');
-            writeFileSync(rawOutputPath, rawLLMOutput, 'utf8');
             console.log(`✅ Saved raw LLM output to: ${rawOutputPath}`);
             console.log(`[Debug] Raw LLM output length: ${rawLLMOutput.length} chars`);
             console.log(`[Debug] Raw LLM output preview: ${rawLLMOutput.substring(0, 300)}...\n`);
         } else {
-            console.log('❌ No raw LLM output captured\n');
+            console.log(`❌ No raw LLM output captured (saved empty file to: ${rawOutputPath})\n`);
         }
 
-        // Save final patches for comparison
+        // Always save final patches (even if empty for debugging)
+        const patchesPath = join(process.cwd(), 'debug-final-patches.json');
+        writeFileSync(patchesPath, JSON.stringify(finalPatches || [], null, 2), 'utf8');
         if (finalPatches && finalPatches.length > 0) {
-            const patchesPath = join(process.cwd(), 'debug-final-patches.json');
-            writeFileSync(patchesPath, JSON.stringify(finalPatches, null, 2), 'utf8');
             console.log(`✅ Saved final patches to: ${patchesPath}`);
             console.log(`[Debug] Final patches count: ${finalPatches.length}`);
         } else {
-            console.log('❌ No final patches captured');
+            console.log(`❌ No final patches captured (saved empty array to: ${patchesPath})`);
         }
 
         console.log('\n🧪 Step 5: Testing our new context diff functions...');
 
-        if (rawLLMOutput) {
+        // Always test our context diff functions, even with empty/placeholder data
+        const testDiffText = rawLLMOutput || `CONTEXT: "title": "测试标题"
+- "title": "测试标题"
++ "title": "新测试标题"`;
+
+        console.log(`[Debug] Testing with diff text: ${testDiffText.length} chars`);
+
+        if (rawLLMOutput || true) { // Always run the test
             console.log('[Debug] Testing context diff parsing...');
 
-            // Test parsing
-            const parsedDiff = parseContextDiff(rawLLMOutput);
-            if (parsedDiff) {
-                console.log(`✅ Context diff parsed successfully:`);
-                console.log(`   - Context length: ${parsedDiff.context.length} chars`);
-                console.log(`   - Removals: ${parsedDiff.removals.length} operations`);
-                console.log(`   - Additions: ${parsedDiff.additions.length} operations`);
+            // Test JSON application directly (this handles multiple diffs internally)
+            console.log('[Debug] Testing JSON-aware diff application...');
+            const modifiedJson = applyContextDiffToJSON(originalJsonString, testDiffText);
 
-                // Test JSON application
-                console.log('[Debug] Testing JSON-aware diff application...');
-                const modifiedJson = applyContextDiffToJSON(originalJsonString, rawLLMOutput);
+            if (modifiedJson) {
+                console.log(`✅ JSON diff applied successfully:`);
+                console.log(`   - Original length: ${originalJsonString.length} chars`);
+                console.log(`   - Modified length: ${modifiedJson.length} chars`);
+                console.log(`   - Difference: ${modifiedJson.length - originalJsonString.length} chars`);
 
-                if (modifiedJson) {
-                    console.log(`✅ JSON diff applied successfully:`);
-                    console.log(`   - Original length: ${originalJsonString.length} chars`);
-                    console.log(`   - Modified length: ${modifiedJson.length} chars`);
-                    console.log(`   - Difference: ${modifiedJson.length - originalJsonString.length} chars`);
+                // Save modified JSON
+                const modifiedJsonPath = join(process.cwd(), 'debug-modified-via-contextdiff.json');
+                writeFileSync(modifiedJsonPath, modifiedJson, 'utf8');
+                console.log(`✅ Saved modified JSON to: ${modifiedJsonPath}`);
 
-                    // Save modified JSON
-                    const modifiedJsonPath = join(process.cwd(), 'debug-modified-via-contextdiff.json');
-                    writeFileSync(modifiedJsonPath, modifiedJson, 'utf8');
-                    console.log(`✅ Saved modified JSON to: ${modifiedJsonPath}`);
+                // Also save the raw diff-applied text for debugging
+                const rawModifiedPath = join(process.cwd(), 'debug-raw-modified.txt');
+                writeFileSync(rawModifiedPath, modifiedJson, 'utf8');
+                console.log(`✅ Saved raw modified text to: ${rawModifiedPath}`);
 
-                    // Test RFC6902 patch generation
-                    console.log('[Debug] Testing RFC6902 patch generation...');
-                    const patchResult = applyContextDiffAndGeneratePatches(originalJsonString, rawLLMOutput);
+                // Test RFC6902 patch generation
+                console.log('[Debug] Testing RFC6902 patch generation...');
+                const patchResult = applyContextDiffAndGeneratePatches(originalJsonString, testDiffText);
 
-                    if (patchResult && patchResult.rfc6902Patches) {
-                        console.log(`✅ RFC6902 patches generated successfully:`);
-                        console.log(`   - Number of patches: ${patchResult.rfc6902Patches.length}`);
-                        console.log(`   - Changes applied: ${patchResult.appliedChanges} out of ${parsedDiff.removals.length}`);
-                        console.log(`   - Success rate: ${((patchResult.appliedChanges || 0) / parsedDiff.removals.length * 100).toFixed(1)}%`);
-
-                        // Save RFC6902 patches
-                        const rfc6902PatchesPath = join(process.cwd(), 'debug-rfc6902-patches.json');
-                        writeFileSync(rfc6902PatchesPath, JSON.stringify(patchResult.rfc6902Patches, null, 2), 'utf8');
-                        console.log(`✅ Saved RFC6902 patches to: ${rfc6902PatchesPath}`);
-
-                        // Show sample patches
-                        console.log('\n📋 Sample patches:');
-                        patchResult.rfc6902Patches.slice(0, 3).forEach((patch: any, i: number) => {
-                            console.log(`   ${i + 1}. ${patch.op} at "${patch.path}" → "${patch.value?.toString().substring(0, 50)}..."`);
-                        });
-                    } else {
-                        console.log('❌ RFC6902 patch generation failed');
+                if (patchResult && patchResult.rfc6902Patches) {
+                    console.log(`✅ RFC6902 patches generated successfully:`);
+                    console.log(`   - Number of patches: ${patchResult.rfc6902Patches.length}`);
+                    console.log(`   - Changes applied: ${patchResult.appliedChanges || 0}`);
+                    if (patchResult.totalChanges) {
+                        console.log(`   - Success rate: ${((patchResult.appliedChanges || 0) / patchResult.totalChanges * 100).toFixed(1)}%`);
                     }
+
+                    // Save RFC6902 patches
+                    const rfc6902PatchesPath = join(process.cwd(), 'debug-rfc6902-patches.json');
+                    writeFileSync(rfc6902PatchesPath, JSON.stringify(patchResult.rfc6902Patches, null, 2), 'utf8');
+                    console.log(`✅ Saved RFC6902 patches to: ${rfc6902PatchesPath}`);
+
+                    // Show sample patches
+                    console.log('\n📋 Sample patches:');
+                    patchResult.rfc6902Patches.slice(0, 3).forEach((patch: any, i: number) => {
+                        console.log(`   ${i + 1}. ${patch.op} at "${patch.path}" → "${patch.value?.toString().substring(0, 50)}..."`);
+                    });
                 } else {
-                    console.log('❌ JSON diff application failed');
+                    console.log('❌ RFC6902 patch generation failed');
                 }
             } else {
-                console.log('❌ Context diff parsing failed');
+                console.log('❌ JSON diff application failed');
+
+                // Still save a placeholder file for debugging
+                const modifiedJsonPath = join(process.cwd(), 'debug-modified-via-contextdiff.json');
+                writeFileSync(modifiedJsonPath, '{"error": "diff_application_failed"}', 'utf8');
+                console.log(`❌ Saved error placeholder to: ${modifiedJsonPath}`);
             }
+        } else {
+            console.log('❌ Context diff parsing failed');
+
+            // Still save a placeholder file for debugging
+            const modifiedJsonPath = join(process.cwd(), 'debug-modified-via-contextdiff.json');
+            writeFileSync(modifiedJsonPath, '{"error": "diff_parsing_failed"}', 'utf8');
+            console.log(`❌ Saved error placeholder to: ${modifiedJsonPath}`);
+        }
+
+        // Always create RFC6902 patches file (even if empty)
+        const rfc6902PatchesPath = join(process.cwd(), 'debug-rfc6902-patches.json');
+        try {
+            const patchResult = applyContextDiffAndGeneratePatches(originalJsonString, testDiffText);
+            if (patchResult && patchResult.rfc6902Patches) {
+                writeFileSync(rfc6902PatchesPath, JSON.stringify(patchResult.rfc6902Patches, null, 2), 'utf8');
+                console.log(`✅ Saved RFC6902 patches to: ${rfc6902PatchesPath} (${patchResult.rfc6902Patches.length} patches)`);
+            } else {
+                writeFileSync(rfc6902PatchesPath, '[]', 'utf8');
+                console.log(`❌ Saved empty RFC6902 patches to: ${rfc6902PatchesPath}`);
+            }
+        } catch (error) {
+            writeFileSync(rfc6902PatchesPath, '[]', 'utf8');
+            console.log(`❌ RFC6902 patch generation error, saved empty file: ${error}`);
         }
 
         console.log('\n================================================================================');

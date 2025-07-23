@@ -1,11 +1,117 @@
 [
   {
     "op": "remove",
-    "path": "/background"
+    "path": "/occupation"
   },
   {
     "op": "add",
-    "path": "/background",
-    "value": "昆仑秘境归来的医学天才，身负上古医仙传承，为寻失踪师尊潜入都市"
+    "path": "/occupation",
+    "value": "全职外卖骑手兼夜间搏击馆陪练"
+  },
+  {
+    "op": "remove",
+    "path": "/personality_traits"
+  },
+  {
+    "op": "add",
+    "path": "/personality_traits",
+    "value": "["
+  },
+  {
+    "op": "remove",
+    "path": "/occupation"
+  },
+  {
+    "op": "add",
+    "path": "/occupation",
+    "value": "自由涂鸦艺术家，兼职奶茶店员与地下情绪疗愈工作坊引导者"
+  },
+  {
+    "op": "remove",
+    "path": "/personality_traits"
+  },
+  {
+    "op": "add",
+    "path": "/personality_traits",
+    "value": "["
+  },
+  {
+    "op": "remove",
+    "path": "/personality_traits"
+  },
+  {
+    "op": "add",
+    "path": "/personality_traits",
+    "value": "["
+  },
+  {
+    "op": "remove",
+    "path": "/personality_traits"
+  },
+  {
+    "op": "add",
+    "path": "/personality_traits",
+    "value": "["
+  },
+  {
+    "op": "add",
+    "path": "/backstory_hint",
+    "value": "家乡星球已被母文明抛弃，他实为流亡者，渴望在地球制造混乱以吸引母星注意"
+  },
+  {
+    "op": "remove",
+    "path": "/personality_traits"
+  },
+  {
+    "op": "add",
+    "path": "/personality_traits",
+    "value": "["
+  },
+  {
+    "op": "add",
+    "path": "/emotional_motivation",
+    "value": "唯一牵挂是留在母星的弟弟，战斗只为攒够资源送他逃离压迫体制"
+  },
+  {
+    "op": "remove",
+    "path": "/personality_traits"
+  },
+  {
+    "op": "add",
+    "path": "/personality_traits",
+    "value": "["
+  },
+  {
+    "op": "add",
+    "path": "/hidden_depth",
+    "value": "通过追剧模仿人类情感，逐渐发展出真实共情能力，最终为救小雨主动暴露位置"
+  },
+  {
+    "op": "remove",
+    "path": "/personality_traits"
+  },
+  {
+    "op": "add",
+    "path": "/personality_traits",
+    "value": "["
+  },
+  {
+    "op": "add",
+    "path": "/inner_conflict",
+    "value": "幻象能力实为精神分裂症状，长期压抑导致人格碎片化，最终在广场舞中找到情绪出口"
+  },
+  {
+    "op": "remove",
+    "path": "/personality_traits"
+  },
+  {
+    "op": "add",
+    "path": "/personality_traits",
+    "value": "["
+  },
+  {
+    "op": "add",
+    "path": "/poetic_voice",
+    "value": "通过诗歌记录战争创伤与对和平的渴望，其诗句后期成为地球抵抗军的精神象征"
   }
 ]

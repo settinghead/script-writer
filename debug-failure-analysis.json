@@ -1,0 +1,58 @@
+{
+  "totalDiffs": 10,
+  "successCount": 0,
+  "failureCount": 10,
+  "successRate": 0,
+  "failures": [
+    {
+      "index": 1,
+      "error": "No changes applied",
+      "sectionPreview": "CONTEXT:   \"name\": \"王千榕\",\n          \"type\": \"male_lead\",\n          \"description\": \"27岁南京莫愁新寓居民，表面是脾气暴躁、斤斤计较的普通外卖员，实则体内沉睡着远古赛亚人血脉。性格偏执又可爱，对生活麻木但内心未死，在一次次战斗中被迫成长，最终成为不被定义的‘普通人英雄’。\",\n          \"age\": \"27岁\",\n          \"gender\": \"男\",\n-         \"personality_traits\": [\n            \"冷漠自私\",\n            \"嘴硬心软"
+    },
+    {
+      "index": 2,
+      "error": "No changes applied",
+      "sectionPreview": "CONTEXT:   \"name\": \"艾莉娅\",\n          \"type\": \"female_lead\",\n          \"description\": \"外星高等文明特使，29岁（地球年龄），伪装成南京大学天体物理系访问学者。美貌冷艳，逻辑缜密，擅长心理操控。起初任务导向冷血无情，但在接触王千榕后逐渐被其真实、混乱又坚韧的生命力吸引，陷入信仰与情感的撕裂。\",\n          \"age\": \"29岁\",\n          \"gender\": \"女\",\n-         \"personality_traits\": [\n            \"冷静理性\",\n       "
+    },
+    {
+      "index": 3,
+      "error": "No changes applied",
+      "sectionPreview": "CONTEXT:   \"name\": \"小雨\",\n          \"type\": \"female_second\",\n          \"description\": \"22岁南京街头涂鸦艺术家兼奶茶店兼职员工，性格像南京小潘西一样市井又灵动，古灵精怪中带着烟火气，总用彩虹色发绳扎马尾。看似无厘头却拥有罕见共情能力，能感知他人情绪波动并短暂影响环境氛围（后期觉醒为‘情绪共振’能力）。她是王千榕冷漠世界的破壁者，说话带点南京方言味儿，比如‘乖乖，你这人咋这么木头啊’。\",\n          \"age\": \"22岁\",\n          \"gender\": \"女\",\n-         \"p"
+    },
+    {
+      "index": 4,
+      "error": "No changes applied",
+      "sectionPreview": "CONTEXT:   \"name\": \"刘教授\",\n          \"type\": \"male_supporting\",\n          \"description\": \"58岁秦淮医院神经生物学与基因工程双料专家，退休返聘。戴圆框眼镜，说话慢条斯理但句句致命。最早发现王千榕异常，并以科学狂人的执着记录其每一次细胞活性激增。他不是传统导师，更像是推着主角往前走的‘幕后操盘手’。\",\n          \"age\": \"58岁\",\n          \"gender\": \"男\",\n-         \"personality_traits\": [\n            \"理性至上\",\n "
+    },
+    {
+      "index": 5,
+      "error": "No changes applied",
+      "sectionPreview": "CONTEXT:   \"name\": \"邵夫特·金\",\n          \"type\": \"antagonist\",\n          \"description\": \"45岁神秘富豪，表面是南京本土科技企业创始人，实为外星侵略军地球代理人。西装永远笔挺，左手戴一枚刻有未知符号的戒指。他相信人类需要‘更高文明引导’，为此不惜牺牲部分人性。不是纯粹恶人，而是坚信自己在做正确的事。\",\n          \"age\": \"45岁\",\n          \"gender\": \"男\",\n-         \"personality_traits\": [\n            \"优雅残忍\",\n   "
+    },
+    {
+      "index": 6,
+      "error": "No changes applied",
+      "sectionPreview": "CONTEXT:   \"name\": \"卡拉克斯\",\n          \"type\": \"male_supporting\",\n          \"description\": \"外星种族卡拉顿星人，34岁基鸟特种部队指挥官，拥有变形伪装能力（战斗力低于弗利沙沙）。性格阴险狡诈却意外怕猫，表面忠诚于邵夫特·金实则只想搞垮地球好回老家。最终战中因踩到流浪猫尾巴惊慌失措暴露位置被王千榕暴打，狼狈逃窜时喊出：‘这破星球连猫都欺负我！’\",\n          \"age\": \"34岁\",\n          \"gender\": \"男\",\n-         \"personality_traits\": "
+    },
+    {
+      "index": 7,
+      "error": "No changes applied",
+      "sectionPreview": "CONTEXT:   \"name\": \"佐洛克\",\n          \"type\": \"male_supporting\",\n          \"description\": \"外星种族佐尔克隆人，28岁基鸟特种部队核心成员，具备超强再生能力（战斗力低于弗利沙沙）。性格暴躁易怒但极度护短，口头禅是‘老子在老家可是欺负过霸王龙的！’。最终战中再生速度赶不上王千榕菜刀流伤害，边掉胳膊边喊：‘这外卖员开挂了吧！’\",\n          \"age\": \"28岁\",\n          \"gender\": \"男\",\n-         \"personality_traits\": [\n         "
+    },
+    {
+      "index": 8,
+      "error": "No changes applied",
+      "sectionPreview": "CONTEXT:   \"name\": \"赛琳娅\",\n          \"type\": \"female_supporting\",\n          \"description\": \"外星种族赛琳星人，21岁基鸟特种部队技术员，能黑入任何系统但害怕蟑螂（战斗力低于弗利沙沙）。性格傲娇毒舌却意外喜欢追剧，常偷偷用监控系统看偶像剧。最终战关键时刻因发现敌方服务器有她追的剧才勉强出手，黑入时嘟囔：‘要是没更新大结局我死也不干！’\",\n          \"age\": \"21岁\",\n          \"gender\": \"女\",\n-         \"personality_traits\": [\n  "
+    },
+    {
+      "index": 9,
+      "error": "No changes applied",
+      "sectionPreview": "CONTEXT:   \"name\": \"塔瑞斯\",\n          \"type\": \"male_supporting\",\n          \"description\": \"外星种族塔瑞星人，30岁基鸟特种部队战术官，擅长制造幻象但幻象总带五毛特效（战斗力低于弗利沙沙）。性格一本正经却意外爱跳广场舞，认为地球最伟大的发明是《最炫民族风》。最终战幻术被小雨识破，情急之下播放广场舞音乐扰乱自己人，边跳边喊：‘这舞步太上头停不下来啊！’\",\n          \"age\": \"30岁\",\n          \"gender\": \"男\",\n-         \"personality_traits"
+    },
+    {
+      "index": 10,
+      "error": "No changes applied",
+      "sectionPreview": "CONTEXT:   \"name\": \"古尔格\",\n          \"type\": \"male_supporting\",\n          \"description\": \"外星种族古尔格星人，25岁基鸟特种部队侦察兵，能隐身但隐身时会放彩虹屁（战斗力低于弗利沙沙）。性格沉默寡言却意外爱写诗，常偷偷在基地墙上刻打油诗。最终战因放屁暴露位置被围攻，临危之际念出新作：‘啊~我的屁是彩色的，就像我破碎的梦~’意外震慑全场。\",\n          \"age\": \"25岁\",\n          \"gender\": \"男\",\n-         \"personality_traits\": [\n  "
+    }
+  ]
+}
