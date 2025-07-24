@@ -542,7 +542,7 @@ ${conversationText}
                 ...(seed && { seed }),
                 ...(temperature && { temperature }),
                 ...(topP && { topP }),
-                ...(maxTokens && { maxTokens })
+                // ...(maxTokens && { maxTokens })
             });
 
             console.log('\n\n--- Agent Stream & Final Output ---');

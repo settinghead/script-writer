@@ -223,7 +223,7 @@ export function createOutlineSettingsEditToolDefinition(
         inputSchema: OutlineSettingsEditInputSchema,
         outputSchema: OutlineSettingsEditToolResultSchema,
         execute: async (params: OutlineSettingsEditInput, { toolCallId }): Promise<OutlineSettingsEditToolResult> => {
-            console.log(`[OutlineSettingsEditTool] Starting outline settings edit`);
+            console.log(`[OutlineSettingsEditTool] Starting outline settings edit: `, params.editRequirements);
 
             // Extract source 剧本设定 data for context
             const { originalSettings, canonicalOutlineSettingsJsondoc, additionalContexts, targetPlatform, storyGenre } = await extractSourceOutlineSettingsData(params, jsondocRepo, userId, projectId);

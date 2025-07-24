@@ -398,7 +398,7 @@ export class StreamingTransformExecutor {
 
                     // Call streaming callback if provided (always for eager patches, final patches, or periodic for others)
                     if (isEagerPatch || isFinalPatch || chunkCount % updateIntervalChunks === 0) {
-                        console.log(`[StreamingTransformExecutor] Processing chunk ${chunkCount}, isEagerPatch: ${isEagerPatch}, isFinalPatch: ${isFinalPatch}`);
+                        // console.log(`[StreamingTransformExecutor] Processing chunk ${chunkCount}, isEagerPatch: ${isEagerPatch}, isFinalPatch: ${isFinalPatch}`);
 
                         // INTERNALIZED LOGIC: Process the debug-context-diff.ts pipeline eagerly during streaming
                         let enhancedCallbackData = streamingInfo || actualData;
@@ -418,15 +418,9 @@ export class StreamingTransformExecutor {
 
                                     if (executionMode.mode === 'patch-approval' && !dryRun && transformId && projectId) {
                                         const patchesToUpsert = pipelineResults.patches;
-                                        console.log(`[StreamingTransformExecutor] Pipeline results at chunk ${chunkCount}:`, {
-                                            patchCount: patchesToUpsert.length,
-                                            rawLLMOutputLength: pipelineResults.rawLLMOutput?.length,
-                                            modifiedJsonLength: pipelineResults.modifiedJson?.length,
-                                            status: pipelineResults.status
-                                        });
 
                                         if (patchesToUpsert.length > 0) {
-                                            console.log(`[StreamingTransformExecutor] First patch sample:`, JSON.stringify(patchesToUpsert[0]));
+                                            // console.log(`[StreamingTransformExecutor] First patch sample:`, JSON.stringify(patchesToUpsert[0]));
                                             try {
                                                 await this.upsertPatchJsondocs(
                                                     patchesToUpsert,

@@ -15,7 +15,6 @@ import type { GeneralAgentRequest } from '../transform-jsondoc-framework/AgentSe
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
 import { getParticleSearchToolNames, getWorkflowTools, type WorkflowStage } from '../../common/schemas/tools';
 import { getParticleSystem } from './ParticleSystemInitializer';
-import { dump } from 'js-yaml';
 
 // Simplified to just general type
 export type RequestType = 'general';
@@ -160,34 +159,7 @@ export function buildPromptForRequestType(
 7. **分集大纲生成 (episode_synopsis)**：为每个剧集组生成详细的每集大纲，包含具体情节和转折点
 8. **剧本撰写 (episode_script)**：基于分集大纲生成完整的剧本内容，包含对话、动作指导和场景描述（注意这部分还没有实现）
 
-- 如果需要编辑多个步骤时，遵循依赖顺序：先编辑上游内容（如创意），然后编辑依赖的下游内容（如框架）
 
-## 如何解析用户请求
-
-用户请求中的意图，经过分析可以分为四类：
-### 1. 修改
-
-如果你判断用户的请求是希望对剧本项目提出修改，你需要：
-1. 理解结构概览（i.e. 目前项目里有什么）
-2. 分析你是否已经掌握足够的剧本信息，如果没有，持续使用queryJsondocs进行相关查询，或者使用getJsonDocContent精准得到相关的内容
-3. 使用目前可用的“edit_”开头的工具，根据用户需求和你阅读到的已有剧本的状态，对剧本作出修改
-4. 重复上述过程，直到你认为你的操作已经能够满足用户的修改要求
-5. 给用户返回友好的信息
-
-### 2. 生成
-1. 理解结构概览（i.e. 目前项目里有什么）
-2. 分析你是否已经掌握足够的剧本信息，如果没有，持续使用queryJsondocs进行相关查询，或者使用getJsonDocContent精准得到相关的内容
-3. 使用目前可用的“generate_”开头的工具，根据用户需求和你阅读到的内容，做下一步的创作。注意：你最多只能调用一次generate_开头的工具
-5. 给用户返回友好的信息
-
-### 3. 查询
-1. 理解结构概览（i.e. 目前项目里有什么）
-2. 分析你是否已经掌握足够的剧本信息，如果没有，持续使用queryJsondocs进行相关查询，或者使用getJsonDocContent精准得到相关的内容
-3. 给用户返回友好的信息，精准回答用户查询的内容
-
-### 4. 不详
-如果你无法明确用户的意图
-1. 请回复一个友好的消息，告知用户你能做什么，并给出一些例子（注意要根据当前结构概览给出对应的例子
 
 ### 一些例子
 
@@ -200,27 +172,34 @@ export function buildPromptForRequestType(
 3. 回复一个友好的消息，{ "humanReadableMessage"：“好的，已经添加了新人物小花，并且让小花在李成最低谷时出现，帮助了他...” }
 
 
-## 用户请求
+===当前用户请求 开始===
 "${userRequest}"
+===当前用户请求 结束===
 
 ===当前项目背景信息 开始===
-${context}
+"${context}"
 ===当前项目背景信息 结束===
-
 
 ## 你的任务
 
-1. 仔细分析用户请求，理解用户的真实意图。
-2. **如果需要了解项目现状或特定内容，使用query工具搜索相关信息。**
-4. 选择最合适的工具来满足需求。
-5. 执行必要的工具调用。
-6. 完成后，返回JSON格式的最终响应（见以下）
+1. 仔细分析用户请求，理解用户的真实意图（分为三类：修改、生成、查询）
+2. 理解结构概览（i.e. 目前项目里有什么）
+3. 根据用户请求，使用queryJsondocs进行相关查询或者使用getJsonDocContent精准得到相关的内容，直到你经掌握足够的信息继续
+3. 
+   a) 如果你认为用户意图为“修改”：调用可用列表里的“edit_”开头的工具，根据“用户请求”里的内容（见下）现有剧本内容，对剧本作出修改
+   b) 如果你认为用户意图为“生成”：调用可用列表里的“generate_”开头的工具，根据“用户请求”里的内容（见下）现有剧本内容，做下一步的创作。
+   c) 如果你认为用户意图为“查询”：根据你查询到的信息，精准回答用户查询的内容
+4. 完成后，返回JSON格式的最终响应（见以下）
+
 
 **你的回复的JSON格式要求：**
 {
-  "humanReadableMessage": "对用户友好的中文回复消息，说明你完成了什么任务。不要暴露任何工具调用的细节。"
+  "humanReadableMessage": "对用户友好的中文回复消息"
 }
 
+注意：
+1. 在用户友好信息里，不要透露任何工具调用的细节，而是用简单和模糊的语言告知用户你正在做什么
+- 如果需要编辑多个步骤时，遵循依赖顺序：先编辑上游内容（如创意），然后编辑依赖的下游内容（如框架）
 
 `;
 }
