@@ -1,4 +1,5 @@
 import { createUnifiedDiffTemplate } from './unifiedDiffBase';
+import { OutlineSettingsOutputSchema } from '../../../common/schemas/outlineSchemas';
 
 export const outlineSettingsEditPatchTemplate = createUnifiedDiffTemplate(
     {
@@ -6,6 +7,7 @@ export const outlineSettingsEditPatchTemplate = createUnifiedDiffTemplate(
         description: 'Outline Settings Editing (Unified Diff)',
         outputJsondocType: '剧本设定',
         targetTypeName: '剧本设定设置',
+        schema: OutlineSettingsOutputSchema,
         additionalInstructions: [
             '确保角色设定符合故事类型和平台特色',
             '保持卖点和爽点的商业价值',

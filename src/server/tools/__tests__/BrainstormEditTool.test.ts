@@ -42,7 +42,6 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                     schemaType: '灵感创意'
                 }],
                 editRequirements: '增加悬疑元素',
-                agentInstructions: '保持原有风格',
                 ideaIndex: 0
             };
 
@@ -329,7 +328,6 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
                     schemaType: '灵感创意'
                 }],
                 editRequirements: 'test requirements',
-                agentInstructions: 'test instructions',
                 ideaIndex: 0
             };
 

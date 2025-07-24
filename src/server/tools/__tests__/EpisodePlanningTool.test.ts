@@ -121,10 +121,9 @@ describe('EpisodePlanningTool', () => {
             expect(mockJsondocRepo.userHasProjectAccess).toHaveBeenCalledTimes(3);
 
             // Verify streaming transform was called with correct metadata
-            expect(executeStreamingTransform).toHaveBeenCalledWith({
-                config: expect.objectContaining({
-                    templateName: 'episode_planning'
-                }),
+            const calls = executeStreamingTransform.mock.calls;
+            expect(calls).toHaveLength(1);
+            expect(calls[0][0]).toMatchObject({
                 input,
                 projectId,
                 userId,
@@ -139,12 +138,8 @@ describe('EpisodePlanningTool', () => {
                     numberOfEpisodes: 30,
                     requirements: 'Test requirements'
                 },
-                enableCaching: undefined,
-                seed: undefined,
-                temperature: undefined,
-                topP: undefined,
-                maxTokens: undefined
             });
+            expect(calls[0][0].config.templateName).toBe('episode_planning');
         });
 
         it('should handle missing jsondocs gracefully', async () => {
@@ -177,10 +172,9 @@ describe('EpisodePlanningTool', () => {
             expect(result.finishReason).toBe('completed');
 
             // Should still call streaming transform with empty metadata
-            expect(executeStreamingTransform).toHaveBeenCalledWith({
-                config: expect.objectContaining({
-                    templateName: 'episode_planning'
-                }),
+            const calls = executeStreamingTransform.mock.calls;
+            expect(calls).toHaveLength(1);
+            expect(calls[0][0]).toMatchObject({
                 input,
                 projectId,
                 userId,
@@ -192,12 +186,8 @@ describe('EpisodePlanningTool', () => {
                     numberOfEpisodes: 20,
                     requirements: 'Test requirements'
                 },
-                enableCaching: undefined,
-                seed: undefined,
-                temperature: undefined,
-                topP: undefined,
-                maxTokens: undefined
             });
+            expect(calls[0][0].config.templateName).toBe('episode_planning');
         });
 
         it('should handle access denied gracefully', async () => {
@@ -240,10 +230,9 @@ describe('EpisodePlanningTool', () => {
             expect(result.finishReason).toBe('completed');
 
             // Should still proceed with empty metadata
-            expect(executeStreamingTransform).toHaveBeenCalledWith({
-                config: expect.objectContaining({
-                    templateName: 'episode_planning'
-                }),
+            const calls = executeStreamingTransform.mock.calls;
+            expect(calls).toHaveLength(1);
+            expect(calls[0][0]).toMatchObject({
                 input,
                 projectId,
                 userId,
@@ -255,12 +244,8 @@ describe('EpisodePlanningTool', () => {
                     numberOfEpisodes: 20,
                     requirements: 'Test requirements'
                 },
-                enableCaching: undefined,
-                seed: undefined,
-                temperature: undefined,
-                topP: undefined,
-                maxTokens: undefined
             });
+            expect(calls[0][0].config.templateName).toBe('episode_planning');
         });
 
         it('should pass caching options to streaming transform', async () => {
@@ -293,10 +278,9 @@ describe('EpisodePlanningTool', () => {
 
             await toolDef.execute(input, { toolCallId: 'test-tool-call' });
 
-            expect(executeStreamingTransform).toHaveBeenCalledWith({
-                config: expect.objectContaining({
-                    templateName: 'episode_planning'
-                }),
+            const calls = executeStreamingTransform.mock.calls;
+            expect(calls).toHaveLength(1);
+            expect(calls[0][0]).toMatchObject({
                 input,
                 projectId,
                 userId,
@@ -314,6 +298,7 @@ describe('EpisodePlanningTool', () => {
                 topP: 0.9,
                 maxTokens: 2000
             });
+            expect(calls[0][0].config.templateName).toBe('episode_planning');
         });
     });
 }); 

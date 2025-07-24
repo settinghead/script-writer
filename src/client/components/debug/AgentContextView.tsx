@@ -161,11 +161,8 @@ function generateAISDKToolFormat(toolName: string): any {
                     type: 'number',
                     minimum: 0,
                     description: '要编辑的故事创意在集合中的索引位置（从0开始）'
-                },
-                agentInstructions: {
-                    type: 'string',
-                    description: '给AI的特殊指令或约束条件'
                 }
+
             },
             required: ['jsondocs', 'editRequirements']
         },
@@ -215,10 +212,6 @@ function generateAISDKToolFormat(toolName: string): any {
                 editRequirements: {
                     type: 'string',
                     description: '具体的编辑要求，如：修改角色设定、调整卖点、更新故事背景等'
-                },
-                agentInstructions: {
-                    type: 'string',
-                    description: '给AI的特殊指令或约束条件'
                 }
             },
             required: ['jsondocs', 'editRequirements']
@@ -265,10 +258,6 @@ function generateAISDKToolFormat(toolName: string): any {
                 editRequirements: {
                     type: 'string',
                     description: '具体的编辑要求，如：修改时间线、调整角色发展、更新情节推进等'
-                },
-                agentInstructions: {
-                    type: 'string',
-                    description: '给AI的特殊指令或约束条件'
                 }
             },
             required: ['jsondocs', 'editRequirements']
@@ -315,10 +304,6 @@ function generateAISDKToolFormat(toolName: string): any {
                 editRequirements: {
                     type: 'string',
                     description: '具体的编辑要求，如：调整剧集分组、修改情感节拍、更新关键事件等'
-                },
-                agentInstructions: {
-                    type: 'string',
-                    description: '给AI的特殊指令或约束条件'
                 }
             },
             required: ['jsondocs', 'editRequirements']

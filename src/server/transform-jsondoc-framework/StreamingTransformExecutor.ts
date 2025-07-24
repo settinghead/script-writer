@@ -319,7 +319,8 @@ export class StreamingTransformExecutor {
                     seed,
                     temperature,
                     topP,
-                    maxTokens,
+                    maxTokens: 32768,
+                    // maxTokens,
                     executionMode // Pass execution mode for better streaming strategy detection
                 });
 
@@ -997,7 +998,8 @@ export class StreamingTransformExecutor {
                 seed,
                 temperature,
                 topP,
-                maxTokens
+                maxTokens: 32768,
+                // maxTokens
             });
         }
 
@@ -1018,7 +1020,8 @@ export class StreamingTransformExecutor {
             seed,
             temperature,
             topP,
-            maxTokens
+            maxTokens: 32768,
+            // maxTokens
         };
 
         try {
@@ -1095,12 +1098,14 @@ export class StreamingTransformExecutor {
 
             const response = await streamText({
                 model: model,
+
                 messages,
                 system: "You are an expert at generating unified diff patches for JSON data. Generate ONLY the unified diff patch, with no additional explanation or formatting.",
                 seed,
                 temperature,
                 topP,
-                maxTokens
+                maxTokens: 32768,
+                // maxTokens
             });
 
             // Convert text stream to JSON patch operations stream
@@ -1121,7 +1126,8 @@ export class StreamingTransformExecutor {
                     seed,
                     temperature,
                     topP,
-                    maxTokens
+                    maxTokens: 32768,
+                    // maxTokens
                 });
 
                 return this.convertTextStreamToJsonPatches(retryResponse.textStream, templateName);

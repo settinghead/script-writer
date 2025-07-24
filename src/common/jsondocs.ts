@@ -136,7 +136,6 @@ export interface BrainstormEditInputV1 {
     ideaIndex?: number;
     sourceJsondocId: string;
     editRequirements: string;
-    agentInstructions?: string;
 }
 
 // Input parameters for outline generation tool execution

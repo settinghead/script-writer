@@ -88,7 +88,6 @@ export type LLMTransformDefinition = z.infer<typeof LLMTransformDefinitionSchema
 export const BrainstormEditInputSchema = BaseToolInputSchema.extend({
   ideaIndex: z.number().min(0).optional().describe('要编辑的故事创意在集合中的索引位置（从0开始）'),
   editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：扩展内容、调整风格、修改情节、增加元素等'),
-  agentInstructions: z.string().optional().describe('来自智能体的额外指导信息，用于更好地理解编辑意图')
 });
 
 export type BrainstormEditInput = z.infer<typeof BrainstormEditInputSchema>;
@@ -96,7 +95,6 @@ export type BrainstormEditInput = z.infer<typeof BrainstormEditInputSchema>;
 // Input schema for 剧本设定 editing
 export const OutlineSettingsEditInputSchema = BaseToolInputSchema.extend({
   editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：修改角色设定、调整卖点、更新故事背景等'),
-  agentInstructions: z.string().optional().describe('来自智能体的额外指导信息，用于更好地理解编辑意图')
 });
 
 export type OutlineSettingsEditInput = z.infer<typeof OutlineSettingsEditInputSchema>;
@@ -104,7 +102,6 @@ export type OutlineSettingsEditInput = z.infer<typeof OutlineSettingsEditInputSc
 // Input schema for chronicles editing
 export const ChroniclesEditInputSchema = BaseToolInputSchema.extend({
   editRequirements: z.string().min(1, '编辑要求不能为空').describe('具体的编辑要求，如：修改时间线、调整角色发展、更新情节推进等'),
-  agentInstructions: z.string().optional().describe('来自智能体的额外指导信息，用于更好地理解编辑意图')
 });
 
 export type ChroniclesEditInput = z.infer<typeof ChroniclesEditInputSchema>;
@@ -242,7 +239,6 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
 export const GenericEditInputSchema = BaseToolInputSchema.extend({
   jsondocPath: z.string().min(1, '路径不能为空'),
   editRequirements: z.string().min(1, '编辑要求不能为空'),
-  agentInstructions: z.string().optional()
 });
 
 export type GenericEditInput = z.infer<typeof GenericEditInputSchema>;

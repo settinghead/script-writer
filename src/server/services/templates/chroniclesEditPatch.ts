@@ -1,10 +1,12 @@
 import { createUnifiedDiffTemplate } from './unifiedDiffBase';
+import { ChroniclesOutputSchema } from '../../../common/schemas/outlineSchemas';
 
 export const chroniclesEditPatchTemplate = createUnifiedDiffTemplate({
     templateName: 'chronicles_edit_diff',
     description: 'Chronicles Editing (Unified Diff)',
     outputJsondocType: '故事宇宙编年史',
     targetTypeName: '故事宇宙编年史',
+    schema: ChroniclesOutputSchema,
     additionalInstructions: [
         '记住编年史是故事宇宙的历史记录，不仅仅是情节大纲',
         '可以大胆扩展和丰富背景事件，添加原始想法中没有的角色、事件、背景',
