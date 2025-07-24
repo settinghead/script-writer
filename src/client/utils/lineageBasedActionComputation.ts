@@ -164,6 +164,33 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
         });
     }
 
+    // Add brainstorm input form if we have brainstorm input but no collection/ideas yet
+    if (context.canonicalBrainstormInput && !context.canonicalBrainstormCollection && !context.canonicalBrainstormIdea) {
+        actions.push({
+            id: 'brainstorm_input_form',
+            type: 'form',
+            title: '生成头脑风暴',
+            description: '基于设定的参数生成创意想法',
+            component: BrainstormInputForm,
+            props: {
+                jsondocs: {
+                    brainstormIdea: context.canonicalBrainstormIdea,
+                    brainstormCollection: context.canonicalBrainstormCollection,
+                    outlineSettings: context.canonicalOutlineSettings,
+                    chronicles: context.canonicalChronicles,
+                    episodePlanning: context.canonicalEpisodePlanning,
+                    brainstormInput: context.canonicalBrainstormInput
+                },
+                workflowContext: {
+                    hasActiveTransforms: context.hasActiveTransforms,
+                    workflowNodes: context.workflowNodes
+                }
+            },
+            enabled: true,
+            priority: 1
+        });
+    }
+
     // Add brainstorm idea selection if we have a collection but no individual idea
     if (context.canonicalBrainstormCollection && !context.canonicalBrainstormIdea) {
         actions.push({
