@@ -57,11 +57,11 @@ export class ParticleService {
      * This ensures particles from non-canonical jsondocs are properly deactivated
      */
     async syncParticleActiveStatus(projectId: string): Promise<void> {
-        console.log(`[ParticleService] Syncing particle active status for project ${projectId}`);
+        // // console.log(`[ParticleService] Syncing particle active status for project ${projectId}`);
 
         // Get all canonical jsondoc IDs for this project
         const canonicalIds = await this.canonicalJsondocService.getCanonicalJsondocIds(projectId);
-        console.log(`[ParticleService] Found ${canonicalIds.size} canonical jsondocs:`, Array.from(canonicalIds));
+        // // console.log(`[ParticleService] Found ${canonicalIds.size} canonical jsondocs:`, Array.from(canonicalIds));
 
         await this.db.transaction().execute(async (tx) => {
             // Activate particles from canonical jsondocs
@@ -74,7 +74,7 @@ export class ParticleService {
                     .where('is_active', '=', false)
                     .execute();
 
-                console.log(`[ParticleService] Activated ${activatedResult.length} particles from canonical jsondocs`);
+                // console.log(`[ParticleService] Activated ${activatedResult.length} particles from canonical jsondocs`);
             }
 
             // Deactivate particles from non-canonical jsondocs
@@ -86,10 +86,10 @@ export class ParticleService {
                 .where('is_active', '=', true)
                 .execute();
 
-            console.log(`[ParticleService] Deactivated ${deactivatedResult.length} particles from non-canonical jsondocs`);
+            // console.log(`[ParticleService] Deactivated ${deactivatedResult.length} particles from non-canonical jsondocs`);
         });
 
-        console.log(`[ParticleService] Completed particle active status sync for project ${projectId}`);
+        // console.log(`[ParticleService] Completed particle active status sync for project ${projectId}`);
     }
 
     /**
@@ -97,27 +97,27 @@ export class ParticleService {
      * Uses hash-based comparison to only update particles that have actually changed
      */
     async updateParticlesForJsondoc(jsondocId: string, projectId: string): Promise<void> {
-        console.log(`[ParticleService] Updating particles for jsondoc ${jsondocId}`);
+        // console.log(`[ParticleService] Updating particles for jsondoc ${jsondocId}`);
 
         const jsondoc = await this.getJsondoc(jsondocId);
         if (!jsondoc) {
-            console.log(`[ParticleService] Jsondoc ${jsondocId} not found`);
+            // console.log(`[ParticleService] Jsondoc ${jsondocId} not found`);
             return;
         }
 
         // Skip patch-type jsondocs - they are temporary approval artifacts, not permanent content
         if (jsondoc.schema_type === 'json_patch') {
-            console.log(`[ParticleService] Skipping jsondoc ${jsondocId} - patch-type jsondocs are not processed by particle system`);
+            // console.log(`[ParticleService] Skipping jsondoc ${jsondocId} - patch-type jsondocs are not processed by particle system`);
             return;
         }
 
         // Check if jsondoc is active (leaf in lineage)
         const isActive = await this.isJsondocActive(jsondocId);
-        console.log(`[ParticleService] Jsondoc ${jsondocId} is ${isActive ? 'active' : 'inactive'}`);
+        // console.log(`[ParticleService] Jsondoc ${jsondocId} is ${isActive ? 'active' : 'inactive'}`);
 
         // Extract new particles (outside transaction for performance)
         const newParticles = isActive ? await this.particleExtractor.extractParticles(jsondoc) : [];
-        console.log(`[ParticleService] Generated ${newParticles.length} particles from jsondoc ${jsondocId}`);
+        // console.log(`[ParticleService] Generated ${newParticles.length} particles from jsondoc ${jsondocId}`);
 
         // If jsondoc is not active, we need to deactivate all its particles
         if (!isActive) {
@@ -128,7 +128,7 @@ export class ParticleService {
                 .where('is_active', '=', true)
                 .execute();
 
-            console.log(`[ParticleService] Deactivated ${deactivatedCount.length} particles for inactive jsondoc ${jsondocId}`);
+            // console.log(`[ParticleService] Deactivated ${deactivatedCount.length} particles for inactive jsondoc ${jsondocId}`);
             return; // Exit early since there's nothing more to do
         }
 
@@ -161,7 +161,7 @@ export class ParticleService {
             });
 
             const unchangedCount = newParticles.length - toAdd.length - toUpdate.length;
-            console.log(`[ParticleService] Particle changes: ${toAdd.length} add, ${toRemoveIds.length} remove, ${toUpdate.length} update, ${unchangedCount} unchanged`);
+            // console.log(`[ParticleService] Particle changes: ${toAdd.length} add, ${toRemoveIds.length} remove, ${toUpdate.length} update, ${unchangedCount} unchanged`);
 
             // Only proceed if there are actual changes
             if (toAdd.length === 0 && toRemoveIds.length === 0 && toUpdate.length === 0) {
@@ -221,7 +221,7 @@ export class ParticleService {
             .execute();
 
         if (particlesNeedingBackfill.length > 0) {
-            console.log(`[ParticleService] Backfilling content_hash for ${particlesNeedingBackfill.length} particles in jsondoc ${jsondocId}`);
+            // console.log(`[ParticleService] Backfilling content_hash for ${particlesNeedingBackfill.length} particles in jsondoc ${jsondocId}`);
             // Re-extract and update hashes
             const backfillParticles = await this.particleExtractor.extractParticles(jsondoc);
             const backfillMap = new Map(backfillParticles.map(p => [p.id, p]));
@@ -240,7 +240,7 @@ export class ParticleService {
             }
         }
 
-        console.log(`[ParticleService] Successfully synced particles for jsondoc ${jsondocId}`);
+        // console.log(`[ParticleService] Successfully synced particles for jsondoc ${jsondocId}`);
     }
 
     /**
@@ -333,7 +333,7 @@ export class ParticleService {
             .where('jsondoc_id', '=', jsondocId)
             .execute();
 
-        console.log(`[ParticleService] Deleted particles for jsondoc ${jsondocId}`);
+        // console.log(`[ParticleService] Deleted particles for jsondoc ${jsondocId}`);
     }
 
     /**
@@ -341,7 +341,7 @@ export class ParticleService {
      * Only processes jsondocs that need updates (new or changed particles based on hash comparison)
      */
     async initializeAllParticles(): Promise<void> {
-        console.log('[ParticleService] Initializing particles for all jsondocs...');
+        // console.log('[ParticleService] Initializing particles for all jsondocs...');
 
         const jsondocs = await this.db
             .selectFrom('jsondocs')
@@ -360,7 +360,7 @@ export class ParticleService {
                     await this.updateParticlesForJsondoc(jsondoc.id, jsondoc.project_id);
                     processedCount++;
                 } else {
-                    // console.log(`[ParticleService] Skipping jsondoc ${jsondoc.id} - particles are up to date`);
+                    // // console.log(`[ParticleService] Skipping jsondoc ${jsondoc.id} - particles are up to date`);
                     skippedCount++;
                 }
             } catch (error) {
@@ -368,7 +368,7 @@ export class ParticleService {
             }
         }
 
-        console.log(`[ParticleService] Finished initializing particles for ${jsondocs.length} jsondocs (processed: ${processedCount}, skipped: ${skippedCount})`);
+        // console.log(`[ParticleService] Finished initializing particles for ${jsondocs.length} jsondocs (processed: ${processedCount}, skipped: ${skippedCount})`);
     }
 
     /**
@@ -376,7 +376,7 @@ export class ParticleService {
      * This is a maintenance operation to ensure particles from non-canonical jsondocs are properly deactivated
      */
     async fixAllParticleActiveStatus(): Promise<void> {
-        console.log('[ParticleService] Starting particle active status fix for all projects...');
+        // console.log('[ParticleService] Starting particle active status fix for all projects...');
 
         // Get all projects
         const projects = await this.db
@@ -396,7 +396,7 @@ export class ParticleService {
             }
         }
 
-        console.log(`[ParticleService] Finished fixing particle active status for ${processedCount} projects`);
+        // console.log(`[ParticleService] Finished fixing particle active status for ${processedCount} projects`);
     }
 
     /**

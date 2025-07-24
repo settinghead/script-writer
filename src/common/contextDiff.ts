@@ -215,7 +215,7 @@ function applyUnifiedDiffToJSON(jsonString: string, unifiedDiff: string): string
 
         // Return the modified JSON
         const result = JSON.stringify(modified, null, 2);
-        console.log('[UnifiedDiff] Successfully applied unified diff to JSON structure');
+        // console.log('[UnifiedDiff] Successfully applied unified diff to JSON structure');
         return result;
 
     } catch (error) {
@@ -931,7 +931,7 @@ export function applyContextDiffToJSON(jsonString: string, diffText: string): st
         const isUnifiedDiff = diffText.includes('---') && diffText.includes('+++') && diffText.includes('@@');
 
         if (isUnifiedDiff) {
-            console.log('[ContextDiff] Detected unified diff format - applying with improved parser');
+            // console.log('[ContextDiff] Detected unified diff format - applying with improved parser');
             return applyUnifiedDiffToJSON(jsonString, diffText);
         } else {
             const json = JSON.parse(jsonString);

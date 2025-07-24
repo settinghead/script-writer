@@ -8,14 +8,10 @@ import { ChatMessageRepository } from './ChatMessageRepository';
 import { ParticleTemplateProcessor } from '../services/ParticleTemplateProcessor';
 import { applyPatch, deepClone, Operation } from 'fast-json-patch';
 import { TypedJsondoc } from '../../common/jsondocs.js';
-import * as Diff from 'diff';
-import { jsonrepair } from 'jsonrepair';
-import * as rfc6902 from 'rfc6902';
 import {
-    parseContextDiff,
     applyContextDiffToJSON,
-    type ParsedDiff
 } from '../../common/contextDiff';
+import { JsonPatchArray } from '@/common/schemas/transforms.js';
 
 /**
  * Configuration for a streaming transform - minimal interface that tools provide
@@ -117,8 +113,6 @@ export interface StreamingTransformResult {
 export class StreamingTransformExecutor {
     // Context for final conversion to use the working algorithm
     private originalJsondocForFinalConversion: any = null;
-    private llmServiceForFinalConversion: any = null;
-    private originalMessagesForFinalConversion: any = null;
     private templateService: TemplateService;
     private llmService: LLMService;
     private cachedLLMService: CachedLLMService;
@@ -175,17 +169,10 @@ export class StreamingTransformExecutor {
                 // 1. Input validation against schema
                 const validatedInput = config.inputSchema.parse(input);
 
-                // Store context for final conversion to use the working algorithm
-                console.log(`[StreamingTransformExecutor] Execution mode:`, {
-                    mode: executionMode.mode,
-                    hasOriginalJsondoc: !!(executionMode && executionMode.mode !== 'full-object' && 'originalJsondoc' in executionMode && executionMode.originalJsondoc),
-                    originalJsondocId: executionMode && executionMode.mode !== 'full-object' && 'originalJsondoc' in executionMode ? executionMode.originalJsondoc?.id : 'N/A'
-                });
+
 
                 if (executionMode.mode === 'patch-approval' && executionMode.originalJsondoc) {
                     this.originalJsondocForFinalConversion = executionMode.originalJsondoc;
-                    this.llmServiceForFinalConversion = this.llmService;
-                    console.log(`[StreamingTransformExecutor] Set originalJsondocForFinalConversion:`, executionMode.originalJsondoc.id);
                     // originalMessages will be set when they're built below
                 } else {
                     const hasOriginal = executionMode && executionMode.mode !== 'full-object' && 'originalJsondoc' in executionMode && !!executionMode.originalJsondoc;
@@ -210,10 +197,8 @@ export class StreamingTransformExecutor {
                         toolCallId
                     );
                     transformId = transform.id;
-                    console.log(`[StreamingTransformExecutor] Created transform ${transformId} with session ID: ${toolCallId || 'no-session'}`);
                 } else if (!dryRun && transformId) {
                     // Update retry count on existing transform
-                    console.log(`[StreamingTransformExecutor] Updating transform ${transformId} with session ID: ${toolCallId || 'no-session'} (retry ${retryCount})`);
                     await transformRepo.updateTransform(transformId, {
                         status: 'running',
                         retry_count: retryCount,
@@ -291,10 +276,6 @@ export class StreamingTransformExecutor {
                     ? await config.prepareTemplateVariables(validatedInput, { jsondocRepo })
                     : await defaultPrepareTemplateVariables(validatedInput, jsondocRepo);
 
-                // Keep minimal debug logging for diff templates
-                if (config.templateName.includes('edit_diff')) {
-                    console.log(`[DEBUG] Template context prepared for ${config.templateName}`);
-                }
 
                 const finalPrompt = await this.templateService.renderTemplate(
                     template,
@@ -309,7 +290,6 @@ export class StreamingTransformExecutor {
                         const { join } = await import('path');
                         const debugPromptPath = join(process.cwd(), 'debug-llm-prompt.txt');
                         writeFileSync(debugPromptPath, finalPrompt, 'utf8');
-                        console.log(`[DEBUG] Saved prompt (${finalPrompt.length} chars) to: ${debugPromptPath}`);
                     } catch (debugError) {
                         // Ignore debug save errors
                     }
@@ -377,14 +357,12 @@ export class StreamingTransformExecutor {
                         if (partialData.type === 'finalPatches') {
                             actualData = partialData.patches as TOutput;
                             isFinalPatch = true;
-                            console.log(`[StreamingTransformExecutor] Processing final patches at chunk ${chunkCount}: ${partialData.patches?.length || 0} patches from source: ${partialData.source}`);
                         } else if (partialData.type === 'patches') {
                             actualData = partialData.patches as TOutput;
                         } else if (partialData.type === 'eagerPatches') {
                             // EAGER PATCHES: Process immediately!
                             actualData = partialData.patches as TOutput;
                             isEagerPatch = true;
-                            console.log(`[StreamingTransformExecutor] Processing eager patches at chunk ${chunkCount}: ${partialData.patches?.length || 0} patches from attempt ${partialData.attempt}`);
                         } else {
                             // For rawText chunks, keep the last actual data
                             actualData = (lastData || []) as TOutput;
@@ -425,76 +403,65 @@ export class StreamingTransformExecutor {
 
                     // Call streaming callback if provided (always for eager patches, final patches, or periodic for others)
                     if (isEagerPatch || isFinalPatch || chunkCount % updateIntervalChunks === 0) {
-                        if (onStreamChunk) {
-                            try {
-                                // INTERNALIZED LOGIC: Process the debug-context-diff.ts pipeline eagerly during streaming
-                                let enhancedCallbackData = streamingInfo || actualData;
+                        // INTERNALIZED LOGIC: Process the debug-context-diff.ts pipeline eagerly during streaming
+                        let enhancedCallbackData = streamingInfo || actualData;
 
-                                // For patch-approval mode, eagerly process the working pipeline
-                                if (executionMode.mode === 'patch-approval' && this.originalJsondocForFinalConversion) {
-                                    try {
-                                        enhancedCallbackData = await this.processDebugPipeline(
-                                            streamingInfo || actualData,
-                                            chunkCount,
-                                            config.templateName
-                                        );
-                                    } catch (pipelineError) {
-                                        // On pipeline error, fall back to original data
-                                        console.warn(`[StreamingTransformExecutor] Pipeline processing failed at chunk ${chunkCount}, using fallback:`, pipelineError);
-                                        enhancedCallbackData = streamingInfo || actualData;
-                                    }
-                                }
-
-                                await onStreamChunk(enhancedCallbackData, chunkCount);
-                            } catch (callbackError) {
-                                console.warn(`[StreamingTransformExecutor] Streaming callback error at chunk ${chunkCount}:`, callbackError);
-                            }
-                        }
-
-                        // TODO: upsert jsondoc for regular updates (not implemented yet)
-
-                        // UPSERT PATCH JSONDOCS: For patch-approval mode, upsert RFC patches directly
-                        if (executionMode.mode === 'patch-approval' && !dryRun && transformId && projectId) {
-                            // Extract patches from the pipeline results if available
-                            let patchesToUpsert: any[] = [];
-
-                            if (streamingInfo?.pipelineResults?.patches && Array.isArray(streamingInfo.pipelineResults.patches)) {
-                                patchesToUpsert = streamingInfo.pipelineResults.patches;
-                            } else if (Array.isArray(actualData)) {
-                                // Fallback to actualData if it looks like patches
-                                const isJsonPatchArray = actualData.every((item: any) =>
-                                    item && typeof item === 'object' && 'op' in item && 'path' in item
-                                );
-                                if (isJsonPatchArray) {
-                                    patchesToUpsert = actualData;
-                                }
-                            }
-
-                            if (patchesToUpsert.length > 0) {
+                        try {
+                            // For patch-approval mode, eagerly process the working pipeline
+                            if (executionMode.mode === 'patch-approval' && this.originalJsondocForFinalConversion) {
+                                let pipelineResults: Awaited<ReturnType<typeof this.processDebugPipeline>>;
                                 try {
-                                    this.patchJsondocIds = await this.upsertPatchJsondocs(
-                                        patchesToUpsert,
-                                        executionMode.originalJsondoc,
-                                        config.templateName,
-                                        projectId,
-                                        transformId,
-                                        jsondocRepo,
-                                        transformRepo,
+                                    pipelineResults = await this.processDebugPipeline(
+                                        streamingInfo || actualData,
                                         chunkCount,
-                                        this.patchJsondocIds
                                     );
-                                    console.log(`[StreamingTransformExecutor] Upserted ${patchesToUpsert.length} patch jsondocs at chunk ${chunkCount}`);
-                                } catch (upsertError) {
-                                    console.warn(`[StreamingTransformExecutor] Failed to upsert patch jsondocs at chunk ${chunkCount}:`, upsertError);
+
+                                    console.log(`[StreamingTransformExecutor] Pipeline patches:`, pipelineResults.patches.length);
+                                    console.log(`[StreamingTransformExecutor] dryRun:`, dryRun, `transformId:`, transformId, `projectId:`, projectId);
+
+                                    if (executionMode.mode === 'patch-approval' && !dryRun && transformId && projectId) {
+                                        const patchesToUpsert = pipelineResults.patches;
+                                        if (patchesToUpsert.length > 0) {
+                                            try {
+                                                this.patchJsondocIds = await this.upsertPatchJsondocs(
+                                                    patchesToUpsert,
+                                                    executionMode.originalJsondoc,
+                                                    config.templateName,
+                                                    projectId,
+                                                    transformId,
+                                                    jsondocRepo,
+                                                    transformRepo,
+                                                    chunkCount,
+                                                    this.patchJsondocIds
+                                                );
+                                            } catch (upsertError) {
+                                                console.warn(`[StreamingTransformExecutor] Failed to upsert patch jsondocs at chunk ${chunkCount}:`, upsertError);
+                                            }
+                                        }
+                                    }
+
+                                    enhancedCallbackData = {
+                                        ...enhancedCallbackData,
+                                        pipelineResults: pipelineResults
+                                    }
+                                } catch (pipelineError) {
+                                    // On pipeline error, fall back to original data
+                                    console.warn(`[StreamingTransformExecutor] Pipeline processing failed at chunk ${chunkCount}, using fallback:`, pipelineError);
+                                    enhancedCallbackData = streamingInfo || actualData;
                                 }
                             }
+                            if (onStreamChunk) {
+                                await onStreamChunk(enhancedCallbackData, chunkCount);
+                            }
+                        } catch (callbackError) {
+                            console.warn(`[StreamingTransformExecutor] Streaming callback error at chunk ${chunkCount}:`, callbackError);
                         }
+
                     }
 
                     // EAGER PATCH PROCESSING: Apply immediately if we have eager patches
                     if (isEagerPatch && actualData && Array.isArray(actualData) && actualData.length > 0) {
                         try {
-                            console.log(`[StreamingTransformExecutor] EAGER APPLICATION: Applying ${actualData.length} patches immediately at chunk ${chunkCount}`);
 
                             if (executionMode.mode === 'patch-approval' && !dryRun && transformId && projectId) {
                                 // Upsert patch jsondocs immediately for eager patches
@@ -509,7 +476,6 @@ export class StreamingTransformExecutor {
                                     chunkCount,
                                     this.patchJsondocIds
                                 );
-                                console.log(`[StreamingTransformExecutor] EAGER SUCCESS: Upserted ${actualData.length} patch jsondocs`);
                             }
                         } catch (eagerError) {
                             console.warn(`[StreamingTransformExecutor] EAGER FAILURE: Failed to upsert eager patches at chunk ${chunkCount}:`, eagerError);
@@ -524,7 +490,6 @@ export class StreamingTransformExecutor {
                             if (executionMode.mode === 'patch-approval') {
                                 // In patch-approval mode, patch jsondocs are already created during eager processing
                                 // Skip redundant streaming updates to prevent re-parsing failures
-                                console.log(`[StreamingTransformExecutor] Patch-approval mode: Skipping streaming update at chunk ${chunkCount}`);
                                 jsondocData = null; // Skip regular jsondoc updates in patch-approval mode
                             } else {
                                 // Transform LLM output to final jsondoc format if needed
@@ -562,7 +527,7 @@ export class StreamingTransformExecutor {
                                 // console.log(`[StreamingTransformExecutor] Dry run: Skipping jsondoc update for ${config.templateName} at chunk ${chunkCount}`);
                             } else if (executionMode.mode === 'patch-approval') {
                                 // In patch-approval mode, we don't update during streaming, only at completion
-                                console.log(`[StreamingTransformExecutor] Patch-approval mode: Skipping streaming update at chunk ${chunkCount}`);
+                                // console.log(`[StreamingTransformExecutor] Patch-approval mode: Skipping streaming update at chunk ${chunkCount}`);
                             }
                         } catch (updateError) {
                             console.warn(`[StreamingTransformExecutor] Failed to update jsondoc at chunk ${chunkCount}:`, updateError);
@@ -605,7 +570,6 @@ export class StreamingTransformExecutor {
                                     );
                                 }
                             }
-                            console.log(`[StreamingTransformExecutor] Finalized ${this.patchJsondocIds.length} patch jsondocs`);
                         } catch (finalizationError) {
                             console.warn(`[StreamingTransformExecutor] Failed to finalize patch jsondocs:`, finalizationError);
                         }
@@ -781,7 +745,6 @@ export class StreamingTransformExecutor {
                 } else {
                     // Wait before retry with exponential backoff
                     const waitTime = Math.min(1000 * Math.pow(2, retryCount - 1), 10000); // Max 10 seconds
-                    console.log(`[StreamingTransformExecutor] Retrying ${config.templateName} in ${waitTime}ms (attempt ${retryCount + 1}/${maxRetries + 1})`);
                     await new Promise(resolve => setTimeout(resolve, waitTime));
                 }
             }
@@ -789,50 +752,6 @@ export class StreamingTransformExecutor {
 
         // This should never be reached due to the throw in the retry exhaustion case
         throw new Error('Unexpected end of retry loop');
-    }
-
-    /**
-     * Convert context-based diff to JSON patches using the same simple 4-step approach
-     */
-    private async convertUnifiedDiffToJsonPatches(
-        llmOutput: any,
-        originalJsondoc: any,
-        templateName: string,
-        retryCount: number,
-        llmService: any,
-        originalMessages: any[]
-    ): Promise<Operation[]> {
-        try {
-            // Extract unified diff from LLM output
-            const diffString = this.extractUnifiedDiff(llmOutput);
-            if (!diffString) {
-                throw new Error('No unified diff found in LLM output');
-            }
-
-            // STEP 1: Apply text diff to stringified JSON data
-            const originalData = originalJsondoc.data || originalJsondoc;
-            const originalJsonString = JSON.stringify(originalData, null, 2);
-            const modifiedJsonString = applyContextDiffToJSON(originalJsonString, diffString);
-
-            if (!modifiedJsonString || modifiedJsonString === originalJsonString) {
-                console.log(`[StreamingTransformExecutor] No changes detected in diff for ${templateName}`);
-                return [];
-            }
-
-            // STEP 2: Parse resulting JSON (already handled by applyContextDiffToJSON with jsonrepair)
-            const modifiedData = JSON.parse(modifiedJsonString);
-
-            // STEP 3: Use rfc6902 to calculate patches
-            const { createPatch } = await import('rfc6902');
-            const jsonPatches = createPatch(originalData, modifiedData);
-
-            console.log(`[StreamingTransformExecutor] Successfully converted unified diff to ${jsonPatches.length} JSON patches for ${templateName}`);
-            return jsonPatches;
-
-        } catch (error: any) {
-            console.error(`[StreamingTransformExecutor] Failed to convert unified diff to JSON patches for ${templateName}:`, error);
-            throw error;
-        }
     }
 
 
@@ -862,7 +781,6 @@ export class StreamingTransformExecutor {
                     }
                 }
             );
-            console.log(`[StreamingTransformExecutor] Stored real-time ${role} message for transform ${transformId}`);
         } catch (error) {
             console.error(`[StreamingTransformExecutor] Failed to store real-time message:`, error);
         }
@@ -909,56 +827,11 @@ export class StreamingTransformExecutor {
                 );
             }
 
-            console.log(`[StreamingTransformExecutor] Stored conversation history for transform ${transformId}`);
         } catch (error) {
             console.error(`[StreamingTransformExecutor] Failed to store conversation history:`, error);
         }
     }
 
-    /**
-     * Apply unified diff to original jsondoc with retry fallback mechanisms
-     */
-    private async applyPatchesToOriginal<TOutput>(
-        llmOutput: TOutput,
-        originalJsondoc: any,
-        templateName: string,
-        retryCount: number
-    ): Promise<any> {
-        try {
-            // Use unified diff approach
-            const jsonPatches = await this.convertUnifiedDiffToJsonPatches(
-                llmOutput,
-                originalJsondoc,
-                templateName,
-                retryCount,
-                this.llmService,
-                [] // Empty messages for basic retry
-            );
-
-            if (jsonPatches && jsonPatches.length > 0) {
-                console.log(`[StreamingTransformExecutor] Applying ${jsonPatches.length} JSON patches converted from unified diff for ${templateName}`);
-
-                const originalCopy = deepClone(originalJsondoc);
-                const patchResults = applyPatch(originalCopy, jsonPatches);
-
-                // Check if all patches applied successfully
-                const failedPatches = patchResults.filter(r => r.test === false);
-                if (failedPatches.length === 0) {
-                    console.log(`[StreamingTransformExecutor] Successfully applied all converted JSON patches`);
-                    return originalCopy;
-                } else {
-                    console.log(`[StreamingTransformExecutor] Failed patches:`, failedPatches);
-                    throw new Error(`Failed to apply ${failedPatches.length} converted JSON patches`);
-                }
-            }
-
-            throw new Error('No valid unified diff found in LLM output');
-
-        } catch (error) {
-            console.error(`[StreamingTransformExecutor] Unified diff application failed for ${templateName} (attempt ${retryCount + 1}):`, error);
-            throw error;
-        }
-    }
 
     /**
      * Create a patch jsondoc to persist intermediate patches in the lineage graph
@@ -1016,7 +889,6 @@ export class StreamingTransformExecutor {
                 ], projectId);
             }
 
-            console.log(`[StreamingTransformExecutor] Created patch jsondoc ${patchJsondoc.id} for transform ${transformId}`);
             return patchJsondoc.id;
 
         } catch (error) {
@@ -1025,141 +897,6 @@ export class StreamingTransformExecutor {
         }
     }
 
-    /**
-     * Apply unified diff to original jsondoc with patch jsondoc persistence
-     */
-    private async applyPatchesToOriginalWithPersistence<TOutput>(
-        llmOutput: TOutput,
-        originalJsondoc: any,
-        templateName: string,
-        retryCount: number,
-        projectId?: string,
-        userId?: string,
-        jsondocRepo?: JsondocRepository,
-        transformId?: string | null,
-        transformRepo?: TransformRepository,
-        dryRun?: boolean
-    ): Promise<any> {
-        try {
-            // Use unified diff approach with conversation history
-            const jsonPatches = await this.convertUnifiedDiffToJsonPatches(
-                llmOutput,
-                originalJsondoc,
-                templateName,
-                retryCount,
-                this.llmService,
-                [] // Empty messages for basic retry - could be enhanced with conversation context
-            );
-
-            if (jsonPatches && jsonPatches.length > 0) {
-                console.log(`[StreamingTransformExecutor] Applying ${jsonPatches.length} JSON patches converted from unified diff for ${templateName}`);
-
-                // Create patch jsondoc before applying patches (store final JSON patches for compatibility)
-                const patchJsondocId = await this.createPatchJsondoc(
-                    jsonPatches,
-                    originalJsondoc.id || 'target_jsondoc_id',
-                    originalJsondoc.schema_type || 'target_schema_type',
-                    retryCount,
-                    false, // Will be updated after application
-                    undefined,
-                    projectId,
-                    userId,
-                    jsondocRepo,
-                    transformId || undefined,
-                    transformRepo,
-                    dryRun
-                );
-
-                const originalCopy = deepClone(originalJsondoc);
-                const patchResults = applyPatch(originalCopy, jsonPatches);
-
-                // Check if all patches applied successfully
-                const failedPatches = patchResults.filter(r => r.test === false);
-                if (failedPatches.length === 0) {
-                    console.log(`[StreamingTransformExecutor] Successfully applied all converted JSON patches`);
-
-                    // Update patch jsondoc to mark as successfully applied
-                    if (patchJsondocId && jsondocRepo) {
-                        try {
-                            const patchJsondoc = await jsondocRepo.getJsondoc(patchJsondocId);
-                            if (patchJsondoc) {
-                                const updatedPatchData = {
-                                    ...patchJsondoc.data,
-                                    applied: true
-                                };
-                                await jsondocRepo.updateJsondoc(
-                                    patchJsondocId,
-                                    updatedPatchData,
-                                    {
-                                        applied_at: new Date().toISOString(),
-                                        success: true
-                                    }
-                                );
-                            }
-                        } catch (updateError) {
-                            console.warn(`[StreamingTransformExecutor] Failed to update patch jsondoc status:`, updateError);
-                        }
-                    }
-
-                    // Store conversation history for debugging
-                    if (!dryRun && transformId && projectId) {
-                        const { ChatMessageRepository } = await import('./ChatMessageRepository.js');
-                        const { db } = await import('../database/connection.js');
-                        const chatMessageRepo = new ChatMessageRepository(db);
-
-                        const diffString = this.extractUnifiedDiff(llmOutput);
-                        if (diffString) {
-                            await this.storeTransformConversationHistory(
-                                transformId,
-                                projectId,
-                                [], // Original messages - could be enhanced
-                                diffString,
-                                jsonPatches,
-                                chatMessageRepo
-                            );
-                        }
-                    }
-
-                    return originalCopy;
-                } else {
-                    console.log(`[StreamingTransformExecutor] Failed patches:`, failedPatches);
-
-                    // Update patch jsondoc to mark as failed
-                    if (patchJsondocId && jsondocRepo) {
-                        try {
-                            const patchJsondoc = await jsondocRepo.getJsondoc(patchJsondocId);
-                            if (patchJsondoc) {
-                                const updatedPatchData = {
-                                    ...patchJsondoc.data,
-                                    applied: false,
-                                    errorMessage: `Failed to apply ${failedPatches.length} converted JSON patches`
-                                };
-                                await jsondocRepo.updateJsondoc(
-                                    patchJsondocId,
-                                    updatedPatchData,
-                                    {
-                                        failed_at: new Date().toISOString(),
-                                        success: false,
-                                        error_message: `Failed to apply ${failedPatches.length} converted JSON patches`
-                                    }
-                                );
-                            }
-                        } catch (updateError) {
-                            console.warn(`[StreamingTransformExecutor] Failed to update patch jsondoc error status:`, updateError);
-                        }
-                    }
-
-                    throw new Error(`Failed to apply ${failedPatches.length} converted JSON patches`);
-                }
-            }
-
-            throw new Error('No valid unified diff found in LLM output');
-
-        } catch (error) {
-            console.error(`[StreamingTransformExecutor] Unified diff application failed for ${templateName} (attempt ${retryCount + 1}):`, error);
-            throw error;
-        }
-    }
 
 
 
@@ -1231,7 +968,6 @@ export class StreamingTransformExecutor {
         const shouldUseStreamText = isJsonPatchOperations || isPatchMode || isDiffTemplate;
 
         if (shouldUseStreamText) {
-            console.log(`[StreamingTransformExecutor] Using streamText for ${templateName} - Schema: ${isJsonPatchOperations}, Mode: ${isPatchMode}, Template: ${isDiffTemplate}`);
             return this.executeStreamTextForPatches({
                 prompt,
                 templateName,
@@ -1243,7 +979,6 @@ export class StreamingTransformExecutor {
         }
 
         // Standard object streaming for non-patch operations
-        console.log(`[StreamingTransformExecutor] Using streamObject for ${templateName} - Schema: ${isJsonPatchOperations}, Mode: ${isPatchMode}, Template: ${isDiffTemplate}`);
 
         const { getLLMModel } = await import('./LLMConfig.js');
         const model = await getLLMModel();
@@ -1320,7 +1055,6 @@ export class StreamingTransformExecutor {
     }): Promise<AsyncIterable<any>> {
         const { prompt, templateName, seed, temperature, topP, maxTokens } = options;
 
-        console.log(`[StreamingTransformExecutor] Using streamText for ${templateName} diff generation`);
 
         // Get model instance
         const { getLLMModel } = await import('./LLMConfig.js');
@@ -1335,10 +1069,6 @@ export class StreamingTransformExecutor {
                 content: prompt
             }];
 
-            // Store messages for final conversion
-            if (this.originalJsondocForFinalConversion) {
-                this.originalMessagesForFinalConversion = messages;
-            }
 
             const response = await streamText({
                 model: model,
@@ -1460,10 +1190,7 @@ export class StreamingTransformExecutor {
                     eagerParseAttempt: eagerParseAttempts
                 };
 
-                // DEBUG: Log eager parsing condition
-                if (eagerParseAttempts <= 15 || eagerParseAttempts % 10 === 0) {
-                    console.log(`[StreamingTransformExecutor] Chunk ${eagerParseAttempts}: textLength=${accumulatedText.length}, mod3=${eagerParseAttempts % 3}, condition=${eagerParseAttempts % 3 === 0 || accumulatedText.length > 50}`);
-                }
+
 
                 // EAGER PARSING: Try more frequently for patch-approval mode
                 if (eagerParseAttempts % 3 === 0 || accumulatedText.length > 50) {
@@ -1481,16 +1208,13 @@ export class StreamingTransformExecutor {
                             const eagerPatches = createPatch(originalData, modifiedData);
 
                             // DEBUG: Always log what's happening with patch generation
-                            console.log(`[StreamingTransformExecutor] Eager attempt ${eagerParseAttempts}: Generated ${eagerPatches.length} patches`);
                             if (eagerPatches.length === 0) {
                                 // Check if data actually changed
                                 const originalHash = JSON.stringify(originalData).length;
                                 const modifiedHash = JSON.stringify(modifiedData).length;
-                                console.log(`[StreamingTransformExecutor] No patches despite diff success - Original: ${originalHash} chars, Modified: ${modifiedHash} chars, Same: ${JSON.stringify(originalData) === JSON.stringify(modifiedData)}`);
                             }
 
                             if (eagerPatches.length > 0 && JSON.stringify(eagerPatches) !== JSON.stringify(lastValidPatches)) {
-                                console.log(`[StreamingTransformExecutor] Eager parse SUCCESS for ${templateName}: ${eagerPatches.length} patches`);
 
                                 lastValidPatches = eagerPatches;
 
@@ -1531,7 +1255,6 @@ export class StreamingTransformExecutor {
 
                     // DEBUG: Essential info only
                     const dataChanged = JSON.stringify(originalData) !== JSON.stringify(finalModifiedData);
-                    console.log(`[StreamingTransformExecutor] Final conversion for ${templateName}: ${finalPatches.length} patches, data changed: ${dataChanged}`);
 
                     if (finalPatches.length === 0 && !dataChanged) {
                         // Write debug files for inspection if needed
@@ -1542,7 +1265,6 @@ export class StreamingTransformExecutor {
                         await fs.writeFileSync('./debug-streaming-modified-string.txt', finalModifiedJsonString);
                     }
 
-                    console.log(`[StreamingTransformExecutor] Final conversion successful for ${templateName}: ${finalPatches.length} patches`);
 
                     // STEP 4: Emit final patches (always emit patches, even if empty - let the calling code decide)
                     yield {
@@ -1609,10 +1331,8 @@ export class StreamingTransformExecutor {
         chunkCount?: number
     ): Promise<any> {
         try {
-            console.log(`[StreamingTransformExecutor] Applying ${eagerPatches.length} eager patches for ${templateName} at chunk ${chunkCount}`);
 
             if (!eagerPatches || eagerPatches.length === 0) {
-                console.log(`[StreamingTransformExecutor] No eager patches to apply`);
                 return originalJsondoc;
             }
 
@@ -1623,7 +1343,6 @@ export class StreamingTransformExecutor {
             // Check if all patches applied successfully
             const failedPatches = patchResults.filter(r => r.test === false);
             if (failedPatches.length === 0) {
-                console.log(`[StreamingTransformExecutor] EAGER SUCCESS: Applied all ${eagerPatches.length} patches at chunk ${chunkCount}`);
 
                 // Optionally create a lightweight patch jsondoc for eager patches (without full persistence overhead)
                 if (!dryRun && projectId && transformId && jsondocRepo) {
@@ -1658,7 +1377,6 @@ export class StreamingTransformExecutor {
                             'ai_generated'
                         );
 
-                        console.log(`[StreamingTransformExecutor] Created eager patch jsondoc ${eagerPatchJsondoc.id} for chunk ${chunkCount}`);
                     } catch (eagerPatchError) {
                         console.warn(`[StreamingTransformExecutor] Failed to create eager patch jsondoc (non-critical):`, eagerPatchError);
                         // Don't fail the eager application for this
@@ -1746,7 +1464,6 @@ export class StreamingTransformExecutor {
                         template_name: templateName
                     }
                 );
-                console.log(`[StreamingTransformExecutor] Updated patch jsondoc ${existingId} (index ${i})`);
             } else {
                 // Create new patch jsondoc
                 const patchJsondoc = await jsondocRepo.createJsondoc(
@@ -1773,7 +1490,6 @@ export class StreamingTransformExecutor {
                 ], projectId);
 
                 updatedIds[i] = patchJsondoc.id;
-                console.log(`[StreamingTransformExecutor] Created patch jsondoc ${patchJsondoc.id} (index ${i})`);
             }
         }
 
@@ -1787,8 +1503,17 @@ export class StreamingTransformExecutor {
     private async processDebugPipeline(
         streamingData: any,
         chunkCount: number,
-        templateName: string
-    ): Promise<any> {
+    ): Promise<{
+        rawLLMOutput: string;
+        modifiedJson: string | null;
+        patches: JsonPatchArray;
+        chunkCount: number;
+        status: string;
+        originalJsonLength: number | null;
+        modifiedJsonLength: number | null;
+        patchCount: number | null;
+        error?: string;
+    }> {
         // Static cache for intermediate results to avoid recomputation
         if (!this._pipelineCache) {
             this._pipelineCache = {
@@ -1854,32 +1579,29 @@ export class StreamingTransformExecutor {
             };
 
             return {
-                ...streamingData,
-                pipelineResults: {
-                    rawLLMOutput,
-                    modifiedJson,
-                    patches,
-                    chunkCount,
-                    status: 'success',
-                    originalJsonLength: originalJsonString.length,
-                    modifiedJsonLength: modifiedJson?.length || 0,
-                    patchCount: patches.length
-                }
-            };
+                rawLLMOutput,
+                modifiedJson,
+                patches,
+                chunkCount,
+                status: 'success',
+                originalJsonLength: originalJsonString.length,
+                modifiedJsonLength: modifiedJson?.length || 0,
+                patchCount: patches.length
+            }
 
         } catch (error) {
             console.warn(`[StreamingTransformExecutor] Pipeline processing error at chunk ${chunkCount}:`, error);
             // Return cached results on error
             return {
-                ...streamingData,
-                pipelineResults: {
-                    rawLLMOutput: this._pipelineCache.lastRawOutput,
-                    modifiedJson: this._pipelineCache.lastModifiedJson,
-                    patches: this._pipelineCache.lastPatches,
-                    chunkCount: this._pipelineCache.lastChunkCount,
-                    status: 'error',
-                    error: error instanceof Error ? error.message : String(error)
-                }
+                rawLLMOutput: this._pipelineCache.lastRawOutput,
+                modifiedJson: this._pipelineCache.lastModifiedJson,
+                patches: this._pipelineCache.lastPatches,
+                chunkCount: this._pipelineCache.lastChunkCount,
+                status: 'error',
+                error: error instanceof Error ? error.message : String(error),
+                originalJsonLength: null,
+                modifiedJsonLength: null,
+                patchCount: null
             };
         }
     }
@@ -1891,11 +1613,6 @@ export class StreamingTransformExecutor {
         lastPatches: any[];
         lastChunkCount: number;
     };
-
-
-
-
-
 }
 
 /**
