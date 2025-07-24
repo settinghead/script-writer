@@ -501,7 +501,7 @@ export function createAdminRoutes(
                 executionMode,  // Add the execution mode
                 dryRun: true,  // This will skip database operations but still call LLM
                 onStreamChunk: async (chunk: any, chunkCount: number) => {
-                    // Handle new streaming format with both rawText and patches
+                    // Handle new streaming format with internalized pipeline results
                     if (chunk && typeof chunk === 'object' && 'type' in chunk) {
                         // New format with detailed streaming info
                         if (chunk.type === 'rawText') {
@@ -553,6 +553,22 @@ export function createAdminRoutes(
                                 error: chunk.error,
                                 templateName: chunk.templateName,
                                 toolName
+                            });
+                        }
+
+                        // NEW: Send internalized pipeline results for real-time debugging
+                        if (chunk.pipelineResults) {
+                            sendSSE('pipelineResults', {
+                                chunkCount,
+                                status: chunk.pipelineResults.status,
+                                rawLLMOutput: chunk.pipelineResults.rawLLMOutput,
+                                modifiedJson: chunk.pipelineResults.modifiedJson,
+                                patches: chunk.pipelineResults.patches,
+                                originalJsonLength: chunk.pipelineResults.originalJsonLength,
+                                modifiedJsonLength: chunk.pipelineResults.modifiedJsonLength,
+                                patchCount: chunk.pipelineResults.patchCount,
+                                toolName,
+                                templateName: chunk.templateName
                             });
                         }
 

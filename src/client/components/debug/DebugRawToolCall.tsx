@@ -115,7 +115,7 @@ interface PromptResult {
 
 // Streaming chunk data structure
 interface StreamingChunk {
-    type: 'rawText' | 'eagerPatches' | 'patches' | 'finalPatches' | 'chunk' | 'result' | 'status' | 'error';
+    type: 'rawText' | 'eagerPatches' | 'patches' | 'finalPatches' | 'pipelineResults' | 'chunk' | 'result' | 'status' | 'error';
     chunkCount?: number;
     patches?: any[];
     source?: string;
@@ -125,6 +125,13 @@ interface StreamingChunk {
     newPatchCount?: number;
     data?: any;
     message?: string;
+    // NEW: Pipeline results from internalized debug-context-diff.ts logic
+    status?: string;
+    rawLLMOutput?: string;
+    modifiedJson?: string;
+    originalJsonLength?: number;
+    modifiedJsonLength?: number;
+    patchCount?: number;
 }
 
 // Helper function to provide default parameters for tools
@@ -247,6 +254,15 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
     const [originalJsonString, setOriginalJsonString] = useState<string>('');
     const [currentPatchedJsonString, setCurrentPatchedJsonString] = useState<string>('');
     const [currentPatches, setCurrentPatches] = useState<any[]>([]);
+
+    // NEW: Pipeline results state for real-time debugging
+    const [pipelineResults, setPipelineResults] = useState<{
+        status: string;
+        rawLLMOutputLength: number;
+        modifiedJsonLength: number;
+        patchCount: number;
+        originalJsonLength: number;
+    } | null>(null);
 
     // Use the debug params hook for persistence
     const {
@@ -589,6 +605,7 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
         setStreamingChunks([]);
         setFinalPatches([]);
         setCurrentPatches([]);
+        setPipelineResults(null); // Reset pipeline results for new run
 
         // If this is an edit tool, capture the original JSON for diff comparison
         const isEdit = isEditTool(toolName);
@@ -703,6 +720,34 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                                 // Handle raw text streaming for debugging
                                 setRawTextStream(prev => prev + data.textDelta);
                                 setNonPersistentRunStatus(`接收原始文本... (第${data.chunkCount}块)`);
+
+                            } else if (currentEvent === 'pipelineResults') {
+                                // NEW: Handle internalized pipeline results - this is the main data source now
+                                setNonPersistentRunStatus(`处理管道结果... (状态: ${data.status}, 补丁: ${data.patchCount || 0})`);
+
+                                // Update pipeline results state for debugging display
+                                setPipelineResults({
+                                    status: data.status || 'unknown',
+                                    rawLLMOutputLength: data.rawLLMOutput?.length || 0,
+                                    modifiedJsonLength: data.modifiedJsonLength || 0,
+                                    patchCount: data.patchCount || 0,
+                                    originalJsonLength: data.originalJsonLength || 0
+                                });
+
+                                // Update raw text stream from pipeline
+                                if (data.rawLLMOutput) {
+                                    setRawTextStream(data.rawLLMOutput);
+                                }
+
+                                // Apply patches from pipeline results if available
+                                if (data.patches && data.patches.length > 0 && capturedOriginalJsonString && !capturedOriginalJsonString.startsWith('//')) {
+                                    const patchedJson = applyPatchesToOriginal(data.patches, capturedOriginalJsonString);
+                                    setCurrentPatchedJsonString(patchedJson);
+                                    setCurrentPatches(data.patches);
+                                } else if (data.modifiedJson && capturedOriginalJsonString && !capturedOriginalJsonString.startsWith('//')) {
+                                    // Use modified JSON directly from pipeline if patches aren't available
+                                    setCurrentPatchedJsonString(data.modifiedJson);
+                                }
 
                             } else if (currentEvent === 'eagerPatches') {
                                 // Handle eager patch data - apply patches in real-time
@@ -1099,6 +1144,71 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                 </div>
             )}
 
+            {/* NEW: Pipeline Results Dashboard */}
+            {pipelineResults && (
+                <div style={{ marginTop: 24 }}>
+                    <Title level={4} style={{ display: 'flex', alignItems: 'center', color: '#fff', marginBottom: 16 }}>
+                        <BugOutlined style={{ marginRight: 8 }} />
+                        实时管道状态
+                        <Text type="secondary" style={{ marginLeft: 8, fontSize: '14px' }}>
+                            ({pipelineResults.status})
+                        </Text>
+                    </Title>
+
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                        gap: '12px',
+                        marginBottom: 16
+                    }}>
+                        <div style={{
+                            padding: '12px',
+                            backgroundColor: '#262626',
+                            border: '1px solid #434343',
+                            borderRadius: '6px'
+                        }}>
+                            <Text style={{ color: '#1890ff', fontSize: '12px' }}>状态</Text>
+                            <div style={{ color: '#fff', fontSize: '16px', fontWeight: 'bold' }}>
+                                {pipelineResults.status}
+                            </div>
+                        </div>
+                        <div style={{
+                            padding: '12px',
+                            backgroundColor: '#262626',
+                            border: '1px solid #434343',
+                            borderRadius: '6px'
+                        }}>
+                            <Text style={{ color: '#52c41a', fontSize: '12px' }}>原始输出</Text>
+                            <div style={{ color: '#fff', fontSize: '16px', fontWeight: 'bold' }}>
+                                {pipelineResults.rawLLMOutputLength} 字符
+                            </div>
+                        </div>
+                        <div style={{
+                            padding: '12px',
+                            backgroundColor: '#262626',
+                            border: '1px solid #434343',
+                            borderRadius: '6px'
+                        }}>
+                            <Text style={{ color: '#faad14', fontSize: '12px' }}>修改后JSON</Text>
+                            <div style={{ color: '#fff', fontSize: '16px', fontWeight: 'bold' }}>
+                                {pipelineResults.modifiedJsonLength} 字符
+                            </div>
+                        </div>
+                        <div style={{
+                            padding: '12px',
+                            backgroundColor: '#262626',
+                            border: '1px solid #434343',
+                            borderRadius: '6px'
+                        }}>
+                            <Text style={{ color: '#f759ab', fontSize: '12px' }}>补丁数量</Text>
+                            <div style={{ color: '#fff', fontSize: '16px', fontWeight: 'bold' }}>
+                                {pipelineResults.patchCount} 个
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Raw Text Stream */}
             {rawTextStream && (
                 <div style={{ marginTop: 24 }}>
@@ -1142,6 +1252,11 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                         实时补丁应用视图
                         <Text type="secondary" style={{ marginLeft: 8, fontSize: '14px' }}>
                             {currentPatches.length} 个补丁已应用
+                            {pipelineResults && (
+                                <span style={{ color: '#52c41a', marginLeft: 8 }}>
+                                    (来自管道: {pipelineResults.status})
+                                </span>
+                            )}
                         </Text>
                     </Title>
 
