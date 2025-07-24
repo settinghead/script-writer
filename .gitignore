@@ -25,3 +25,6 @@ test_logs
 optimization_logs
 
 /cache
+
+debug-*.json
+debug-*.txt
