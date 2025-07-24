@@ -69,7 +69,6 @@ export async function defaultPrepareTemplateVariables<TInput>(
  */
 export type StreamingExecutionMode =
     | { mode: 'full-object' }
-    | { mode: 'patch', originalJsondoc: any }
     | { mode: 'patch-approval', originalJsondoc: any };
 
 /**
@@ -249,13 +248,8 @@ export class StreamingTransformExecutor {
                 // Skip for patch-approval mode - patches will be the outputs
                 if (!dryRun && !outputJsondocId && executionMode?.mode !== 'patch-approval') {
                     let initialData: any;
-                    if (executionMode?.mode === 'patch') {
-                        // In patch mode, start with the original jsondoc data
-                        initialData = deepClone(executionMode.originalJsondoc);
-                    } else {
-                        // In full-object mode, use empty structure
-                        initialData = this.createInitialJsondocData(outputJsondocType, transformMetadata);
-                    }
+                    initialData = this.createInitialJsondocData(outputJsondocType, transformMetadata);
+
 
                     const outputJsondoc = await jsondocRepo.createJsondoc(
                         projectId,
@@ -436,39 +430,7 @@ export class StreamingTransformExecutor {
                         try {
                             console.log(`[StreamingTransformExecutor] EAGER APPLICATION: Applying ${actualData.length} patches immediately at chunk ${chunkCount}`);
 
-                            if (executionMode?.mode === 'patch') {
-                                // Apply eager patches to original jsondoc immediately
-                                const eagerResult = await this.applyEagerPatchesToOriginal(
-                                    actualData,
-                                    executionMode.originalJsondoc,
-                                    config.templateName,
-                                    retryCount,
-                                    projectId,
-                                    userId,
-                                    jsondocRepo,
-                                    transformId,
-                                    transformRepo,
-                                    dryRun,
-                                    chunkCount
-                                );
-
-                                if (eagerResult && !dryRun && outputJsondocId) {
-                                    await jsondocRepo.updateJsondoc(
-                                        outputJsondocId,
-                                        eagerResult,
-                                        {
-                                            chunk_count: chunkCount,
-                                            last_updated: new Date().toISOString(),
-                                            update_count: ++updateCount,
-                                            retry_count: retryCount,
-                                            execution_mode: executionMode?.mode || 'full-object',
-                                            eager_patch_applied: true,
-                                            eager_patch_count: actualData.length
-                                        }
-                                    );
-                                    console.log(`[StreamingTransformExecutor] EAGER SUCCESS: Applied ${actualData.length} patches and updated jsondoc ${outputJsondocId}`);
-                                }
-                            } else if (executionMode?.mode === 'patch-approval') {
+                            if (executionMode?.mode === 'patch-approval') {
                                 // Create/update patch approval jsondocs immediately
                                 await this.createStreamingPatchApprovalJsondocs(
                                     actualData as TOutput,
@@ -495,28 +457,7 @@ export class StreamingTransformExecutor {
                     if (chunkCount % updateIntervalChunks === 0) {
                         try {
                             let jsondocData: any;
-                            if (executionMode?.mode === 'patch') {
-                                // In patch mode, try to apply partial patches (may fail, that's ok)
-                                try {
-                                    jsondocData = await this.applyPatchesToOriginalWithPersistence(
-                                        partialData as TOutput,
-                                        executionMode.originalJsondoc,
-                                        config.templateName,
-                                        retryCount,
-                                        projectId,
-                                        userId,
-                                        jsondocRepo,
-                                        transformId,
-                                        transformRepo,
-                                        dryRun
-                                    );
-                                } catch (patchError) {
-                                    // If partial patch fails, keep original data and continue
-                                    console.warn(`[StreamingTransformExecutor] Partial patch failed at chunk ${chunkCount}, continuing...`);
-                                    console.warn(`[StreamingTransformExecutor] Patch content: ${JSON.stringify(partialData)}`);
-                                    jsondocData = executionMode.originalJsondoc;
-                                }
-                            } else if (executionMode?.mode === 'patch-approval') {
+                            if (executionMode?.mode === 'patch-approval') {
                                 // In patch-approval mode, patch jsondocs are already created during eager processing
                                 // Skip redundant streaming updates to prevent re-parsing failures
                                 console.log(`[StreamingTransformExecutor] Patch-approval mode: Skipping streaming update at chunk ${chunkCount}`);
@@ -581,21 +522,7 @@ export class StreamingTransformExecutor {
 
                 // Handle patch mode vs full-object mode
                 let finalJsondocData: any;
-                if (executionMode?.mode === 'patch') {
-                    // Apply patches to original jsondoc
-                    finalJsondocData = await this.applyPatchesToOriginalWithPersistence(
-                        finalValidatedData,
-                        executionMode.originalJsondoc,
-                        config.templateName,
-                        retryCount,
-                        projectId,
-                        userId,
-                        jsondocRepo,
-                        transformId,
-                        transformRepo,
-                        dryRun
-                    );
-                } else if (executionMode?.mode === 'patch-approval') {
+                if (executionMode?.mode === 'patch-approval') {
                     // Finalize streaming patch jsondocs - mark them as completed
                     await this.finalizeStreamingPatchApprovalJsondocs(
                         finalValidatedData as Operation[],
@@ -1205,8 +1132,7 @@ export class StreamingTransformExecutor {
         const isJsonPatchOperations = this.isJsonPatchOperationsSchema(schema);
 
         // 2. Execution mode-based detection (patch modes should use streamText for diffs)
-        const isPatchMode = executionMode?.mode === 'patch' ||
-            executionMode?.mode === 'patch-approval';
+        const isPatchMode = executionMode?.mode === 'patch-approval';
 
         // 3. Template name pattern detection (templates ending with _diff should use streamText)
         const isDiffTemplate = templateName.endsWith('_diff') ||
