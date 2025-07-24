@@ -194,7 +194,7 @@ export function buildPromptForRequestType(
 
 **你的回复的JSON格式要求：**
 {
-  "humanReadableMessage": "对用户友好的中文回复消息"
+  "humanReadableMessage": "对用户友好的中文回复消息，尽量简洁"
 }
 
 注意：

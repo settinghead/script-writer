@@ -19,15 +19,8 @@ vi.mock('../../common/utils/lineageResolution', () => ({
         errors: [],
         warnings: []
     })),
-    extractEffectiveBrainstormIdeas: vi.fn(() => [
-        {
-            title: '误爱成宠',
-            body: '霸道总裁与普通员工的甜宠故事...',
-            metadata: { ideaIndex: 0 }
-        }
-    ]),
+
     extractEffectiveOutlines: vi.fn(() => []),
-    findEffectiveBrainstormIdeas: vi.fn(() => []),
     findMainWorkflowPath: vi.fn(() => []),
     convertEffectiveIdeasToIdeaWithTitle: vi.fn(() => [
         {
