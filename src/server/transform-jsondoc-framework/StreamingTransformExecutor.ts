@@ -555,7 +555,7 @@ export class StreamingTransformExecutor {
                 let finalJsondocData: any;
                 if (executionMode.mode === 'patch-approval') {
                     // Finalize patch jsondocs - mark them as completed
-                    console.log(`[StreamingTransformExecutor] Finalizing patch jsondocs for transform ${transformId}`);
+                    // console.log(`[StreamingTransformExecutor] Finalizing patch jsondocs for transform ${transformId}`);
 
                     if (!dryRun && transformId && projectId) {
                         try {
@@ -565,11 +565,11 @@ export class StreamingTransformExecutor {
                                 .filter(o => o.output_role === 'patch_output')
                                 .map(o => o.jsondoc_id);
 
-                            console.log(`[StreamingTransformExecutor] Found ${patchJsondocIds.length} patch jsondocs to finalize`);
+                            // console.log(`[StreamingTransformExecutor] Found ${patchJsondocIds.length} patch jsondocs to finalize`);
 
                             // Mark all patch jsondocs as completed
                             for (const patchId of patchJsondocIds) {
-                                console.log(`[StreamingTransformExecutor] Marking patch ${patchId} as completed`);
+                                // console.log(`[StreamingTransformExecutor] Marking patch ${patchId} as completed`);
 
                                 // First get existing metadata
                                 const existingJsondoc = await jsondocRepo.getJsondoc(patchId);
@@ -1249,7 +1249,7 @@ export class StreamingTransformExecutor {
                             }
 
                             if (eagerPatches.length > 0 && JSON.stringify(eagerPatches) !== JSON.stringify(lastValidPatches)) {
-                                console.log(`[convertTextStreamToJsonPatches] Yielding ${eagerPatches.length} eager patches at attempt ${eagerParseAttempts}`);
+                                // console.log(`[convertTextStreamToJsonPatches] Yielding ${eagerPatches.length} eager patches at attempt ${eagerParseAttempts}`);
                                 lastValidPatches = eagerPatches;
 
                                 // STEP 4: Emit patches
@@ -1301,7 +1301,7 @@ export class StreamingTransformExecutor {
 
 
                     // STEP 4: Emit final patches (always emit patches, even if empty - let the calling code decide)
-                    console.log(`[convertTextStreamToJsonPatches] Yielding final patches: ${finalPatches.length} patches`);
+                    // console.log(`[convertTextStreamToJsonPatches] Yielding final patches: ${finalPatches.length} patches`);
                     yield {
                         type: 'finalPatches',
                         patches: finalPatches,
@@ -1471,7 +1471,7 @@ export class StreamingTransformExecutor {
         transformRepo: TransformRepository,
         chunkCount: number
     ): Promise<void> {
-        console.log(`[upsertPatchJsondocs] Called with ${patches.length} patches at chunk ${chunkCount}`);
+        // console.log(`[upsertPatchJsondocs] Called with ${patches.length} patches at chunk ${chunkCount}`);
 
         // Filter out empty or invalid patches
         const validPatches = patches.filter(patch =>
@@ -1481,10 +1481,10 @@ export class StreamingTransformExecutor {
             patch.path &&
             Object.keys(patch).length > 0
         );
-        console.log(`[upsertPatchJsondocs] Valid patches after filtering: ${validPatches.length}`);
+        // console.log(`[upsertPatchJsondocs] Valid patches after filtering: ${validPatches.length}`);
 
         if (validPatches.length === 0) {
-            console.log(`[upsertPatchJsondocs] No valid patches to upsert, returning empty array`);
+            // console.log(`[upsertPatchJsondocs] No valid patches to upsert, returning empty array`);
             return;
         }
 
@@ -1509,7 +1509,7 @@ export class StreamingTransformExecutor {
             }
         }
 
-        console.log(`[upsertPatchJsondocs] Found ${existingPatches.size} existing patches in DB`);
+        // console.log(`[upsertPatchJsondocs] Found ${existingPatches.size} existing patches in DB`);
 
         // Step 2: Process new patches
         const newPatchMap: Map<string, { patch: any; hash: string; index: number }> = new Map();
@@ -1521,7 +1521,7 @@ export class StreamingTransformExecutor {
             newPatchMap.set(identifier, { patch, hash, index: i });
         }
 
-        console.log(`[upsertPatchJsondocs] New patch set has ${newPatchMap.size} unique patches`);
+        // console.log(`[upsertPatchJsondocs] New patch set has ${newPatchMap.size} unique patches`);
 
         // Step 3: Determine operations needed
         const toDelete: string[] = [];
@@ -1531,6 +1531,7 @@ export class StreamingTransformExecutor {
         // Find patches to delete (in existing but not in new)
         for (const [identifier, existing] of existingPatches) {
             if (!newPatchMap.has(identifier)) {
+                console.log(`[upsertPatchJsondocs] Deleting patch jsondoc ${existing.id} for ${identifier}`);
                 toDelete.push(existing.id);
             }
         }
@@ -1545,17 +1546,18 @@ export class StreamingTransformExecutor {
                 }
             } else {
                 // New patch
+                console.log(`[upsertPatchJsondocs] Inserting patch jsondoc for ${identifier}`);
                 toInsert.push({ patch: newPatch.patch, index: newPatch.index });
             }
         }
 
-        console.log(`[upsertPatchJsondocs] Operations - Delete: ${toDelete.length}, Update: ${toUpdate.length}, Insert: ${toInsert.length}`);
+        // console.log(`[upsertPatchJsondocs] Operations - Delete: ${toDelete.length}, Update: ${toUpdate.length}, Insert: ${toInsert.length}`);
 
         // Step 4: Execute operations
 
         // Delete removed patches
         for (const jsondocId of toDelete) {
-            console.log(`[upsertPatchJsondocs] Deleting patch jsondoc ${jsondocId}`);
+            // console.log(`[upsertPatchJsondocs] Deleting patch jsondoc ${jsondocId}`);
             try {
                 // First remove the transform output reference
                 const { db } = await import('../database/connection.js');
@@ -1574,7 +1576,7 @@ export class StreamingTransformExecutor {
 
         // Update changed patches
         for (const { id, patch, index } of toUpdate) {
-            console.log(`[upsertPatchJsondocs] Updating patch jsondoc ${id} for ${patch.op}:${patch.path}`);
+            // console.log(`[upsertPatchJsondocs] Updating patch jsondoc ${id} for ${patch.op}:${patch.path}`);
             const patchData = {
                 patches: [patch],
                 targetJsondocId: originalJsondoc.id,
@@ -1599,7 +1601,7 @@ export class StreamingTransformExecutor {
 
         // Insert new patches
         for (const { patch, index } of toInsert) {
-            console.log(`[upsertPatchJsondocs] Creating new patch jsondoc for ${patch.op}:${patch.path}`);
+            // console.log(`[upsertPatchJsondocs] Creating new patch jsondoc for ${patch.op}:${patch.path}`);
             const patchData = {
                 patches: [patch],
                 targetJsondocId: originalJsondoc.id,

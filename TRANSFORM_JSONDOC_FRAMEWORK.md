@@ -1257,9 +1257,9 @@ finalJsondocData = config.transformLLMOutput
 
 **How It Works**:
 - LLM generates JSON Patch operations (RFC 6902 standard)
-- Output jsondoc starts with a copy of the original content
-- Patches are applied incrementally during streaming
-- Only modified fields change, preserving the rest of the content
+- Patches are stored as individual `json_patch` jsondocs
+- Each patch is identified by `op+path` combination (e.g., `replace:/title`)
+- Patches are applied during streaming for real-time updates
 
 **JSON Patch Operations**:
 ```json
@@ -1307,8 +1307,8 @@ finalJsondocData = await this.applyPatchesToOriginal(
 ### 3. Patch Mode Fallback Mechanisms
 
 **Multi-Layer Fallback Strategy**:
-1. **JSON Patch (Primary)** - RFC 6902 standard operations
-2. **Diff Format (Secondary)** - Text-based diff parsing
+1. **JSON Patch (Primary)** - RFC 6902 standard operations with op+path identification
+2. **Diff Format (Secondary)** - Text-based diff parsing with context repair
 3. **Full Regeneration (Tertiary)** - Falls back to full-object mode
 
 **Error Handling**:
@@ -1336,16 +1336,15 @@ if (failedPatches.length === 0) {
 
 **Automatic Mode Detection**:
 - **Full-Object Mode**: Used by default for generation tools
-- **Patch Mode**: Explicitly enabled for editing tools with `extractSourceJsondocs`
+- **Patch Mode**: Enabled with `executionMode: { mode: 'patch-approval', originalJsondoc: sourceContent }`
 
 **Template Design**:
 - **Generation Templates**: Prompt for complete content structures
-- **Edit Templates**: Prompt for JSON Patch operations with specific format requirements
+- **Edit Templates**: Prompt for JSON Patch operations
 
 **Performance Benefits**:
-- **Patch Mode**: Faster processing, preserves unchanged content, better user experience
+- **Patch Mode**: Faster processing, preserves unchanged content
 - **Full-Object Mode**: Simpler implementation, complete content control
-- **Streaming Updates**: Both modes support real-time jsondoc updates during generation
 
 **Metadata Tracking**:
 ```typescript
@@ -1420,7 +1419,7 @@ if (config.extractSourceJsondocs && executionMode.mode === 'patch') {
 }
 ```
 
-### 6. Practical Usage Comparison
+### 5. Practical Usage Comparison
 
 **When to Use Full-Object Mode**:
 - ✅ Creating new content from scratch
