@@ -160,94 +160,335 @@ export function parseUnifiedDiff(diffText: string): UnifiedDiffHunk[] {
 }
 
 /**
- * Apply structured hunks to text using proper unified diff logic
- * Hunks must be applied cumulatively - each hunk applies to the result of previous hunks
+ * Calculate Levenshtein distance between two strings
  */
-export function applyHunksToText(originalText: string, hunks: UnifiedDiffHunk[]): string {
-    if (hunks.length === 0) {
-        return originalText;
+function levenshtein(a: string, b: string): number {
+    if (a === b) return 0;
+    if (a.length === 0) return b.length;
+    if (b.length === 0) return a.length;
+
+    const matrix: number[][] = [];
+
+    // Initialize the matrix
+    for (let i = 0; i <= a.length; i++) {
+        matrix[i] = [i];
+    }
+    for (let j = 0; j <= b.length; j++) {
+        matrix[0][j] = j;
     }
 
-    let currentText = originalText;
-
-    // Apply hunks in forward order (earliest first)
-    // Each hunk is applied to the cumulative result of previous hunks
-    const sortedHunks = [...hunks].sort((a, b) => a.oldStart - b.oldStart);
-
-    for (const hunk of sortedHunks) {
-        currentText = applySingleHunkToText(currentText, hunk);
+    // Fill the matrix
+    for (let i = 1; i <= a.length; i++) {
+        for (let j = 1; j <= b.length; j++) {
+            const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+            matrix[i][j] = Math.min(
+                matrix[i - 1][j] + 1,      // deletion
+                matrix[i][j - 1] + 1,      // insertion
+                matrix[i - 1][j - 1] + cost // substitution
+            );
+        }
     }
 
-    return currentText;
+    return matrix[a.length][b.length];
 }
 
 /**
- * Apply a single hunk to text using context-based matching
- * This is more robust than line-number-based application
+ * Calculate normalized similarity score between two strings (0-1, where 1 is identical)
  */
-function applySingleHunkToText(text: string, hunk: UnifiedDiffHunk): string {
-    const lines = text.split('\n');
+function lineSimilarity(a: string, b: string): number {
+    // Trim both strings for comparison
+    const aTrimmed = a.trim();
+    const bTrimmed = b.trim();
 
-    // Extract context lines from the beginning of the hunk to find the right position
-    const contextLines: string[] = [];
-    const replacementLines: string[] = [];
+    if (aTrimmed === bTrimmed) return 1.0;
 
-    // First pass: collect context lines from the start to find our position
-    let foundContext = false;
-    for (const hunkLine of hunk.lines) {
-        if (hunkLine.type === 'context' && !foundContext) {
-            contextLines.push(hunkLine.content);
-        } else {
-            foundContext = true;
-            break;
+    const dist = levenshtein(aTrimmed, bTrimmed);
+    const maxLen = Math.max(aTrimmed.length, bTrimmed.length);
+
+    return maxLen === 0 ? 1.0 : 1.0 - (dist / maxLen);
+}
+
+/**
+ * Applies structured hunks to a text string using fuzzy matching.
+ * This tolerates minor differences in whitespace, formatting, etc.
+ */
+export function applyHunksToText(originalText: string, hunks: UnifiedDiffHunk[]): string {
+    let currentLines = originalText.split('\n');
+    const sortedHunks = [...hunks].sort((a, b) => a.oldStart - b.oldStart);
+
+    console.log(`[DEBUG] Starting fuzzy matching with ${sortedHunks.length} hunks`);
+
+    for (const hunk of sortedHunks) {
+        const hunkOldLines = hunk.lines
+            .filter(l => l.type === 'context' || l.type === 'deletion')
+            .map(l => l.content);
+
+        if (hunkOldLines.length === 0) continue;
+
+        console.log(`[DEBUG] Processing hunk at original line ${hunk.oldStart} with ${hunkOldLines.length} context/deletion lines`);
+
+        // Log what we're looking for
+        if (hunkOldLines.length > 0) {
+            console.log(`[DEBUG] Looking for context (first line): "${hunkOldLines[0].substring(0, 60)}..."`);
         }
-    }
 
-    // Second pass: build the replacement section
-    for (const hunkLine of hunk.lines) {
-        switch (hunkLine.type) {
-            case 'context':
-                replacementLines.push(hunkLine.content);
-                break;
-            case 'addition':
-                replacementLines.push(hunkLine.content);
-                break;
-            case 'deletion':
-                // Skip deletions
-                break;
-        }
-    }
+        let bestMatch = { index: -1, score: 0 };
+        let exactMatch = -1;
 
-    // Find the position in current text using context matching
-    let matchPosition = -1;
-
-    if (contextLines.length > 0) {
-        // Try to find the context lines in the current text
-        for (let i = 0; i <= lines.length - contextLines.length; i++) {
-            let matches = true;
-            for (let j = 0; j < contextLines.length; j++) {
-                if (lines[i + j] !== contextLines[j]) {
-                    matches = false;
+        // First, try exact matching (trimmed)
+        for (let i = 0; i <= currentLines.length - hunkOldLines.length; i++) {
+            let isExact = true;
+            for (let j = 0; j < hunkOldLines.length; j++) {
+                if (currentLines[i + j].trim() !== hunkOldLines[j].trim()) {
+                    isExact = false;
                     break;
                 }
             }
-            if (matches) {
-                matchPosition = i;
+            if (isExact) {
+                exactMatch = i;
                 break;
             }
         }
+
+        if (exactMatch >= 0) {
+            console.log(`[DEBUG] Found exact match at line ${exactMatch + 1}`);
+            bestMatch = { index: exactMatch, score: 1.0 };
+        } else {
+            // Fall back to fuzzy matching with sliding window
+            // Try different strategies to find the best match
+
+            // Strategy 1: Match with full context
+            for (let i = 0; i <= currentLines.length - 1; i++) {  // Changed from currentLines.length - hunkOldLines.length
+                let totalScore = 0;
+                let perfectMatches = 0;
+                let validLines = 0;
+                let contextMismatches = 0;
+
+                for (let j = 0; j < hunkOldLines.length; j++) {
+                    if (i + j < currentLines.length) {
+                        const similarity = lineSimilarity(currentLines[i + j], hunkOldLines[j]);
+                        totalScore += similarity;
+                        if (similarity === 1.0) perfectMatches++;
+                        if (similarity < 0.3) contextMismatches++; // Very poor match
+                        validLines++;
+                    }
+                }
+
+                // Only consider matches with at least 3 valid lines
+                if (validLines >= Math.min(3, hunkOldLines.length)) {
+                    const avgScore = totalScore / validLines;
+                    const perfectMatchRatio = perfectMatches / validLines;
+                    const mismatchRatio = contextMismatches / validLines;
+
+                    // Penalize matches with many context mismatches
+                    let adjustedScore = avgScore * (1 + perfectMatchRatio * 0.2);
+                    if (mismatchRatio > 0.3) {
+                        adjustedScore *= (1 - mismatchRatio * 0.5);
+                    }
+
+                    if (adjustedScore > bestMatch.score) {
+                        bestMatch = { index: i, score: adjustedScore };
+                    }
+                }
+            }
+
+            // Strategy 2: If score is low, try matching with partial context
+            // This helps when some context lines don't exist due to previous changes
+            if (bestMatch.score < 0.7) {
+                console.log(`[DEBUG] Strategy 1 score too low (${bestMatch.score.toFixed(3)}), trying partial context matching`);
+
+                // Try to find the most distinctive line in the context
+                let mostDistinctiveLine = '';
+                let maxDistinctiveness = 0;
+                let distinctiveIndex = -1;
+
+                for (let i = 0; i < hunkOldLines.length; i++) {
+                    const line = hunkOldLines[i];
+                    // Lines with more specific content are more distinctive
+                    const distinctiveness = line.trim().length *
+                        (line.includes('"') ? 1.5 : 1) * // JSON keys/values are distinctive
+                        (line.match(/[a-zA-Z0-9]/g)?.length || 0) / Math.max(1, line.length); // Alphanumeric density
+
+                    if (distinctiveness > maxDistinctiveness) {
+                        maxDistinctiveness = distinctiveness;
+                        mostDistinctiveLine = line;
+                        distinctiveIndex = i;
+                    }
+                }
+
+                // Search for the distinctive line and build context around it
+                if (mostDistinctiveLine && distinctiveIndex >= 0) {
+                    console.log(`[DEBUG] Most distinctive line: "${mostDistinctiveLine.substring(0, 60)}..."`);
+
+                    for (let i = 0; i < currentLines.length; i++) {
+                        const similarity = lineSimilarity(currentLines[i], mostDistinctiveLine);
+                        if (similarity > 0.85) {
+                            console.log(`[DEBUG] Found distinctive line at ${i + 1} with similarity ${similarity.toFixed(3)}`);
+
+                            // Found the distinctive line, now check surrounding context
+                            const startIdx = i - distinctiveIndex;
+                            if (startIdx >= 0 && startIdx + hunkOldLines.length <= currentLines.length) {
+                                let contextScore = 0;
+                                let validContextLines = 0;
+
+                                for (let j = 0; j < hunkOldLines.length; j++) {
+                                    if (startIdx + j < currentLines.length) {
+                                        const lineSim = lineSimilarity(currentLines[startIdx + j], hunkOldLines[j]);
+                                        contextScore += lineSim;
+                                        validContextLines++;
+                                    }
+                                }
+
+                                const avgContextScore = validContextLines > 0 ? contextScore / validContextLines : 0;
+                                if (avgContextScore > bestMatch.score) {
+                                    bestMatch = { index: startIdx, score: avgContextScore };
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Strategy 3: For hunks that add closing brackets/structural elements,
+                // try to find where they should be inserted based on structure
+                const hasStructuralAddition = hunk.lines.some(l =>
+                    l.type === 'addition' && l.content.trim().match(/^[\]\},]+$/)
+                );
+
+                if (hasStructuralAddition && bestMatch.score < 0.5) {
+                    // Look for patterns that suggest where to insert structural elements
+                    for (let i = 0; i < currentLines.length - 1; i++) {
+                        // Check if we're at the end of an array or object that needs closing
+                        const currentLine = currentLines[i].trim();
+                        const nextLine = currentLines[i + 1].trim();
+
+                        // Pattern: closing } followed by ] suggests end of object in array
+                        if (currentLine === '}' && nextLine === ']') {
+                            // Check if any context line appears nearby
+                            let contextFound = false;
+                            for (const contextLine of hunkOldLines) {
+                                for (let j = Math.max(0, i - 5); j <= Math.min(currentLines.length - 1, i + 5); j++) {
+                                    if (lineSimilarity(currentLines[j], contextLine) > 0.8) {
+                                        contextFound = true;
+                                        break;
+                                    }
+                                }
+                                if (contextFound) break;
+                            }
+
+                            if (contextFound) {
+                                // This might be where we need to add the structural element
+                                const structuralScore = 0.45; // Lower score but acceptable for structural additions
+                                if (structuralScore > bestMatch.score) {
+                                    bestMatch = { index: i + 1, score: structuralScore };
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Strategy 4: If still no good match, try finding ANY subset of lines that match well
+                if (bestMatch.score < 0.5) {
+                    console.log(`[DEBUG] Trying strategy 4: partial line matching`);
+
+                    // Try to find any window where at least some lines match well
+                    const minMatchingLines = Math.max(2, Math.floor(hunkOldLines.length * 0.3));
+
+                    for (let i = 0; i <= currentLines.length - minMatchingLines; i++) {
+                        let matchingLines = 0;
+                        let totalScore = 0;
+
+                        // Check how many lines in the hunk match at this position
+                        for (let j = 0; j < hunkOldLines.length; j++) {
+                            if (i + j < currentLines.length) {
+                                const similarity = lineSimilarity(currentLines[i + j], hunkOldLines[j]);
+                                if (similarity > 0.7) {
+                                    matchingLines++;
+                                    totalScore += similarity;
+                                }
+                            }
+                        }
+
+                        if (matchingLines >= minMatchingLines) {
+                            const partialScore = (totalScore / hunkOldLines.length) * (matchingLines / hunkOldLines.length);
+                            if (partialScore > bestMatch.score) {
+                                bestMatch = { index: i, score: partialScore };
+                            }
+                        }
+                    }
+                }
+
+                // Strategy 5: For very low scores, try to find just the first distinctive context line
+                // and apply the hunk there, trusting that it's the right location
+                if (bestMatch.score < 0.4 && hunkOldLines.length > 0) {
+                    console.log(`[DEBUG] Trying strategy 5: first line anchor matching`);
+
+                    // Find the first context line and look for it
+                    const firstContextLine = hunkOldLines[0];
+                    for (let i = 0; i < currentLines.length; i++) {
+                        const similarity = lineSimilarity(currentLines[i], firstContextLine);
+                        if (similarity > 0.9) {
+                            // Found a very good match for the first line
+                            // Check if at least one more line matches reasonably well
+                            let additionalMatches = 0;
+                            for (let j = 1; j < Math.min(3, hunkOldLines.length); j++) {
+                                if (i + j < currentLines.length) {
+                                    const sim = lineSimilarity(currentLines[i + j], hunkOldLines[j]);
+                                    if (sim > 0.6) additionalMatches++;
+                                }
+                            }
+
+                            if (additionalMatches > 0) {
+                                const anchorScore = 0.4 + (additionalMatches * 0.1);
+                                if (anchorScore > bestMatch.score) {
+                                    bestMatch = { index: i, score: anchorScore };
+                                    console.log(`[DEBUG] Found anchor at line ${i + 1} with score ${anchorScore.toFixed(3)}`);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        console.log(`[DEBUG] Best match: index=${bestMatch.index}, score=${bestMatch.score.toFixed(3)}`);
+
+        if (bestMatch.index >= 0) {
+            console.log(`[DEBUG] Applying hunk at line ${bestMatch.index + 1} (1-indexed)`);
+
+            // Build the replacement segment
+            const newSegment: string[] = [];
+            let oldLineIndex = bestMatch.index;
+
+            // Process each line in the hunk
+            for (const line of hunk.lines) {
+                if (line.type === 'context') {
+                    // For context lines, use the actual line from the original file
+                    // This prevents outputting hallucinated context
+                    if (oldLineIndex < currentLines.length) {
+                        newSegment.push(currentLines[oldLineIndex]);
+                    }
+                    oldLineIndex++;
+                } else if (line.type === 'addition') {
+                    // Additions are always included
+                    newSegment.push(line.content);
+                } else if (line.type === 'deletion') {
+                    // Deletions skip a line in the original
+                    oldLineIndex++;
+                }
+            }
+
+            // Calculate how many lines to replace
+            const oldCount = hunk.lines.filter(l => l.type === 'context' || l.type === 'deletion').length;
+
+            // Apply the change
+            currentLines.splice(bestMatch.index, oldCount, ...newSegment);
+            console.log(`[DEBUG] Replaced ${oldCount} lines with ${newSegment.length} lines`);
+        } else {
+            console.log(`[WARN] No valid location found for hunk - skipping`);
+        }
     }
 
-    // If context matching failed, fall back to line number (with bounds checking)
-    if (matchPosition === -1) {
-        matchPosition = Math.max(0, Math.min(hunk.oldStart - 1, lines.length - hunk.oldCount));
-    }
-
-    // Apply the replacement
-    const result = [...lines];
-    result.splice(matchPosition, hunk.oldCount, ...replacementLines);
-
-    return result.join('\n');
+    return currentLines.join('\n');
 }
 
 
@@ -328,4 +569,5 @@ export function extractValueFromDiffBlock(block: string): string {
 }
 
 // NOTE: addLineNumbers and removeLineNumbers functions have been moved to
+// src/common/jsonFormatting.ts for consistent usage across the codebase 
 // src/common/jsonFormatting.ts for consistent usage across the codebase 

@@ -89,9 +89,9 @@ describe('ContextDiff Pipeline Integration', () => {
         });
     });
 
-    describe('Step 1.5→2: Apply parsed hunks to original JSON', () => {
+    describe.only('Step 1.5→2: Apply parsed hunks to original JSON', () => {
         it('should apply unified diff to original JSON and produce modified JSON string', () => {
-            // Step 1.5→2: Parse diff to hunks, then apply hunks to original JSON
+            // Step 1.5→2: Apply unified diff to original JSON to get modified JSON string
             const originalJsonString = JSON.stringify(originalJsondoc, null, 2);
             const hunks = parseUnifiedDiff(rawLlmDiff);
             const modifiedJsonString = applyHunksToText(originalJsonString, hunks);
