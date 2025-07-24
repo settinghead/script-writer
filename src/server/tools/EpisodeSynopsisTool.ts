@@ -67,6 +67,7 @@ export function createEpisodeSynopsisToolDefinition(
                 transformRepo,
                 jsondocRepo,
                 outputJsondocType: 'episode_synopsis',
+                executionMode: { mode: 'full-object' },
                 transformMetadata: {
                     toolName: 'generate_episode_synopsis',
                     ...jsondocMetadata, // Include all jsondoc IDs with their schema types as keys

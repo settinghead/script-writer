@@ -143,7 +143,7 @@ export function createEpisodePlanningEditToolDefinition(
                     jsondocRepo,
                     outputJsondocType,
                     executionMode: {
-                        mode: 'patch',
+                        mode: 'patch-approval',
                         originalJsondoc: originalEpisodePlanning
                     },
                     transformMetadata: {
@@ -230,6 +230,7 @@ export function createEpisodePlanningToolDefinition(
                 transformRepo,
                 jsondocRepo,
                 outputJsondocType: 'episode_planning',
+                executionMode: { mode: 'full-object' },
                 transformMetadata: {
                     toolName: 'generate_episode_planning',
                     ...jsondocMetadata, // Include all jsondoc IDs with their schema types as keys

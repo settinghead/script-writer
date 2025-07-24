@@ -52,6 +52,7 @@ async function testTransformRetry() {
             transformRepo,
             jsondocRepo,
             outputJsondocType: '剧本设定',
+            executionMode: { mode: 'full-object' },
             transformMetadata: {
                 test: true
             }

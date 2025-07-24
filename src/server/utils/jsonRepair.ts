@@ -38,7 +38,7 @@ export async function repairJson(
         console.log('[JSON Repair] JavaScript jsonrepair succeeded');
         return repairedJson;
     } catch (jsError) {
-        console.log(`[JSON Repair] JavaScript jsonrepair failed: ${jsError.message}`);
+        console.log(`[JSON Repair] JavaScript jsonrepair failed: ${jsError instanceof Error ? jsError.message : String(jsError)}`);
     }
 
     // Step 2: Fall back to Python json_repair
@@ -91,8 +91,8 @@ export async function repairJson(
             }
         }
     } catch (pythonError) {
-        console.error(`[JSON Repair] Python json_repair failed: ${pythonError.message}`);
-        throw new Error(`Both JavaScript and Python JSON repair methods failed. JS Error: ${pythonError.message}`);
+        console.error(`[JSON Repair] Python json_repair failed: ${pythonError instanceof Error ? pythonError.message : String(pythonError)}`);
+        throw new Error(`Both JavaScript and Python JSON repair methods failed. JS Error: ${pythonError instanceof Error ? pythonError.message : String(pythonError)}`);
     }
 }
 
@@ -125,7 +125,7 @@ export function repairJsonSync(
         console.log('[JSON Repair Sync] JavaScript jsonrepair succeeded');
         return repairedJson;
     } catch (jsError) {
-        console.log(`[JSON Repair Sync] JavaScript jsonrepair failed: ${jsError.message}`);
+        console.log(`[JSON Repair Sync] JavaScript jsonrepair failed: ${jsError instanceof Error ? jsError.message : String(jsError)}`);
     }
 
     // Step 2: Fall back to Python json_repair (synchronous)
@@ -177,7 +177,7 @@ export function repairJsonSync(
             }
         }
     } catch (pythonError) {
-        console.error(`[JSON Repair Sync] Python json_repair failed: ${pythonError.message}`);
-        throw new Error(`Both JavaScript and Python JSON repair methods failed. Python Error: ${pythonError.message}`);
+        console.error(`[JSON Repair Sync] Python json_repair failed: ${pythonError instanceof Error ? pythonError.message : String(pythonError)}`);
+        throw new Error(`Both JavaScript and Python JSON repair methods failed. Python Error: ${pythonError instanceof Error ? pythonError.message : String(pythonError)}`);
     }
 } 

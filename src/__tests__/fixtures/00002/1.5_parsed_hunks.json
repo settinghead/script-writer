@@ -1,0 +1,150 @@
+[
+  {
+    "oldStart": 234,
+    "oldCount": 6,
+    "newStart": 234,
+    "newCount": 35,
+    "lines": [
+      {
+        "type": "context",
+        "content": "      \"relationships\": {",
+        "originalLine": "       \"relationships\": {"
+      },
+      {
+        "type": "context",
+        "content": "        \"邵夫特·金\": \"希望来源→欺骗者\"",
+        "originalLine": "         \"邵夫特·金\": \"希望来源→欺骗者\""
+      },
+      {
+        "type": "context",
+        "content": "      }",
+        "originalLine": "       }"
+      },
+      {
+        "type": "addition",
+        "content": "    },",
+        "originalLine": "+    },"
+      },
+      {
+        "type": "addition",
+        "content": "    {",
+        "originalLine": "+    {"
+      },
+      {
+        "type": "addition",
+        "content": "      \"name\": \"小明\",",
+        "originalLine": "+      \"name\": \"小明\","
+      },
+      {
+        "type": "addition",
+        "content": "      \"type\": \"male_supporting\",",
+        "originalLine": "+      \"type\": \"male_supporting\","
+      },
+      {
+        "type": "addition",
+        "content": "      \"description\": \"26岁南京本地人，王千榕自小一起长大的好兄弟，性格豪爽仗义，精通传统武术与实战格斗技巧。表面是健身房教练，实则暗中修炼家传武学多年。在王千榕觉醒赛亚人力量的过程中，他不仅提供体能训练支持，更在关键时刻挺身而出，以凡人之躯配合超能战斗，成为团队中不可或缺的地面战力。\",",
+        "originalLine": "+      \"description\": \"26岁南京本地人，王千榕自小一起长大的好兄弟，性格豪爽仗义，精通传统武术与实战格斗技巧。表面是健身房教练，实则暗中修炼家传武学多年。在王千榕觉醒赛亚人力量的过程中，他不仅提供体能训练支持，更在关键时刻挺身而出，以凡人之躯配合超能战斗，成为团队中不可或缺的地面战力。\","
+      },
+      {
+        "type": "addition",
+        "content": "      \"age\": \"26岁\",",
+        "originalLine": "+      \"age\": \"26岁\","
+      },
+      {
+        "type": "addition",
+        "content": "      \"gender\": \"男\",",
+        "originalLine": "+      \"gender\": \"男\","
+      },
+      {
+        "type": "addition",
+        "content": "      \"occupation\": \"健身房教练/民间武师\",",
+        "originalLine": "+      \"occupation\": \"健身房教练/民间武师\","
+      },
+      {
+        "type": "addition",
+        "content": "      \"personality_traits\": [",
+        "originalLine": "+      \"personality_traits\": ["
+      },
+      {
+        "type": "addition",
+        "content": "        \"豪爽仗义\",",
+        "originalLine": "+        \"豪爽仗义\","
+      },
+      {
+        "type": "addition",
+        "content": "        \"实战经验丰富\",",
+        "originalLine": "+        \"实战经验丰富\","
+      },
+      {
+        "type": "addition",
+        "content": "        \"重情重义\",",
+        "originalLine": "+        \"重情重义\","
+      },
+      {
+        "type": "addition",
+        "content": "        \"接地气幽默\"",
+        "originalLine": "+        \"接地气幽默\""
+      },
+      {
+        "type": "addition",
+        "content": "      ],",
+        "originalLine": "+      ],"
+      },
+      {
+        "type": "addition",
+        "content": "      \"character_arc\": \"从普通武术爱好者成长为守护城市的一份子，证明即使没有超能力，凭借技艺与勇气也能在超凡战争中发挥关键作用。\",",
+        "originalLine": "+      \"character_arc\": \"从普通武术爱好者成长为守护城市的一份子，证明即使没有超能力，凭借技艺与勇气也能在超凡战争中发挥关键作用。\","
+      },
+      {
+        "type": "addition",
+        "content": "      \"relationships\": {",
+        "originalLine": "+      \"relationships\": {"
+      },
+      {
+        "type": "addition",
+        "content": "        \"王千榕\": \"发小好友→战斗搭档→生死兄弟\",",
+        "originalLine": "+        \"王千榕\": \"发小好友→战斗搭档→生死兄弟\","
+      },
+      {
+        "type": "addition",
+        "content": "        \"小雨\": \"熟人→战友\",",
+        "originalLine": "+        \"小雨\": \"熟人→战友\","
+      },
+      {
+        "type": "addition",
+        "content": "        \"艾莉娅\": \"怀疑→认可→协作关系\",",
+        "originalLine": "+        \"艾莉娅\": \"怀疑→认可→协作关系\","
+      },
+      {
+        "type": "addition",
+        "content": "        \"刘教授\": \"间接合作者\",",
+        "originalLine": "+        \"刘教授\": \"间接合作者\","
+      },
+      {
+        "type": "addition",
+        "content": "        \"邵夫特·金\": \"敌对势力对抗者\"",
+        "originalLine": "+        \"邵夫特·金\": \"敌对势力对抗者\""
+      },
+      {
+        "type": "addition",
+        "content": "      }",
+        "originalLine": "+      }"
+      },
+      {
+        "type": "context",
+        "content": "    }",
+        "originalLine": "     }"
+      },
+      {
+        "type": "context",
+        "content": "  ]",
+        "originalLine": "   ]"
+      },
+      {
+        "type": "context",
+        "content": "}",
+        "originalLine": " }"
+      }
+    ]
+  }
+]

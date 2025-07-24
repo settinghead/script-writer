@@ -161,7 +161,7 @@ export function createChroniclesEditToolDefinition(
                     jsondocRepo,
                     outputJsondocType,
                     executionMode: {
-                        mode: 'patch',
+                        mode: 'patch-approval',
                         originalJsondoc: originalChronicles
                     },
                     transformMetadata: {
@@ -256,6 +256,7 @@ export function createChroniclesToolDefinition(
                 transformRepo,
                 jsondocRepo,
                 outputJsondocType: 'chronicles',
+                executionMode: { mode: 'full-object' },
                 transformMetadata: {
                     toolName: 'generate_chronicles',
                     ...jsondocMetadata, // Include all jsondoc IDs with their schema types as keys
