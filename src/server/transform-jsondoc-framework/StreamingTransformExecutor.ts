@@ -96,6 +96,8 @@ export interface StreamingTransformParams<TInput, TOutput> {
     dryRun?: boolean;  // Skip all database operations (default: false)
     // NEW: Streaming callback for real-time updates
     onStreamChunk?: (chunk: TOutput, chunkCount: number) => void | Promise<void>;  // Called for each streaming chunk
+    // NEW: End callback for final processing notification
+    onStreamEnd?: (finalResult: any) => void | Promise<void>;  // Called when streaming completes
     // NEW: Tool call ID for conversation history tracking
     toolCallId?: string;
 }
@@ -151,6 +153,7 @@ export class StreamingTransformExecutor {
             executionMode,
             dryRun = false,
             onStreamChunk,
+            onStreamEnd,
             toolCallId
         } = params;
 
@@ -415,14 +418,34 @@ export class StreamingTransformExecutor {
                     }
 
                     // Call streaming callback if provided (always for eager patches, final patches, or periodic for others)
-                    if (onStreamChunk && (isEagerPatch || isFinalPatch || chunkCount % updateIntervalChunks === 0)) {
-                        try {
-                            // Pass both the processed data and raw streaming info for debugging
-                            const callbackData = streamingInfo || actualData;
-                            await onStreamChunk(callbackData, chunkCount);
-                        } catch (callbackError) {
-                            console.warn(`[StreamingTransformExecutor] Streaming callback error at chunk ${chunkCount}:`, callbackError);
+                    if (isEagerPatch || isFinalPatch || chunkCount % updateIntervalChunks === 0) {
+                        if (onStreamChunk) {
+                            try {
+                                // INTERNALIZED LOGIC: Process the debug-context-diff.ts pipeline eagerly during streaming
+                                let enhancedCallbackData = streamingInfo || actualData;
+
+                                // For patch-approval mode, eagerly process the working pipeline
+                                if (executionMode.mode === 'patch-approval' && this.originalJsondocForFinalConversion) {
+                                    try {
+                                        enhancedCallbackData = await this.processDebugPipeline(
+                                            streamingInfo || actualData,
+                                            chunkCount,
+                                            config.templateName
+                                        );
+                                    } catch (pipelineError) {
+                                        // On pipeline error, fall back to original data
+                                        console.warn(`[StreamingTransformExecutor] Pipeline processing failed at chunk ${chunkCount}, using fallback:`, pipelineError);
+                                        enhancedCallbackData = streamingInfo || actualData;
+                                    }
+                                }
+
+                                await onStreamChunk(enhancedCallbackData, chunkCount);
+                            } catch (callbackError) {
+                                console.warn(`[StreamingTransformExecutor] Streaming callback error at chunk ${chunkCount}:`, callbackError);
+                            }
                         }
+
+                        //TODO: upsert jsondoc
                     }
 
                     // EAGER PATCH PROCESSING: Apply immediately if we have eager patches
@@ -632,6 +655,23 @@ export class StreamingTransformExecutor {
                     }
                 } else if (dryRun) {
                     // console.log(`[StreamingTransformExecutor] Dry run: Skipping all database operations for ${config.templateName}`);
+                }
+
+                // Call onStreamEnd callback if provided
+                if (onStreamEnd) {
+                    try {
+                        const finalResult = {
+                            outputJsondocId: outputJsondocId || (executionMode.mode === 'patch-approval' ? 'patch-approval-pending' : 'dry-run-no-output'),
+                            finishReason: 'stop',
+                            transformId: transformId || 'dry-run-no-transform',
+                            finalValidatedData,
+                            totalChunks: chunkCount,
+                            executionMode: executionMode.mode
+                        };
+                        await onStreamEnd(finalResult);
+                    } catch (endCallbackError) {
+                        console.warn(`[StreamingTransformExecutor] End callback error:`, endCallbackError);
+                    }
                 }
 
                 return {
@@ -1782,6 +1822,118 @@ export class StreamingTransformExecutor {
             // Don't throw - allow streaming to continue
         }
     }
+
+    /**
+     * Process the debug-context-diff.ts pipeline eagerly during streaming
+     * This internalizes the working logic from debug-context-diff.ts
+     */
+    private async processDebugPipeline(
+        streamingData: any,
+        chunkCount: number,
+        templateName: string
+    ): Promise<any> {
+        // Static cache for intermediate results to avoid recomputation
+        if (!this._pipelineCache) {
+            this._pipelineCache = {
+                lastRawOutput: '',
+                lastModifiedJson: null,
+                lastPatches: [],
+                lastChunkCount: 0
+            };
+        }
+
+        try {
+            // Extract raw text from streaming data
+            let rawLLMOutput = '';
+            if (streamingData?.type === 'rawText' && streamingData.accumulatedText) {
+                rawLLMOutput = streamingData.accumulatedText;
+            } else if (streamingData?.rawText) {
+                rawLLMOutput = streamingData.rawText;
+            } else if (typeof streamingData === 'string') {
+                rawLLMOutput = streamingData;
+            }
+
+            // Only process if we have new content
+            if (!rawLLMOutput || rawLLMOutput === this._pipelineCache.lastRawOutput) {
+                return {
+                    ...streamingData,
+                    pipelineResults: {
+                        rawLLMOutput: this._pipelineCache.lastRawOutput,
+                        modifiedJson: this._pipelineCache.lastModifiedJson,
+                        patches: this._pipelineCache.lastPatches,
+                        chunkCount: this._pipelineCache.lastChunkCount,
+                        status: 'cached'
+                    }
+                };
+            }
+
+            const originalData = this.originalJsondocForFinalConversion.data || this.originalJsondocForFinalConversion;
+            const { formatJsonConsistently } = await import('../../common/jsonFormatting.js');
+            const originalJsonString = formatJsonConsistently(originalData);
+
+            // Step 1: Apply context diff to JSON
+            const { applyContextDiffToJSON } = await import('../../common/contextDiff.js');
+            const modifiedJson = applyContextDiffToJSON(originalJsonString, rawLLMOutput);
+
+            let patches: any[] = [];
+            if (modifiedJson && modifiedJson !== originalJsonString) {
+                // Step 2: Generate RFC6902 patches
+                const { applyContextDiffAndGeneratePatches } = await import('../../common/contextDiff.js');
+                const patchResult = applyContextDiffAndGeneratePatches(originalJsonString, rawLLMOutput);
+
+                if (Array.isArray(patchResult)) {
+                    patches = patchResult;
+                } else if (patchResult && typeof patchResult === 'object' && 'rfc6902Patches' in patchResult) {
+                    patches = (patchResult as any).rfc6902Patches || [];
+                }
+            }
+
+            // Update cache with successful results
+            this._pipelineCache = {
+                lastRawOutput: rawLLMOutput,
+                lastModifiedJson: modifiedJson,
+                lastPatches: patches,
+                lastChunkCount: chunkCount
+            };
+
+            return {
+                ...streamingData,
+                pipelineResults: {
+                    rawLLMOutput,
+                    modifiedJson,
+                    patches,
+                    chunkCount,
+                    status: 'success',
+                    originalJsonLength: originalJsonString.length,
+                    modifiedJsonLength: modifiedJson?.length || 0,
+                    patchCount: patches.length
+                }
+            };
+
+        } catch (error) {
+            console.warn(`[StreamingTransformExecutor] Pipeline processing error at chunk ${chunkCount}:`, error);
+            // Return cached results on error
+            return {
+                ...streamingData,
+                pipelineResults: {
+                    rawLLMOutput: this._pipelineCache.lastRawOutput,
+                    modifiedJson: this._pipelineCache.lastModifiedJson,
+                    patches: this._pipelineCache.lastPatches,
+                    chunkCount: this._pipelineCache.lastChunkCount,
+                    status: 'error',
+                    error: error instanceof Error ? error.message : String(error)
+                }
+            };
+        }
+    }
+
+    // Cache for pipeline results
+    private _pipelineCache?: {
+        lastRawOutput: string;
+        lastModifiedJson: string | null;
+        lastPatches: any[];
+        lastChunkCount: number;
+    };
 
     /**
      * Finalize streaming patch jsondocs - mark them as completed and clean up

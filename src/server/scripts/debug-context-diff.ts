@@ -1,14 +1,12 @@
 #!/usr/bin/env node
 
 /**
- * Debug script to capture raw LLM output and original JSON for context diff debugging
- * Saves files for isolated testing
+ * Debug script - Simple wrapper around StreamingTransformExecutor
+ * Writes callback data to files and exits when streaming ends
  * 
  * Usage:
  *   ./run-ts src/server/scripts/debug-context-diff.ts
  *   ./run-ts src/server/scripts/debug-context-diff.ts "增加一个新角色，小明，是王千榕的好朋友"
- *   ./run-ts src/server/scripts/debug-context-diff.ts "修改艾莉娅的职业为心理学家"
- *   ./run-ts src/server/scripts/debug-context-diff.ts "删除所有配角，只保留主角"
  */
 
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository.js';
@@ -16,11 +14,6 @@ import { TransformRepository } from '../transform-jsondoc-framework/TransformRep
 import { StreamingTransformExecutor } from '../transform-jsondoc-framework/StreamingTransformExecutor.js';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
-import {
-    parseContextDiff,
-    applyContextDiffToJSON,
-    applyContextDiffAndGeneratePatches
-} from '../../common/contextDiff.js';
 
 // Project and jsondoc IDs
 const PROJECT_ID = '559e05ad-cd3d-459f-85b6-12d6e3496b65';
@@ -48,14 +41,14 @@ function parseArguments(): string {
 }
 
 /**
- * Main debug function
+ * Main debug function - now just a wrapper around StreamingTransformExecutor
  */
 async function debugContextDiff(): Promise<void> {
     try {
         const editRequirement = parseArguments();
 
         console.log('================================================================================');
-        console.log('🐛 CAPTURE RAW LLM OUTPUT & ORIGINAL JSON');
+        console.log('🐛 SIMPLIFIED DEBUG WRAPPER - StreamingTransformExecutor');
         console.log('================================================================================');
         console.log(`Project ID: ${PROJECT_ID}`);
         console.log(`Jsondoc ID: ${JSONDOC_ID}`);
@@ -82,25 +75,24 @@ async function debugContextDiff(): Promise<void> {
             origin_type: targetJsondoc.origin_type
         });
 
-        // Extract and save original JSON
+        // Save original JSON for comparison
         const originalJson = targetJsondoc.data || targetJsondoc;
         const originalJsonString = JSON.stringify(originalJson, null, 2);
-
         const originalJsonPath = join(process.cwd(), 'debug-original.json');
         writeFileSync(originalJsonPath, originalJsonString, 'utf8');
         console.log(`✅ Saved original JSON to: ${originalJsonPath}`);
         console.log(`[Debug] Original JSON length: ${originalJsonString.length} chars\n`);
 
-        console.log('🛠️  Step 3: Calling edit tool and capturing raw LLM output...');
+        console.log('🛠️  Step 3: Executing StreamingTransformExecutor with callbacks...');
 
-        // Track raw LLM output
+        // File writing state
         let rawLLMOutput = '';
         let finalPatches: any[] = [];
+        let modifiedJson: string | null = null;
+        let rfc6902Patches: any[] = [];
 
-        // Create streaming executor to use existing infrastructure
+        // Create streaming executor
         const executor = new StreamingTransformExecutor();
-
-        console.log('[Debug] Executor initialized');
 
         // Prepare input data  
         const input = {
@@ -112,17 +104,15 @@ async function debugContextDiff(): Promise<void> {
             editRequirements: editRequirement
         };
 
-        console.log('[Debug] Input prepared:', input);
-
         // Import schemas
         const { OutlineSettingsEditInputSchema, JsonPatchOperationsSchema } = await import('../../common/schemas/transforms.js');
 
-        // Execute transform in patch-approval mode to capture raw LLM output
+        // Execute transform with our simplified callbacks
         const result = await executor.executeStreamingTransform({
             config: {
                 templateName: '剧本设定_edit_diff',
                 inputSchema: OutlineSettingsEditInputSchema,
-                outputSchema: JsonPatchOperationsSchema // Expect JSON patch operations as final output
+                outputSchema: JsonPatchOperationsSchema
             },
             input,
             projectId: PROJECT_ID,
@@ -140,213 +130,111 @@ async function debugContextDiff(): Promise<void> {
             },
             dryRun: true, // Don't save to database
             onStreamChunk: async (chunk: any, chunkCount: number) => {
-                // DEBUG: Log every chunk type for debugging
-                console.log(`[DEBUG-CHUNK] Received chunk ${chunkCount}: type=${chunk?.type}, source=${chunk?.source}, patches=${chunk?.patches?.length || 'N/A'}`);
+                console.log(`[DEBUG-CHUNK] Chunk ${chunkCount}: type=${chunk?.type}, status=${chunk?.pipelineResults?.status}, patches=${chunk?.pipelineResults?.patchCount || 'N/A'}`);
 
-                // Capture raw text for debugging - handle different streaming formats
-                if (chunk?.type === 'rawText') {
-                    // New format with rawText chunks
-                    if (chunk.textDelta) {
-                        rawLLMOutput += chunk.textDelta;
+                // Extract data from the internalized pipeline results
+                if (chunk?.pipelineResults) {
+                    const pipeline = chunk.pipelineResults;
+
+                    // Update our state with the latest successful results
+                    if (pipeline.rawLLMOutput) {
+                        rawLLMOutput = pipeline.rawLLMOutput;
                     }
-                    if (chunk.accumulatedText) {
-                        // Use accumulated text as backup
-                        rawLLMOutput = chunk.accumulatedText;
+                    if (pipeline.modifiedJson) {
+                        modifiedJson = pipeline.modifiedJson;
                     }
-                } else if (chunk?.type === 'text' && chunk?.textDelta) {
-                    // Legacy text format
-                    rawLLMOutput += chunk.textDelta;
-                } else if (chunk?.content) {
-                    // Direct content format
-                    rawLLMOutput += chunk.content;
-                } else if (typeof chunk === 'string') {
-                    // Direct string format
-                    rawLLMOutput += chunk;
+                    if (pipeline.patches && pipeline.patches.length > 0) {
+                        rfc6902Patches = pipeline.patches;
+                    }
+
+                    console.log(`[DEBUG-PIPELINE] Status: ${pipeline.status}, Raw: ${pipeline.rawLLMOutput?.length || 0} chars, Modified: ${pipeline.modifiedJsonLength || 0} chars, Patches: ${pipeline.patchCount || 0}`);
+
+                    // WRITE TO FILES IMMEDIATELY as chunks come in (overwrite same files)
+                    try {
+                        // Write raw LLM output
+                        const rawOutputPath = join(process.cwd(), 'debug-raw-llm-output.txt');
+                        writeFileSync(rawOutputPath, rawLLMOutput || '(No raw output captured)', 'utf8');
+
+                        // Write modified JSON if available
+                        if (modifiedJson) {
+                            const modifiedJsonPath = join(process.cwd(), 'debug-modified-via-contextdiff.json');
+                            writeFileSync(modifiedJsonPath, modifiedJson, 'utf8');
+                        }
+
+                        // Write RFC6902 patches if available
+                        if (rfc6902Patches.length > 0) {
+                            const rfc6902PatchesPath = join(process.cwd(), 'debug-rfc6902-patches.json');
+                            writeFileSync(rfc6902PatchesPath, JSON.stringify(rfc6902Patches, null, 2), 'utf8');
+                        }
+                    } catch (writeError) {
+                        console.warn(`[DEBUG-WRITE] Failed to write files at chunk ${chunkCount}:`, writeError);
+                    }
                 }
 
-                // Capture ONLY final patches, ignore intermediate broken patches
+                // Also capture final patches from the streaming executor
                 if (chunk?.type === 'finalPatches' && chunk?.patches) {
                     finalPatches = chunk.patches;
-                    console.log(`[Debug] Captured finalPatches: ${finalPatches.length} patches from source: ${chunk.source}`);
-                    console.log(`[Debug] FinalPatches preview:`, JSON.stringify(finalPatches.slice(0, 1), null, 2));
-                } else if (Array.isArray(chunk) && !chunk.some(p => p?.type)) {
-                    // Direct patches array (only if it doesn't contain streaming metadata)
-                    finalPatches = chunk;
-                    console.log(`[Debug] Captured direct patches array: ${finalPatches.length} patches`);
-                } else if (chunk?.type === 'finalPatches') {
-                    console.log(`[Debug] FinalPatches chunk received but no patches:`, {
-                        type: chunk.type,
-                        hasPatches: !!chunk.patches,
-                        patchesType: typeof chunk.patches,
-                        patchesLength: chunk.patches?.length,
-                        source: chunk.source
-                    });
-                }
-                // IGNORE intermediate 'patches' type - these are from broken eager parsing!
+                    console.log(`[DEBUG-FINAL] Captured ${finalPatches.length} final patches from StreamingTransformExecutor`);
 
-                // Log progress every 10 chunks to see what's happening
-                if (chunkCount % 10 === 1) {
-                    console.log(`[Debug] Chunk ${chunkCount}: type=${chunk?.type}, raw length=${rawLLMOutput.length}, patches=${finalPatches.length}`);
+                    // Write final patches immediately
+                    try {
+                        const patchesPath = join(process.cwd(), 'debug-final-patches.json');
+                        writeFileSync(patchesPath, JSON.stringify(finalPatches, null, 2), 'utf8');
+                    } catch (writeError) {
+                        console.warn(`[DEBUG-WRITE] Failed to write final patches:`, writeError);
+                    }
                 }
+            },
+            onStreamEnd: async (finalResult: any) => {
+                console.log('\n🎯 Step 4: Streaming completed - Writing files...');
+                console.log(`[DEBUG-END] Final result:`, {
+                    outputJsondocId: finalResult.outputJsondocId,
+                    finishReason: finalResult.finishReason,
+                    totalChunks: finalResult.totalChunks,
+                    executionMode: finalResult.executionMode
+                });
+
+                // Write all captured data to files
+                const rawOutputPath = join(process.cwd(), 'debug-raw-llm-output.txt');
+                writeFileSync(rawOutputPath, rawLLMOutput || '(No raw output captured)', 'utf8');
+                console.log(`✅ Saved raw LLM output to: ${rawOutputPath} (${rawLLMOutput.length} chars)`);
+
+                const patchesPath = join(process.cwd(), 'debug-final-patches.json');
+                writeFileSync(patchesPath, JSON.stringify(finalPatches || [], null, 2), 'utf8');
+                console.log(`✅ Saved final patches to: ${patchesPath} (${finalPatches.length} patches)`);
+
+                if (modifiedJson) {
+                    const modifiedJsonPath = join(process.cwd(), 'debug-modified-via-contextdiff.json');
+                    writeFileSync(modifiedJsonPath, modifiedJson, 'utf8');
+                    console.log(`✅ Saved modified JSON to: ${modifiedJsonPath} (${modifiedJson.length} chars)`);
+                } else {
+                    console.log(`❌ No modified JSON captured`);
+                }
+
+                const rfc6902PatchesPath = join(process.cwd(), 'debug-rfc6902-patches.json');
+                writeFileSync(rfc6902PatchesPath, JSON.stringify(rfc6902Patches || [], null, 2), 'utf8');
+                console.log(`✅ Saved RFC6902 patches to: ${rfc6902PatchesPath} (${rfc6902Patches.length} patches)`);
+
+                console.log('\n================================================================================');
+                console.log('📊 SUMMARY');
+                console.log('================================================================================');
+                console.log(`✅ Original JSON saved: ${originalJsonString.length} chars`);
+                console.log(`${rawLLMOutput ? '✅' : '❌'} Raw LLM output saved: ${rawLLMOutput.length} chars`);
+                console.log(`${finalPatches.length > 0 ? '✅' : '❌'} Final patches saved: ${finalPatches.length} patches`);
+                console.log(`${rfc6902Patches.length > 0 ? '✅' : '❌'} RFC6902 patches saved: ${rfc6902Patches.length} patches`);
+                console.log(`${modifiedJson ? '✅' : '❌'} Modified JSON saved: ${modifiedJson?.length || 0} chars`);
+                console.log(`📝 Edit requirement: "${editRequirement}"`);
+                console.log('\n🎯 FILES CREATED:');
+                console.log('- debug-original.json (original jsondoc data)');
+                console.log('- debug-raw-llm-output.txt (raw LLM diff output)');
+                console.log('- debug-final-patches.json (StreamingTransformExecutor patches)');
+                console.log('- debug-modified-via-contextdiff.json (modified JSON from pipeline)');
+                console.log('- debug-rfc6902-patches.json (RFC6902 patches from pipeline)');
+                console.log('\n✅ SUCCESS: StreamingTransformExecutor pipeline internalized and working!');
             }
         });
 
-        console.log(`[Debug] Transform execution completed, total output: ${rawLLMOutput.length} chars\n`);
-
-        console.log('💾 Step 4: Saving captured data...');
-
-        // Always save raw LLM output (even if empty for debugging)
-        const rawOutputPath = join(process.cwd(), 'debug-raw-llm-output.txt');
-        writeFileSync(rawOutputPath, rawLLMOutput || '(No raw output captured)', 'utf8');
-        if (rawLLMOutput) {
-            console.log(`✅ Saved raw LLM output to: ${rawOutputPath}`);
-            console.log(`[Debug] Raw LLM output length: ${rawLLMOutput.length} chars`);
-            console.log(`[Debug] Raw LLM output preview: ${rawLLMOutput.substring(0, 300)}...\n`);
-        } else {
-            console.log(`❌ No raw LLM output captured (saved empty file to: ${rawOutputPath})\n`);
-        }
-
-        // Always save final patches (even if empty for debugging)
-        const patchesPath = join(process.cwd(), 'debug-final-patches.json');
-        writeFileSync(patchesPath, JSON.stringify(finalPatches || [], null, 2), 'utf8');
-        if (finalPatches && finalPatches.length > 0) {
-            console.log(`✅ Saved final patches to: ${patchesPath}`);
-            console.log(`[Debug] Final patches count: ${finalPatches.length}`);
-        } else {
-            console.log(`❌ No final patches captured (saved empty array to: ${patchesPath})`);
-        }
-
-        console.log('\n🧪 Step 5: Testing our new context diff functions...');
-
-        // Always test our context diff functions, even with empty/placeholder data
-        const testDiffText = rawLLMOutput || `CONTEXT: "title": "测试标题"
-- "title": "测试标题"
-+ "title": "新测试标题"`;
-
-        console.log(`[Debug] Testing with diff text: ${testDiffText.length} chars`);
-
-        if (rawLLMOutput || true) { // Always run the test
-            console.log('[Debug] Testing context diff parsing...');
-
-            // Test JSON application directly (this handles multiple diffs internally)
-            console.log('[Debug] Testing JSON-aware diff application...');
-            const modifiedJson = applyContextDiffToJSON(originalJsonString, testDiffText);
-
-            if (modifiedJson) {
-                console.log(`✅ JSON diff applied successfully:`);
-                console.log(`   - Original length: ${originalJsonString.length} chars`);
-                console.log(`   - Modified length: ${modifiedJson.length} chars`);
-                console.log(`   - Difference: ${modifiedJson.length - originalJsonString.length} chars`);
-
-                // Save modified JSON
-                const modifiedJsonPath = join(process.cwd(), 'debug-modified-via-contextdiff.json');
-                writeFileSync(modifiedJsonPath, modifiedJson, 'utf8');
-                console.log(`✅ Saved modified JSON to: ${modifiedJsonPath}`);
-
-                // Also save the raw diff-applied text for debugging
-                const rawModifiedPath = join(process.cwd(), 'debug-raw-modified.txt');
-                writeFileSync(rawModifiedPath, modifiedJson, 'utf8');
-                console.log(`✅ Saved raw modified text to: ${rawModifiedPath}`);
-
-                // Test RFC6902 patch generation
-                console.log('[Debug] Testing RFC6902 patch generation...');
-                const patchResult = applyContextDiffAndGeneratePatches(originalJsonString, testDiffText);
-
-                // Type guard to handle the return type properly
-                if (Array.isArray(patchResult)) {
-                    // Direct array of patches
-                    console.log(`✅ RFC6902 patches generated successfully:`);
-                    console.log(`   - Number of patches: ${patchResult.length}`);
-
-                    // Save RFC6902 patches
-                    const rfc6902PatchesPath = join(process.cwd(), 'debug-rfc6902-patches.json');
-                    writeFileSync(rfc6902PatchesPath, JSON.stringify(patchResult, null, 2), 'utf8');
-                    console.log(`✅ Saved RFC6902 patches to: ${rfc6902PatchesPath}`);
-
-                    // Show sample patches
-                    console.log('\n📋 Sample patches:');
-                    patchResult.slice(0, 3).forEach((patch: any, i: number) => {
-                        console.log(`   ${i + 1}. ${patch.op} at "${patch.path}" → "${patch.value?.toString().substring(0, 50)}..."`);
-                    });
-                } else if (patchResult && typeof patchResult === 'object' && 'rfc6902Patches' in patchResult) {
-                    // Object with rfc6902Patches property
-                    const patches = (patchResult as any).rfc6902Patches;
-                    console.log(`✅ RFC6902 patches generated successfully:`);
-                    console.log(`   - Number of patches: ${patches.length}`);
-                    console.log(`   - Changes applied: ${(patchResult as any).appliedChanges || 0}`);
-                    if ((patchResult as any).totalChanges) {
-                        console.log(`   - Success rate: ${(((patchResult as any).appliedChanges || 0) / (patchResult as any).totalChanges * 100).toFixed(1)}%`);
-                    }
-
-                    // Save RFC6902 patches
-                    const rfc6902PatchesPath = join(process.cwd(), 'debug-rfc6902-patches.json');
-                    writeFileSync(rfc6902PatchesPath, JSON.stringify(patches, null, 2), 'utf8');
-                    console.log(`✅ Saved RFC6902 patches to: ${rfc6902PatchesPath}`);
-
-                    // Show sample patches
-                    console.log('\n📋 Sample patches:');
-                    patches.slice(0, 3).forEach((patch: any, i: number) => {
-                        console.log(`   ${i + 1}. ${patch.op} at "${patch.path}" → "${patch.value?.toString().substring(0, 50)}..."`);
-                    });
-                } else {
-                    console.log('❌ RFC6902 patch generation failed');
-                }
-            } else {
-                console.log('❌ JSON diff application failed');
-
-                // Still save a placeholder file for debugging
-                const modifiedJsonPath = join(process.cwd(), 'debug-modified-via-contextdiff.json');
-                writeFileSync(modifiedJsonPath, '{"error": "diff_application_failed"}', 'utf8');
-                console.log(`❌ Saved error placeholder to: ${modifiedJsonPath}`);
-            }
-        } else {
-            console.log('❌ Context diff parsing failed');
-
-            // Still save a placeholder file for debugging
-            const modifiedJsonPath = join(process.cwd(), 'debug-modified-via-contextdiff.json');
-            writeFileSync(modifiedJsonPath, '{"error": "diff_parsing_failed"}', 'utf8');
-            console.log(`❌ Saved error placeholder to: ${modifiedJsonPath}`);
-        }
-
-        // Always create RFC6902 patches file (even if empty)
-        const rfc6902PatchesPath = join(process.cwd(), 'debug-rfc6902-patches.json');
-        try {
-            const patchResult = applyContextDiffAndGeneratePatches(originalJsonString, testDiffText);
-            if (Array.isArray(patchResult)) {
-                writeFileSync(rfc6902PatchesPath, JSON.stringify(patchResult, null, 2), 'utf8');
-                console.log(`✅ Saved RFC6902 patches to: ${rfc6902PatchesPath} (${patchResult.length} patches)`);
-            } else if (patchResult && typeof patchResult === 'object' && 'rfc6902Patches' in patchResult) {
-                const patches = (patchResult as any).rfc6902Patches;
-                writeFileSync(rfc6902PatchesPath, JSON.stringify(patches, null, 2), 'utf8');
-                console.log(`✅ Saved RFC6902 patches to: ${rfc6902PatchesPath} (${patches.length} patches)`);
-            } else {
-                writeFileSync(rfc6902PatchesPath, '[]', 'utf8');
-                console.log(`❌ Saved empty RFC6902 patches to: ${rfc6902PatchesPath}`);
-            }
-        } catch (error) {
-            writeFileSync(rfc6902PatchesPath, '[]', 'utf8');
-            console.log(`❌ RFC6902 patch generation error, saved empty file: ${error}`);
-        }
-
-        console.log('\n================================================================================');
-        console.log('📊 SUMMARY');
-        console.log('================================================================================');
-        console.log(`[DEBUG-SUMMARY] finalPatches type: ${typeof finalPatches}, length: ${finalPatches?.length}, value:`, finalPatches);
-        console.log(`✅ Original JSON saved: ${originalJsonString.length} chars`);
-        console.log(`${rawLLMOutput ? '✅' : '❌'} Raw LLM output saved: ${rawLLMOutput.length} chars`);
-        console.log(`${finalPatches.length > 0 ? '✅' : '❌'} Final patches saved: ${finalPatches.length} patches`);
-        console.log(`📝 Edit requirement: "${editRequirement}"`);
-        console.log('\n🎯 FILES CREATED:');
-        console.log('- debug-original.json (original jsondoc data)');
-        console.log('- debug-raw-llm-output.txt (raw LLM diff output)');
-        console.log('- debug-final-patches.json (StreamingTransformExecutor patches)');
-        console.log('- debug-modified-via-contextdiff.json (our context diff result)');
-        console.log('- debug-rfc6902-patches.json (our RFC6902 patches)');
-        console.log('\n📝 ANALYSIS:');
-        console.log('1. Compare debug-final-patches.json vs debug-rfc6902-patches.json');
-        console.log('2. Check success rates and patch accuracy');
-        console.log('3. Validate JSON structure preservation');
-        console.log('4. Test patch application with rfc6902 library');
+        console.log(`\n[Debug] Transform execution completed with result: ${result.outputJsondocId}`);
 
     } catch (error) {
         console.error('\n❌ ERROR:', error);
