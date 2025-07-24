@@ -1350,7 +1350,7 @@ if (failedPatches.length === 0) {
 **Metadata Tracking**:
 ```typescript
 transformMetadata: {
-  execution_mode: executionMode?.mode || 'full-object',
+  execution_mode: executionMode.mode || 'full-object',
   method: 'unified_patch', // or 'full_generation'
   source_jsondoc_type: sourceJsondoc.type,
   output_jsondoc_type: outputJsondocType,
@@ -1411,7 +1411,7 @@ outputSchema: JsonPatchOperationsSchema
 **Template Selection Logic**:
 ```typescript
 // Automatic template selection based on tool type
-if (config.extractSourceJsondocs && executionMode?.mode === 'patch') {
+if (config.extractSourceJsondocs && executionMode.mode === 'patch') {
   // Use patch-mode template (e.g., 'brainstorm_edit')
   templateName = 'brainstorm_edit';
 } else {

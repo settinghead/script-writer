@@ -419,7 +419,10 @@ export function createOutlineSettingsToolDefinition(
                 seed: cachingOptions?.seed,
                 temperature: cachingOptions?.temperature,
                 topP: cachingOptions?.topP,
-                maxTokens: cachingOptions?.maxTokens || 4000  // Set default max tokens to prevent truncation
+                maxTokens: cachingOptions?.maxTokens || 4000,  // Set default max tokens to prevent truncation,
+                executionMode: {
+                    mode: 'full-object'
+                }
             });
 
             console.log(`[OutlineSettingsTool] Successfully completed streaming 剧本设定 generation with jsondoc ${result.outputJsondocId}`);

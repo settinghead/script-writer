@@ -91,7 +91,7 @@ export interface StreamingTransformParams<TInput, TOutput> {
     topP?: number;  // LLM top-p sampling
     maxTokens?: number;  // LLM max tokens
     // NEW: Execution mode for patch vs full-object generation
-    executionMode?: StreamingExecutionMode;
+    executionMode: StreamingExecutionMode;
     // NEW: Dry run mode - no database operations
     dryRun?: boolean;  // Skip all database operations (default: false)
     // NEW: Streaming callback for real-time updates
@@ -168,25 +168,25 @@ export class StreamingTransformExecutor {
 
                 // Store context for final conversion to use the working algorithm
                 console.log(`[StreamingTransformExecutor] Execution mode:`, {
-                    mode: executionMode?.mode,
+                    mode: executionMode.mode,
                     hasOriginalJsondoc: !!(executionMode && executionMode.mode !== 'full-object' && 'originalJsondoc' in executionMode && executionMode.originalJsondoc),
                     originalJsondocId: executionMode && executionMode.mode !== 'full-object' && 'originalJsondoc' in executionMode ? executionMode.originalJsondoc?.id : 'N/A'
                 });
 
-                if (executionMode?.mode === 'patch-approval' && executionMode.originalJsondoc) {
+                if (executionMode.mode === 'patch-approval' && executionMode.originalJsondoc) {
                     this.originalJsondocForFinalConversion = executionMode.originalJsondoc;
                     this.llmServiceForFinalConversion = this.llmService;
                     console.log(`[StreamingTransformExecutor] Set originalJsondocForFinalConversion:`, executionMode.originalJsondoc.id);
                     // originalMessages will be set when they're built below
                 } else {
                     const hasOriginal = executionMode && executionMode.mode !== 'full-object' && 'originalJsondoc' in executionMode && !!executionMode.originalJsondoc;
-                    console.warn(`[StreamingTransformExecutor] Not setting originalJsondocForFinalConversion - mode: ${executionMode?.mode}, hasOriginal: ${hasOriginal}`);
+                    console.warn(`[StreamingTransformExecutor] Not setting originalJsondocForFinalConversion - mode: ${executionMode.mode}, hasOriginal: ${hasOriginal}`);
                 }
 
                 // 2. Create transform for this execution (or update existing one on retry)
                 if (!dryRun && !transformId) {
                     // Use ai_patch type for patch-approval mode, llm for others
-                    const transformType = executionMode?.mode === 'patch-approval' ? 'ai_patch' : 'llm';
+                    const transformType = executionMode.mode === 'patch-approval' ? 'ai_patch' : 'llm';
                     const transform = await transformRepo.createTransform(
                         projectId,
                         transformType,
@@ -246,7 +246,7 @@ export class StreamingTransformExecutor {
 
                 // 4. Create initial output jsondoc in streaming state (only on first attempt)
                 // Skip for patch-approval mode - patches will be the outputs
-                if (!dryRun && !outputJsondocId && executionMode?.mode !== 'patch-approval') {
+                if (!dryRun && !outputJsondocId && executionMode.mode !== 'patch-approval') {
                     let initialData: any;
                     initialData = this.createInitialJsondocData(outputJsondocType, transformMetadata);
 
@@ -260,7 +260,7 @@ export class StreamingTransformExecutor {
                             started_at: new Date().toISOString(),
                             template_name: config.templateName,
                             retry_count: retryCount,
-                            execution_mode: executionMode?.mode || 'full-object',
+                            execution_mode: executionMode.mode || 'full-object',
                             ...transformMetadata
                         },
                         'streaming',
@@ -430,7 +430,7 @@ export class StreamingTransformExecutor {
                         try {
                             console.log(`[StreamingTransformExecutor] EAGER APPLICATION: Applying ${actualData.length} patches immediately at chunk ${chunkCount}`);
 
-                            if (executionMode?.mode === 'patch-approval') {
+                            if (executionMode.mode === 'patch-approval') {
                                 // Create/update patch approval jsondocs immediately
                                 await this.createStreamingPatchApprovalJsondocs(
                                     actualData as TOutput,
@@ -457,7 +457,7 @@ export class StreamingTransformExecutor {
                     if (chunkCount % updateIntervalChunks === 0) {
                         try {
                             let jsondocData: any;
-                            if (executionMode?.mode === 'patch-approval') {
+                            if (executionMode.mode === 'patch-approval') {
                                 // In patch-approval mode, patch jsondocs are already created during eager processing
                                 // Skip redundant streaming updates to prevent re-parsing failures
                                 console.log(`[StreamingTransformExecutor] Patch-approval mode: Skipping streaming update at chunk ${chunkCount}`);
@@ -478,7 +478,7 @@ export class StreamingTransformExecutor {
                                         last_updated: new Date().toISOString(),
                                         update_count: ++updateCount,
                                         retry_count: retryCount,
-                                        execution_mode: executionMode?.mode || 'full-object'
+                                        execution_mode: executionMode.mode || 'full-object'
                                     }
                                 );
 
@@ -496,7 +496,7 @@ export class StreamingTransformExecutor {
                                 }
                             } else if (dryRun) {
                                 // console.log(`[StreamingTransformExecutor] Dry run: Skipping jsondoc update for ${config.templateName} at chunk ${chunkCount}`);
-                            } else if (executionMode?.mode === 'patch-approval') {
+                            } else if (executionMode.mode === 'patch-approval') {
                                 // In patch-approval mode, we don't update during streaming, only at completion
                                 console.log(`[StreamingTransformExecutor] Patch-approval mode: Skipping streaming update at chunk ${chunkCount}`);
                             }
@@ -522,7 +522,7 @@ export class StreamingTransformExecutor {
 
                 // Handle patch mode vs full-object mode
                 let finalJsondocData: any;
-                if (executionMode?.mode === 'patch-approval') {
+                if (executionMode.mode === 'patch-approval') {
                     // Finalize streaming patch jsondocs - mark them as completed
                     await this.finalizeStreamingPatchApprovalJsondocs(
                         finalValidatedData as Operation[],
@@ -547,7 +547,7 @@ export class StreamingTransformExecutor {
 
                 // Handle different execution modes for completion
                 if (!dryRun) {
-                    if (executionMode?.mode === 'patch-approval') {
+                    if (executionMode.mode === 'patch-approval') {
                         // In patch-approval mode, we don't have a single output jsondoc
                         // Instead, patch jsondocs were created by createPatchApprovalJsondocs
                         // We still need to store LLM metadata and mark transform as completed
@@ -635,7 +635,7 @@ export class StreamingTransformExecutor {
                 }
 
                 return {
-                    outputJsondocId: outputJsondocId || (executionMode?.mode === 'patch-approval' ? 'patch-approval-pending' : 'dry-run-no-output'),
+                    outputJsondocId: outputJsondocId || (executionMode.mode === 'patch-approval' ? 'patch-approval-pending' : 'dry-run-no-output'),
                     finishReason: 'stop',
                     transformId: transformId || 'dry-run-no-transform'
                 };
@@ -1113,7 +1113,7 @@ export class StreamingTransformExecutor {
         temperature?: number;
         topP?: number;
         maxTokens?: number;
-        executionMode?: StreamingExecutionMode;
+        executionMode: StreamingExecutionMode;
     }) {
         const {
             prompt,
@@ -1132,7 +1132,7 @@ export class StreamingTransformExecutor {
         const isJsonPatchOperations = this.isJsonPatchOperationsSchema(schema);
 
         // 2. Execution mode-based detection (patch modes should use streamText for diffs)
-        const isPatchMode = executionMode?.mode === 'patch-approval';
+        const isPatchMode = executionMode.mode === 'patch-approval';
 
         // 3. Template name pattern detection (templates ending with _diff should use streamText)
         const isDiffTemplate = templateName.endsWith('_diff') ||
