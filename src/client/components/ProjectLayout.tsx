@@ -18,7 +18,6 @@ import { UnifiedDisplayRenderer } from './UnifiedDisplayRenderer';
 import { ExportButton } from './ExportButton';
 import { computeUnifiedWorkflowState } from '../utils/actionComputation';
 import { PatchReviewModal } from './PatchReviewModal';
-import { ElectricSQLDebugger } from './ElectricSQLDebugger';
 
 const { Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -52,17 +51,6 @@ const ProjectContentRenderer: React.FC<{ projectId: string; scrollContainerRef: 
         );
     }, [projectData.jsondocs]);
 
-    // Check if project has brainstorm collections/results
-    const hasBrainstormResults = useMemo(() => {
-        if (!Array.isArray(projectData.jsondocs) || projectData.jsondocs.length === 0) {
-            return false;
-        }
-
-        // Look for brainstorm collections or brainstorm ideas
-        const collections = projectData.getIdeaCollections();
-
-        return collections.length > 0;
-    }, [projectData.jsondocs, projectData.getIdeaCollections]);
 
     // Compute unified workflow state - ALWAYS call this hook
     const workflowState = useMemo(() => {
@@ -519,10 +507,6 @@ const ProjectLayout: React.FC = () => {
     const screens = useBreakpoint();
     const isMobile = !screens.md; // Mobile when smaller than md breakpoint (768px)
 
-    // Cache the selector to avoid infinite loop warning
-    const emptyProject = useMemo(() => ({}), []);
-    const project = useProjectStore(useMemo(() => (state: any) => state.projects[projectId!] || emptyProject, [projectId, emptyProject]));
-    const { name, loading, error } = project;
 
     // Debug: Log when right sidebar is rendered
     useEffect(() => {
