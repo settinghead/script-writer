@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, } from 'vitest';
-import { BrainstormEditToolResult, createBrainstormToolDefinition } from '../BrainstormTools';
+import { createBrainstormToolDefinition } from '../BrainstormTools';
 import { createMockJsondocRepository, createMockTransformRepository } from '../../../__tests__/mocks/databaseMocks';
 import { TypedJsondoc } from '@/common/types';
 import { IdeationInput } from '@/common/transform_schemas';
@@ -8,7 +8,7 @@ import { StreamingToolDefinition } from '@/server/transform-jsondoc-framework/St
 describe('BrainstormTool', () => {
     let mockTransformRepo: any;
     let mockJsondocRepo: any;
-    let brainstormTool: StreamingToolDefinition<IdeationInput, BrainstormEditToolResult>;
+    let brainstormTool: ReturnType<typeof createBrainstormToolDefinition>;
 
     beforeEach(() => {
         mockTransformRepo = createMockTransformRepository();

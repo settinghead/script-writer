@@ -653,6 +653,7 @@ export function createBrainstormToolDefinition(
                 transformRepo,
                 jsondocRepo,
                 outputJsondocType: 'brainstorm_collection',
+                executionMode: { mode: 'full-object' },
                 transformMetadata: {
                     toolName: 'generate_灵感创意s',
                     ...jsondocMetadata, // Include all jsondoc IDs with their schema types as keys
