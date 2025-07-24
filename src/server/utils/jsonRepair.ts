@@ -130,7 +130,7 @@ export function repairJsonSync(
 
     // Step 2: Fall back to Python json_repair (synchronous)
     try {
-        console.log('[JSON Repair Sync] Attempting Python json_repair fallback...');
+        // console.log('[JSON Repair Sync] Attempting Python json_repair fallback...');
 
         const projectRoot = process.cwd();
         const pythonScriptPath = path.join(projectRoot, 'repair_json.py');
@@ -156,7 +156,7 @@ export function repairJsonSync(
             }
 
             const pythonCommand = `python ${pythonArgs.join(' ')}`;
-            console.log(`[JSON Repair Sync] Running: ${pythonCommand}`);
+            // console.log(`[JSON Repair Sync] Running: ${pythonCommand}`);
 
             // Execute the Python script synchronously
             const repairedJson = execSync(pythonCommand, {
@@ -168,7 +168,7 @@ export function repairJsonSync(
             // Validate the result
             JSON.parse(repairedJson);
 
-            console.log('[JSON Repair Sync] Python json_repair succeeded');
+            // console.log('[JSON Repair Sync] Python json_repair succeeded');
             return repairedJson.trim();
         } finally {
             // Clean up temporary file
@@ -177,7 +177,7 @@ export function repairJsonSync(
             }
         }
     } catch (pythonError) {
-        console.error(`[JSON Repair Sync] Python json_repair failed: ${pythonError instanceof Error ? pythonError.message : String(pythonError)}`);
+        // console.error(`[JSON Repair Sync] Python json_repair failed: ${pythonError instanceof Error ? pythonError.message : String(pythonError)}`);
         throw new Error(`Both JavaScript and Python JSON repair methods failed. Python Error: ${pythonError instanceof Error ? pythonError.message : String(pythonError)}`);
     }
 } 
