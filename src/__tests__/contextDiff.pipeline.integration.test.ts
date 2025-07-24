@@ -10,6 +10,7 @@ import {
     applyHunksToText,
     UnifiedDiffHunk
 } from '../common/contextDiff';
+import { repairJsonSync } from '../server/utils/jsonRepair';
 
 /**
  * Integration test for the complete contextDiff pipeline
@@ -89,7 +90,7 @@ describe('ContextDiff Pipeline Integration', () => {
         });
     });
 
-    describe.only('Step 1.5→2: Apply parsed hunks to original JSON', () => {
+    describe('Step 1.5→2: Apply parsed hunks to original JSON', () => {
         it('should apply unified diff to original JSON and produce modified JSON string', () => {
             // Step 1.5→2: Apply unified diff to original JSON to get modified JSON string
             const originalJsonString = JSON.stringify(originalJsondoc, null, 2);
@@ -108,8 +109,11 @@ describe('ContextDiff Pipeline Integration', () => {
             try {
                 modifiedJson = JSON.parse(expectedPatchedRawText);
             } catch (parseError) {
-                // If parsing fails, try jsonrepair
-                const repairedJsonString = jsonrepair(expectedPatchedRawText);
+                // If parsing fails, try robust JSON repair
+                const repairedJsonString = repairJsonSync(expectedPatchedRawText, {
+                    ensureAscii: false,
+                    indent: 2
+                });
                 modifiedJson = JSON.parse(repairedJsonString);
             }
 
@@ -123,8 +127,11 @@ describe('ContextDiff Pipeline Integration', () => {
             const hunks = parseUnifiedDiff(rawLlmDiff);
             const modifiedJsonString = applyHunksToText(originalJsonString, hunks);
 
-            // Force jsonrepair to test that path
-            const repairedJsonString = jsonrepair(modifiedJsonString);
+            // Force robust JSON repair to test that path
+            const repairedJsonString = repairJsonSync(modifiedJsonString, {
+                ensureAscii: false,
+                indent: 2
+            });
             const repairedJson = JSON.parse(repairedJsonString);
 
             // Should match expected result
@@ -133,7 +140,7 @@ describe('ContextDiff Pipeline Integration', () => {
     });
 
     describe('Step 3→4: Generate RFC6902 patches', () => {
-        it('should generate correct RFC6902 patches from original to patched JSON', () => {
+        it.only('should generate correct RFC6902 patches from original to patched JSON', () => {
             // Step 3→4: Generate RFC6902 patches
             const generatedPatches = createPatch(originalJsondoc, expectedPatchedJsondoc);
 
@@ -165,7 +172,10 @@ describe('ContextDiff Pipeline Integration', () => {
             try {
                 modifiedJson = JSON.parse(modifiedJsonString);
             } catch (parseError) {
-                const repairedJsonString = jsonrepair(modifiedJsonString);
+                const repairedJsonString = repairJsonSync(modifiedJsonString, {
+                    ensureAscii: false,
+                    indent: 2
+                });
                 modifiedJson = JSON.parse(repairedJsonString);
             }
             expect(modifiedJson).toEqual(expectedPatchedJsondoc);
@@ -195,7 +205,10 @@ describe('ContextDiff Pipeline Integration', () => {
             try {
                 results.step3 = JSON.parse(results.step2);
             } catch (parseError) {
-                const repairedJsonString = jsonrepair(results.step2);
+                const repairedJsonString = repairJsonSync(results.step2, {
+                    ensureAscii: false,
+                    indent: 2
+                });
                 results.step3 = JSON.parse(repairedJsonString);
             }
             expect(results.step3).toEqual(expectedPatchedJsondoc);
@@ -217,9 +230,9 @@ describe('ContextDiff Pipeline Integration', () => {
     describe('Error Handling and Edge Cases', () => {
         it('should handle malformed JSON gracefully', () => {
             const malformedJson = '{ "test": "incomplete';
-            expect(() => jsonrepair(malformedJson)).not.toThrow();
+            expect(() => repairJsonSync(malformedJson, { ensureAscii: false, indent: 2 })).not.toThrow();
 
-            const repaired = jsonrepair(malformedJson);
+            const repaired = repairJsonSync(malformedJson, { ensureAscii: false, indent: 2 });
             expect(() => JSON.parse(repaired)).not.toThrow();
         });
 

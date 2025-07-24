@@ -1,5 +1,6 @@
 import { jsonrepair } from 'jsonrepair';
 import { createPatch, applyPatch } from 'rfc6902';
+import { repairJsonSync } from '../server/utils/jsonRepair';
 
 /**
  * Custom LLM-Tolerant Diff System
@@ -478,6 +479,48 @@ export function parseContextDiff(diffText: string): ParsedDiff | null {
  * Generate RFC6902 patches from unified diff
  * Uses the two-step approach: diff → hunks → patches
  */
+/**
+ * Apply context diff to JSON and return the modified JSON string
+ * Uses robust JSON repair for handling malformed output
+ */
+export function applyContextDiffToJSON(originalJson: string, diffText: string): string {
+    try {
+        // Step 1: Parse unified diff into structured hunks
+        const hunks = parseUnifiedDiff(diffText);
+
+        if (hunks.length === 0) {
+            return originalJson;
+        }
+
+        // Step 2: Apply hunks to get modified JSON
+        const modifiedJson = applyHunksToText(originalJson, hunks);
+
+        if (modifiedJson === originalJson) {
+            return originalJson;
+        }
+
+        // Step 3: Parse and repair the modified JSON if needed
+        try {
+            // First try to parse as-is
+            JSON.parse(modifiedJson);
+            return modifiedJson;
+        } catch (parseError) {
+            console.log('[ContextDiff] JSON parsing failed, attempting repair...');
+            const repairedJson = repairJsonSync(modifiedJson, {
+                ensureAscii: false,
+                indent: 2
+            });
+            // Validate the repair worked
+            JSON.parse(repairedJson);
+            return repairedJson;
+        }
+
+    } catch (error) {
+        console.error('[ContextDiff] Error applying context diff:', error);
+        return originalJson;
+    }
+}
+
 export function applyContextDiffAndGeneratePatches(originalJson: string, diffText: string): any[] {
     try {
         const original = JSON.parse(originalJson);
@@ -496,7 +539,18 @@ export function applyContextDiffAndGeneratePatches(originalJson: string, diffTex
             return [];
         }
 
-        const modified = JSON.parse(modifiedJson);
+        // Step 3: Parse the modified JSON with robust repair if needed
+        let modified;
+        try {
+            modified = JSON.parse(modifiedJson);
+        } catch (parseError) {
+            console.log('[ContextDiff] JSON parsing failed, attempting repair...');
+            const repairedJson = repairJsonSync(modifiedJson, {
+                ensureAscii: false,
+                indent: 2
+            });
+            modified = JSON.parse(repairedJson);
+        }
 
         // Generate RFC6902 patches using proper diff algorithm
         const patches = createPatch(original, modified);
