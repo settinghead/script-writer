@@ -570,15 +570,28 @@ export class StreamingTransformExecutor {
                             // Mark all patch jsondocs as completed
                             for (const patchId of patchJsondocIds) {
                                 console.log(`[StreamingTransformExecutor] Marking patch ${patchId} as completed`);
-                                await jsondocRepo.updateJsondoc(
-                                    patchId,
-                                    {}, // Keep existing data
-                                    {
+
+                                // First get existing metadata
+                                const existingJsondoc = await jsondocRepo.getJsondoc(patchId);
+                                if (existingJsondoc) {
+                                    const existingMetadata = existingJsondoc.metadata || {};
+                                    const updatedMetadata = {
+                                        ...existingMetadata,
                                         completed_at: new Date().toISOString(),
                                         finalized: true
-                                    },
-                                    'completed' // Mark as completed
-                                );
+                                    };
+
+                                    // Update only metadata and status without touching data
+                                    const { db } = await import('../database/connection.js');
+                                    await db
+                                        .updateTable('jsondocs')
+                                        .set({
+                                            metadata: JSON.stringify(updatedMetadata),
+                                            streaming_status: 'completed'
+                                        })
+                                        .where('id', '=', patchId)
+                                        .execute();
+                                }
                             }
                         } catch (finalizationError) {
                             console.warn(`[StreamingTransformExecutor] Failed to finalize patch jsondocs:`, finalizationError);
@@ -1544,6 +1557,15 @@ export class StreamingTransformExecutor {
         for (const jsondocId of toDelete) {
             console.log(`[upsertPatchJsondocs] Deleting patch jsondoc ${jsondocId}`);
             try {
+                // First remove the transform output reference
+                const { db } = await import('../database/connection.js');
+                await db
+                    .deleteFrom('transform_outputs')
+                    .where('transform_id', '=', transformId)
+                    .where('jsondoc_id', '=', jsondocId)
+                    .execute();
+
+                // Then delete the jsondoc
                 await jsondocRepo.deleteJsondoc(jsondocId);
             } catch (error) {
                 console.warn(`[upsertPatchJsondocs] Failed to delete jsondoc ${jsondocId}:`, error);
