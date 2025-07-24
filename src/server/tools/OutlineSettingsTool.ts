@@ -294,23 +294,14 @@ export function createOutlineSettingsEditToolDefinition(
 
                     console.log(`[OutlineSettingsEditTool] Template jsondocs keys:`, Object.keys(templateJsondocs));
 
-                    // Format jsondocs as YAML for the template
-                    const { dump } = await import('js-yaml');
-                    const jsondocsYaml = dump(templateJsondocs, {
-                        indent: 2,
-                        lineWidth: -1
-                    }).trim();
-
-                    // Prepare other parameters (excluding jsondocs)
+                    // Return raw objects - let TemplateService handle format conversion
+                    // For unified diff templates, TemplateService will convert to JSON with line numbers
+                    // For other templates, TemplateService will convert to YAML
                     const { jsondocs, ...otherParams } = input;
-                    const paramsYaml = dump(otherParams, {
-                        indent: 2,
-                        lineWidth: -1
-                    }).trim();
 
                     return {
-                        jsondocs: jsondocsYaml,
-                        params: paramsYaml,
+                        jsondocs: templateJsondocs, // Raw objects, not YAML string
+                        params: otherParams, // Raw objects, not YAML string  
                         additionalContexts
                     };
                 }

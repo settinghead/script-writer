@@ -76,6 +76,53 @@ interface UnifiedDiffHunk {
 }
 
 // ============================================================================
+// UNIFIED DIFF EXTRACTION AND PARSING FUNCTIONS
+// ============================================================================
+
+/**
+ * Extract only the unified diff portion from mixed content that may contain
+ * additional non-diff text after the diff
+ */
+export function extractUnifiedDiffOnly(content: string): string {
+    if (!content?.trim()) return content;
+
+    const lines = content.split('\n');
+    const diffLines: string[] = [];
+    let inDiff = false;
+
+    for (const line of lines) {
+        // Start of diff: file headers
+        if (line.startsWith('---') || line.startsWith('+++')) {
+            inDiff = true;
+            diffLines.push(line);
+            continue;
+        }
+
+        // If we're in a diff, continue collecting valid diff lines
+        if (inDiff) {
+            // Valid diff line types: hunk headers, context, additions, deletions
+            if (line.startsWith('@@') ||
+                line.startsWith(' ') ||
+                line.startsWith('+') ||
+                line.startsWith('-') ||
+                line.trim() === '') {  // Empty lines within hunks are valid
+                diffLines.push(line);
+            } else {
+                // Non-diff content encountered - stop processing
+                break;
+            }
+        }
+    }
+
+    // If no diff structure was found, return original content
+    if (!inDiff || diffLines.length === 0) {
+        return content;
+    }
+
+    return diffLines.join('\n');
+}
+
+// ============================================================================
 // UNIFIED DIFF PARSING FUNCTIONS
 // ============================================================================
 
@@ -83,7 +130,6 @@ interface UnifiedDiffHunk {
  * Parse unified diff format into structured hunks
  */
 function parseUnifiedDiff(diffText: string): UnifiedDiffHunk[] {
-    console.log('[UnifiedDiffParser] Parsing unified diff...');
     const lines = diffText.split('\n');
     const hunks: UnifiedDiffHunk[] = [];
     let currentHunk: UnifiedDiffHunk | null = null;
@@ -111,7 +157,6 @@ function parseUnifiedDiff(diffText: string): UnifiedDiffHunk[] {
                     newCount: parseInt(hunkMatch[4]),
                     lines: []
                 };
-                console.log(`[UnifiedDiffParser] Found hunk: old ${currentHunk.oldStart},${currentHunk.oldCount} new ${currentHunk.newStart},${currentHunk.newCount}`);
             }
             continue;
         }
@@ -148,7 +193,6 @@ function parseUnifiedDiff(diffText: string): UnifiedDiffHunk[] {
         hunks.push(currentHunk);
     }
 
-    console.log(`[UnifiedDiffParser] Parsed ${hunks.length} hunks`);
     return hunks;
 }
 
@@ -157,15 +201,12 @@ function parseUnifiedDiff(diffText: string): UnifiedDiffHunk[] {
  */
 function applyUnifiedDiffToJSON(jsonString: string, unifiedDiff: string): string {
     try {
-        console.log('[UnifiedDiff] Applying unified diff to JSON...');
-
         // Parse the original JSON
         const original = JSON.parse(jsonString);
 
         // Parse the unified diff to extract additions and deletions
         const hunks = parseUnifiedDiff(unifiedDiff);
         if (hunks.length === 0) {
-            console.log('[UnifiedDiff] No hunks found, returning original');
             return jsonString;
         }
 
@@ -187,14 +228,10 @@ function applyUnifiedDiffToJSON(jsonString: string, unifiedDiff: string): string
  * Apply unified diff hunks to JSON object structure (JSON-aware)
  */
 function applyHunksToJSONObject(original: any, hunks: UnifiedDiffHunk[]): any {
-    console.log('[UnifiedDiffApplier] Applying hunks to JSON object structure...');
-
     // Create a deep copy of the original
     const modified = JSON.parse(JSON.stringify(original));
 
     for (const hunk of hunks) {
-        console.log(`[UnifiedDiffApplier] Processing hunk with ${hunk.lines.length} lines`);
-
         // Extract additions from the hunk
         const additions: string[] = [];
         const deletions: string[] = [];
@@ -210,7 +247,6 @@ function applyHunksToJSONObject(original: any, hunks: UnifiedDiffHunk[]): any {
         // If we have additions, try to parse and apply them
         if (additions.length > 0) {
             const addedContent = additions.join('\n').trim();
-            console.log('[UnifiedDiffApplier] Found additions:', addedContent.substring(0, 100) + '...');
 
             // Try to parse the added content as JSON
             if (addedContent.includes('"name":') && addedContent.includes('"type":')) {
@@ -219,32 +255,23 @@ function applyHunksToJSONObject(original: any, hunks: UnifiedDiffHunk[]): any {
                     const characterMatch = addedContent.match(/\{[\s\S]*?\}/);
                     if (characterMatch) {
                         const newCharacter = JSON.parse(characterMatch[0]);
-                        console.log('[UnifiedDiffApplier] Parsed new character:', newCharacter.name);
 
                         // Add to characters array if it exists
                         if (modified.characters && Array.isArray(modified.characters)) {
                             modified.characters.push(newCharacter);
-                            console.log('[UnifiedDiffApplier] Added character to array');
                         }
                     }
                 } catch (parseError) {
-                    console.warn('[UnifiedDiffApplier] Failed to parse added character:', parseError);
                     // Try a more robust approach - extract all JSON-like fields generically
                     const extractedObject = extractAllFieldsFromAddition(addedContent);
 
                     if (extractedObject && Object.keys(extractedObject).length > 0) {
                         if (modified.characters && Array.isArray(modified.characters)) {
                             modified.characters.push(extractedObject);
-                            console.log('[UnifiedDiffApplier] Added character via generic field extraction');
                         }
                     }
                 }
             }
-        }
-
-        // Handle deletions if needed
-        if (deletions.length > 0) {
-            console.log('[UnifiedDiffApplier] Found deletions (not implemented yet)');
         }
     }
 
@@ -256,8 +283,6 @@ function applyHunksToJSONObject(original: any, hunks: UnifiedDiffHunk[]): any {
  */
 function extractAllFieldsFromAddition(content: string): any | null {
     try {
-        console.log('[GenericExtractor] Attempting to extract fields from content...');
-
         // First, try to clean up the content to make it valid JSON
         let cleanContent = content.trim();
 
@@ -273,10 +298,9 @@ function extractAllFieldsFromAddition(content: string): any | null {
             // Try parsing directly first
             try {
                 const parsed = JSON.parse(objectContent);
-                console.log('[GenericExtractor] Successfully parsed as JSON');
                 return parsed;
             } catch (directParseError) {
-                console.log('[GenericExtractor] Direct parsing failed, trying field extraction...');
+                // Continue to regex extraction
             }
         }
 
@@ -330,7 +354,6 @@ function extractAllFieldsFromAddition(content: string): any | null {
             }
         }
 
-        console.log(`[GenericExtractor] Extracted ${Object.keys(extractedObject).length} fields via regex`);
         return Object.keys(extractedObject).length > 0 ? extractedObject : null;
 
     } catch (error) {
@@ -885,8 +908,6 @@ const globalProcessor = new LLMTolerantDiffProcessor();
  * Legacy function for compatibility with existing code
  */
 export function parseContextDiff(diffText: string): ParsedDiff | null {
-    console.log('[LegacyCompat] parseContextDiff called - routing to semantic parser');
-
     const operations = globalProcessor.parseSemanticDiff(diffText);
     if (operations.length === 0) {
         return null;
@@ -905,8 +926,6 @@ export function parseContextDiff(diffText: string): ParsedDiff | null {
  * FIXED: Now properly handles unified diff format with line-by-line application
  */
 export function applyContextDiffToJSON(jsonString: string, diffText: string): string {
-    console.log('[ContextDiff] Applying context diff to JSON...');
-
     try {
         // Detect format: unified diff vs semantic operations
         const isUnifiedDiff = diffText.includes('---') && diffText.includes('+++') && diffText.includes('@@');
@@ -915,22 +934,18 @@ export function applyContextDiffToJSON(jsonString: string, diffText: string): st
             console.log('[ContextDiff] Detected unified diff format - applying with improved parser');
             return applyUnifiedDiffToJSON(jsonString, diffText);
         } else {
-            console.log('[ContextDiff] Using semantic processor for operations');
             const json = JSON.parse(jsonString);
             const operations = globalProcessor.parseSemanticDiff(diffText);
 
             if (operations.length === 0) {
-                console.log('[ContextDiff] No operations found, returning original JSON');
                 return jsonString;
             }
 
             const result = globalProcessor.applyOperations(json, operations);
 
             if (result.success || result.partialSuccess) {
-                console.log(`[ContextDiff] Applied ${result.operationsApplied}/${operations.length} operations`);
                 return JSON.stringify(result.resultJson, null, 2);
             } else {
-                console.log('[ContextDiff] All operations failed, returning original JSON');
                 return jsonString;
             }
         }
@@ -945,8 +960,6 @@ export function applyContextDiffToJSON(jsonString: string, diffText: string): st
  * FIXED: Now generates proper targeted patches instead of massive root replacements
  */
 export function applyContextDiffAndGeneratePatches(originalJson: string, diffText: string): any[] {
-    console.log('[ContextDiff] Generating patches from context diff...');
-
     try {
         const original = JSON.parse(originalJson);
 
@@ -954,7 +967,6 @@ export function applyContextDiffAndGeneratePatches(originalJson: string, diffTex
         const modifiedJson = applyContextDiffToJSON(originalJson, diffText);
 
         if (modifiedJson === originalJson) {
-            console.log('[ContextDiff] No changes detected, returning empty patches');
             return [];
         }
 
@@ -963,15 +975,6 @@ export function applyContextDiffAndGeneratePatches(originalJson: string, diffTex
         // Generate RFC6902 patches using proper diff algorithm
         const patches = createPatch(original, modified);
         console.log(`[ContextDiff] Generated ${patches.length} RFC6902 patches`);
-
-        // Log the patches for debugging
-        patches.forEach((patch, index) => {
-            console.log(`[ContextDiff] Patch ${index + 1}:`, {
-                op: patch.op,
-                path: patch.path,
-                value: 'value' in patch ? (typeof patch.value === 'object' ? '(object)' : patch.value) : undefined
-            });
-        });
 
         return patches;
 
@@ -1001,11 +1004,5 @@ export function extractValueFromDiffBlock(block: string): string {
     return block.trim();
 }
 
-export function addLineNumbers(jsonString: string): string {
-    const lines = jsonString.split('\n');
-    return lines.map((line, index) => `${index + 1}: ${line}`).join('\n');
-}
-
-export function removeLineNumbers(numberedString: string): string {
-    return numberedString.replace(/^\d+:\s*/gm, '');
-} 
+// NOTE: addLineNumbers and removeLineNumbers functions have been moved to
+// src/common/jsonFormatting.ts for consistent usage across the codebase 

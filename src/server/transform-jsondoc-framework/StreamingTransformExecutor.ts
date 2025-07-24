@@ -8,7 +8,6 @@ import { ChatMessageRepository } from './ChatMessageRepository';
 import { ParticleTemplateProcessor } from '../services/ParticleTemplateProcessor';
 import { applyPatch, deepClone, Operation } from 'fast-json-patch';
 import { TypedJsondoc } from '../../common/jsondocs.js';
-import { dump } from 'js-yaml';
 import * as Diff from 'diff';
 import { jsonrepair } from 'jsonrepair';
 import * as rfc6902 from 'rfc6902';
@@ -289,9 +288,9 @@ export class StreamingTransformExecutor {
                     ? await config.prepareTemplateVariables(validatedInput, { jsondocRepo })
                     : await defaultPrepareTemplateVariables(validatedInput, jsondocRepo);
 
-                // DEBUG: Log template context structure
+                // Keep minimal debug logging for diff templates
                 if (config.templateName.includes('edit_diff')) {
-                    console.log(`[DEBUG] Raw template context:`, JSON.stringify(templateContext, null, 2).substring(0, 500) + '...');
+                    console.log(`[DEBUG] Template context prepared for ${config.templateName}`);
                 }
 
                 const finalPrompt = await this.templateService.renderTemplate(
@@ -300,23 +299,16 @@ export class StreamingTransformExecutor {
                     { projectId, userId } // Particle context
                 );
 
-                // DEBUG: Save the actual prompt being sent to LLM
+                // Optionally save debug prompt for diff templates
                 if (config.templateName.includes('edit_diff')) {
                     try {
                         const { writeFileSync } = await import('fs');
                         const { join } = await import('path');
                         const debugPromptPath = join(process.cwd(), 'debug-llm-prompt.txt');
                         writeFileSync(debugPromptPath, finalPrompt, 'utf8');
-                        console.log(`[DEBUG] Saved LLM prompt to: ${debugPromptPath}`);
-                        console.log(`[DEBUG] Prompt length: ${finalPrompt.length} chars`);
-                        console.log(`[DEBUG] Template context keys:`, Object.keys(templateContext));
-                        console.log(`[DEBUG] Template context.params:`, templateContext.params);
-                        if (templateContext.jsondocs) {
-                            console.log(`[DEBUG] Jsondocs keys:`, Object.keys(templateContext.jsondocs));
-                            console.log(`[DEBUG] First jsondoc:`, Object.keys(templateContext.jsondocs)[0], 'has keys:', Object.keys(templateContext.jsondocs[Object.keys(templateContext.jsondocs)[0]]));
-                        }
+                        console.log(`[DEBUG] Saved prompt (${finalPrompt.length} chars) to: ${debugPromptPath}`);
                     } catch (debugError) {
-                        console.warn(`[DEBUG] Failed to save prompt:`, debugError);
+                        // Ignore debug save errors
                     }
                 }
 
@@ -1371,6 +1363,8 @@ export class StreamingTransformExecutor {
         }
     }
 
+
+
     /**
      * Convert text stream (unified diffs) to JSON patch operations stream
      * SIMPLIFIED: Uses the exact same approach as debug-context-diff.ts
@@ -1386,8 +1380,6 @@ export class StreamingTransformExecutor {
         let accumulatedText = '';
         let lastValidPatches: any[] = [];
         let eagerParseAttempts = 0;
-
-        console.log(`[StreamingTransformExecutor] Starting text stream to JSON patches conversion for ${templateName} with simple contextDiff approach`);
 
         // Get original JSON data for patch calculation
         let originalJsondoc = this.originalJsondocForFinalConversion;
@@ -1433,7 +1425,10 @@ export class StreamingTransformExecutor {
         }
 
         const originalData = originalJsondoc.data || originalJsondoc;
-        const originalJsonString = JSON.stringify(originalData, null, 2);
+
+        // Use consistent JSON formatting across the entire pipeline
+        const { formatJsonConsistently } = await import('../../common/jsonFormatting.js');
+        const originalJsonString = formatJsonConsistently(originalData);
 
         try {
             for await (const textDelta of textStream) {
@@ -1449,11 +1444,14 @@ export class StreamingTransformExecutor {
                     eagerParseAttempt: eagerParseAttempts
                 };
 
-                // EAGER PARSING: Try every 5 chunks or when we have significant content
-                if (eagerParseAttempts % 5 === 0 || accumulatedText.length > 100) {
-                    try {
-                        console.log(`[StreamingTransformExecutor] Eager parse attempt ${eagerParseAttempts} for ${templateName}`);
+                // DEBUG: Log eager parsing condition
+                if (eagerParseAttempts <= 15 || eagerParseAttempts % 10 === 0) {
+                    console.log(`[StreamingTransformExecutor] Chunk ${eagerParseAttempts}: textLength=${accumulatedText.length}, mod3=${eagerParseAttempts % 3}, condition=${eagerParseAttempts % 3 === 0 || accumulatedText.length > 50}`);
+                }
 
+                // EAGER PARSING: Try more frequently for patch-approval mode
+                if (eagerParseAttempts % 3 === 0 || accumulatedText.length > 50) {
+                    try {
                         // STEP 1: Apply text diff to stringified JSON data
                         const { applyContextDiffToJSON } = await import('../../common/contextDiff.js');
                         const modifiedJsonString = applyContextDiffToJSON(originalJsonString, accumulatedText);
@@ -1465,6 +1463,15 @@ export class StreamingTransformExecutor {
                             // STEP 3: Use rfc6902 to calculate patches
                             const { createPatch } = await import('rfc6902');
                             const eagerPatches = createPatch(originalData, modifiedData);
+
+                            // DEBUG: Always log what's happening with patch generation
+                            console.log(`[StreamingTransformExecutor] Eager attempt ${eagerParseAttempts}: Generated ${eagerPatches.length} patches`);
+                            if (eagerPatches.length === 0) {
+                                // Check if data actually changed
+                                const originalHash = JSON.stringify(originalData).length;
+                                const modifiedHash = JSON.stringify(modifiedData).length;
+                                console.log(`[StreamingTransformExecutor] No patches despite diff success - Original: ${originalHash} chars, Modified: ${modifiedHash} chars, Same: ${JSON.stringify(originalData) === JSON.stringify(modifiedData)}`);
+                            }
 
                             if (eagerPatches.length > 0 && JSON.stringify(eagerPatches) !== JSON.stringify(lastValidPatches)) {
                                 console.log(`[StreamingTransformExecutor] Eager parse SUCCESS for ${templateName}: ${eagerPatches.length} patches`);
@@ -1484,20 +1491,21 @@ export class StreamingTransformExecutor {
                         }
                     } catch (eagerError) {
                         // Expected for partial diffs - continue silently
-                        console.debug(`[StreamingTransformExecutor] Eager parse failed for ${templateName} (attempt ${eagerParseAttempts}): ${eagerError instanceof Error ? eagerError.message : String(eagerError)}`);
                     }
                 }
             }
 
             // FINAL CONVERSION: Use the exact same approach
             try {
-                console.log(`[StreamingTransformExecutor] Performing final conversion for ${templateName} with ${accumulatedText.length} chars`);
+                // STEP 1: Extract only the unified diff portion from accumulated text
+                const { extractUnifiedDiffOnly } = await import('../../common/contextDiff.js');
+                const cleanedDiff = extractUnifiedDiffOnly(accumulatedText);
 
-                // STEP 1: Apply text diff to stringified JSON data
+                // STEP 2: Apply unified diff using the proven applyContextDiffToJSON method
                 const { applyContextDiffToJSON } = await import('../../common/contextDiff.js');
-                const finalModifiedJsonString = applyContextDiffToJSON(originalJsonString, accumulatedText);
+                const finalModifiedJsonString = applyContextDiffToJSON(originalJsonString, cleanedDiff);
 
-                if (finalModifiedJsonString && finalModifiedJsonString !== originalJsonString) {
+                if (finalModifiedJsonString) {
                     // STEP 2: Parse resulting JSON (already handled by applyContextDiffToJSON with jsonrepair)
                     const finalModifiedData = JSON.parse(finalModifiedJsonString);
 
@@ -1505,26 +1513,37 @@ export class StreamingTransformExecutor {
                     const { createPatch } = await import('rfc6902');
                     const finalPatches = createPatch(originalData, finalModifiedData);
 
-                    console.log(`[StreamingTransformExecutor] Final conversion successful for ${templateName}: ${finalPatches.length} patches`);
-                    console.log(`[DEBUG-YIELD] About to yield finalPatches chunk: ${finalPatches.length} patches`);
+                    // DEBUG: Essential info only
+                    const dataChanged = JSON.stringify(originalData) !== JSON.stringify(finalModifiedData);
+                    console.log(`[StreamingTransformExecutor] Final conversion for ${templateName}: ${finalPatches.length} patches, data changed: ${dataChanged}`);
 
-                    // STEP 4: Emit final patches
+                    if (finalPatches.length === 0 && !dataChanged) {
+                        // Write debug files for inspection if needed
+                        const fs = await import('fs');
+                        await fs.writeFileSync('./debug-streaming-accumulated-text.txt', accumulatedText);
+                        await fs.writeFileSync('./debug-streaming-cleaned-diff.txt', cleanedDiff);
+                        await fs.writeFileSync('./debug-streaming-original-string.txt', originalJsonString);
+                        await fs.writeFileSync('./debug-streaming-modified-string.txt', finalModifiedJsonString);
+                    }
+
+                    console.log(`[StreamingTransformExecutor] Final conversion successful for ${templateName}: ${finalPatches.length} patches`);
+
+                    // STEP 4: Emit final patches (always emit patches, even if empty - let the calling code decide)
                     yield {
                         type: 'finalPatches',
                         patches: finalPatches,
                         templateName,
-                        source: 'final',
+                        source: finalPatches.length > 0 ? 'final' : 'no_content_changes',
                         rawText: accumulatedText,
                         totalEagerAttempts: eagerParseAttempts
                     };
-                    console.log(`[DEBUG-YIELD] Successfully yielded finalPatches chunk`);
                 } else {
-                    console.log(`[StreamingTransformExecutor] No changes detected in final diff for ${templateName}`);
+                    // Failed to apply diff - fallback to last valid patches
                     yield {
                         type: 'finalPatches',
                         patches: lastValidPatches,
                         templateName,
-                        source: 'no_changes',
+                        source: 'diff_application_failed',
                         rawText: accumulatedText,
                         totalEagerAttempts: eagerParseAttempts
                     };
@@ -1855,7 +1874,6 @@ export class StreamingTransformExecutor {
         chunkCount?: number
     ): Promise<void> {
         if (dryRun || !jsondocRepo || !projectId || !transformId || !transformRepo) {
-            // console.log(`[StreamingTransformExecutor] Dry run or missing dependencies: Skipping patch jsondoc finalization`);
             return;
         }
 
@@ -1914,6 +1932,57 @@ export class StreamingTransformExecutor {
                 );
 
                 console.log(`[StreamingTransformExecutor] Finalized patch jsondoc ${outputId} (index ${i})`);
+            }
+
+            // CRITICAL FIX: If we have more patches than existing jsondocs, create new ones
+            if (finalPatches.length > patchOutputs.length) {
+                console.log(`[StreamingTransformExecutor] Creating ${finalPatches.length - patchOutputs.length} missing patch jsondocs`);
+
+                for (let i = patchOutputs.length; i < finalPatches.length; i++) {
+                    const patch = finalPatches[i];
+
+                    const patchData = {
+                        patches: [patch], // Single patch per jsondoc
+                        targetJsondocId: originalJsondoc.id || (() => {
+                            throw new Error(`Missing originalJsondoc.id for new patch creation in template ${templateName}. originalJsondoc: ${JSON.stringify(originalJsondoc, null, 2)}`);
+                        })(),
+                        targetSchemaType: originalJsondoc.schema_type || (() => {
+                            throw new Error(`Missing originalJsondoc.schema_type for new patch creation in template ${templateName}. originalJsondoc: ${JSON.stringify(originalJsondoc, null, 2)}`);
+                        })(),
+                        patchIndex: i,
+                        applied: false,
+                        chunkCount: chunkCount || 0,
+                        streamingUpdate: false,
+                        finalized: true
+                    };
+
+                    const patchJsondoc = await jsondocRepo.createJsondoc(
+                        projectId,
+                        'json_patch',
+                        patchData,
+                        'v1',
+                        {
+                            created_at: new Date().toISOString(),
+                            completed_at: new Date().toISOString(),
+                            template_name: templateName,
+                            patch_index: i,
+                            applied: false,
+                            target_jsondoc_id: originalJsondoc.id,
+                            target_schema_type: originalJsondoc.schema_type,
+                            chunk_count: chunkCount || 0,
+                            finalized: true
+                        },
+                        'completed', // Mark as completed immediately
+                        'ai_generated'
+                    );
+
+                    // Link patch jsondoc as output to the transform
+                    await transformRepo.addTransformOutputs(transformId, [
+                        { jsondocId: patchJsondoc.id }
+                    ], projectId);
+
+                    console.log(`[StreamingTransformExecutor] Created new patch jsondoc ${patchJsondoc.id} (index ${i})`);
+                }
             }
 
             // Mark any remaining patch jsondocs as completed even if they don't have final data

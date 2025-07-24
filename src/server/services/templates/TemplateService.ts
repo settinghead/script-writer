@@ -9,7 +9,7 @@ import { episodePlanningEditPatchTemplate } from './episodePlanningEditPatch.js'
 import { episodeSynopsisTemplate } from './episodeSynopsis.js';
 import { ParticleTemplateProcessor } from '../ParticleTemplateProcessor';
 import { dump } from 'js-yaml';
-import { addLineNumbers } from '../../../common/contextDiff';
+import { formatJsonWithLineNumbers } from '../../../common/jsonFormatting';
 
 // Define types locally to avoid path issues
 interface LLMTemplate {
@@ -191,6 +191,8 @@ export class TemplateService {
 
         // For unified diff templates, add line numbers to the string content
         if (isUnifiedDiff) {
+          // Import addLineNumbers from the new location
+          const { addLineNumbers } = await import('../../../common/jsonFormatting.js');
           const numberedContent = addLineNumbers(context.jsondocs);
           result = result.replace(/%%jsondocs%%/g, numberedContent);
         } else {
@@ -239,9 +241,8 @@ export class TemplateService {
           // For unified diff templates, add line numbers to JSON content
           jsondocsOutput += `=== ${label} ===\n`;
 
-          // Convert to JSON with proper formatting and add line numbers
-          const jsonString = JSON.stringify(jsondocData, null, 2);
-          const numberedJson = addLineNumbers(jsonString);
+          // Use consistent JSON formatting with line numbers
+          const numberedJson = formatJsonWithLineNumbers(jsondocData);
           jsondocsOutput += numberedJson;
           jsondocsOutput += '\n\n';
         } else {
