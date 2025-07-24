@@ -416,8 +416,8 @@ export class StreamingTransformExecutor {
                                         chunkCount,
                                     );
 
-                                    console.log(`[StreamingTransformExecutor] Pipeline patches:`, pipelineResults.patches.length);
-                                    console.log(`[StreamingTransformExecutor] dryRun:`, dryRun, `transformId:`, transformId, `projectId:`, projectId);
+                                    // console.log(`[StreamingTransformExecutor] Pipeline patches:`, pipelineResults.patches.length);
+                                    // console.log(`[StreamingTransformExecutor] dryRun:`, dryRun, `transformId:`, transformId, `projectId:`, projectId);
 
                                     if (executionMode.mode === 'patch-approval' && !dryRun && transformId && projectId) {
                                         const patchesToUpsert = pipelineResults.patches;

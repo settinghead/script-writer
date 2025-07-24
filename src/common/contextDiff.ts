@@ -217,7 +217,7 @@ export function applyHunksToText(originalText: string, hunks: UnifiedDiffHunk[])
     let currentLines = originalText.split('\n');
     const sortedHunks = [...hunks].sort((a, b) => a.oldStart - b.oldStart);
 
-    console.log(`[DEBUG] Starting fuzzy matching with ${sortedHunks.length} hunks`);
+    // console.log(`[DEBUG] Starting fuzzy matching with ${sortedHunks.length} hunks`);
 
     for (const hunk of sortedHunks) {
         const hunkOldLines = hunk.lines
@@ -226,11 +226,11 @@ export function applyHunksToText(originalText: string, hunks: UnifiedDiffHunk[])
 
         if (hunkOldLines.length === 0) continue;
 
-        console.log(`[DEBUG] Processing hunk at original line ${hunk.oldStart} with ${hunkOldLines.length} context/deletion lines`);
+        // console.log(`[DEBUG] Processing hunk at original line ${hunk.oldStart} with ${hunkOldLines.length} context/deletion lines`);
 
         // Log what we're looking for
         if (hunkOldLines.length > 0) {
-            console.log(`[DEBUG] Looking for context (first line): "${hunkOldLines[0].substring(0, 60)}..."`);
+            // console.log(`[DEBUG] Looking for context (first line): "${hunkOldLines[0].substring(0, 60)}..."`);
         }
 
         let bestMatch = { index: -1, score: 0 };
@@ -252,7 +252,7 @@ export function applyHunksToText(originalText: string, hunks: UnifiedDiffHunk[])
         }
 
         if (exactMatch >= 0) {
-            console.log(`[DEBUG] Found exact match at line ${exactMatch + 1}`);
+            // console.log(`[DEBUG] Found exact match at line ${exactMatch + 1}`);
             bestMatch = { index: exactMatch, score: 1.0 };
         } else {
             // Fall back to fuzzy matching with sliding window
@@ -296,7 +296,7 @@ export function applyHunksToText(originalText: string, hunks: UnifiedDiffHunk[])
             // Strategy 2: If score is low, try matching with partial context
             // This helps when some context lines don't exist due to previous changes
             if (bestMatch.score < 0.7) {
-                console.log(`[DEBUG] Strategy 1 score too low (${bestMatch.score.toFixed(3)}), trying partial context matching`);
+                // console.log(`[DEBUG] Strategy 1 score too low (${bestMatch.score.toFixed(3)}), trying partial context matching`);
 
                 // Try to find the most distinctive line in the context
                 let mostDistinctiveLine = '';
@@ -319,12 +319,12 @@ export function applyHunksToText(originalText: string, hunks: UnifiedDiffHunk[])
 
                 // Search for the distinctive line and build context around it
                 if (mostDistinctiveLine && distinctiveIndex >= 0) {
-                    console.log(`[DEBUG] Most distinctive line: "${mostDistinctiveLine.substring(0, 60)}..."`);
+                    // console.log(`[DEBUG] Most distinctive line: "${mostDistinctiveLine.substring(0, 60)}..."`);
 
                     for (let i = 0; i < currentLines.length; i++) {
                         const similarity = lineSimilarity(currentLines[i], mostDistinctiveLine);
                         if (similarity > 0.85) {
-                            console.log(`[DEBUG] Found distinctive line at ${i + 1} with similarity ${similarity.toFixed(3)}`);
+                            // console.log(`[DEBUG] Found distinctive line at ${i + 1} with similarity ${similarity.toFixed(3)}`);
 
                             // Found the distinctive line, now check surrounding context
                             const startIdx = i - distinctiveIndex;
@@ -351,7 +351,7 @@ export function applyHunksToText(originalText: string, hunks: UnifiedDiffHunk[])
 
                 // Strategy 3: If still no good match, try finding ANY subset of lines that match well
                 if (bestMatch.score < 0.5) {
-                    console.log(`[DEBUG] Trying strategy 3: partial line matching`);
+                    // console.log(`[DEBUG] Trying strategy 3: partial line matching`);
 
                     // Try to find any window where at least some lines match well
                     const minMatchingLines = Math.max(2, Math.floor(hunkOldLines.length * 0.3));
@@ -383,7 +383,7 @@ export function applyHunksToText(originalText: string, hunks: UnifiedDiffHunk[])
                 // Strategy 4: For very low scores, try to find just the first distinctive context line
                 // and apply the hunk there, trusting that it's the right location
                 if (bestMatch.score < 0.4 && hunkOldLines.length > 0) {
-                    console.log(`[DEBUG] Trying strategy 4: first line anchor matching`);
+                    // console.log(`[DEBUG] Trying strategy 4: first line anchor matching`);
 
                     // Find the first context line and look for it
                     const firstContextLine = hunkOldLines[0];
@@ -404,7 +404,7 @@ export function applyHunksToText(originalText: string, hunks: UnifiedDiffHunk[])
                                 const anchorScore = 0.4 + (additionalMatches * 0.1);
                                 if (anchorScore > bestMatch.score) {
                                     bestMatch = { index: i, score: anchorScore };
-                                    console.log(`[DEBUG] Found anchor at line ${i + 1} with score ${anchorScore.toFixed(3)}`);
+                                    // console.log(`[DEBUG] Found anchor at line ${i + 1} with score ${anchorScore.toFixed(3)}`);
                                 }
                             }
                         }
@@ -413,10 +413,10 @@ export function applyHunksToText(originalText: string, hunks: UnifiedDiffHunk[])
             }
         }
 
-        console.log(`[DEBUG] Best match: index=${bestMatch.index}, score=${bestMatch.score.toFixed(3)}`);
+        // console.log(`[DEBUG] Best match: index=${bestMatch.index}, score=${bestMatch.score.toFixed(3)}`);
 
         if (bestMatch.index >= 0) {
-            console.log(`[DEBUG] Applying hunk at line ${bestMatch.index + 1} (1-indexed)`);
+            // console.log(`[DEBUG] Applying hunk at line ${bestMatch.index + 1} (1-indexed)`);
 
             // Build the replacement segment
             const newSegment: string[] = [];
@@ -445,9 +445,9 @@ export function applyHunksToText(originalText: string, hunks: UnifiedDiffHunk[])
 
             // Apply the change
             currentLines.splice(bestMatch.index, oldCount, ...newSegment);
-            console.log(`[DEBUG] Replaced ${oldCount} lines with ${newSegment.length} lines`);
+            // console.log(`[DEBUG] Replaced ${oldCount} lines with ${newSegment.length} lines`);
         } else {
-            console.log(`[WARN] No valid location found for hunk - skipping`);
+            // console.log(`[WARN] No valid location found for hunk - skipping`);
         }
     }
 
@@ -505,7 +505,7 @@ export function applyContextDiffToJSON(originalJson: string, diffText: string): 
             JSON.parse(modifiedJson);
             return modifiedJson;
         } catch (parseError) {
-            console.log('[ContextDiff] JSON parsing failed, attempting repair...');
+            // console.log('[ContextDiff] JSON parsing failed, attempting repair...');
             const repairedJson = repairJsonSync(modifiedJson, {
                 ensureAscii: false,
                 indent: 2
@@ -516,7 +516,7 @@ export function applyContextDiffToJSON(originalJson: string, diffText: string): 
         }
 
     } catch (error) {
-        console.error('[ContextDiff] Error applying context diff:', error);
+        // console.error('[ContextDiff] Error applying context diff:', error);
         return originalJson;
     }
 }
@@ -544,7 +544,7 @@ export function applyContextDiffAndGeneratePatches(originalJson: string, diffTex
         try {
             modified = JSON.parse(modifiedJson);
         } catch (parseError) {
-            console.log('[ContextDiff] JSON parsing failed, attempting repair...');
+            // console.log('[ContextDiff] JSON parsing failed, attempting repair...');
             const repairedJson = repairJsonSync(modifiedJson, {
                 ensureAscii: false,
                 indent: 2
@@ -554,12 +554,12 @@ export function applyContextDiffAndGeneratePatches(originalJson: string, diffTex
 
         // Generate RFC6902 patches using proper diff algorithm
         const patches = createPatch(original, modified);
-        console.log(`[ContextDiff] Generated ${patches.length} RFC6902 patches`);
+        // console.log(`[ContextDiff] Generated ${patches.length} RFC6902 patches`);
 
         return patches;
 
     } catch (error) {
-        console.error('[ContextDiff] Error generating patches:', error);
+        // console.error('[ContextDiff] Error generating patches:', error);
         return [];
     }
 }

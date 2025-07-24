@@ -23,7 +23,7 @@ export async function repairJson(
 
     // Step 1: Try JavaScript jsonrepair first (faster)
     try {
-        console.log('[JSON Repair] Attempting JavaScript jsonrepair...');
+        // console.log('[JSON Repair] Attempting JavaScript jsonrepair...');
         const repairedJson = jsonrepair(malformedJson);
 
         // Validate that it's actually valid JSON
@@ -35,15 +35,15 @@ export async function repairJson(
             return JSON.stringify(parsed, null, indent);
         }
 
-        console.log('[JSON Repair] JavaScript jsonrepair succeeded');
+        // console.log('[JSON Repair] JavaScript jsonrepair succeeded');
         return repairedJson;
     } catch (jsError) {
-        console.log(`[JSON Repair] JavaScript jsonrepair failed: ${jsError instanceof Error ? jsError.message : String(jsError)}`);
+        // console.log(`[JSON Repair] JavaScript jsonrepair failed: ${jsError instanceof Error ? jsError.message : String(jsError)}`);
     }
 
     // Step 2: Fall back to Python json_repair
     try {
-        console.log('[JSON Repair] Attempting Python json_repair fallback...');
+        // console.log('[JSON Repair] Attempting Python json_repair fallback...');
 
         // Find the Python repair script (assume it's in project root)
         const projectRoot = process.cwd();
@@ -70,7 +70,7 @@ export async function repairJson(
             }
 
             const pythonCommand = `python ${pythonArgs.join(' ')}`;
-            console.log(`[JSON Repair] Running: ${pythonCommand}`);
+            // console.log(`[JSON Repair] Running: ${pythonCommand}`);
 
             // Execute the Python script
             const repairedJson = execSync(pythonCommand, {
@@ -82,7 +82,7 @@ export async function repairJson(
             // Validate the result
             JSON.parse(repairedJson);
 
-            console.log('[JSON Repair] Python json_repair succeeded');
+            // console.log('[JSON Repair] Python json_repair succeeded');
             return repairedJson.trim();
         } finally {
             // Clean up temporary file
@@ -91,7 +91,7 @@ export async function repairJson(
             }
         }
     } catch (pythonError) {
-        console.error(`[JSON Repair] Python json_repair failed: ${pythonError instanceof Error ? pythonError.message : String(pythonError)}`);
+        // console.error(`[JSON Repair] Python json_repair failed: ${pythonError instanceof Error ? pythonError.message : String(pythonError)}`);
         throw new Error(`Both JavaScript and Python JSON repair methods failed. JS Error: ${pythonError instanceof Error ? pythonError.message : String(pythonError)}`);
     }
 }
@@ -110,7 +110,7 @@ export function repairJsonSync(
 
     // Step 1: Try JavaScript jsonrepair first
     try {
-        console.log('[JSON Repair Sync] Attempting JavaScript jsonrepair...');
+        // console.log('[JSON Repair Sync] Attempting JavaScript jsonrepair...');
         const repairedJson = jsonrepair(malformedJson);
 
         // Validate that it's actually valid JSON
@@ -122,10 +122,10 @@ export function repairJsonSync(
             return JSON.stringify(parsed, null, indent);
         }
 
-        console.log('[JSON Repair Sync] JavaScript jsonrepair succeeded');
+        // console.log('[JSON Repair Sync] JavaScript jsonrepair succeeded');
         return repairedJson;
     } catch (jsError) {
-        console.log(`[JSON Repair Sync] JavaScript jsonrepair failed: ${jsError instanceof Error ? jsError.message : String(jsError)}`);
+        // console.log(`[JSON Repair Sync] JavaScript jsonrepair failed: ${jsError instanceof Error ? jsError.message : String(jsError)}`);
     }
 
     // Step 2: Fall back to Python json_repair (synchronous)
