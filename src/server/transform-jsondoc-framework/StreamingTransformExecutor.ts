@@ -117,9 +117,6 @@ export class StreamingTransformExecutor {
     private llmService: LLMService;
     private cachedLLMService: CachedLLMService;
 
-    // Patch tracking state for streaming
-    private patchJsondocIds: (string | null)[] = [];
-
     constructor(particleProcessor?: ParticleTemplateProcessor) {
         this.templateService = new TemplateService(particleProcessor);
         this.llmService = new LLMService();
@@ -159,9 +156,6 @@ export class StreamingTransformExecutor {
         let outputLinked = false; // Track if we've linked the output jsondoc to transform
         let retryCount = 0;
         const maxRetries = 3;
-
-        // Reset patch tracking state for new transform
-        this.patchJsondocIds = [];
 
 
         while (retryCount <= maxRetries) {
@@ -403,6 +397,8 @@ export class StreamingTransformExecutor {
 
                     // Call streaming callback if provided (always for eager patches, final patches, or periodic for others)
                     if (isEagerPatch || isFinalPatch || chunkCount % updateIntervalChunks === 0) {
+                        console.log(`[StreamingTransformExecutor] Processing chunk ${chunkCount}, isEagerPatch: ${isEagerPatch}, isFinalPatch: ${isFinalPatch}`);
+
                         // INTERNALIZED LOGIC: Process the debug-context-diff.ts pipeline eagerly during streaming
                         let enhancedCallbackData = streamingInfo || actualData;
 
@@ -421,9 +417,17 @@ export class StreamingTransformExecutor {
 
                                     if (executionMode.mode === 'patch-approval' && !dryRun && transformId && projectId) {
                                         const patchesToUpsert = pipelineResults.patches;
+                                        console.log(`[StreamingTransformExecutor] Pipeline results at chunk ${chunkCount}:`, {
+                                            patchCount: patchesToUpsert.length,
+                                            rawLLMOutputLength: pipelineResults.rawLLMOutput?.length,
+                                            modifiedJsonLength: pipelineResults.modifiedJson?.length,
+                                            status: pipelineResults.status
+                                        });
+
                                         if (patchesToUpsert.length > 0) {
+                                            console.log(`[StreamingTransformExecutor] First patch sample:`, JSON.stringify(patchesToUpsert[0]));
                                             try {
-                                                this.patchJsondocIds = await this.upsertPatchJsondocs(
+                                                await this.upsertPatchJsondocs(
                                                     patchesToUpsert,
                                                     executionMode.originalJsondoc,
                                                     config.templateName,
@@ -431,8 +435,7 @@ export class StreamingTransformExecutor {
                                                     transformId,
                                                     jsondocRepo,
                                                     transformRepo,
-                                                    chunkCount,
-                                                    this.patchJsondocIds
+                                                    chunkCount
                                                 );
                                             } catch (upsertError) {
                                                 console.warn(`[StreamingTransformExecutor] Failed to upsert patch jsondocs at chunk ${chunkCount}:`, upsertError);
@@ -465,7 +468,7 @@ export class StreamingTransformExecutor {
 
                             if (executionMode.mode === 'patch-approval' && !dryRun && transformId && projectId) {
                                 // Upsert patch jsondocs immediately for eager patches
-                                this.patchJsondocIds = await this.upsertPatchJsondocs(
+                                await this.upsertPatchJsondocs(
                                     actualData as any[],
                                     executionMode.originalJsondoc,
                                     config.templateName,
@@ -473,8 +476,7 @@ export class StreamingTransformExecutor {
                                     transformId,
                                     jsondocRepo,
                                     transformRepo,
-                                    chunkCount,
-                                    this.patchJsondocIds
+                                    chunkCount
                                 );
                             }
                         } catch (eagerError) {
@@ -553,22 +555,30 @@ export class StreamingTransformExecutor {
                 let finalJsondocData: any;
                 if (executionMode.mode === 'patch-approval') {
                     // Finalize patch jsondocs - mark them as completed
-                    if (!dryRun && transformId && projectId && this.patchJsondocIds.length > 0) {
+                    console.log(`[StreamingTransformExecutor] Finalizing patch jsondocs for transform ${transformId}`);
+
+                    if (!dryRun && transformId && projectId) {
                         try {
+                            // Fetch all patch jsondocs for this transform
+                            const outputs = await transformRepo.getTransformOutputs(transformId);
+                            const patchJsondocIds = outputs
+                                .filter(o => o.output_role === 'patch_output')
+                                .map(o => o.jsondoc_id);
+
+                            console.log(`[StreamingTransformExecutor] Found ${patchJsondocIds.length} patch jsondocs to finalize`);
+
                             // Mark all patch jsondocs as completed
-                            for (let i = 0; i < this.patchJsondocIds.length; i++) {
-                                const patchId = this.patchJsondocIds[i];
-                                if (patchId) {
-                                    await jsondocRepo.updateJsondoc(
-                                        patchId,
-                                        {}, // Keep existing data
-                                        {
-                                            completed_at: new Date().toISOString(),
-                                            finalized: true
-                                        },
-                                        'completed' // Mark as completed
-                                    );
-                                }
+                            for (const patchId of patchJsondocIds) {
+                                console.log(`[StreamingTransformExecutor] Marking patch ${patchId} as completed`);
+                                await jsondocRepo.updateJsondoc(
+                                    patchId,
+                                    {}, // Keep existing data
+                                    {
+                                        completed_at: new Date().toISOString(),
+                                        finalized: true
+                                    },
+                                    'completed' // Mark as completed
+                                );
                             }
                         } catch (finalizationError) {
                             console.warn(`[StreamingTransformExecutor] Failed to finalize patch jsondocs:`, finalizationError);
@@ -1170,7 +1180,18 @@ export class StreamingTransformExecutor {
             return;
         }
 
-        const originalData = originalJsondoc.data || originalJsondoc;
+        let originalData = originalJsondoc.data || originalJsondoc;
+
+        // Handle case where jsondoc data is stored as a string in the database
+        if (typeof originalData === 'string') {
+            try {
+                originalData = JSON.parse(originalData);
+                console.log(`[StreamingTransformExecutor] Parsed string data from jsondoc for ${templateName}`);
+            } catch (parseError) {
+                console.error(`[StreamingTransformExecutor] Failed to parse string data from jsondoc:`, parseError);
+                // Fall back to treating it as-is
+            }
+        }
 
         // Use consistent JSON formatting across the entire pipeline
         const { formatJsonConsistently } = await import('../../common/jsonFormatting.js');
@@ -1215,7 +1236,7 @@ export class StreamingTransformExecutor {
                             }
 
                             if (eagerPatches.length > 0 && JSON.stringify(eagerPatches) !== JSON.stringify(lastValidPatches)) {
-
+                                console.log(`[convertTextStreamToJsonPatches] Yielding ${eagerPatches.length} eager patches at attempt ${eagerParseAttempts}`);
                                 lastValidPatches = eagerPatches;
 
                                 // STEP 4: Emit patches
@@ -1267,6 +1288,7 @@ export class StreamingTransformExecutor {
 
 
                     // STEP 4: Emit final patches (always emit patches, even if empty - let the calling code decide)
+                    console.log(`[convertTextStreamToJsonPatches] Yielding final patches: ${finalPatches.length} patches`);
                     yield {
                         type: 'finalPatches',
                         patches: finalPatches,
@@ -1423,8 +1445,8 @@ export class StreamingTransformExecutor {
     }
 
     /**
-     * Simple upsert function for RFC patches during streaming
-     * Creates new patch jsondocs or updates existing ones by index position
+     * Upsert patch jsondocs using op+path as stable identifier
+     * Handles the fact that patches can change positions and content during streaming
      */
     private async upsertPatchJsondocs(
         patches: any[],
@@ -1434,66 +1456,179 @@ export class StreamingTransformExecutor {
         transformId: string,
         jsondocRepo: JsondocRepository,
         transformRepo: TransformRepository,
-        chunkCount: number,
-        patchJsondocIds: (string | null)[]
-    ): Promise<(string | null)[]> {
-        const updatedIds: (string | null)[] = [...patchJsondocIds];
+        chunkCount: number
+    ): Promise<void> {
+        console.log(`[upsertPatchJsondocs] Called with ${patches.length} patches at chunk ${chunkCount}`);
 
-        for (let i = 0; i < patches.length; i++) {
-            const patch = patches[i];
+        // Filter out empty or invalid patches
+        const validPatches = patches.filter(patch =>
+            patch &&
+            typeof patch === 'object' &&
+            patch.op &&
+            patch.path &&
+            Object.keys(patch).length > 0
+        );
+        console.log(`[upsertPatchJsondocs] Valid patches after filtering: ${validPatches.length}`);
+
+        if (validPatches.length === 0) {
+            console.log(`[upsertPatchJsondocs] No valid patches to upsert, returning empty array`);
+            return;
+        }
+
+        // Step 1: Fetch all existing patch jsondocs for this transform
+        const existingOutputs = await transformRepo.getTransformOutputs(transformId);
+        const existingPatchIds = existingOutputs
+            .filter(o => o.output_role === 'patch_output')
+            .map(o => o.jsondoc_id);
+
+        const existingPatches: Map<string, { id: string; hash: string }> = new Map();
+
+        for (const jsondocId of existingPatchIds) {
+            const jsondoc = await jsondocRepo.getJsondoc(jsondocId);
+            if (jsondoc && jsondoc.schema_type === 'json_patch') {
+                const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
+                if (data.patches && Array.isArray(data.patches) && data.patches.length > 0) {
+                    const patch = data.patches[0]; // We store one patch per jsondoc
+                    const identifier = `${patch.op}:${patch.path}`;
+                    const hash = (jsondoc.metadata as any)?.content_hash || '';
+                    existingPatches.set(identifier, { id: jsondoc.id, hash });
+                }
+            }
+        }
+
+        console.log(`[upsertPatchJsondocs] Found ${existingPatches.size} existing patches in DB`);
+
+        // Step 2: Process new patches
+        const newPatchMap: Map<string, { patch: any; hash: string; index: number }> = new Map();
+
+        for (let i = 0; i < validPatches.length; i++) {
+            const patch = validPatches[i];
+            const identifier = `${patch.op}:${patch.path}`;
+            const hash = this.hashPatch(patch);
+            newPatchMap.set(identifier, { patch, hash, index: i });
+        }
+
+        console.log(`[upsertPatchJsondocs] New patch set has ${newPatchMap.size} unique patches`);
+
+        // Step 3: Determine operations needed
+        const toDelete: string[] = [];
+        const toUpdate: Array<{ id: string; patch: any; index: number }> = [];
+        const toInsert: Array<{ patch: any; index: number }> = [];
+
+        // Find patches to delete (in existing but not in new)
+        for (const [identifier, existing] of existingPatches) {
+            if (!newPatchMap.has(identifier)) {
+                toDelete.push(existing.id);
+            }
+        }
+
+        // Find patches to update or insert
+        for (const [identifier, newPatch] of newPatchMap) {
+            const existing = existingPatches.get(identifier);
+            if (existing) {
+                // Check if content changed
+                if (existing.hash !== newPatch.hash) {
+                    toUpdate.push({ id: existing.id, patch: newPatch.patch, index: newPatch.index });
+                }
+            } else {
+                // New patch
+                toInsert.push({ patch: newPatch.patch, index: newPatch.index });
+            }
+        }
+
+        console.log(`[upsertPatchJsondocs] Operations - Delete: ${toDelete.length}, Update: ${toUpdate.length}, Insert: ${toInsert.length}`);
+
+        // Step 4: Execute operations
+
+        // Delete removed patches
+        for (const jsondocId of toDelete) {
+            console.log(`[upsertPatchJsondocs] Deleting patch jsondoc ${jsondocId}`);
+            try {
+                await jsondocRepo.deleteJsondoc(jsondocId);
+            } catch (error) {
+                console.warn(`[upsertPatchJsondocs] Failed to delete jsondoc ${jsondocId}:`, error);
+            }
+        }
+
+        // Update changed patches
+        for (const { id, patch, index } of toUpdate) {
+            console.log(`[upsertPatchJsondocs] Updating patch jsondoc ${id} for ${patch.op}:${patch.path}`);
             const patchData = {
-                patch: patch, // Single RFC6902 patch
+                patches: [patch],
                 targetJsondocId: originalJsondoc.id,
                 targetSchemaType: originalJsondoc.schema_type,
-                patchIndex: i,
+                patchIndex: index,
                 applied: false,
                 chunkCount: chunkCount
             };
 
-            const existingId = updatedIds[i];
-
-            if (existingId) {
-                // Update existing patch jsondoc
-                await jsondocRepo.updateJsondoc(
-                    existingId,
-                    patchData,
-                    {
-                        last_updated: new Date().toISOString(),
-                        chunk_count: chunkCount,
-                        patch_index: i,
-                        template_name: templateName
-                    }
-                );
-            } else {
-                // Create new patch jsondoc
-                const patchJsondoc = await jsondocRepo.createJsondoc(
-                    projectId,
-                    'json_patch',
-                    patchData,
-                    'v1',
-                    {
-                        created_at: new Date().toISOString(),
-                        template_name: templateName,
-                        patch_index: i,
-                        applied: false,
-                        target_jsondoc_id: originalJsondoc.id,
-                        target_schema_type: originalJsondoc.schema_type,
-                        chunk_count: chunkCount
-                    },
-                    'streaming',
-                    'ai_generated'
-                );
-
-                // Link patch jsondoc as output to the transform
-                await transformRepo.addTransformOutputs(transformId, [
-                    { jsondocId: patchJsondoc.id, outputRole: 'patch_output' }
-                ], projectId);
-
-                updatedIds[i] = patchJsondoc.id;
-            }
+            await jsondocRepo.updateJsondoc(
+                id,
+                patchData,
+                {
+                    last_updated: new Date().toISOString(),
+                    chunk_count: chunkCount,
+                    patch_index: index,
+                    template_name: templateName,
+                    content_hash: this.hashPatch(patch)
+                }
+            );
         }
 
-        return updatedIds;
+        // Insert new patches
+        for (const { patch, index } of toInsert) {
+            console.log(`[upsertPatchJsondocs] Creating new patch jsondoc for ${patch.op}:${patch.path}`);
+            const patchData = {
+                patches: [patch],
+                targetJsondocId: originalJsondoc.id,
+                targetSchemaType: originalJsondoc.schema_type,
+                patchIndex: index,
+                applied: false,
+                chunkCount: chunkCount
+            };
+
+            const patchJsondoc = await jsondocRepo.createJsondoc(
+                projectId,
+                'json_patch',
+                patchData,
+                'v1',
+                {
+                    created_at: new Date().toISOString(),
+                    template_name: templateName,
+                    patch_index: index,
+                    applied: false,
+                    target_jsondoc_id: originalJsondoc.id,
+                    target_schema_type: originalJsondoc.schema_type,
+                    chunk_count: chunkCount,
+                    content_hash: this.hashPatch(patch)
+                },
+                'streaming',
+                'ai_generated'
+            );
+
+            // Link patch jsondoc as output to the transform
+            await transformRepo.addTransformOutputs(transformId, [
+                { jsondocId: patchJsondoc.id, outputRole: 'patch_output' }
+            ], projectId);
+
+        }
+
+        return;
+    }
+
+    /**
+     * Generate a hash for a patch to detect content changes
+     */
+    private hashPatch(patch: any): string {
+        // Simple hash based on stringified content
+        const content = JSON.stringify(patch);
+        let hash = 0;
+        for (let i = 0; i < content.length; i++) {
+            const char = content.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash; // Convert to 32bit integer
+        }
+        return hash.toString(36);
     }
 
     /**
@@ -1549,7 +1684,17 @@ export class StreamingTransformExecutor {
                 };
             }
 
-            const originalData = this.originalJsondocForFinalConversion.data || this.originalJsondocForFinalConversion;
+            let originalData = this.originalJsondocForFinalConversion.data || this.originalJsondocForFinalConversion;
+
+            // Handle case where jsondoc data is stored as a string in the database
+            if (typeof originalData === 'string') {
+                try {
+                    originalData = JSON.parse(originalData);
+                } catch (parseError) {
+                    // Fall back to treating it as-is
+                }
+            }
+
             const { formatJsonConsistently } = await import('../../common/jsonFormatting.js');
             const originalJsonString = formatJsonConsistently(originalData);
 
