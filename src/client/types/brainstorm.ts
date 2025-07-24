@@ -1,12 +1,5 @@
-export interface IdeaWithTitle {
-  title: string
-  body: string
-  jsondocId?: string
-  originalJsondocId?: string  // For lineage resolution - the original jsondoc ID for transform lookup
-  jsondocPath: string        // NEW: JSONPath within collection jsondocs (e.g., '$.ideas[0]', '$' for root)
-  index?: number  // For consistent ordering
-  debugInfo?: string; // DEBUG: Add debug info property
-}
+// Re-export the common IdeaWithTitle interface
+export { IdeaWithTitle } from '../../common/types';
 
 export interface BrainstormParams {
   genre: string

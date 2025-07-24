@@ -73,6 +73,10 @@ export interface IdeaWithTitle {
     title: string;
     body: string;
     jsondocId?: string;
+    originalJsondocId?: string;  // For lineage resolution - the original jsondoc ID for transform lookup
+    jsondocPath: string;        // JSONPath within collection jsondocs (e.g., '$.ideas[0]', '$' for root)
+    index?: number;  // For consistent ordering
+    debugInfo?: string; // DEBUG: Add debug info property
 }
 
 // User input/selection (for user-modified or manually entered content)

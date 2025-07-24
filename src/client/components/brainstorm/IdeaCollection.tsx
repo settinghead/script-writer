@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Typography } from 'antd';
-import { IdeaWithTitle } from '../../../common/transform-jsondoc-framework/lineageResolution';
+import { IdeaWithTitle } from '../../../common/types';
 import { ReasoningIndicator, SectionWrapper, } from '../shared';
 import { JsondocDisplayWrapper } from '../../transform-jsondoc-framework/components/JsondocDisplayWrapper';
 import { useProjectData } from '../../contexts/ProjectDataContext';
@@ -95,6 +95,19 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
 
   // Get latest brainstorm ideas using the new hook
   const latestIdeas = useLatestBrainstormIdeas();
+
+  console.log('[IdeaCollection] Hook results:', {
+    latestIdeas: latestIdeas === "pending" ? "pending" : latestIdeas === "error" ? "error" : `${latestIdeas.length} ideas`
+  });
+
+  if (latestIdeas !== "pending" && latestIdeas !== "error" && latestIdeas.length > 0) {
+    console.log('[IdeaCollection] First idea details:', {
+      jsondocPath: latestIdeas[0].jsondocPath,
+      originalJsondocId: latestIdeas[0].originalJsondocId,
+      title: latestIdeas[0].title,
+      allKeys: Object.keys(latestIdeas[0])
+    });
+  }
 
   // Check for chosen brainstorm idea
   const { chosenIdea, isLoading: chosenIdeaLoading } = useChosenBrainstormIdea();
@@ -216,16 +229,29 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
 
   // Use the better data source - prioritize props when available
   const ideas = useMemo(() => {
+    console.log('[IdeaCollection] Computing final ideas:', {
+      propsIdeasLength: propsIdeas?.length || 0,
+      latestIdeasState: latestIdeas === "pending" ? "pending" : latestIdeas === "error" ? "error" : `${latestIdeas.length} ideas`,
+      fallbackIdeasLength: fallbackIdeas.length
+    });
+
     // If props provide ideas, use them (for read-only mode)
     if (propsIdeas && propsIdeas.length > 0) {
+      console.log('[IdeaCollection] Using props ideas');
       return propsIdeas;
     }
 
     // Otherwise use the computed data
     if (latestIdeas === "pending" || latestIdeas === "error") {
+      console.log('[IdeaCollection] Using fallback ideas (latest pending/error)');
       return fallbackIdeas;
     }
     const finalIdeas = latestIdeas.length > 0 ? latestIdeas : fallbackIdeas;
+    console.log('[IdeaCollection] Final decision:', {
+      usingLatest: latestIdeas.length > 0,
+      finalLength: finalIdeas.length,
+      firstHasPath: finalIdeas.length > 0 ? !!finalIdeas[0]?.jsondocPath : false
+    });
     return finalIdeas;
   }, [propsIdeas, latestIdeas, fallbackIdeas]);
 
@@ -236,6 +262,14 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
   // Show collapsed view if we have a chosen idea OR if we only have individual ideas (not collections)
   const hasOnlyIndividualIdeas = ideas.length === 1 && ideas[0]?.jsondocPath === '$';
   const isCollapsedView = (chosenIdea && !chosenIdeaLoading) || hasOnlyIndividualIdeas;
+
+  console.log('[IdeaCollection] Rendering logic:', {
+    ideasLength: ideas.length,
+    firstIdeaHasPath: latestIdeas !== "pending" && latestIdeas !== "error" && latestIdeas.length > 0 ? !!latestIdeas[0]?.jsondocPath : false,
+    finalIdeaHasPath: ideas.length > 0 ? !!ideas[0]?.jsondocPath : false,
+    hasOnlyIndividualIdeas,
+    inSelectionMode: propsSelectionMode ?? (!chosenIdea && !readOnly && !hasOnlyIndividualIdeas)
+  });
 
   // Determine if we're in selection mode
   // Don't show selection mode if we only have individual ideas
@@ -441,20 +475,22 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
                       ? "grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3"
                       : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
                 } style={{ padding: "12px 12px" }}>
-                  {ideas.map((idea, index) => {
-                    return (
-                      <IdeaCardWrapper
-                        key={`${idea.jsondocId}-${index}`}
-                        idea={idea}
-                        index={index}
-                        isSelected={getIsIdeaSelected(idea, index)}
-                        chosenIdea={chosenIdea}
-                        ideaOutlines={ideaOutlines[idea.jsondocId || ''] || []}
-                        onIdeaClick={handleIdeaClick}
-                        readOnly={readOnly}
-                      />
-                    );
-                  })}
+                  {(() => {
+                    return ideas.map((idea, index) => {
+                      return (
+                        <IdeaCardWrapper
+                          key={`${idea.jsondocId}-${index}`}
+                          idea={idea}
+                          index={index}
+                          isSelected={getIsIdeaSelected(idea, index)}
+                          chosenIdea={chosenIdea}
+                          ideaOutlines={ideaOutlines[idea.jsondocId || ''] || []}
+                          onIdeaClick={handleIdeaClick}
+                          readOnly={readOnly}
+                        />
+                      );
+                    });
+                  })()}
                 </div>
 
                 {/* Streaming indicator */}

@@ -7,12 +7,14 @@ import {
     findMainWorkflowPath,
     findParentJsondocsBySchemaType,
     hasHumanTransformForPath,
+    findEffectiveBrainstormIdeas,
+    buildLineageGraph,
     type LineageNode,
     type LineageResolutionResult,
     type EffectiveBrainstormIdea,
-    type IdeaWithTitle,
     type WorkflowNode
 } from '../../common/transform-jsondoc-framework/lineageResolution';
+import { IdeaWithTitle } from '../../common/types';
 
 interface UseLineageResolutionOptions {
     enabled: boolean; // Caller must explicitly specify if enabled
@@ -174,23 +176,46 @@ export function useLatestBrainstormIdeas(): IdeaWithTitle[] | "pending" | "error
     const projectData = useProjectData();
 
     return useMemo(() => {
+        console.log('[useLatestBrainstormIdeas] Computing with:', {
+            ideas: ideas === "pending" ? "pending" : ideas === "error" ? "error" : `${ideas.length} ideas`,
+            isLoading,
+            error: error?.message,
+            jsondocsState: projectData.jsondocs === "pending" ? "pending" : projectData.jsondocs === "error" ? "error" : `${projectData.jsondocs.length} jsondocs`
+        });
+
         if (ideas === "pending" || ideas === "error") {
+            console.log('[useLatestBrainstormIdeas] Returning early due to ideas state:', ideas);
             return ideas;
         }
 
         if (isLoading) {
+            console.log('[useLatestBrainstormIdeas] Returning pending due to loading');
             return "pending" as const;
         }
 
         if (error) {
+            console.log('[useLatestBrainstormIdeas] Returning error due to error:', error.message);
             return "error" as const;
         }
+
         if (projectData.jsondocs === "pending" || projectData.jsondocs === "error") {
+            console.log('[useLatestBrainstormIdeas] Returning pending due to jsondocs state:', projectData.jsondocs);
             return "pending" as const;
         }
 
+        console.log('[useLatestBrainstormIdeas] Converting effective ideas to IdeaWithTitle:', {
+            effectiveIdeasCount: ideas.length,
+            jsondocsCount: projectData.jsondocs.length
+        });
+
         // Use the pure function to convert EffectiveBrainstormIdea[] to IdeaWithTitle[]
-        return convertEffectiveIdeasToIdeaWithTitle(ideas, projectData.jsondocs);
+        const result = convertEffectiveIdeasToIdeaWithTitle(ideas, projectData.jsondocs);
+
+        console.log('[useLatestBrainstormIdeas] Final result:', {
+            resultCount: result.length
+        });
+
+        return result;
     }, [ideas, isLoading, error, projectData.jsondocs]);
 }
 

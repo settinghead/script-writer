@@ -20,64 +20,33 @@ export const BrainstormIdeaEditor: React.FC<{
 } & HTMLAttributes<HTMLDivElement>> = ({ jsondocId, jsondocPath, originalCollectionId, index, isSelected, isChosen, hasEditableDescendants, onIdeaClick, ...props }) => {
     const projectData = useProjectData();
 
-    console.log(`[BrainstormIdeaEditor] Rendering idea ${index}:`, {
-        jsondocId,
-        jsondocPath,
-        originalCollectionId,
-        isSelected,
-        isChosen,
-        hasEditableDescendants
-    });
-
     // Get the jsondoc data to display
     const jsondoc = projectData.getJsondocById(jsondocId);
-    console.log(`[BrainstormIdeaEditor] Jsondoc lookup for ${jsondocId}:`, {
-        jsondocFound: !!jsondoc,
-        jsondocSchemaType: jsondoc?.schema_type,
-        jsondocDataLength: jsondoc?.data?.length || 0
-    });
 
     let ideaData: any = null;
 
     if (jsondoc) {
         try {
             const parsedData = JSON.parse(jsondoc.data);
-            console.log(`[BrainstormIdeaEditor] Parsed jsondoc data:`, {
-                jsondocId,
-                jsondocPath,
-                isArray: Array.isArray(parsedData),
-                dataKeys: Array.isArray(parsedData) ? `array[${parsedData.length}]` : Object.keys(parsedData),
-                parsedDataSample: Array.isArray(parsedData) ? parsedData[0] : parsedData
-            });
-
             ideaData = jsondocPath === '$' ? parsedData : getJsondocAtPath(jsondoc, jsondocPath);
-            console.log(`[BrainstormIdeaEditor] Extracted ideaData:`, {
-                jsondocId,
-                jsondocPath,
-                ideaDataFound: !!ideaData,
-                ideaDataKeys: ideaData ? Object.keys(ideaData) : 'null',
-                ideaDataSample: ideaData
-            });
         } catch (error) {
             console.warn(`[BrainstormIdeaEditor] Failed to parse jsondoc data for ${jsondocId}:`, error);
         }
     }
 
+    console.log(`[BrainstormIdeaEditor] Idea ${index}:`, {
+        hasJsondoc: !!jsondoc,
+        hasIdeaData: !!ideaData,
+        title: ideaData?.title || 'no title'
+    });
+
     // Don't render anything if we don't have data
     if (!ideaData) {
-        console.log(`[BrainstormIdeaEditor] Returning null for idea ${index} - no ideaData`);
         return null;
     }
 
     const title = ideaData.title || `创意 ${index + 1}`;
     const body = ideaData.body || '';
-
-    console.log(`[BrainstormIdeaEditor] Final render data for idea ${index}:`, {
-        title,
-        bodyLength: body.length,
-        hasTitle: !!ideaData.title,
-        hasBody: !!ideaData.body
-    });
 
     // Check if this is a derived jsondoc (has been edited)
     const hasBeenEdited = jsondoc?.origin_type === 'user_input' || jsondoc?.isEditable || false;

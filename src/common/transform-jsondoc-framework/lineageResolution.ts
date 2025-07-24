@@ -15,6 +15,7 @@ import type {
     ElectricTransformOutput,
     TypedJsondoc
 } from '../types';
+import { IdeaWithTitle } from '../types';
 
 // ============================================================================
 // Data Structures
@@ -1132,55 +1133,33 @@ export function findEffectiveBrainstormIdeas(
     const jsondocMap = new Map(jsondocs.map(j => [j.id, j]));
 
     // Find all brainstorm-related nodes (ideas and collections)
-    const allBrainstormNodes = Array.from(graph.nodes.entries())
-        .filter(([_, node]) => {
-            if (node.type !== 'jsondoc') return false;
-            const jsondoc = jsondocMap.get((node as LineageNodeJsondoc).jsondocId);
-            return jsondoc?.schema_type === '灵感创意' || jsondoc?.schema_type === 'brainstorm_collection';
-        });
+    const allBrainstormNodes = Array.from(graph.nodes.values()).filter(node => {
+        if (node.type !== 'jsondoc') return false;
+        const jsondocNode = node as LineageNodeJsondoc;
+        const jsondoc = jsondocMap.get(jsondocNode.jsondocId);
+        return jsondoc && (
+            jsondoc.schema_type === 'brainstorm_collection' ||
+            jsondoc.schema_type === '灵感创意'
+        );
+    }) as LineageNodeJsondoc[];
 
-    const relevantNodes = allBrainstormNodes
-        .filter(([_, node]) => {
-            const jsondoc = jsondocMap.get((node as LineageNodeJsondoc).jsondocId);
-            if (!jsondoc) return false;
+    // Filter to only include leaf nodes (nodes with no outgoing edges)
+    const relevantNodes = allBrainstormNodes.filter(node => {
+        const isLeaf = !graph.edges.has(node.jsondocId);
 
-            // Check if there are any brainstorm_collection nodes
-            const hasCollections = allBrainstormNodes.some(([_, n]) => {
-                const j = jsondocMap.get((n as LineageNodeJsondoc).jsondocId);
-                return j?.schema_type === 'brainstorm_collection';
-            });
+        // For collections, include if it's a leaf
+        const jsondoc = jsondocMap.get(node.jsondocId);
+        if (jsondoc?.schema_type === 'brainstorm_collection') {
+            return isLeaf;
+        }
 
-            // Include all brainstorm types with modified logic for ideas
-            let shouldInclude = false;
+        // For individual ideas, always include (they represent user choices)
+        return true;
+    });
 
-            if (jsondoc.schema_type === 'brainstorm_collection') {
-                shouldInclude = node.isLeaf;
-            } else if (jsondoc.schema_type === '灵感创意') {
-                if (hasCollections) {
-                    // If collections exist, only include leaf ideas
-                    shouldInclude = node.isLeaf;
-                } else {
-                    // If no collections, include leaf ideas OR the latest idea in chain
-                    if (node.isLeaf) {
-                        shouldInclude = true;
-                    } else {
-                        // Check if this is the latest 灵感创意 (highest depth)
-                        const allIdeaNodes = allBrainstormNodes.filter(([_, n]) => {
-                            const j = jsondocMap.get((n as LineageNodeJsondoc).jsondocId);
-                            return j?.schema_type === '灵感创意';
-                        });
-                        const maxDepth = Math.max(...allIdeaNodes.map(([_, n]) => n.depth));
-                        shouldInclude = node.depth === maxDepth;
-                    }
-                }
-            }
-
-            return shouldInclude;
-        });
-
-    // Process the relevant nodes
-    for (const [nodeId, node] of relevantNodes) {
-        const jsondoc = jsondocMap.get((node as LineageNodeJsondoc).jsondocId);
+    // Process each relevant node
+    for (const node of relevantNodes) {
+        const jsondoc = jsondocMap.get(node.jsondocId);
         if (!jsondoc) continue;
 
         if (jsondoc.schema_type === 'brainstorm_collection') {
@@ -1191,7 +1170,7 @@ export function findEffectiveBrainstormIdeas(
                     data.ideas.forEach((idea: any, index: number) => {
                         results.push({
                             jsondocId: jsondoc.id,
-                            jsondocPath: `ideas.${index}`,
+                            jsondocPath: `$.ideas[${index}]`,
                             originalJsondocId: jsondoc.id,
                             index,
                             isFromCollection: true
@@ -1199,22 +1178,17 @@ export function findEffectiveBrainstormIdeas(
                     });
                 }
             } catch (e) {
-                console.warn('Failed to parse brainstorm collection data:', e);
+                console.warn(`Failed to parse brainstorm collection ${jsondoc.id}:`, e);
             }
         } else if (jsondoc.schema_type === '灵感创意') {
             // Handle individual ideas
-            try {
-                const data = JSON.parse(jsondoc.data);
-                results.push({
-                    jsondocId: jsondoc.id,
-                    jsondocPath: '$',  // Use '$' for standalone ideas
-                    originalJsondocId: jsondoc.id,
-                    index: 0,
-                    isFromCollection: false
-                });
-            } catch (e) {
-                console.warn('Failed to parse brainstorm idea data:', e);
-            }
+            results.push({
+                jsondocId: jsondoc.id,
+                jsondocPath: '$',
+                originalJsondocId: jsondoc.id,
+                index: 0,
+                isFromCollection: false
+            });
         }
     }
 
@@ -1368,17 +1342,6 @@ function traceToCollectionOrigin(
     return { isFromCollection: false };
 }
 
-// Define the IdeaWithTitle interface here to avoid import issues
-export interface IdeaWithTitle {
-    title: string;
-    body: string;
-    jsondocId?: string;
-    originalJsondocId?: string;
-    jsondocPath: string;
-    index?: number;
-    debugInfo?: string;
-}
-
 // ============================================================================
 // NEW: Workflow Map/ToC Data Structures
 // ============================================================================
@@ -1415,6 +1378,7 @@ export function convertEffectiveIdeasToIdeaWithTitle(
         const jsondoc = jsondocMap.get(effectiveIdea.jsondocId);
 
         if (jsondoc) {
+
             try {
                 if (effectiveIdea.jsondocPath === '$') {
                     // Standalone jsondoc - use full data
@@ -1437,23 +1401,17 @@ export function convertEffectiveIdeasToIdeaWithTitle(
                         ideasArray = data.ideas;
                     }
 
-
-
                     if (ideasArray && ideasArray[effectiveIdea.index]) {
                         const ideaData = ideasArray[effectiveIdea.index];
                         title = ideaData.title || '';
                         body = ideaData.body || '';
-                    } else {
-                        console.warn('[convertEffectiveIdeasToIdeaWithTitle] No idea found at index:', {
-                            jsondocId: effectiveIdea.jsondocId,
-                            index: effectiveIdea.index,
-                            ideasArrayLength: ideasArray.length
-                        });
                     }
                 }
             } catch (parseError) {
-                console.error(`[convertEffectiveIdeasToIdeaWithTitle] Error parsing jsondoc data for ${effectiveIdea.jsondocId}:`, parseError);
+                console.error(`Error parsing jsondoc data for ${effectiveIdea.jsondocId}:`, parseError);
             }
+        } else {
+            console.warn(`Jsondoc not found: ${effectiveIdea.jsondocId}`);
         }
 
         const result = {
@@ -1464,7 +1422,6 @@ export function convertEffectiveIdeasToIdeaWithTitle(
             jsondocPath: effectiveIdea.jsondocPath,
             index: effectiveIdea.index
         };
-
 
         return result;
     });

@@ -475,7 +475,7 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             component: getComponentById('idea-collection'),
             mode: context.hasActiveTransforms ? 'readonly' : 'editable',
             props: {
-                ideas: context.brainstormIdeas,
+                // Remove ideas prop - let component use its own useLatestBrainstormIdeas hook
                 selectionMode: true,
                 isLoading: context.hasActiveTransforms
             },
