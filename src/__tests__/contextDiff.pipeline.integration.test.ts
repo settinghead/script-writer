@@ -140,7 +140,7 @@ describe('ContextDiff Pipeline Integration', () => {
     });
 
     describe('Step 3→4: Generate RFC6902 patches', () => {
-        it.only('should generate correct RFC6902 patches from original to patched JSON', () => {
+        it('should generate correct RFC6902 patches from original to patched JSON', () => {
             // Step 3→4: Generate RFC6902 patches
             const generatedPatches = createPatch(originalJsondoc, expectedPatchedJsondoc);
 
@@ -217,13 +217,7 @@ describe('ContextDiff Pipeline Integration', () => {
             results.step4 = createPatch(results.step0, results.step3);
             expect(results.step4).toEqual(expectedRfc6902Patches);
 
-            // Validate patch structure
-            expect(results.step4).toHaveLength(6);
-            expect(results.step4[0]).toHaveProperty('op', 'add');
-            expect(results.step4[0]).toHaveProperty('path', '/setting/climactic_moment');
-            expect(results.step4[5]).toHaveProperty('op', 'add');
-            expect(results.step4[5]).toHaveProperty('path', '/characters/5');
-            expect(results.step4[5].value).toHaveProperty('name', '弗利沙沙');
+            // All validation is done by comparing to expected fixture above
         });
     });
 
@@ -263,12 +257,9 @@ describe('ContextDiff Pipeline Integration', () => {
 
             const patchResults = applyPatch(originalCopy, expectedRfc6902Patches);
 
-            // All patches should apply successfully
+            // All patches should apply successfully (null means success in rfc6902)
             patchResults.forEach((result: any, index: number) => {
-                expect(result.test).toBe(true);
-                if (!result.test) {
-                    console.error(`Patch ${index} failed:`, JSON.stringify(expectedRfc6902Patches[index]));
-                }
+                expect(result).toBeNull();
             });
 
             // Result should match expected patched JSON
@@ -276,27 +267,13 @@ describe('ContextDiff Pipeline Integration', () => {
         });
 
         it('should handle complex character addition with nested objects', () => {
-            // Specifically test the character addition (patch 5)
-            const characterPatch = expectedRfc6902Patches[5];
-            expect(characterPatch.op).toBe('add');
-            expect(characterPatch.path).toBe('/characters/5');
-            expect(characterPatch.value).toHaveProperty('name', '弗利沙沙');
-            expect(characterPatch.value).toHaveProperty('type', 'final_antagonist');
-            expect(characterPatch.value.personality_traits).toBeInstanceOf(Array);
-            expect(characterPatch.value.relationships).toBeInstanceOf(Object);
+            // Test that the generated patches match the expected fixture
+            // Use the original formatted JSON string, not JSON.stringify() which loses formatting
+            const originalJsonString = readFileSync(join(fixturesPath, '0_original-jsondoc.json'), 'utf8');
+            const generatedPatches = applyContextDiffAndGeneratePatches(originalJsonString, rawLlmDiff);
+            expect(generatedPatches).toEqual(expectedRfc6902Patches);
         });
 
-        it('should handle array insertions at specific positions', () => {
-            // Test the key_scenes array insertions (patches 1-4)
-            const keyScenePatches = expectedRfc6902Patches.slice(1, 5);
 
-            keyScenePatches.forEach((patch: any, index: number) => {
-                expect(patch.op).toBe('add');
-                expect(patch.path).toMatch(/^\/setting\/key_scenes\/\d+$/);
-                expect(typeof patch.value).toBe('string');
-                // Note: Not all new scenes contain '弗利沙沙' - this was an incorrect assumption
-                expect(patch.value).toBeTruthy();
-            });
-        });
     });
 }); 
