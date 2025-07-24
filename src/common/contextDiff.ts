@@ -348,47 +348,9 @@ export function applyHunksToText(originalText: string, hunks: UnifiedDiffHunk[])
                     }
                 }
 
-                // Strategy 3: For hunks that add closing brackets/structural elements,
-                // try to find where they should be inserted based on structure
-                const hasStructuralAddition = hunk.lines.some(l =>
-                    l.type === 'addition' && l.content.trim().match(/^[\]\},]+$/)
-                );
-
-                if (hasStructuralAddition && bestMatch.score < 0.5) {
-                    // Look for patterns that suggest where to insert structural elements
-                    for (let i = 0; i < currentLines.length - 1; i++) {
-                        // Check if we're at the end of an array or object that needs closing
-                        const currentLine = currentLines[i].trim();
-                        const nextLine = currentLines[i + 1].trim();
-
-                        // Pattern: closing } followed by ] suggests end of object in array
-                        if (currentLine === '}' && nextLine === ']') {
-                            // Check if any context line appears nearby
-                            let contextFound = false;
-                            for (const contextLine of hunkOldLines) {
-                                for (let j = Math.max(0, i - 5); j <= Math.min(currentLines.length - 1, i + 5); j++) {
-                                    if (lineSimilarity(currentLines[j], contextLine) > 0.8) {
-                                        contextFound = true;
-                                        break;
-                                    }
-                                }
-                                if (contextFound) break;
-                            }
-
-                            if (contextFound) {
-                                // This might be where we need to add the structural element
-                                const structuralScore = 0.45; // Lower score but acceptable for structural additions
-                                if (structuralScore > bestMatch.score) {
-                                    bestMatch = { index: i + 1, score: structuralScore };
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Strategy 4: If still no good match, try finding ANY subset of lines that match well
+                // Strategy 3: If still no good match, try finding ANY subset of lines that match well
                 if (bestMatch.score < 0.5) {
-                    console.log(`[DEBUG] Trying strategy 4: partial line matching`);
+                    console.log(`[DEBUG] Trying strategy 3: partial line matching`);
 
                     // Try to find any window where at least some lines match well
                     const minMatchingLines = Math.max(2, Math.floor(hunkOldLines.length * 0.3));
@@ -417,10 +379,10 @@ export function applyHunksToText(originalText: string, hunks: UnifiedDiffHunk[])
                     }
                 }
 
-                // Strategy 5: For very low scores, try to find just the first distinctive context line
+                // Strategy 4: For very low scores, try to find just the first distinctive context line
                 // and apply the hunk there, trusting that it's the right location
                 if (bestMatch.score < 0.4 && hunkOldLines.length > 0) {
-                    console.log(`[DEBUG] Trying strategy 5: first line anchor matching`);
+                    console.log(`[DEBUG] Trying strategy 4: first line anchor matching`);
 
                     // Find the first context line and look for it
                     const firstContextLine = hunkOldLines[0];
