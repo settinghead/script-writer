@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect, useRef } from 'react';
-import { Card, Typography, Space, Alert, Spin } from 'antd';
+import { Card, Typography, Space, Alert, Spin, Row, Col } from 'antd';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useActionItemsStore } from '../stores/actionItemsStore';
 import { computeUnifiedWorkflowState } from '../utils/actionComputation';
@@ -120,22 +120,23 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                 {/* Actions on the right */}
                 <div style={{ flexShrink: 0 }}>
                     {actions.length > 0 ? (
-                        <Space direction="vertical">
+                        <Row gutter={[16, 16]}>
                             {actions.map((action: any, index: number) => (
-                                <ActionItemRenderer
-                                    key={`${action.type}-${index}`}
-                                    action={action}
-                                    projectId={projectId}
-                                    hasActiveTransforms={hasActiveTransforms}
-                                    onSuccess={() => {
-                                        // Action completed successfully
-                                    }}
-                                    onError={(error: Error) => {
-                                        console.error('❌ Action failed:', action.type, error);
-                                    }}
-                                />
+                                <Col xs={24} sm={12} key={`${action.type}-${index}`}>
+                                    <ActionItemRenderer
+                                        action={action}
+                                        projectId={projectId}
+                                        hasActiveTransforms={hasActiveTransforms}
+                                        onSuccess={() => {
+                                            // Action completed successfully
+                                        }}
+                                        onError={(error: Error) => {
+                                            console.error('❌ Action failed:', action.type, error);
+                                        }}
+                                    />
+                                </Col>
                             ))}
-                        </Space>
+                        </Row>
                     ) : (
                         <div style={{ textAlign: 'center', padding: '24px', color: '#666' }}>
                             <Text type="secondary">生成中(完成后可编辑)...</Text>
