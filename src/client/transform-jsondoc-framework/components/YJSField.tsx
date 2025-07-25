@@ -7,7 +7,7 @@ import { YJSSlateArrayOfStringField } from './YJSSlateArrayField';
 const { TextArea } = Input;
 const { Text } = Typography;
 
-const DEFAULT_FONT_SIZE = 16;
+const DEFAULT_FONT_SIZE = 15;
 // Text Field Component
 export const YJSTextField = React.memo(({ path, placeholder, fontSize = DEFAULT_FONT_SIZE }: { path: string; placeholder?: string, fontSize?: number }) => {
     const { value, updateValue, isInitialized } = useYJSField(path);
@@ -29,7 +29,7 @@ export const YJSTextField = React.memo(({ path, placeholder, fontSize = DEFAULT_
 });
 
 // TextArea Field Component
-export const YJSTextAreaField = React.memo(({ path, placeholder, maxRows = 6, fontSize = DEFAULT_FONT_SIZE }: {
+export const YJSTextAreaField = React.memo(({ path, placeholder, fontSize = DEFAULT_FONT_SIZE }: {
     path: string;
     placeholder?: string;
     maxRows?: number;
