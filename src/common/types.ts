@@ -194,6 +194,7 @@ export interface EpisodePlanningV1 {
     episodeGroups: Array<{
         groupTitle: string;
         episodes: string;
+        plotDescription: string;
         keyEvents: string[];
         hooks: string[];
         emotionalBeats: string[];

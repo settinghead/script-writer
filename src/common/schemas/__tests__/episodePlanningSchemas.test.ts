@@ -15,6 +15,7 @@ describe('Episode Planning Schemas', () => {
         const validEpisodeGroup: EpisodeGroup = {
             groupTitle: '开篇阶段',
             episodes: '第1-5集',
+            plotDescription: '女主角初入豪门，与男主角产生误会和冲突，逐渐揭示背后的阴谋',
             keyEvents: ['角色登场', '冲突建立', '世界观展示'],
             hooks: ['悬疑开场', '身份谜团', '意外转折'],
             emotionalBeats: ['好奇', '紧张', '期待']
@@ -222,6 +223,7 @@ describe('Episode Planning Schemas', () => {
                 {
                     groupTitle: '开篇引入',
                     episodes: '第1-3集',
+                    plotDescription: '主角们初次相遇，展现性格冲突和化学反应',
                     keyEvents: ['角色登场', '冲突建立'],
                     hooks: ['悬疑开场', '身份谜团'],
                     emotionalBeats: ['好奇', '紧张']
@@ -229,6 +231,7 @@ describe('Episode Planning Schemas', () => {
                 {
                     groupTitle: '情感发展',
                     episodes: '第4-12集',
+                    plotDescription: '感情线发展，同时引入各种障碍和误会',
                     keyEvents: ['感情升温', '障碍出现'],
                     hooks: ['回忆杀', '误会产生'],
                     emotionalBeats: ['甜蜜', '纠结']
@@ -342,6 +345,7 @@ describe('Episode Planning Schemas', () => {
                     {
                         groupTitle: '完整故事',
                         episodes: '第1-5集',
+                        plotDescription: '完整的爱情故事，从相遇到结局的完美演绎',
                         keyEvents: ['开始', '发展', '高潮', '结局'],
                         hooks: ['开场钩子', '中间转折', '结尾钩子'],
                         emotionalBeats: ['起', '承', '转', '合']
@@ -360,6 +364,7 @@ describe('Episode Planning Schemas', () => {
                     {
                         groupTitle: '第一阶段：相遇',
                         episodes: '第1-6集',
+                        plotDescription: '命运安排的初次相遇，在误会中逐渐了解彼此',
                         keyEvents: ['初次见面', '误会产生', '逐渐了解'],
                         hooks: ['意外相遇', '身份隐瞒', '巧合重逢'],
                         emotionalBeats: ['好奇', '紧张', '温馨']
@@ -367,6 +372,7 @@ describe('Episode Planning Schemas', () => {
                     {
                         groupTitle: '第二阶段：了解',
                         episodes: '第7-12集',
+                        plotDescription: '深入了解对方，感情升温但遇到外界阻力',
                         keyEvents: ['产生好感', '感情升温', '外界阻力'],
                         hooks: ['心动瞬间', '家族反对', '事业冲突'],
                         emotionalBeats: ['甜蜜', '幸福', '焦虑']
@@ -374,6 +380,7 @@ describe('Episode Planning Schemas', () => {
                     {
                         groupTitle: '第三阶段：纠葛',
                         episodes: '第13-18集',
+                        plotDescription: '面临情感考验，第三者介入加深误会',
                         keyEvents: ['内心挣扎', '第三者出现', '误会加深'],
                         hooks: ['情感冲突', '意外发现', '关系危机'],
                         emotionalBeats: ['痛苦', '绝望', '挣扎']
@@ -381,6 +388,7 @@ describe('Episode Planning Schemas', () => {
                     {
                         groupTitle: '第四阶段：分离',
                         episodes: '第19-24集',
+                        plotDescription: '暂时分离各自成长，内心深刻反思',
                         keyEvents: ['暂时分离', '各自成长', '内心反思'],
                         hooks: ['痛苦分别', '成长契机', '内心独白'],
                         emotionalBeats: ['痛苦', '孤独', '思考']
@@ -388,6 +396,7 @@ describe('Episode Planning Schemas', () => {
                     {
                         groupTitle: '第五阶段：转机',
                         episodes: '第25-30集',
+                        plotDescription: '真相大白迎来转机，重新相遇化解误会',
                         keyEvents: ['真相大白', '重新相遇', '化解误会'],
                         hooks: ['意外重逢', '真相揭露', '深情告白'],
                         emotionalBeats: ['惊喜', '感动', '释然']
@@ -395,6 +404,7 @@ describe('Episode Planning Schemas', () => {
                     {
                         groupTitle: '第六阶段：重逢',
                         episodes: '第31-36集',
+                        plotDescription: '重新开始克服障碍，得到家人朋友支持',
                         keyEvents: ['重新开始', '克服障碍', '家人支持'],
                         hooks: ['重新追求', '家庭和解', '朋友助力'],
                         emotionalBeats: ['希望', '勇气', '温暖']
@@ -402,6 +412,7 @@ describe('Episode Planning Schemas', () => {
                     {
                         groupTitle: '第七阶段：团圆',
                         episodes: '第37-42集',
+                        plotDescription: '正式复合筹备婚礼，规划美好未来',
                         keyEvents: ['正式复合', '婚礼筹备', '未来规划'],
                         hooks: ['浪漫求婚', '婚礼准备', '甜蜜日常'],
                         emotionalBeats: ['兴奋', '甜蜜', '憧憬']
@@ -409,6 +420,7 @@ describe('Episode Planning Schemas', () => {
                     {
                         groupTitle: '第八阶段：圆满',
                         episodes: '第43-48集',
+                        plotDescription: '完美婚礼和蜜月旅行，开启幸福新生活',
                         keyEvents: ['完美婚礼', '蜜月旅行', '新生活'],
                         hooks: ['梦幻婚礼', '浪漫蜜月', '幸福生活'],
                         emotionalBeats: ['完美', '幸福', '满足']
@@ -416,6 +428,7 @@ describe('Episode Planning Schemas', () => {
                     {
                         groupTitle: '第九阶段：结局',
                         episodes: '第49-50集',
+                        plotDescription: '有情人终成眷属，圆满幸福的结局',
                         keyEvents: ['终成眷属', '圆满结局'],
                         hooks: ['完美结局', '幸福永远'],
                         emotionalBeats: ['满足', '完美']
@@ -449,6 +462,7 @@ describe('Episode Planning Schemas', () => {
                     {
                         groupTitle: '相遇阶段',
                         episodes: '第1-6集',
+                        plotDescription: '男女主角在特殊情况下初次相遇，产生误会但也有心动',
                         keyEvents: ['初遇', '了解'],
                         hooks: ['意外', '误会'],
                         emotionalBeats: ['好奇', '紧张']
@@ -456,6 +470,7 @@ describe('Episode Planning Schemas', () => {
                     {
                         groupTitle: '发展阶段',
                         episodes: '第7-12集',
+                        plotDescription: '通过各种事件深入了解彼此，感情逐渐升温',
                         keyEvents: ['深入', '感情升温'],
                         hooks: ['转折', '心动'],
                         emotionalBeats: ['甜蜜', '幸福']
@@ -463,6 +478,7 @@ describe('Episode Planning Schemas', () => {
                     {
                         groupTitle: '高潮阶段',
                         episodes: '第13-18集',
+                        plotDescription: '面临重大冲突和危机，感情受到严峻考验',
                         keyEvents: ['冲突', '危机'],
                         hooks: ['误会', '分离'],
                         emotionalBeats: ['紧张', '痛苦']
@@ -470,6 +486,7 @@ describe('Episode Planning Schemas', () => {
                     {
                         groupTitle: '结局阶段',
                         episodes: '第19-20集',
+                        plotDescription: '解开所有误会，迎来圆满结局',
                         keyEvents: ['和解', '结局'],
                         hooks: ['真相', '团圆'],
                         emotionalBeats: ['感动', '满足']

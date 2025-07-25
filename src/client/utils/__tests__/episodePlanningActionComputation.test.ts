@@ -29,6 +29,7 @@ describe('Episode Planning Action Computation', () => {
                     {
                         groupTitle: '开篇阶段',
                         episodes: '第1-5集',
+                        plotDescription: '引入主要角色，建立核心冲突和世界观',
                         keyEvents: ['角色登场', '冲突建立'],
                         hooks: ['悬疑开场', '身份谜团'],
                         emotionalBeats: ['好奇', '紧张']
@@ -59,6 +60,7 @@ describe('Episode Planning Action Computation', () => {
                     {
                         groupTitle: 'Setup',
                         episodes: '1-10',
+                        plotDescription: '故事开篇，引入主要角色和世界观设定',
                         keyEvents: ['Introduction'],
                         hooks: ['Opening hook'],
                         emotionalBeats: ['Curiosity']
@@ -66,6 +68,7 @@ describe('Episode Planning Action Computation', () => {
                     {
                         groupTitle: 'Development',
                         episodes: '11-20',
+                        plotDescription: '剧情发展，冲突升级，角色关系深化',
                         keyEvents: ['Conflict'],
                         hooks: ['Tension'],
                         emotionalBeats: ['Anxiety']
@@ -73,6 +76,7 @@ describe('Episode Planning Action Computation', () => {
                     {
                         groupTitle: 'Resolution',
                         episodes: '21-30',
+                        plotDescription: '剧情高潮与圆满结局，所有线索收束',
                         keyEvents: ['Climax', 'Resolution'],
                         hooks: ['Final twist', 'Satisfaction'],
                         emotionalBeats: ['Relief', 'Joy']

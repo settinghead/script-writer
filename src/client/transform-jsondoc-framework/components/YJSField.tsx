@@ -590,6 +590,7 @@ export const YJSEpisodeGroupsArray = React.memo(({ path, fontSize = DEFAULT_FONT
             newArray[index] = {
                 groupTitle: '',
                 episodes: '',
+                plotDescription: '',
                 keyEvents: [],
                 hooks: [],
                 emotionalBeats: []
@@ -603,6 +604,7 @@ export const YJSEpisodeGroupsArray = React.memo(({ path, fontSize = DEFAULT_FONT
         const newArray = [...arrayValue, {
             groupTitle: '',
             episodes: '',
+            plotDescription: '',
             keyEvents: [],
             hooks: [],
             emotionalBeats: []
@@ -650,6 +652,17 @@ export const YJSEpisodeGroupsArray = React.memo(({ path, fontSize = DEFAULT_FONT
                             onChange={(e) => handleItemChange(index, 'episodes', e.target.value)}
                             placeholder="例如：1-3"
                             style={{ marginTop: 4, fontSize: fontSize }}
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: 12 }}>
+                        <Text>剧情描述：</Text>
+                        <Input.TextArea
+                            value={group?.plotDescription || ''}
+                            onChange={(e) => handleItemChange(index, 'plotDescription', e.target.value)}
+                            placeholder="描述该阶段的主要剧情发展..."
+                            style={{ marginTop: 4, fontSize: fontSize }}
+                            autoSize={{ minRows: 2, maxRows: 4 }}
                         />
                     </div>
 

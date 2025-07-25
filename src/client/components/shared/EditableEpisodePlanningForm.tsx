@@ -25,7 +25,6 @@ const EditableEpisodePlanningForm: React.FC<EditableEpisodePlanningFormProps> = 
                         <Form.Item label="整体策略">
                             <YJSTextAreaField
                                 path="overallStrategy"
-                                rows={4}
                                 placeholder="描述整体分集策略，如非线性叙事、情感节奏等"
                             />
                         </Form.Item>

@@ -82,6 +82,7 @@ export type ChroniclesOutput = z.infer<typeof ChroniclesOutputSchema>;
 export const EpisodeGroupSchema = z.object({
     groupTitle: z.string().min(1).describe('阶段标题'),
     episodes: z.string().min(1).describe('集数范围，如 "1-3"'),
+    plotDescription: z.string().describe('剧情描述'),
     keyEvents: z.array(z.string()).describe('关键事件列表'),
     hooks: z.array(z.string()).describe('悬念钩子列表'),
     emotionalBeats: z.array(z.string()).describe('情感节拍')

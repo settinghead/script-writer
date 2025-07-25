@@ -53,6 +53,7 @@ describe('EpisodeSynopsisTool', () => {
                         {
                             groupTitle: '相遇篇',
                             episodes: '1-6',
+                            plotDescription: '男女主角在特殊情况下初次相遇，产生误会和化学反应',
                             keyEvents: ['初次相遇', '误会产生'],
                             hooks: ['身份悬念', '情感冲突'],
                             emotionalBeats: ['好奇', '紧张', '心动']

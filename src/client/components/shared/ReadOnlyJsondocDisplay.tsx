@@ -470,6 +470,18 @@ export const ReadOnlyJsondocDisplay: React.FC<ReadOnlyJsondocDisplayProps> = ({ 
                                     }
                                 >
                                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                                        {/* Plot Description */}
+                                        {group.plotDescription && (
+                                            <div>
+                                                <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                                                    📝 剧情描述
+                                                </Text>
+                                                <Text style={{ color: '#fff', fontSize: '14px', lineHeight: '1.6' }}>
+                                                    {group.plotDescription}
+                                                </Text>
+                                            </div>
+                                        )}
+
                                         {/* Key Events */}
                                         <div>
                                             <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '8px' }}>

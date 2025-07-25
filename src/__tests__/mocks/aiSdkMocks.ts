@@ -403,6 +403,7 @@ function createFallbackEpisodePlanningObject() {
             {
                 groupTitle: "开场吸引阶段",
                 episodes: "1-3",
+                plotDescription: "女主初入职场遇到霸道总裁男主，第一印象糟糕但逐渐被吸引",
                 keyEvents: ["女主入职", "初遇男主", "误会产生"],
                 hooks: ["身份悬念", "关系误会", "职场冲突"],
                 emotionalBeats: ["紧张", "好奇", "困惑"]
@@ -410,6 +411,7 @@ function createFallbackEpisodePlanningObject() {
             {
                 groupTitle: "情感发展阶段",
                 episodes: "4-7",
+                plotDescription: "通过工作合作了解彼此，感情逐渐升温但面临阻碍",
                 keyEvents: ["误会解开", "合作项目", "感情升温"],
                 hooks: ["真实身份", "竞争对手", "家族反对"],
                 emotionalBeats: ["甜蜜", "紧张", "期待"]
@@ -417,6 +419,7 @@ function createFallbackEpisodePlanningObject() {
             {
                 groupTitle: "冲突高潮阶段",
                 episodes: "8-10",
+                plotDescription: "身份真相曝光引发危机，感情面临最大考验",
                 keyEvents: ["身份曝光", "分手危机", "家族介入"],
                 hooks: ["背叛疑云", "第三者", "生死抉择"],
                 emotionalBeats: ["愤怒", "绝望", "痛苦"]
@@ -424,6 +427,7 @@ function createFallbackEpisodePlanningObject() {
             {
                 groupTitle: "甜蜜结局阶段",
                 episodes: "11-12",
+                plotDescription: "所有误会解开，有情人终成眷属",
                 keyEvents: ["真相大白", "重归于好", "幸福结局"],
                 hooks: ["最后反转", "浪漫求婚"],
                 emotionalBeats: ["感动", "幸福", "满足"]
