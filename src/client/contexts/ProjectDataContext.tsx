@@ -131,22 +131,12 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
     // Use Electric SQL data if available, otherwise fallback to API
     const jsondocs = useMemo(() => {
-        console.log('[ProjectDataContext] Jsondocs data sources:', {
-            electricJsondocs: electricJsondocs?.length || 0,
-            fallbackJsondocs: fallbackJsondocs.length,
-            electricEpisodeSynopsis: electricJsondocs?.filter(j => j.schema_type === 'episode_synopsis').length || 0,
-            fallbackEpisodeSynopsis: fallbackJsondocs.filter(j => j.schema_type === 'episode_synopsis').length
-        });
-
         if (electricJsondocs && electricJsondocs.length > 0) {
-            console.log('[ProjectDataContext] Using Electric SQL data');
             return electricJsondocs;
         }
         if (fallbackJsondocs.length > 0) {
-            console.log('[ProjectDataContext] Using fallback API data');
             return fallbackJsondocs;
         }
-        console.log('[ProjectDataContext] No data available');
         return [];
     }, [electricJsondocs, fallbackJsondocs]);
 
@@ -185,9 +175,6 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         return () => clearTimeout(timeoutId);
     }, [projectId, electricJsondocs, jsondocsLoading, fallbackLoading, fallbackJsondocs.length]);
 
-    // Debug jsondocs loading (removed for clarity)
-
-
     const transformsConfig = useMemo(() => ({
         ...electricConfig,
         params: {
@@ -208,10 +195,10 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     // Debug transforms data
     useEffect(() => {
         if (transforms) {
-            console.log('[ProjectDataContext] Transforms loaded:', transforms.length);
-            console.log('[ProjectDataContext] Transform types:', transforms.map(t => t.type));
-            console.log('[ProjectDataContext] Human transforms:', transforms.filter(t => t.type === 'human').length);
-            console.log('[ProjectDataContext] LLM transforms:', transforms.filter(t => t.type === 'llm').length);
+            // console.log('[ProjectDataContext] Transforms loaded:', transforms.length);
+            // console.log('[ProjectDataContext] Transform types:', transforms.map(t => t.type));
+            // console.log('[ProjectDataContext] Human transforms:', transforms.filter(t => t.type === 'human').length);
+            // console.log('[ProjectDataContext] LLM transforms:', transforms.filter(t => t.type === 'llm').length);
         }
     }, [transforms]);
 
