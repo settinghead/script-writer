@@ -272,6 +272,10 @@ export function extractCanonicalJsondocIds(context: CanonicalJsondocContext): Se
         canonicalIds.add(episodeSynopsis.id);
     });
 
+    // IMPORTANT: Add all canonical episode script jsondocs
+    context.canonicalEpisodeScriptsList.forEach(episodeScript => {
+        canonicalIds.add(episodeScript.id);
+    });
 
     return canonicalIds;
 }
@@ -302,6 +306,12 @@ function findCanonicalJsondocByType(
     // Special handling for episode_synopsis: always include all jsondocs regardless of lineage graph status
     // This is because episode synopsis jsondocs can be orphaned from lineage but still canonical
     if (schemaType === 'episode_synopsis') {
+        return findBestJsondocByPriority(candidateJsondocs, lineageGraph);
+    }
+
+    // Special handling for episode_script: always include all jsondocs regardless of lineage graph status
+    // This is because episode script jsondocs can be orphaned from lineage but still canonical
+    if (schemaType === 'episode_script') {
         return findBestJsondocByPriority(candidateJsondocs, lineageGraph);
     }
 
