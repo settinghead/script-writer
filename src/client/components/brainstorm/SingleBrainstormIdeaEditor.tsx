@@ -24,7 +24,7 @@ const EditableBrainstormForm: React.FC = () => {
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <div>
                 <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '8px' }}>
-                    创意标题
+                    剧本标题
                 </Text>
                 <YJSTextField
                     path="title"
@@ -35,7 +35,7 @@ const EditableBrainstormForm: React.FC = () => {
 
             <div>
                 <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '8px' }}>
-                    创意内容
+                    概要内容
                 </Text>
                 <YJSTextAreaField
                     path="body"
@@ -64,7 +64,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
         return (
             <SectionWrapper
                 schemaType={"灵感创意"}
-                title="初始创意"
+                title="剧本概要"
                 sectionId="ideation-edit"
                 jsondocId={effectiveJsondoc.id}
             >
@@ -92,7 +92,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                             if (!parsedMetadata || Object.keys(parsedMetadata).length === 0) {
                                 return '故事创意';
                             }
-                            return '选中的创意';
+                            return '剧本概要';
                         })()}
                         icon="💡"
                         editableComponent={EditableBrainstormForm}
@@ -152,7 +152,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
     return (
         <SectionWrapper
             schemaType={"灵感创意"}
-            title="初始创意"
+            title="剧本概要"
             sectionId="ideation-edit"
             jsondocId={latestBrainstormIdea?.id}
         >
@@ -160,7 +160,7 @@ export const SingleBrainstormIdeaEditor: React.FC<SingleBrainstormIdeaEditorProp
                 <JsondocDisplayWrapper
                     jsondoc={latestBrainstormIdea}
                     isEditable={isEditable}
-                    title="当前创意"
+                    title="剧本概要"
                     icon="💡"
                     editableComponent={EditableBrainstormForm}
                     schemaType="灵感创意"

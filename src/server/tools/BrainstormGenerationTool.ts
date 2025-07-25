@@ -22,10 +22,11 @@ interface BrainstormToolResult {
 // Collection-based brainstorm tool - no longer needs individual idea caching
 
 /**
- * Extract brainstorm parameters from source jsondoc
+ * Extract brainstorm parameters from brainstorm input jsondoc
+ * Now validates that the jsondoc is of the correct schema type
  */
 async function extractBrainstormParams(
-    sourceJsondocId: string,
+    brainstormInputJsondocId: string,
     jsondocRepo: JsondocRepository,
     userId: string
 ): Promise<{
@@ -34,26 +35,31 @@ async function extractBrainstormParams(
     other_requirements: string;
     numberOfIdeas: number;
 }> {
-    // Get source jsondoc
-    const sourceJsondoc = await jsondocRepo.getJsondoc(sourceJsondocId);
-    if (!sourceJsondoc) {
-        throw new Error('Source jsondoc not found');
+    // Get brainstorm input jsondoc
+    const brainstormInputJsondoc = await jsondocRepo.getJsondoc(brainstormInputJsondocId);
+    if (!brainstormInputJsondoc) {
+        throw new Error(`Brainstorm input jsondoc not found: ${brainstormInputJsondocId}`);
+    }
+
+    // Validate schema type
+    if (brainstormInputJsondoc.schema_type !== 'brainstorm_input_params') {
+        throw new Error(`Invalid jsondoc schema type: expected 'brainstorm_input_params', got '${brainstormInputJsondoc.schema_type}'`);
     }
 
     // Verify user has access to this jsondoc's project
-    const hasAccess = await jsondocRepo.userHasProjectAccess(userId, sourceJsondoc.project_id);
+    const hasAccess = await jsondocRepo.userHasProjectAccess(userId, brainstormInputJsondoc.project_id);
     if (!hasAccess) {
-        throw new Error('Access denied to source jsondoc');
+        throw new Error('Access denied to brainstorm input jsondoc');
     }
 
     // Parse source data
     let sourceData;
     try {
-        sourceData = typeof sourceJsondoc.data === 'string'
-            ? JSON.parse(sourceJsondoc.data)
-            : sourceJsondoc.data;
+        sourceData = typeof brainstormInputJsondoc.data === 'string'
+            ? JSON.parse(brainstormInputJsondoc.data)
+            : brainstormInputJsondoc.data;
     } catch (error) {
-        throw new Error('Failed to parse source jsondoc data');
+        throw new Error('Failed to parse brainstorm input jsondoc data');
     }
 
     // Extract parameters
@@ -65,31 +71,6 @@ async function extractBrainstormParams(
     };
 }
 
-/**
- * Build requirements section for brainstorming template
- */
-function buildRequirementsSection(params: {
-    platform: string;
-    genre: string;
-    other_requirements: string;
-    numberOfIdeas: number;
-}): string {
-    // Build requirements based on extracted parameters
-    const parts: string[] = [];
-
-    // Add platform and genre context
-    parts.push(`请为${params.platform}平台创作${params.genre}类型的故事创意。`);
-
-    // Add number of ideas requirement
-    parts.push(`请生成${params.numberOfIdeas}个故事创意（不多不少）。`);
-
-    // Add user requirements if provided
-    if (params.other_requirements) {
-        parts.push(`用户要求: ${params.other_requirements}`);
-    }
-
-    return parts.join('\n');
-}
 
 /**
  * Transform LLM output (array of ideas) to collection jsondoc format
@@ -157,22 +138,21 @@ export function createBrainstormToolDefinition(
 ): StreamingToolDefinition<IdeationInput, BrainstormToolResult> {
     return {
         name: 'generate_灵感创意s',
-        description: '生成新的故事创意。适用场景：用户想要全新的故事想法、需要更多创意选择、或当前没有满意的故事创意时。例如："给我一些新的故事想法"、"再想几个不同的创意"。系统会自动处理所有相关的上下文信息作为参考资料。',
+        description: '生成新的故事创意。适用场景：用户想要全新的故事想法、需要更多创意选择、或当前没有满意的故事创意时。例如："给我一些新的故事想法"、"再想几个不同的创意"。需要明确指定brainstorm_input_params类型的jsondoc ID来获取创作参数（平台、题材等）。',
         inputSchema: IdeationInputSchema,
         outputSchema: BrainstormToolResultSchema,
         execute: async (params: IdeationInput): Promise<BrainstormToolResult> => {
-            console.log(`[BrainstormTool] Starting brainstorm generation with ${params.jsondocs.length} jsondocs`);
+            console.log(`[BrainstormTool] Starting brainstorm generation with brainstorm input: ${params.brainstormInputJsondocId}`);
 
-            // Use shared jsondoc processor
+            // Extract parameters from the explicit brainstorm input jsondoc
+            const extractedParams = await extractBrainstormParams(params.brainstormInputJsondocId, jsondocRepo, userId);
+            console.log(`[BrainstormTool] Extracted params:`, extractedParams);
+
+            // Use shared jsondoc processor for any additional context jsondocs
             const jsondocProcessor = createJsondocProcessor(jsondocRepo, userId);
             const { jsondocData, jsondocMetadata, processedCount } = await jsondocProcessor.processJsondocs(params.jsondocs);
 
-            console.log(`[BrainstormTool] Processed ${processedCount} jsondocs`);
-
-            // Extract parameters from first jsondoc for backward compatibility
-            // This maintains the existing behavior while using the shared processor
-            const sourceJsondocRef = params.jsondocs[0];
-            const extractedParams = await extractBrainstormParams(sourceJsondocRef.jsondocId, jsondocRepo, userId);
+            console.log(`[BrainstormTool] Processed ${processedCount} additional context jsondocs`);
 
             // Create config with extracted parameters
             const config: StreamingTransformConfig<IdeationInput, any> = {
@@ -199,7 +179,8 @@ export function createBrainstormToolDefinition(
                 executionMode: { mode: 'full-object' },
                 transformMetadata: {
                     toolName: 'generate_灵感创意s',
-                    ...jsondocMetadata, // Include all jsondoc IDs with their schema types as keys
+                    brainstormInputJsondocId: params.brainstormInputJsondocId, // Include the explicit brainstorm input jsondoc ID
+                    ...jsondocMetadata, // Include all additional context jsondoc IDs with their schema types as keys
                     platform: extractedParams.platform,
                     genre: extractedParams.genre,
                     numberOfIdeas: extractedParams.numberOfIdeas,

@@ -49,10 +49,11 @@ describe('BrainstormTool', () => {
         mockTransformRepo.createTransform.mockResolvedValue({ id: 'new-transform-1' });
 
         const input: IdeationInput = {
+            brainstormInputJsondocId: 'test-brainstorm-input-1',
             jsondocs: [{
-                jsondocId: 'test-brainstorm-input-1',
-                description: '头脑风暴参数',
-                schemaType: 'brainstorm_input_params'
+                jsondocId: 'test-context-1',
+                description: '上下文参考资料',
+                schemaType: 'user_input'
             }],
             otherRequirements: '快节奏，高颜值主角'
         };
@@ -91,10 +92,11 @@ describe('BrainstormTool', () => {
         });
 
         const input: IdeationInput = {
+            brainstormInputJsondocId: 'test-brainstorm-input-2',
             jsondocs: [{
-                jsondocId: 'test-brainstorm-input-2',
-                description: '头脑风暴参数',
-                schemaType: 'brainstorm_input_params'
+                jsondocId: 'test-context-2',
+                description: '上下文参考资料',
+                schemaType: 'user_input'
             }],
             otherRequirements: '反转剧情'
         };
@@ -125,10 +127,11 @@ describe('BrainstormTool', () => {
         mockTransformRepo.addTransformInputs.mockRejectedValue(new Error('Database error'));
 
         const input: IdeationInput = {
+            brainstormInputJsondocId: 'test-brainstorm-input-1',
             jsondocs: [{
-                jsondocId: 'test-brainstorm-input-1',
-                description: '头脑风暴参数',
-                schemaType: 'brainstorm_input_params'
+                jsondocId: 'test-context-1',
+                description: '上下文参考资料',
+                schemaType: 'user_input'
             }],
             otherRequirements: '快节奏，高颜值主角'
         };
@@ -136,5 +139,65 @@ describe('BrainstormTool', () => {
         // Act & Assert
         await expect(brainstormTool.execute(input, { toolCallId: 'test-error' }))
             .rejects.toThrow('Database error');
+    });
+
+    it('should validate brainstorm input jsondoc schema type', async () => {
+        // Arrange - Mock getJsondoc to return wrong schema type
+        mockJsondocRepo.getJsondoc.mockImplementation(async (id: string) => {
+            if (id === 'test-wrong-schema') {
+                return {
+                    id: id,
+                    project_id: 'test-project-1',
+                    data: {
+                        platform: '抖音',
+                        genre: '现代甜宠',
+                        other_requirements: '快节奏',
+                        numberOfIdeas: 3
+                    },
+                    schema_type: 'user_input', // Wrong schema type
+                    schema_version: 'v1',
+                    origin_type: 'user_input' as TypedJsondoc['origin_type']
+                };
+            }
+            return null;
+        });
+
+        const input: IdeationInput = {
+            brainstormInputJsondocId: 'test-wrong-schema',
+            jsondocs: [{
+                jsondocId: 'test-context-1',
+                description: '上下文参考资料',
+                schemaType: 'user_input'
+            }],
+            otherRequirements: '快节奏，高颜值主角'
+        };
+
+        // Act & Assert
+        await expect(brainstormTool.execute(input, { toolCallId: 'test-validation' }))
+            .rejects.toThrow("Invalid jsondoc schema type: expected 'brainstorm_input_params', got 'user_input'");
+    });
+
+    it('should handle missing brainstorm input jsondoc', async () => {
+        // Arrange - Mock getJsondoc to return null
+        mockJsondocRepo.getJsondoc.mockImplementation(async (id: string) => {
+            if (id === 'non-existent-jsondoc') {
+                return null;
+            }
+            return null;
+        });
+
+        const input: IdeationInput = {
+            brainstormInputJsondocId: 'non-existent-jsondoc',
+            jsondocs: [{
+                jsondocId: 'test-context-1',
+                description: '上下文参考资料',
+                schemaType: 'user_input'
+            }],
+            otherRequirements: '快节奏，高颜值主角'
+        };
+
+        // Act & Assert
+        await expect(brainstormTool.execute(input, { toolCallId: 'test-missing' }))
+            .rejects.toThrow('Brainstorm input jsondoc not found: non-existent-jsondoc');
     });
 }); 

@@ -187,7 +187,7 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                                                 return '故事创意';
                                             }
                                             // If it has metadata but no original_jsondoc_id, it might be from collection selection
-                                            return '选中的创意';
+                                            return '剧本概要';
                                         }
                                         return '用户创建';
                                     }

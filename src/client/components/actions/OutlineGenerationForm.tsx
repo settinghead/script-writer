@@ -39,7 +39,7 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
         } catch (error) {
             console.warn('Failed to parse brainstorm idea data:', error);
             parsedIdeaData = {
-                title: '选中的创意',
+                title: '剧本概要',
                 body: '创意详情将在此显示'
             };
         }

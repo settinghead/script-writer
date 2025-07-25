@@ -10,6 +10,7 @@ import { BaseToolInputSchema } from './schemas/common';
  * This schema validates the data provided by the user to generate story ideas.
  */
 export const IdeationInputSchema = BaseToolInputSchema.extend({
+  brainstormInputJsondocId: z.string().describe('必需的brainstorm_input_params类型jsondoc ID，包含平台、题材等创作参数'),
   otherRequirements: z.string().describe('其他要求，如故事类型、内容、故事风格等'),
 });
 
