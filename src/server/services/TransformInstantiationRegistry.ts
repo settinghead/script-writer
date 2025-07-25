@@ -7,6 +7,7 @@ import {
   createChroniclesFromChronicles,
   createEpisodePlanningFromEpisodePlanning,
   createEpisodeSynopsisFromEpisodeSynopsis,
+  createEpisodeScriptFromEpisodeScript,
   createBrainstormToolInput
 } from './transform-instantiations/brainstormTransforms';
 import {
@@ -51,6 +52,9 @@ export class TransformInstantiationRegistry {
 
     // NEW: Episode synopsis editing
     this.functions.set('createEpisodeSynopsisFromEpisodeSynopsis', createEpisodeSynopsisFromEpisodeSynopsis);
+
+    // NEW: Episode script editing
+    this.functions.set('createEpisodeScriptFromEpisodeScript', createEpisodeScriptFromEpisodeScript);
 
     // NEW: Brainstorm tool input creation
     this.functions.set('createBrainstormToolInput', createBrainstormToolInput);

@@ -2,13 +2,14 @@ import { z } from 'zod';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { executeStreamingTransform } from '../transform-jsondoc-framework/StreamingTransformExecutor';
-import { EpisodeScriptInputSchema, EpisodeScriptSchema } from '../../common/schemas/outlineSchemas';
+import { EpisodeScriptInputSchema, EpisodeScriptSchema, EpisodeScriptToolResultSchema } from '../../common/schemas/outlineSchemas';
 import { episodeScriptTemplate } from '../services/templates/episodeScript';
 import { createJsondocProcessor } from '../tools/shared/JsondocProcessor';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
 
 export type EpisodeScriptInput = z.infer<typeof EpisodeScriptInputSchema>;
 export type EpisodeScriptV1 = z.infer<typeof EpisodeScriptSchema>;
+export type EpisodeScriptToolResult = z.infer<typeof EpisodeScriptToolResultSchema>;
 
 /**
  * Creates episode script tool definition for generating complete script content
@@ -26,12 +27,12 @@ export function createEpisodeScriptToolDefinition(
         topP?: number;
         maxTokens?: number;
     }
-): StreamingToolDefinition<EpisodeScriptInput, EpisodeScriptV1> {
+): StreamingToolDefinition<EpisodeScriptInput, EpisodeScriptToolResult> {
     return {
         name: 'generate_episode_script',
         description: '为指定集数生成完整的剧本内容，包含对话、动作指导和场景描述',
         inputSchema: EpisodeScriptInputSchema,
-        outputSchema: EpisodeScriptSchema,
+        outputSchema: EpisodeScriptToolResultSchema,
 
         execute: async (params: EpisodeScriptInput, { toolCallId }) => {
             console.log(`[EpisodeScriptTool] Generating script for episode ${params.episodeNumber}`);

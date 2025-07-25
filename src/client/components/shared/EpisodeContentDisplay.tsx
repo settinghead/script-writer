@@ -1,6 +1,8 @@
 import React from 'react';
 import { Card, Typography, Space, Tag, Divider } from 'antd';
 import { ElectricJsondoc } from '../../../common/types';
+import { JsondocDisplayWrapper } from '../../transform-jsondoc-framework/components/JsondocDisplayWrapper';
+import EditableEpisodeScriptForm from './EditableEpisodeScriptForm';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -21,9 +23,9 @@ interface EpisodePair {
     script: EpisodeContentItem | null;
 }
 
-export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({ 
-    synopsisItems, 
-    scriptItems 
+export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
+    synopsisItems,
+    scriptItems
 }) => {
     // Group items by episode number and create pairs
     const episodePairs = React.useMemo(() => {
@@ -32,11 +34,11 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
         // Add synopsis items
         synopsisItems.forEach(item => {
             try {
-                const data = typeof item.jsondoc.data === 'string' 
-                    ? JSON.parse(item.jsondoc.data) 
+                const data = typeof item.jsondoc.data === 'string'
+                    ? JSON.parse(item.jsondoc.data)
                     : item.jsondoc.data;
                 const episodeNumber = data.episodeNumber || 0;
-                
+
                 if (!pairs.has(episodeNumber)) {
                     pairs.set(episodeNumber, { episodeNumber, synopsis: null, script: null });
                 }
@@ -49,11 +51,11 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
         // Add script items
         scriptItems.forEach(item => {
             try {
-                const data = typeof item.jsondoc.data === 'string' 
-                    ? JSON.parse(item.jsondoc.data) 
+                const data = typeof item.jsondoc.data === 'string'
+                    ? JSON.parse(item.jsondoc.data)
                     : item.jsondoc.data;
                 const episodeNumber = data.episodeNumber || 0;
-                
+
                 if (!pairs.has(episodeNumber)) {
                     pairs.set(episodeNumber, { episodeNumber, synopsis: null, script: null });
                 }
@@ -74,7 +76,7 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
     return (
         <Space direction="vertical" style={{ width: '100%' }} size="large">
             <Title level={3}>分集内容</Title>
-            
+
             {episodePairs.map((pair) => (
                 <div key={pair.episodeNumber}>
                     {/* Episode Synopsis */}
@@ -95,45 +97,45 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
                         >
                             {(() => {
                                 try {
-                                    const synopsisData = typeof pair.synopsis.jsondoc.data === 'string' 
-                                        ? JSON.parse(pair.synopsis.jsondoc.data) 
+                                    const synopsisData = typeof pair.synopsis.jsondoc.data === 'string'
+                                        ? JSON.parse(pair.synopsis.jsondoc.data)
                                         : pair.synopsis.jsondoc.data;
-                                    
+
                                     return (
                                         <Space direction="vertical" style={{ width: '100%' }} size="small">
                                             <div>
                                                 <Text strong style={{ color: '#1890ff' }}>标题：</Text>
                                                 <Text>{synopsisData.title}</Text>
                                             </div>
-                                            
+
                                             <div>
                                                 <Text strong style={{ color: '#52c41a' }}>开场钩子：</Text>
                                                 <Paragraph style={{ margin: '4px 0', paddingLeft: '16px' }}>
                                                     {synopsisData.openingHook}
                                                 </Paragraph>
                                             </div>
-                                            
+
                                             <div>
                                                 <Text strong style={{ color: '#faad14' }}>主要剧情：</Text>
                                                 <Paragraph style={{ margin: '4px 0', paddingLeft: '16px' }}>
                                                     {synopsisData.mainPlot}
                                                 </Paragraph>
                                             </div>
-                                            
+
                                             <div>
                                                 <Text strong style={{ color: '#f5222d' }}>情感高潮：</Text>
                                                 <Paragraph style={{ margin: '4px 0', paddingLeft: '16px' }}>
                                                     {synopsisData.emotionalClimax}
                                                 </Paragraph>
                                             </div>
-                                            
+
                                             <div>
                                                 <Text strong style={{ color: '#722ed1' }}>结尾悬念：</Text>
                                                 <Paragraph style={{ margin: '4px 0', paddingLeft: '16px' }}>
                                                     {synopsisData.cliffhanger}
                                                 </Paragraph>
                                             </div>
-                                            
+
                                             {synopsisData.suspenseElements && synopsisData.suspenseElements.length > 0 && (
                                                 <div>
                                                     <Text strong style={{ color: '#13c2c2' }}>悬念元素：</Text>
@@ -144,11 +146,11 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
                                                     </div>
                                                 </div>
                                             )}
-                                            
+
                                             <div style={{ marginTop: '8px' }}>
                                                 <Tag color="cyan">{synopsisData.estimatedDuration || 120}秒</Tag>
                                             </div>
-                                            
+
                                             {pair.synopsis.isClickToEditable && (
                                                 <div style={{ marginTop: '8px' }}>
                                                     <Text type="secondary" style={{ fontSize: '12px' }}>
@@ -168,72 +170,17 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
 
                     {/* Episode Script */}
                     {pair.script && (
-                        <Card
-                            title={
-                                <Space>
-                                    <span>第{pair.episodeNumber}集剧本</span>
-                                    <Tag color="green">剧本</Tag>
-                                    {(() => {
-                                        try {
-                                            const scriptData = typeof pair.script.jsondoc.data === 'string' 
-                                                ? JSON.parse(pair.script.jsondoc.data) 
-                                                : pair.script.jsondoc.data;
-                                            return (
-                                                <>
-                                                    <Tag color="blue">{Math.round(scriptData.estimatedDuration || 2)}分钟</Tag>
-                                                    <Tag color="orange">{scriptData.wordCount || 0}字</Tag>
-                                                </>
-                                            );
-                                        } catch {
-                                            return null;
-                                        }
-                                    })()}
-                                </Space>
-                            }
-                            style={{
-                                backgroundColor: '#1a1a1a',
-                                border: '1px solid #434343',
-                                marginBottom: '24px'
-                            }}
-                            headStyle={{ borderBottom: '1px solid #434343' }}
-                        >
-                            {(() => {
-                                try {
-                                    const scriptData = typeof pair.script.jsondoc.data === 'string' 
-                                        ? JSON.parse(pair.script.jsondoc.data) 
-                                        : pair.script.jsondoc.data;
-                                    
-                                    return (
-                                        <>
-                                            <Paragraph
-                                                style={{
-                                                    whiteSpace: 'pre-wrap',
-                                                    maxHeight: '400px',
-                                                    overflow: 'auto',
-                                                    backgroundColor: '#0f0f0f',
-                                                    padding: '16px',
-                                                    borderRadius: '6px',
-                                                    border: '1px solid #434343'
-                                                }}
-                                            >
-                                                {scriptData.scriptContent}
-                                            </Paragraph>
-                                            
-                                            {pair.script.isClickToEditable && (
-                                                <div style={{ marginTop: '12px' }}>
-                                                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                                                        点击内容可编辑
-                                                    </Text>
-                                                </div>
-                                            )}
-                                        </>
-                                    );
-                                } catch (error) {
-                                    console.error('Failed to parse script data:', error);
-                                    return <Text type="secondary">数据解析错误</Text>;
-                                }
-                            })()}
-                        </Card>
+                        <div style={{ marginBottom: '24px' }}>
+                            <JsondocDisplayWrapper
+                                jsondoc={pair.script.jsondoc}
+                                isEditable={pair.script.isEditable}
+                                title={`第${pair.episodeNumber}集剧本`}
+                                icon="📝"
+                                editableComponent={EditableEpisodeScriptForm}
+                                schemaType="episode_script"
+                                enableClickToEdit={pair.script.isClickToEditable}
+                            />
+                        </div>
                     )}
 
                     {/* Add divider between episodes (except last) */}

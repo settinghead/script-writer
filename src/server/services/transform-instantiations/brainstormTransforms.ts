@@ -7,6 +7,7 @@ import {
   ChroniclesOutputSchema,
   EpisodePlanningOutputSchema,
   EpisodeSynopsisSchema,
+  EpisodeScriptSchema,
 } from '../../../common/schemas/outlineSchemas';
 
 // Get the schemas from the registry
@@ -244,5 +245,29 @@ export function createEpisodeSynopsisFromEpisodeSynopsis(
     console.warn('Episode synopsis validation failed, using raw data:', error);
     // Return the raw data even if validation fails - user can edit it
     return episodeSynopsisData;
+  }
+}
+
+/**
+ * Create episode script from episode script (for editing)
+ */
+export function createEpisodeScriptFromEpisodeScript(
+  sourceJsondocData: any,
+  derivationPath: string
+): any {
+  const episodeScriptData = extractDataAtPath(sourceJsondocData, derivationPath);
+
+  if (!episodeScriptData || typeof episodeScriptData !== 'object') {
+    throw new Error(`Invalid episode script data at path ${derivationPath}`);
+  }
+
+  // Validate the data structure against the output schema
+  try {
+    const validatedData = EpisodeScriptSchema.parse(episodeScriptData);
+    return validatedData;
+  } catch (error) {
+    console.warn('Episode script validation failed, using raw data:', error);
+    // Return the raw data even if validation fails - user can edit it
+    return episodeScriptData;
   }
 } 

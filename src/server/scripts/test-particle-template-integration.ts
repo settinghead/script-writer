@@ -10,7 +10,6 @@ async function testParticleTemplateIntegration() {
 
     try {
         // 1. Initialize particle system
-        console.log('1️⃣ Initializing particle system...');
         const particleSystem = await initializeParticleSystem(db);
         console.log('✅ Particle system initialized successfully\n');
 

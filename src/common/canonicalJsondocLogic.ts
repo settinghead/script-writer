@@ -272,7 +272,6 @@ export function extractCanonicalJsondocIds(context: CanonicalJsondocContext): Se
         canonicalIds.add(episodeSynopsis.id);
     });
 
-    console.log('[extractCanonicalJsondocIds] Extracted', canonicalIds.size, 'canonical jsondoc IDs, including', context.canonicalEpisodeSynopsisList.length, 'episode synopsis');
 
     return canonicalIds;
 }
