@@ -123,7 +123,7 @@ describe('Agent Tool Filtering', () => {
             );
 
             const toolNames = availableTools.map(tool => tool.name).sort();
-            expect(toolNames).toEqual(['improve_灵感创意', 'generate_剧本设定']);
+            expect(toolNames).toEqual(['generate_剧本设定', 'improve_灵感创意']);
         });
 
         it('should return appropriate tools when 剧本设定 exists', () => {
@@ -362,7 +362,7 @@ describe('Agent Tool Filtering', () => {
             );
 
             const toolNames = availableTools.map(tool => tool.name).sort();
-            expect(toolNames).toEqual(['improve_灵感创意', 'generate_剧本设定']);
+            expect(toolNames).toEqual(['generate_剧本设定', 'improve_灵感创意']);
         });
 
         it('should always allow generate_episode_synopsis when episode_planning exists (can generate multiple groups)', () => {
