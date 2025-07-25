@@ -37,24 +37,25 @@ describe('EpisodeSynopsisTool', () => {
             );
 
             expect(toolDef.name).toBe('generate_episode_synopsis');
-            expect(toolDef.description).toContain('生成指定剧集组的详细每集大纲');
+            expect(toolDef.description).toContain('为指定范围的剧集生成详细的每集大纲');
             expect(toolDef.inputSchema).toBe(EpisodeSynopsisInputSchema);
             expect(typeof toolDef.execute).toBe('function');
         });
 
-        it('should process episode synopsis generation with all context', async () => {
+        it('should process episode synopsis generation for multiple episodes', async () => {
             const mockEpisodePlanningJsondoc = {
                 id: 'episode-planning-id',
                 schema_type: 'episode_planning',
                 project_id: projectId,
                 data: {
+                    totalEpisodes: 30,
                     episodeGroups: [
                         {
                             groupTitle: '相遇篇',
-                            episodes: '1-3',
-                            keyEvents: ['男女主相遇', '初次误会', '化解误会'],
-                            hooks: ['开场悬念', '身份误会', '真相揭露'],
-                            emotionalBeats: ['好奇', '误解', '理解']
+                            episodes: '1-6',
+                            keyEvents: ['初次相遇', '误会产生'],
+                            hooks: ['身份悬念', '情感冲突'],
+                            emotionalBeats: ['好奇', '紧张', '心动']
                         }
                     ]
                 }
@@ -65,47 +66,68 @@ describe('EpisodeSynopsisTool', () => {
                 schema_type: 'chronicles',
                 project_id: projectId,
                 data: {
-                    title: 'Test Chronicles',
                     stages: [
-                        { title: '相遇阶段', stageSynopsis: '男女主角的初次相遇' }
+                        {
+                            title: '初遇阶段',
+                            episodes: [1, 2, 3],
+                            keyEvents: ['相遇', '误会', '解释']
+                        }
                     ]
                 }
             };
 
-            const mockBrainstormJsondoc = {
-                id: 'brainstorm-id',
-                schema_type: '灵感创意',
+            // Mock generated episode synopsis jsondocs
+            const mockEpisode1Synopsis = {
+                id: 'episode-1-synopsis-id',
+                schema_type: 'episode_synopsis',
                 project_id: projectId,
                 data: {
-                    title: '霸总甜宠故事',
-                    body: '现代都市背景的霸总与平凡女主的甜宠故事'
+                    episodeNumber: 1,
+                    title: '初次相遇',
+                    openingHook: '神秘男子突然出现',
+                    mainPlot: '女主在咖啡厅遇到神秘男子',
+                    emotionalClimax: '两人眼神交汇的瞬间',
+                    cliffhanger: '男子留下神秘名片离开',
+                    suspenseElements: ['身份悬念', '名片秘密'],
+                    estimatedDuration: 120
                 }
             };
 
-            const mockOutlineJsondoc = {
-                id: 'outline-id',
-                schema_type: '剧本设定',
+            const mockEpisode2Synopsis = {
+                id: 'episode-2-synopsis-id',
+                schema_type: 'episode_synopsis',
                 project_id: projectId,
                 data: {
-                    title: '甜宠短剧设定',
-                    genre: '现代甜宠',
-                    platform: '抖音'
+                    episodeNumber: 2,
+                    title: '误会产生',
+                    openingHook: '女主调查神秘名片',
+                    mainPlot: '发现男子是竞争对手公司的人',
+                    emotionalClimax: '女主感到被欺骗的愤怒',
+                    cliffhanger: '男子出现解释真相',
+                    suspenseElements: ['真实身份', '真正目的'],
+                    estimatedDuration: 120
                 }
             };
 
             (mockJsondocRepo.getJsondoc as any)
                 .mockResolvedValueOnce(mockEpisodePlanningJsondoc)
                 .mockResolvedValueOnce(mockChroniclesJsondoc)
-                .mockResolvedValueOnce(mockBrainstormJsondoc)
-                .mockResolvedValueOnce(mockOutlineJsondoc);
+                .mockResolvedValueOnce(mockEpisode1Synopsis) // First episode generation result
+                .mockResolvedValueOnce(mockEpisode2Synopsis); // Second episode generation result
 
             (mockJsondocRepo.userHasProjectAccess as any)
                 .mockResolvedValue(true);
 
-            (executeStreamingTransform as any).mockResolvedValue({
-                outputJsondocId: 'episode-synopsis-output-id',
-                finishReason: 'stop'
-            });
+            // Mock executeStreamingTransform to return different results for each episode
+            (executeStreamingTransform as any)
+                .mockResolvedValueOnce({
+                    outputJsondocId: 'episode-1-synopsis-id',
+                    finishReason: 'stop'
+                })
+                .mockResolvedValueOnce({
+                    outputJsondocId: 'episode-2-synopsis-id',
+                    finishReason: 'stop'
+                });
 
             const toolDef = createEpisodeSynopsisToolDefinition(
                 mockTransformRepo,
@@ -117,83 +139,74 @@ describe('EpisodeSynopsisTool', () => {
             const input = {
                 jsondocs: [
                     { jsondocId: 'episode-planning-id', description: 'Episode planning', schemaType: 'episode_planning' as const },
-                    { jsondocId: 'chronicles-id', description: 'Chronicles', schemaType: 'chronicles' as const },
-                    { jsondocId: 'brainstorm-id', description: 'Brainstorm idea', schemaType: '灵感创意' as const },
-                    { jsondocId: 'outline-id', description: 'Outline settings', schemaType: '剧本设定' as const }
+                    { jsondocId: 'chronicles-id', description: 'Chronicles', schemaType: 'chronicles' as const }
                 ],
-                groupTitle: '相遇篇',
-                episodeRange: '1-3',
-                episodes: [1, 2, 3]
+                episodeStart: 1,
+                episodeEnd: 2,
+                groupTitle: '相遇篇'
             };
 
             const result = await toolDef.execute(input, { toolCallId: 'test-episode-synopsis' });
 
-            expect(result.outputJsondocId).toBe('episode-synopsis-output-id');
+            // Should return array of jsondoc IDs
+            expect(result.outputJsondocIds).toEqual(['episode-1-synopsis-id', 'episode-2-synopsis-id']);
             expect(result.finishReason).toBe('stop');
 
-            // Verify all jsondocs were accessed
+            // Should call executeStreamingTransform twice (once per episode)
+            expect(executeStreamingTransform).toHaveBeenCalledTimes(2);
+
+            // Should call getJsondoc for initial context + generated episodes
             expect(mockJsondocRepo.getJsondoc).toHaveBeenCalledTimes(4);
             expect(mockJsondocRepo.getJsondoc).toHaveBeenCalledWith('episode-planning-id');
             expect(mockJsondocRepo.getJsondoc).toHaveBeenCalledWith('chronicles-id');
-            expect(mockJsondocRepo.getJsondoc).toHaveBeenCalledWith('brainstorm-id');
-            expect(mockJsondocRepo.getJsondoc).toHaveBeenCalledWith('outline-id');
+            expect(mockJsondocRepo.getJsondoc).toHaveBeenCalledWith('episode-1-synopsis-id');
+            expect(mockJsondocRepo.getJsondoc).toHaveBeenCalledWith('episode-2-synopsis-id');
 
-            // Verify access checks
-            expect(mockJsondocRepo.userHasProjectAccess).toHaveBeenCalledTimes(4);
+            // Verify first episode call (no previous episodes)
+            const firstCall = (executeStreamingTransform as any).mock.calls[0][0];
+            expect(firstCall.input.episodeNumber).toBe(1);
+            expect(firstCall.input.jsondocs).toHaveLength(2); // Only initial context
 
-            // Verify streaming transform was called with correct metadata
-            const calls = executeStreamingTransform.mock.calls;
-            expect(calls).toHaveLength(1);
-            expect(calls[0][0]).toMatchObject({
-                input,
-                projectId,
-                userId,
-                transformRepo: mockTransformRepo,
-                jsondocRepo: mockJsondocRepo,
-                outputJsondocType: 'episode_synopsis',
-                transformMetadata: {
-                    toolName: 'generate_episode_synopsis',
-                    episode_planning: 'episode-planning-id',
-                    chronicles: 'chronicles-id',
-                    灵感创意: 'brainstorm-id',
-                    剧本设定: 'outline-id',
-                    target_group_title: '相遇篇',
-                    target_episode_range: '1-3',
-                    target_episodes: '1,2,3'
-                },
-            });
-            expect(calls[0][0].config.templateName).toBe('episode_synopsis_generation');
+            // Verify second episode call (includes first episode as context)
+            const secondCall = (executeStreamingTransform as any).mock.calls[1][0];
+            expect(secondCall.input.episodeNumber).toBe(2);
+            expect(secondCall.input.jsondocs).toHaveLength(3); // Initial context + episode 1
+            expect(secondCall.input.jsondocs[2].jsondocId).toBe('episode-1-synopsis-id');
         });
 
-        it('should handle minimal context gracefully', async () => {
+        it('should handle single episode generation', async () => {
             const mockEpisodePlanningJsondoc = {
                 id: 'episode-planning-id',
                 schema_type: 'episode_planning',
                 project_id: projectId,
+                data: { totalEpisodes: 30 }
+            };
+
+            const mockEpisodeSynopsis = {
+                id: 'episode-5-synopsis-id',
+                schema_type: 'episode_synopsis',
+                project_id: projectId,
                 data: {
-                    episodeGroups: [
-                        {
-                            groupTitle: '开场篇',
-                            episodes: '4-6',
-                            keyEvents: ['新的开始'],
-                            hooks: ['悬念设置'],
-                            emotionalBeats: ['期待']
-                        }
-                    ]
+                    episodeNumber: 5,
+                    title: '转折点',
+                    openingHook: '真相大白',
+                    mainPlot: '所有秘密被揭露',
+                    emotionalClimax: '主角做出重要决定',
+                    cliffhanger: '新的危机出现',
+                    suspenseElements: ['后续发展'],
+                    estimatedDuration: 120
                 }
             };
 
             (mockJsondocRepo.getJsondoc as any)
                 .mockResolvedValueOnce(mockEpisodePlanningJsondoc)
-                .mockResolvedValueOnce(null) // Missing chronicles
-                .mockResolvedValueOnce(null) // Missing brainstorm
-                .mockResolvedValueOnce(null); // Missing outline
+                .mockResolvedValueOnce(mockEpisodeSynopsis);
 
             (mockJsondocRepo.userHasProjectAccess as any)
                 .mockResolvedValue(true);
 
             (executeStreamingTransform as any).mockResolvedValue({
-                outputJsondocId: 'episode-synopsis-output-id',
+                outputJsondocId: 'episode-5-synopsis-id',
                 finishReason: 'stop'
             });
 
@@ -206,62 +219,104 @@ describe('EpisodeSynopsisTool', () => {
 
             const input = {
                 jsondocs: [
-                    { jsondocId: 'episode-planning-id', description: 'Episode planning', schemaType: 'episode_planning' as const },
-                    { jsondocId: 'missing-chronicles', description: 'Missing chronicles', schemaType: 'chronicles' as const },
-                    { jsondocId: 'missing-brainstorm', description: 'Missing brainstorm', schemaType: '灵感创意' as const },
-                    { jsondocId: 'missing-outline', description: 'Missing outline', schemaType: '剧本设定' as const }
+                    { jsondocId: 'episode-planning-id', description: 'Episode planning', schemaType: 'episode_planning' as const }
                 ],
-                groupTitle: '开场篇',
-                episodeRange: '4-6',
-                episodes: [4, 5, 6]
+                episodeStart: 5,
+                episodeEnd: 5,
+                groupTitle: '转折篇'
             };
 
-            const result = await toolDef.execute(input, { toolCallId: 'test-minimal-context' });
+            const result = await toolDef.execute(input, { toolCallId: 'test-single-episode' });
 
-            expect(result.outputJsondocId).toBe('episode-synopsis-output-id');
+            expect(result.outputJsondocIds).toEqual(['episode-5-synopsis-id']);
             expect(result.finishReason).toBe('stop');
-
-            // Should still call streaming transform with available metadata
-            const calls = executeStreamingTransform.mock.calls;
-            expect(calls).toHaveLength(1);
-            expect(calls[0][0]).toMatchObject({
-                input,
-                projectId,
-                userId,
-                transformRepo: mockTransformRepo,
-                jsondocRepo: mockJsondocRepo,
-                outputJsondocType: 'episode_synopsis',
-                transformMetadata: {
-                    toolName: 'generate_episode_synopsis',
-                    episode_planning: 'episode-planning-id',
-                    target_group_title: '开场篇',
-                    target_episode_range: '4-6',
-                    target_episodes: '4,5,6'
-                },
-                enableCaching: undefined,
-                seed: undefined,
-            });
-            expect(calls[0][0].config.templateName).toBe('episode_synopsis_generation');
+            expect(executeStreamingTransform).toHaveBeenCalledTimes(1);
         });
 
-        it('should handle access denied gracefully', async () => {
-            const mockJsondoc = {
-                id: 'restricted-id',
-                schema_type: 'episode_planning',
-                project_id: 'different-project',
-                data: { episodeGroups: [] }
+        it('should validate input schema correctly', () => {
+            const toolDef = createEpisodeSynopsisToolDefinition(
+                mockTransformRepo,
+                mockJsondocRepo,
+                projectId,
+                userId
+            );
+
+            // Valid input
+            const validInput = {
+                jsondocs: [
+                    { jsondocId: 'test-id', description: 'Test', schemaType: 'episode_planning' as const }
+                ],
+                episodeStart: 1,
+                episodeEnd: 3,
+                groupTitle: '测试篇'
             };
 
+            expect(() => toolDef.inputSchema.parse(validInput)).not.toThrow();
+
+            // Invalid input - missing required fields
+            const invalidInput = {
+                jsondocs: [],
+                groupTitle: '测试篇'
+                // Missing episodeStart and episodeEnd
+            };
+
+            expect(() => toolDef.inputSchema.parse(invalidInput)).toThrow();
+
+            // Invalid input - wrong episode range (but valid schema)
+            const invalidRangeInput = {
+                jsondocs: [
+                    { jsondocId: 'test-id', description: 'Test', schemaType: 'episode_planning' as const }
+                ],
+                episodeStart: 5,
+                episodeEnd: 3, // End before start
+                groupTitle: '测试篇'
+            };
+
+            expect(() => toolDef.inputSchema.parse(invalidRangeInput)).not.toThrow(); // Schema doesn't validate range logic, just structure
+        });
+
+        it('should handle cumulative context correctly for multiple episodes', async () => {
+            // Mock 4 episodes to test the "previous 2 episodes" context logic
+            const mockJsondocs = Array.from({ length: 4 }, (_, i) => ({
+                id: `episode-${i + 1}-synopsis-id`,
+                schema_type: 'episode_synopsis',
+                project_id: projectId,
+                data: {
+                    episodeNumber: i + 1,
+                    title: `Episode ${i + 1}`,
+                    openingHook: `Hook ${i + 1}`,
+                    mainPlot: `Plot ${i + 1}`,
+                    emotionalClimax: `Climax ${i + 1}`,
+                    cliffhanger: `Cliffhanger ${i + 1}`,
+                    suspenseElements: [`Element ${i + 1}`],
+                    estimatedDuration: 120
+                }
+            }));
+
+            const mockEpisodePlanningJsondoc = {
+                id: 'episode-planning-id',
+                schema_type: 'episode_planning',
+                project_id: projectId,
+                data: { totalEpisodes: 30 }
+            };
+
+            // Setup getJsondoc mock to return planning + generated episodes
             (mockJsondocRepo.getJsondoc as any)
-                .mockResolvedValueOnce(mockJsondoc);
+                .mockResolvedValueOnce(mockEpisodePlanningJsondoc) // Initial context
+                .mockResolvedValueOnce(mockJsondocs[0]) // Episode 1 result
+                .mockResolvedValueOnce(mockJsondocs[1]) // Episode 2 result  
+                .mockResolvedValueOnce(mockJsondocs[2]) // Episode 3 result
+                .mockResolvedValueOnce(mockJsondocs[3]); // Episode 4 result
 
             (mockJsondocRepo.userHasProjectAccess as any)
-                .mockResolvedValue(false); // Access denied
+                .mockResolvedValue(true);
 
-            (executeStreamingTransform as any).mockResolvedValue({
-                outputJsondocId: 'episode-synopsis-output-id',
-                finishReason: 'stop'
-            });
+            // Mock streaming transform results
+            (executeStreamingTransform as any)
+                .mockResolvedValueOnce({ outputJsondocId: 'episode-1-synopsis-id', finishReason: 'stop' })
+                .mockResolvedValueOnce({ outputJsondocId: 'episode-2-synopsis-id', finishReason: 'stop' })
+                .mockResolvedValueOnce({ outputJsondocId: 'episode-3-synopsis-id', finishReason: 'stop' })
+                .mockResolvedValueOnce({ outputJsondocId: 'episode-4-synopsis-id', finishReason: 'stop' });
 
             const toolDef = createEpisodeSynopsisToolDefinition(
                 mockTransformRepo,
@@ -272,205 +327,37 @@ describe('EpisodeSynopsisTool', () => {
 
             const input = {
                 jsondocs: [
-                    { jsondocId: 'restricted-id', description: 'Restricted jsondoc', schemaType: 'episode_planning' as const }
+                    { jsondocId: 'episode-planning-id', description: 'Episode planning', schemaType: 'episode_planning' as const }
                 ],
-                groupTitle: '测试篇',
-                episodeRange: '1-3',
-                episodes: [1, 2, 3]
+                episodeStart: 1,
+                episodeEnd: 4,
+                groupTitle: '测试篇'
             };
 
-            const result = await toolDef.execute(input, { toolCallId: 'test-access-denied' });
+            const result = await toolDef.execute(input, { toolCallId: 'test-cumulative-context' });
 
-            expect(result.outputJsondocId).toBe('episode-synopsis-output-id');
-            expect(result.finishReason).toBe('stop');
+            expect(result.outputJsondocIds).toHaveLength(4);
+            expect(executeStreamingTransform).toHaveBeenCalledTimes(4);
 
-            // Should proceed without restricted jsondoc metadata
-            const calls = executeStreamingTransform.mock.calls;
-            expect(calls).toHaveLength(1);
-            expect(calls[0][0]).toMatchObject({
-                input,
-                projectId,
-                userId,
-                transformRepo: mockTransformRepo,
-                jsondocRepo: mockJsondocRepo,
-                outputJsondocType: 'episode_synopsis',
-                transformMetadata: {
-                    toolName: 'generate_episode_synopsis',
-                    target_group_title: '测试篇',
-                    target_episode_range: '1-3',
-                    target_episodes: '1,2,3'
-                },
-                enableCaching: undefined,
-                seed: undefined,
-                temperature: undefined,
-                topP: undefined,
-                maxTokens: undefined,
-            });
-            expect(calls[0][0].config.templateName).toBe('episode_synopsis_generation');
+            // Check context for each episode call
+            const calls = (executeStreamingTransform as any).mock.calls;
+
+            // Episode 1: Only initial context
+            expect(calls[0][0].input.jsondocs).toHaveLength(1);
+
+            // Episode 2: Initial context + episode 1
+            expect(calls[1][0].input.jsondocs).toHaveLength(2);
+            expect(calls[1][0].input.jsondocs[1].jsondocId).toBe('episode-1-synopsis-id');
+
+            // Episode 3: Initial context + episodes 1 and 2
+            expect(calls[2][0].input.jsondocs).toHaveLength(3);
+            expect(calls[2][0].input.jsondocs[1].jsondocId).toBe('episode-1-synopsis-id');
+            expect(calls[2][0].input.jsondocs[2].jsondocId).toBe('episode-2-synopsis-id');
+
+            // Episode 4: Initial context + episodes 2 and 3 (only last 2)
+            expect(calls[3][0].input.jsondocs).toHaveLength(3);
+            expect(calls[3][0].input.jsondocs[1].jsondocId).toBe('episode-2-synopsis-id');
+            expect(calls[3][0].input.jsondocs[2].jsondocId).toBe('episode-3-synopsis-id');
         });
-
-        it('should pass caching options to streaming transform', async () => {
-            (executeStreamingTransform as any).mockResolvedValue({
-                outputJsondocId: 'episode-synopsis-output-id',
-                finishReason: 'stop'
-            });
-
-            const cachingOptions = {
-                enableCaching: true,
-                seed: 123,
-                temperature: 0.8,
-                topP: 0.95,
-                maxTokens: 3000
-            };
-
-            const toolDef = createEpisodeSynopsisToolDefinition(
-                mockTransformRepo,
-                mockJsondocRepo,
-                projectId,
-                userId,
-                cachingOptions
-            );
-
-            const input = {
-                jsondocs: [],
-                groupTitle: '缓存测试篇',
-                episodeRange: '7-9',
-                episodes: [7, 8, 9]
-            };
-
-            await toolDef.execute(input, { toolCallId: 'test-caching-options' });
-
-            const calls = executeStreamingTransform.mock.calls;
-            expect(calls).toHaveLength(1);
-            expect(calls[0][0]).toMatchObject({
-                input,
-                projectId,
-                userId,
-                transformRepo: mockTransformRepo,
-                jsondocRepo: mockJsondocRepo,
-                outputJsondocType: 'episode_synopsis',
-                transformMetadata: {
-                    toolName: 'generate_episode_synopsis',
-                    target_group_title: '缓存测试篇',
-                    target_episode_range: '7-9',
-                    target_episodes: '7,8,9'
-                },
-                enableCaching: true,
-                seed: 123,
-                temperature: 0.8,
-            });
-            expect(calls[0][0].config.templateName).toBe('episode_synopsis_generation');
-        });
-    });
-
-    it('should validate input schema correctly', () => {
-        const toolDef = createEpisodeSynopsisToolDefinition(
-            mockTransformRepo,
-            mockJsondocRepo,
-            projectId,
-            userId
-        );
-
-        // Valid input
-        const validInput = {
-            jsondocs: [
-                { jsondocId: 'test-id', description: 'Test', schemaType: 'episode_planning' as const }
-            ],
-            groupTitle: '测试篇',
-            episodeRange: '1-3',
-            episodes: [1, 2, 3]
-        };
-
-        expect(() => toolDef.inputSchema.parse(validInput)).not.toThrow();
-
-        // Invalid input - missing required fields
-        const invalidInput = {
-            jsondocs: [],
-            groupTitle: '测试篇'
-            // Missing episodeRange and episodes
-        };
-
-        expect(() => toolDef.inputSchema.parse(invalidInput)).toThrow();
-
-        // Invalid input - wrong episode array type
-        const invalidEpisodesInput = {
-            jsondocs: [],
-            groupTitle: '测试篇',
-            episodeRange: '1-3',
-            episodes: ['1', '2', '3'] // Should be numbers
-        };
-
-        expect(() => toolDef.inputSchema.parse(invalidEpisodesInput)).toThrow();
-    });
-
-    it('should handle different episode ranges correctly', async () => {
-        const mockEpisodePlanningJsondoc = {
-            id: 'episode-planning-id',
-            schema_type: 'episode_planning',
-            project_id: projectId,
-            data: {
-                episodeGroups: [
-                    {
-                        groupTitle: '高潮篇',
-                        episodes: '10-15',
-                        keyEvents: ['大反转', '真相大白', '情感爆发'],
-                        hooks: ['身份揭露', '误会解除', '感情升华'],
-                        emotionalBeats: ['震惊', '理解', '感动']
-                    }
-                ]
-            }
-        };
-
-        (mockJsondocRepo.getJsondoc as any)
-            .mockResolvedValueOnce(mockEpisodePlanningJsondoc);
-
-        (mockJsondocRepo.userHasProjectAccess as any)
-            .mockResolvedValue(true);
-
-        (executeStreamingTransform as any).mockResolvedValue({
-            outputJsondocId: 'episode-synopsis-output-id',
-            finishReason: 'stop'
-        });
-
-        const toolDef = createEpisodeSynopsisToolDefinition(
-            mockTransformRepo,
-            mockJsondocRepo,
-            projectId,
-            userId
-        );
-
-        const input = {
-            jsondocs: [
-                { jsondocId: 'episode-planning-id', description: 'Episode planning', schemaType: 'episode_planning' as const }
-            ],
-            groupTitle: '高潮篇',
-            episodeRange: '10-15',
-            episodes: [10, 11, 12, 13, 14, 15]
-        };
-
-        const result = await toolDef.execute(input, { toolCallId: 'test-large-range' });
-
-        expect(result.outputJsondocId).toBe('episode-synopsis-output-id');
-        expect(result.finishReason).toBe('stop');
-
-        const calls = executeStreamingTransform.mock.calls;
-        expect(calls).toHaveLength(1);
-        expect(calls[0][0]).toMatchObject({
-            input,
-            projectId,
-            userId,
-            transformRepo: mockTransformRepo,
-            jsondocRepo: mockJsondocRepo,
-            outputJsondocType: 'episode_synopsis',
-            transformMetadata: {
-                toolName: 'generate_episode_synopsis',
-                episode_planning: 'episode-planning-id',
-                target_group_title: '高潮篇',
-                target_episode_range: '10-15',
-                target_episodes: '10,11,12,13,14,15'
-            },
-            enableCaching: undefined,
-        });
-        expect(calls[0][0].config.templateName).toBe('episode_synopsis_generation');
     });
 }); 

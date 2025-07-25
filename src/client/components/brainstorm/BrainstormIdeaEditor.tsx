@@ -34,11 +34,7 @@ export const BrainstormIdeaEditor: React.FC<{
         }
     }
 
-    console.log(`[BrainstormIdeaEditor] Idea ${index}:`, {
-        hasJsondoc: !!jsondoc,
-        hasIdeaData: !!ideaData,
-        title: ideaData?.title || 'no title'
-    });
+
 
     // Don't render anything if we don't have data
     if (!ideaData) {

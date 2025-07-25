@@ -342,22 +342,29 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
             console.warn('Failed to parse episode planning data for synopsis generation:', error);
         }
     } else if (context.canonicalEpisodePlanning && context.canonicalEpisodeSynopsisList.length > 0) {
-        // Check if we need next group
+        // Check if we need next group - now based on individual episode numbers
         try {
             const episodePlanningData = typeof context.canonicalEpisodePlanning.data === 'string'
                 ? JSON.parse(context.canonicalEpisodePlanning.data)
                 : context.canonicalEpisodePlanning.data;
             const allGroups = episodePlanningData.episodeGroups || [];
-            const completedRanges = new Set(context.canonicalEpisodeSynopsisList.map(synopsis => {
+
+            // Get all completed episode numbers from individual synopsis jsondocs
+            const completedEpisodeNumbers = new Set(context.canonicalEpisodeSynopsisList.map(synopsis => {
                 try {
                     const data = typeof synopsis.data === 'string' ? JSON.parse(synopsis.data) : synopsis.data;
-                    return data.episodeRange;
+                    return data.episodeNumber; // Now looking for individual episode numbers
                 } catch {
                     return null;
                 }
-            }).filter(Boolean));
+            }).filter(num => num !== null));
 
-            const nextGroup = allGroups.find((group: any) => !completedRanges.has(group.episodes));
+            // Find the next group that has episodes not yet completed
+            const nextGroup = allGroups.find((group: any) => {
+                const groupEpisodeNumbers = parseEpisodeRange(group.episodes);
+                return groupEpisodeNumbers.some(episodeNum => !completedEpisodeNumbers.has(episodeNum));
+            });
+
             if (nextGroup) {
                 actions.push({
                     id: 'episode_synopsis_generation',

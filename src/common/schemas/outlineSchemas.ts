@@ -128,26 +128,20 @@ export const EpisodeSynopsisSchema = z.object({
     estimatedDuration: z.number().describe('预估时长(秒)')
 });
 
-export const EpisodeSynopsisGroupSchema = z.object({
-    groupTitle: z.string(),
-    episodeRange: z.string(), // "1-3"
-    episodes: z.array(EpisodeSynopsisSchema)
-});
-
+// Updated input schema for individual episode generation with range support
 export const EpisodeSynopsisInputSchema = BaseToolInputSchema.extend({
-    groupTitle: z.string(),
-    episodeRange: z.string(),
-    episodes: z.array(z.number()) // [1, 2, 3]
+    episodeStart: z.number().describe('开始集数'),
+    episodeEnd: z.number().describe('结束集数'),
+    groupTitle: z.string().describe('当前生成组的标题（用于上下文）')
 });
 
-// Episode Synopsis Tool Result
+// Updated tool result schema for individual episode
 export const EpisodeSynopsisToolResultSchema = z.object({
-    outputJsondocId: z.string(),
+    outputJsondocIds: z.array(z.string()).describe('生成的每集大纲jsondoc ID列表'),
     finishReason: z.string()
 });
 
-// Type exports
+// Type exports - remove group types and update individual types
 export type EpisodeSynopsisV1 = z.infer<typeof EpisodeSynopsisSchema>;
-export type EpisodeSynopsisGroupV1 = z.infer<typeof EpisodeSynopsisGroupSchema>;
 export type EpisodeSynopsisInputV1 = z.infer<typeof EpisodeSynopsisInputSchema>;
 export type EpisodeSynopsisToolResult = z.infer<typeof EpisodeSynopsisToolResultSchema>; 

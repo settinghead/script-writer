@@ -26,7 +26,7 @@ beforeEach(() => {
     vi.clearAllMocks();
 });
 
-// Mock Ant Design components with a single comprehensive mock
+// Mock Ant Design components
 vi.mock('antd', () => {
     const Title = ({ children, level, ...props }: any) => (
         <h1 data-testid="title" data-level={level} {...props}>
@@ -46,338 +46,298 @@ vi.mock('antd', () => {
         </p>
     );
 
+    const DescriptionsItem = ({ children, label, ...props }: any) => (
+        <div data-testid="descriptions-item" {...props}>
+            {label && <div data-testid="descriptions-label">{label}</div>}
+            <div data-testid="descriptions-content">{children}</div>
+        </div>
+    );
+
+    const Descriptions = ({ children, ...props }: any) => (
+        <div data-testid="descriptions" {...props}>
+            {children}
+        </div>
+    );
+    Descriptions.Item = DescriptionsItem;
+
     return {
         Card: ({ children, title, extra, ...props }: any) => (
             <div data-testid="card" {...props}>
                 {title && <div data-testid="card-title">{title}</div>}
                 {extra && <div data-testid="card-extra">{extra}</div>}
-                {children}
+                <div data-testid="card-content">{children}</div>
             </div>
         ),
+        Descriptions,
         Typography: {
             Title,
             Text,
             Paragraph
         },
-        Descriptions: Object.assign(
-            ({ children, ...props }: any) => (
-                <div data-testid="descriptions" {...props}>
-                    {children}
-                </div>
-            ),
-            {
-                Item: ({ label, children, ...props }: any) => (
-                    <div data-testid="description-item" data-label={label} {...props}>
-                        <span data-testid="description-label">{label}</span>
-                        <span data-testid="description-content">{children}</span>
-                    </div>
-                )
-            }
+        Tag: ({ children, color, ...props }: any) => (
+            <span data-testid="tag" data-color={color} {...props}>
+                {children}
+            </span>
         ),
         Space: ({ children, ...props }: any) => (
             <div data-testid="space" {...props}>
                 {children}
             </div>
-        ),
-        Tag: ({ children, color, ...props }: any) => (
-            <span data-testid="tag" data-color={color} {...props}>
-                {children}
-            </span>
         )
     };
 });
 
-// Mock Ant Design icons
+// Mock icons
 vi.mock('@ant-design/icons', () => ({
-    ClockCircleOutlined: () => <span data-testid="clock-icon">⏰</span>,
-    ThunderboltOutlined: () => <span data-testid="thunder-icon">⚡</span>,
-    EyeOutlined: () => <span data-testid="eye-icon">👁</span>,
-    FireOutlined: () => <span data-testid="fire-icon">🔥</span>
+    ClockCircleOutlined: () => <span data-testid="clock-icon">Clock</span>,
+    ThunderboltOutlined: () => <span data-testid="thunderbolt-icon">Thunderbolt</span>,
+    EyeOutlined: () => <span data-testid="eye-icon">Eye</span>,
+    FireOutlined: () => <span data-testid="fire-icon">Fire</span>
 }));
 
 describe('EpisodeSynopsisDisplay', () => {
-    const createMockEpisodeSynopsisJsondoc = (
-        id: string,
-        episodes: any[]
-    ): ElectricJsondoc => ({
-        id,
+    const mockEpisodeSynopsis: ElectricJsondoc = {
+        id: 'episode-1-synopsis',
         project_id: 'test-project',
         schema_type: 'episode_synopsis',
         schema_version: 'v1',
         origin_type: 'ai_generated',
         data: JSON.stringify({
-            groupTitle: '测试篇',
-            episodeRange: '1-3',
-            episodes
+            episodeNumber: 1,
+            title: '初次相遇',
+            openingHook: '神秘男子突然出现在咖啡厅',
+            mainPlot: '女主角在咖啡厅工作时遇到了一个神秘的男子，两人产生了微妙的化学反应',
+            emotionalClimax: '两人眼神交汇的瞬间，时间仿佛静止',
+            cliffhanger: '男子留下一张神秘名片后匆忙离开',
+            suspenseElements: ['男子的真实身份', '名片上的秘密信息', '为什么选择这家咖啡厅'],
+            estimatedDuration: 120
         }),
+        metadata: undefined,
+        streaming_status: 'completed',
         created_at: '2024-01-01T00:00:00Z',
         updated_at: '2024-01-01T00:00:00Z'
-    });
+    };
 
-    const renderWithProvider = (episodeSynopsisList: ElectricJsondoc[]) => {
+    const renderWithProvider = (episodeSynopsis: ElectricJsondoc) => {
         return render(
             <ScrollSyncProvider>
-                <EpisodeSynopsisDisplay episodeSynopsisList={episodeSynopsisList} />
+                <EpisodeSynopsisDisplay episodeSynopsis={episodeSynopsis} />
             </ScrollSyncProvider>
         );
     };
 
-    it('should render empty state when no episodes are provided', () => {
-        renderWithProvider([]);
-
-        expect(screen.getByTestId('title')).toHaveTextContent('每集大纲 (0集)');
-        expect(screen.queryByTestId('card')).not.toBeInTheDocument();
-    });
-
-    it('should render single episode correctly', () => {
-        const episodes = [
-            {
-                episodeNumber: 1,
-                title: '初次相遇',
-                openingHook: '雨夜，霸总的豪车溅了女主一身水',
-                mainPlot: '女主愤怒追上霸总理论，却被他的颜值震撼',
-                emotionalClimax: '两人四目相对，电光火石间的心动',
-                cliffhanger: '霸总留下名片离开，女主发现他就是新老板',
-                suspenseElements: ['身份悬念', '职场关系'],
-                estimatedDuration: 120
-            }
-        ];
-
-        const mockJsondoc = createMockEpisodeSynopsisJsondoc('test-1', episodes);
-        renderWithProvider([mockJsondoc]);
-
-        // Check main title
-        expect(screen.getByTestId('title')).toHaveTextContent('每集大纲 (1集)');
-
-        // Check episode card
-        const card = screen.getByTestId('card');
-        expect(card).toBeInTheDocument();
+    it('should render episode synopsis correctly', () => {
+        renderWithProvider(mockEpisodeSynopsis);
 
         // Check episode title
         expect(screen.getByText('第1集: 初次相遇')).toBeInTheDocument();
 
-        // Check content
-        expect(screen.getByText('雨夜，霸总的豪车溅了女主一身水')).toBeInTheDocument();
-        expect(screen.getByText('女主愤怒追上霸总理论，却被他的颜值震撼')).toBeInTheDocument();
-        expect(screen.getByText('两人四目相对，电光火石间的心动')).toBeInTheDocument();
-        expect(screen.getByText('霸总留下名片离开，女主发现他就是新老板')).toBeInTheDocument();
+        // Check duration
+        expect(screen.getByText('120秒')).toBeInTheDocument();
+
+        // Check all main content sections
+        expect(screen.getByText('神秘男子突然出现在咖啡厅')).toBeInTheDocument();
+        expect(screen.getByText('女主角在咖啡厅工作时遇到了一个神秘的男子，两人产生了微妙的化学反应')).toBeInTheDocument();
+        expect(screen.getByText('两人眼神交汇的瞬间，时间仿佛静止')).toBeInTheDocument();
+        expect(screen.getByText('男子留下一张神秘名片后匆忙离开')).toBeInTheDocument();
 
         // Check suspense elements
-        expect(screen.getByText('悬念元素:')).toBeInTheDocument();
-        expect(screen.getByText('身份悬念')).toBeInTheDocument();
-        expect(screen.getByText('职场关系')).toBeInTheDocument();
+        expect(screen.getByText('男子的真实身份')).toBeInTheDocument();
+        expect(screen.getByText('名片上的秘密信息')).toBeInTheDocument();
+        expect(screen.getByText('为什么选择这家咖啡厅')).toBeInTheDocument();
     });
 
-    it('should render multiple episodes in correct order', () => {
-        const episodes = [
-            {
+    it('should handle string data format', () => {
+        const stringDataSynopsis = {
+            ...mockEpisodeSynopsis,
+            data: JSON.stringify({
+                episodeNumber: 2,
+                title: '误会产生',
+                openingHook: '女主调查神秘名片',
+                mainPlot: '发现男子是竞争对手',
+                emotionalClimax: '愤怒与失望',
+                cliffhanger: '男子出现解释',
+                suspenseElements: ['真实身份'],
+                estimatedDuration: 120
+            })
+        };
+
+        renderWithProvider(stringDataSynopsis);
+
+        expect(screen.getByText('第2集: 误会产生')).toBeInTheDocument();
+        expect(screen.getByText('女主调查神秘名片')).toBeInTheDocument();
+    });
+
+    it('should handle object data format', () => {
+        const objectDataSynopsis = {
+            ...mockEpisodeSynopsis,
+            data: JSON.stringify({
                 episodeNumber: 3,
-                title: '误会解除',
-                openingHook: '女主发现霸总的秘密',
-                mainPlot: '真相大白，误会消除',
-                emotionalClimax: '两人和解，感情升华',
-                cliffhanger: '新的挑战出现',
-                suspenseElements: ['新危机'],
+                title: '真相大白',
+                openingHook: '解释来龙去脉',
+                mainPlot: '男子说出真实目的',
+                emotionalClimax: '理解与和解',
+                cliffhanger: '新的开始',
+                suspenseElements: ['未来发展'],
                 estimatedDuration: 120
-            },
-            {
-                episodeNumber: 1,
-                title: '初次相遇',
-                openingHook: '雨夜相遇',
-                mainPlot: '霸总与女主的第一次碰撞',
-                emotionalClimax: '心动瞬间',
-                cliffhanger: '身份悬念',
-                suspenseElements: ['身份谜团'],
-                estimatedDuration: 120
-            },
-            {
-                episodeNumber: 2,
-                title: '职场风波',
-                openingHook: '新员工报到',
-                mainPlot: '职场中的再次相遇',
-                emotionalClimax: '工作中的火花',
-                cliffhanger: '误会加深',
-                suspenseElements: ['职场冲突'],
-                estimatedDuration: 120
-            }
-        ];
+            })
+        };
 
-        const mockJsondoc = createMockEpisodeSynopsisJsondoc('test-1', episodes);
-        renderWithProvider([mockJsondoc]);
+        renderWithProvider(objectDataSynopsis);
 
-        // Check that episodes are sorted by episode number
-        const episodeTitles = screen.getAllByText(/第\d+集:/);
-        expect(episodeTitles[0]).toHaveTextContent('第1集: 初次相遇');
-        expect(episodeTitles[1]).toHaveTextContent('第2集: 职场风波');
-        expect(episodeTitles[2]).toHaveTextContent('第3集: 误会解除');
-
-        // Check total count
-        expect(screen.getByTestId('title')).toHaveTextContent('每集大纲 (3集)');
+        expect(screen.getByText('第3集: 真相大白')).toBeInTheDocument();
+        expect(screen.getByText('解释来龙去脉')).toBeInTheDocument();
     });
 
-    it('should handle multiple jsondocs and flatten episodes', () => {
-        const jsondoc1Episodes = [
-            {
-                episodeNumber: 1,
-                title: '第一组第一集',
-                openingHook: '开场1',
-                mainPlot: '剧情1',
-                emotionalClimax: '高潮1',
-                cliffhanger: '悬念1',
-                suspenseElements: ['元素1'],
+    it('should handle empty suspense elements', () => {
+        const noSuspenseSynopsis = {
+            ...mockEpisodeSynopsis,
+            data: JSON.stringify({
+                episodeNumber: 4,
+                title: '平静的一集',
+                openingHook: '日常开始',
+                mainPlot: '平常的一天',
+                emotionalClimax: '小小的感动',
+                cliffhanger: '明天会如何',
+                suspenseElements: [],
                 estimatedDuration: 120
-            }
-        ];
+            })
+        };
 
-        const jsondoc2Episodes = [
-            {
-                episodeNumber: 2,
-                title: '第二组第一集',
-                openingHook: '开场2',
-                mainPlot: '剧情2',
-                emotionalClimax: '高潮2',
-                cliffhanger: '悬念2',
-                suspenseElements: ['元素2'],
-                estimatedDuration: 120
-            }
-        ];
+        renderWithProvider(noSuspenseSynopsis);
 
-        const mockJsondoc1 = createMockEpisodeSynopsisJsondoc('test-1', jsondoc1Episodes);
-        const mockJsondoc2 = createMockEpisodeSynopsisJsondoc('test-2', jsondoc2Episodes);
-
-        renderWithProvider([mockJsondoc1, mockJsondoc2]);
-
-        // Check that all episodes are displayed
-        expect(screen.getByTestId('title')).toHaveTextContent('每集大纲 (2集)');
-        expect(screen.getByText('第1集: 第一组第一集')).toBeInTheDocument();
-        expect(screen.getByText('第2集: 第二组第一集')).toBeInTheDocument();
-    });
-
-    it('should handle episodes without suspense elements', () => {
-        const episodes = [
-            {
-                episodeNumber: 1,
-                title: '简单剧集',
-                openingHook: '简单开场',
-                mainPlot: '简单剧情',
-                emotionalClimax: '简单高潮',
-                cliffhanger: '简单悬念',
-                estimatedDuration: 120
-                // No suspenseElements
-            }
-        ];
-
-        const mockJsondoc = createMockEpisodeSynopsisJsondoc('test-1', episodes);
-        renderWithProvider([mockJsondoc]);
-
-        // Should render episode without suspense elements section
-        expect(screen.getByText('第1集: 简单剧集')).toBeInTheDocument();
+        expect(screen.getByText('第4集: 平静的一集')).toBeInTheDocument();
+        // Should not show suspense elements section
         expect(screen.queryByText('悬念元素:')).not.toBeInTheDocument();
     });
 
-    it('should handle empty suspense elements array', () => {
-        const episodes = [
-            {
-                episodeNumber: 1,
-                title: '无悬念剧集',
-                openingHook: '开场',
-                mainPlot: '剧情',
+    it('should handle missing suspense elements', () => {
+        const noSuspenseFieldSynopsis = {
+            ...mockEpisodeSynopsis,
+            data: JSON.stringify({
+                episodeNumber: 5,
+                title: '简单的一集',
+                openingHook: '开始',
+                mainPlot: '中间',
                 emotionalClimax: '高潮',
-                cliffhanger: '悬念',
-                suspenseElements: [], // Empty array
+                cliffhanger: '结束',
                 estimatedDuration: 120
-            }
-        ];
+                // No suspenseElements field
+            })
+        };
 
-        const mockJsondoc = createMockEpisodeSynopsisJsondoc('test-1', episodes);
-        renderWithProvider([mockJsondoc]);
+        renderWithProvider(noSuspenseFieldSynopsis);
 
-        expect(screen.getByText('第1集: 无悬念剧集')).toBeInTheDocument();
+        expect(screen.getByText('第5集: 简单的一集')).toBeInTheDocument();
         expect(screen.queryByText('悬念元素:')).not.toBeInTheDocument();
     });
 
-    it('should handle malformed jsondoc data gracefully', () => {
-        const malformedJsondoc: ElectricJsondoc = {
-            id: 'malformed',
-            project_id: 'test-project',
-            schema_type: 'episode_synopsis',
-            schema_version: 'v1',
-            origin_type: 'ai_generated',
-            data: 'invalid json',
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z'
+    it('should handle invalid JSON data', () => {
+        const invalidDataSynopsis = {
+            ...mockEpisodeSynopsis,
+            data: 'invalid json data'
         };
 
-        // Should not crash and should show empty state
-        renderWithProvider([malformedJsondoc]);
+        renderWithProvider(invalidDataSynopsis);
 
-        expect(screen.getByTestId('title')).toHaveTextContent('每集大纲 (0集)');
-        expect(screen.queryByTestId('card')).not.toBeInTheDocument();
+        expect(screen.getByText('数据解析失败')).toBeInTheDocument();
     });
 
-    it('should handle jsondoc with missing episodes array', () => {
-        const jsondocWithoutEpisodes: ElectricJsondoc = {
-            id: 'no-episodes',
-            project_id: 'test-project',
-            schema_type: 'episode_synopsis',
-            schema_version: 'v1',
-            origin_type: 'ai_generated',
+    it('should handle null data', () => {
+        const nullDataSynopsis = {
+            ...mockEpisodeSynopsis,
+            data: null as any
+        };
+
+        renderWithProvider(nullDataSynopsis);
+
+        expect(screen.getByText('暂无剧集大纲数据')).toBeInTheDocument();
+    });
+
+    it('should handle undefined data', () => {
+        const undefinedDataSynopsis = {
+            ...mockEpisodeSynopsis,
+            data: undefined as any
+        };
+
+        renderWithProvider(undefinedDataSynopsis);
+
+        expect(screen.getByText('暂无剧集大纲数据')).toBeInTheDocument();
+    });
+
+    it('should set up scroll sync observer correctly', () => {
+        renderWithProvider(mockEpisodeSynopsis);
+
+        // Should create IntersectionObserver
+        expect(mockIntersectionObserver).toHaveBeenCalledWith(
+            expect.any(Function),
+            expect.objectContaining({
+                threshold: 0.3,
+                rootMargin: '-10% 0px -50% 0px'
+            })
+        );
+
+        // Should observe the episode element
+        expect(mockObserve).toHaveBeenCalledTimes(1);
+    });
+
+    it('should render all required sections', () => {
+        renderWithProvider(mockEpisodeSynopsis);
+
+        // Check for all section labels
+        expect(screen.getByText('开场钩子')).toBeInTheDocument();
+        expect(screen.getByText('主要剧情')).toBeInTheDocument();
+        expect(screen.getByText('情感高潮')).toBeInTheDocument();
+        expect(screen.getByText('结尾悬念')).toBeInTheDocument();
+        expect(screen.getByText('悬念元素:')).toBeInTheDocument();
+
+        // Check for icons (mocked)
+        expect(screen.getByTestId('clock-icon')).toBeInTheDocument();
+        expect(screen.getAllByTestId('eye-icon')).toHaveLength(2); // Opening hook and cliffhanger
+        expect(screen.getByTestId('thunderbolt-icon')).toBeInTheDocument();
+        expect(screen.getByTestId('fire-icon')).toBeInTheDocument();
+    });
+
+    it('should handle different episode numbers', () => {
+        const episode10Synopsis = {
+            ...mockEpisodeSynopsis,
             data: JSON.stringify({
-                groupTitle: '测试篇',
-                episodeRange: '1-3'
-                // Missing episodes array
-            }),
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z'
-        };
-
-        renderWithProvider([jsondocWithoutEpisodes]);
-
-        expect(screen.getByTestId('title')).toHaveTextContent('每集大纲 (0集)');
-        expect(screen.queryByTestId('card')).not.toBeInTheDocument();
-    });
-
-    it('should handle jsondoc with non-array episodes field', () => {
-        const jsondocWithInvalidEpisodes: ElectricJsondoc = {
-            id: 'invalid-episodes',
-            project_id: 'test-project',
-            schema_type: 'episode_synopsis',
-            schema_version: 'v1',
-            origin_type: 'ai_generated',
-            data: JSON.stringify({
-                groupTitle: '测试篇',
-                episodeRange: '1-3',
-                episodes: 'not an array'
-            }),
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z'
-        };
-
-        renderWithProvider([jsondocWithInvalidEpisodes]);
-
-        expect(screen.getByTestId('title')).toHaveTextContent('每集大纲 (0集)');
-        expect(screen.queryByTestId('card')).not.toBeInTheDocument();
-    });
-
-    it('should render correct element IDs for navigation', () => {
-        const episodes = [
-            {
-                episodeNumber: 1,
-                title: '测试集',
+                episodeNumber: 10,
+                title: '第十集',
                 openingHook: '开场',
                 mainPlot: '剧情',
                 emotionalClimax: '高潮',
                 cliffhanger: '悬念',
                 suspenseElements: ['元素'],
                 estimatedDuration: 120
-            }
-        ];
+            })
+        };
 
-        const mockJsondoc = createMockEpisodeSynopsisJsondoc('test-1', episodes);
-        const { container } = renderWithProvider([mockJsondoc]);
+        renderWithProvider(episode10Synopsis);
 
-        // Check that the component has the correct ID for navigation
-        const elementWithId = container.querySelector('#episode-synopsis');
-        expect(elementWithId).toBeInTheDocument();
+        expect(screen.getByText('第10集: 第十集')).toBeInTheDocument();
+        // Should have correct ID for scroll sync
+        expect(document.getElementById('episode-10')).toBeInTheDocument();
+    });
+
+    it('should handle missing estimatedDuration', () => {
+        const noDurationSynopsis = {
+            ...mockEpisodeSynopsis,
+            data: JSON.stringify({
+                episodeNumber: 6,
+                title: '无时长',
+                openingHook: '开场',
+                mainPlot: '剧情',
+                emotionalClimax: '高潮',
+                cliffhanger: '悬念',
+                suspenseElements: ['元素']
+                // No estimatedDuration
+            })
+        };
+
+        renderWithProvider(noDurationSynopsis);
+
+        // Should default to 120 seconds
+        expect(screen.getByText('120秒')).toBeInTheDocument();
     });
 }); 

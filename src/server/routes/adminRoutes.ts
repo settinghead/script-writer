@@ -119,7 +119,7 @@ export function createAdminRoutes(
                     outputJsondocType: 'episode_synopsis',
                     schemas: {
                         inputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.EpisodeSynopsisInputSchema),
-                        outputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.EpisodeSynopsisGroupSchema)
+                        outputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.EpisodeSynopsisSchema)
                     }
                 }
             };
