@@ -60,6 +60,19 @@ vi.mock('antd', () => {
     );
     Descriptions.Item = DescriptionsItem;
 
+    const TextArea = ({ children, ...props }: any) => (
+        <textarea data-testid="textarea" {...props}>
+            {children}
+        </textarea>
+    );
+
+    const Input = ({ children, ...props }: any) => (
+        <input data-testid="input" {...props}>
+            {children}
+        </input>
+    );
+    Input.TextArea = TextArea;
+
     return {
         Card: ({ children, title, extra, ...props }: any) => (
             <div data-testid="card" {...props}>
@@ -83,6 +96,12 @@ vi.mock('antd', () => {
             <div data-testid="space" {...props}>
                 {children}
             </div>
+        ),
+        Input,
+        Form: ({ children, ...props }: any) => (
+            <form data-testid="form" {...props}>
+                {children}
+            </form>
         )
     };
 });
@@ -93,6 +112,25 @@ vi.mock('@ant-design/icons', () => ({
     ThunderboltOutlined: () => <span data-testid="thunderbolt-icon">Thunderbolt</span>,
     EyeOutlined: () => <span data-testid="eye-icon">Eye</span>,
     FireOutlined: () => <span data-testid="fire-icon">Fire</span>
+}));
+
+// Mock useProjectData
+vi.mock('../../../contexts/ProjectDataContext', () => ({
+    useProjectData: () => ({
+        createHumanTransform: {
+            mutate: vi.fn()
+        }
+    })
+}));
+
+// Mock YJS components
+vi.mock('../../transform-jsondoc-framework/contexts/YJSJsondocContext', () => ({
+    YJSJsondocProvider: ({ children }: any) => <div data-testid="yjs-provider">{children}</div>
+}));
+
+// Mock EditableEpisodeSynopsisForm
+vi.mock('../EditableEpisodeSynopsisForm', () => ({
+    default: ({ jsondoc }: any) => <div data-testid="editable-form">Editing {jsondoc.id}</div>
 }));
 
 describe('EpisodeSynopsisDisplay', () => {
@@ -119,9 +157,15 @@ describe('EpisodeSynopsisDisplay', () => {
     };
 
     const renderWithProvider = (episodeSynopsis: ElectricJsondoc) => {
+        const synopsisItems = [{
+            jsondoc: episodeSynopsis,
+            isEditable: false,
+            isClickToEditable: true
+        }];
+        
         return render(
             <ScrollSyncProvider>
-                <EpisodeSynopsisDisplay episodeSynopsis={episodeSynopsis} />
+                <EpisodeSynopsisDisplay synopsisItems={synopsisItems} />
             </ScrollSyncProvider>
         );
     };
@@ -265,20 +309,14 @@ describe('EpisodeSynopsisDisplay', () => {
         expect(screen.getByText('暂无剧集大纲数据')).toBeInTheDocument();
     });
 
-    it('should set up scroll sync observer correctly', () => {
+    it('should render episode synopsis with proper structure', () => {
         renderWithProvider(mockEpisodeSynopsis);
 
-        // Should create IntersectionObserver
-        expect(mockIntersectionObserver).toHaveBeenCalledWith(
-            expect.any(Function),
-            expect.objectContaining({
-                threshold: 0.3,
-                rootMargin: '-10% 0px -50% 0px'
-            })
-        );
-
-        // Should observe the episode element
-        expect(mockObserve).toHaveBeenCalledTimes(1);
+        // Should render the episode synopsis container
+        expect(screen.getByText('每集大纲 (1集)')).toBeInTheDocument();
+        
+        // Should render the episode card
+        expect(screen.getByTestId('card')).toBeInTheDocument();
     });
 
     it('should render all required sections', () => {

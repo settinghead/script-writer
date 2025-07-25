@@ -70,11 +70,12 @@ const JsondocNode: React.FC<{
         jsondoc: ElectricJsondoc,
         isCanonical: boolean,
         originType: string,
+        isOrphaned?: boolean,
         fetchTransformConversation?: (transformId: string) => void,
         projectData?: any
     }
 }> = ({ data }) => {
-    const { jsondoc, isCanonical, originType, fetchTransformConversation, projectData } = data;
+    const { jsondoc, isCanonical, originType, isOrphaned, fetchTransformConversation, projectData } = data;
 
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -89,6 +90,14 @@ const JsondocNode: React.FC<{
     const borderColor = isCanonical ? AppColors.status.latest : typeColor;
     const borderWidth = isCanonical ? 3 : 2;
 
+    // Add visual indication for orphaned jsondocs
+    const backgroundStyle = isOrphaned ? {
+        background: `linear-gradient(135deg, ${AppColors.background.primary} 0%, #2a1a1a 100%)`,
+        borderStyle: 'dashed'
+    } : {
+        background: AppColors.background.primary
+    };
+
     let parsedData;
     try {
         parsedData = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
@@ -98,7 +107,7 @@ const JsondocNode: React.FC<{
 
     return (
         <div style={{
-            background: AppColors.background.primary,
+            ...backgroundStyle,
             border: `${borderWidth}px solid ${borderColor}`,
             borderRadius: '8px',
             padding: '16px',
@@ -236,6 +245,18 @@ const JsondocNode: React.FC<{
                                 fontWeight: 'bold'
                             }}>
                                 CANONICAL
+                            </span>
+                        )}
+                        {isOrphaned && (
+                            <span style={{
+                                background: '#faad14',
+                                color: '#000',
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                fontSize: '10px',
+                                fontWeight: 'bold'
+                            }}>
+                                ORPHANED
                             </span>
                         )}
                     </div>
@@ -531,6 +552,22 @@ const RawGraphVisualization: React.FC = () => {
 
     // Process lineage data and convert to React Flow format
     const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
+        console.log('[RawGraphVisualization] Computing nodes and edges...');
+        console.log('[RawGraphVisualization] Show options:', {
+            showJsondocs,
+            showTransforms,
+            showHumanTransforms,
+            showLLMTransforms
+        });
+        console.log('[RawGraphVisualization] Project data status:', {
+            jsondocs: Array.isArray(projectData.jsondocs) ? `${projectData.jsondocs.length} items` : projectData.jsondocs,
+            transforms: Array.isArray(projectData.transforms) ? `${projectData.transforms.length} items` : projectData.transforms,
+            humanTransforms: Array.isArray(projectData.humanTransforms) ? `${projectData.humanTransforms.length} items` : projectData.humanTransforms,
+            transformInputs: Array.isArray(projectData.transformInputs) ? `${projectData.transformInputs.length} items` : projectData.transformInputs,
+            transformOutputs: Array.isArray(projectData.transformOutputs) ? `${projectData.transformOutputs.length} items` : projectData.transformOutputs,
+            lineageGraph: typeof projectData.lineageGraph === 'object' ? 'object' : projectData.lineageGraph
+        });
+
         // Handle loading/error states
         if (projectData.jsondocs === "pending" ||
             projectData.transforms === "pending" ||
@@ -538,6 +575,7 @@ const RawGraphVisualization: React.FC = () => {
             projectData.transformInputs === "pending" ||
             projectData.transformOutputs === "pending" ||
             projectData.lineageGraph === "pending") {
+            console.log('[RawGraphVisualization] Data is pending, returning empty graph');
             return { nodes: [], edges: [] };
         }
 
@@ -547,10 +585,12 @@ const RawGraphVisualization: React.FC = () => {
             projectData.transformInputs === "error" ||
             projectData.transformOutputs === "error" ||
             projectData.lineageGraph === "error") {
+            console.log('[RawGraphVisualization] Data has errors, returning empty graph');
             return { nodes: [], edges: [] };
         }
 
         if (!projectData.jsondocs.length) {
+            console.log('[RawGraphVisualization] No jsondocs available, returning empty graph');
             return { nodes: [], edges: [] };
         }
 
@@ -573,12 +613,19 @@ const RawGraphVisualization: React.FC = () => {
 
         // Create jsondoc nodes
         if (showJsondocs && Array.isArray(projectData.jsondocs)) {
+            console.log('[RawGraphVisualization] Creating jsondoc nodes from', projectData.jsondocs.length, 'jsondocs');
+
+            const episodeSynopsisCount = projectData.jsondocs.filter(j => j.schema_type === 'episode_synopsis').length;
+            console.log('[RawGraphVisualization] Episode synopsis jsondocs:', episodeSynopsisCount);
+
             projectData.jsondocs.forEach((jsondoc) => {
                 // Check if this jsondoc is canonical using the canonical logic
                 const isCanonical = canonicalJsondocIds.has(jsondoc.id);
 
                 // Determine origin type by checking which transforms created this jsondoc
                 let originType: string | undefined;
+                let isOrphaned = false;
+
                 if (Array.isArray(projectData.transformOutputs)) {
                     const creatingTransform = projectData.transformOutputs
                         .find((output: any) => output.jsondoc_id === jsondoc.id);
@@ -590,6 +637,9 @@ const RawGraphVisualization: React.FC = () => {
                             originType = transform.type; // 'human' or 'llm'
                         }
                     }
+                } else {
+                    // If transformOutputs is empty, all jsondocs are potentially orphaned
+                    isOrphaned = true;
                 }
 
                 // Special handling for user input jsondocs
@@ -604,22 +654,36 @@ const RawGraphVisualization: React.FC = () => {
                         jsondoc,
                         isCanonical,
                         originType,
+                        isOrphaned,
                         fetchTransformConversation,
                         projectData
                     },
                     position: { x: 0, y: 0 }, // Will be set by layout
                 });
+
+                if (jsondoc.schema_type === 'episode_synopsis') {
+                    console.log('[RawGraphVisualization] Added episode_synopsis node:', jsondoc.id, 'origin:', jsondoc.origin_type, 'orphaned:', isOrphaned);
+                }
             });
         }
 
         // Create transform nodes and edges
         if (showTransforms && Array.isArray(projectData.transforms)) {
+            console.log('[RawGraphVisualization] Creating transform nodes from', projectData.transforms.length, 'transforms');
+            console.log('[RawGraphVisualization] Transform types:', projectData.transforms.map(t => t.type));
+            console.log('[RawGraphVisualization] Human transforms count:', projectData.transforms.filter(t => t.type === 'human').length);
+            console.log('[RawGraphVisualization] LLM transforms count:', projectData.transforms.filter(t => t.type === 'llm').length);
+            console.log('[RawGraphVisualization] Show human transforms:', showHumanTransforms);
+            console.log('[RawGraphVisualization] Show LLM transforms:', showLLMTransforms);
+
             projectData.transforms.forEach((transform: any) => {
                 const shouldShow =
                     (transform.type === 'human' && showHumanTransforms) ||
                     (transform.type === 'llm' && showLLMTransforms) ||
                     (transform.type === 'ai_patch' && showLLMTransforms) ||
                     (transform.type === 'human_patch_approval' && showHumanTransforms);
+
+                console.log(`[RawGraphVisualization] Transform ${transform.id}: type=${transform.type}, shouldShow=${shouldShow}`);
 
                 if (!shouldShow) return;
 
@@ -639,6 +703,8 @@ const RawGraphVisualization: React.FC = () => {
                     data: { transform, humanTransform },
                     position: { x: 0, y: 0 }, // Will be set by layout
                 });
+
+                console.log(`[RawGraphVisualization] Added transform node: ${transform.id}, type=${transform.type}`);
 
                 // Create edges from input jsondocs to transform
                 if (Array.isArray(projectData.transformInputs)) {
@@ -750,6 +816,25 @@ const RawGraphVisualization: React.FC = () => {
                 });
             });
         }
+
+        // Final fallback: If we have jsondocs but no edges, show all jsondocs as orphaned nodes
+        // This helps when Electric SQL sync is not working for relationship tables
+        if (nodes.length > 0 && edges.length === 0 && showJsondocs) {
+            console.log('[RawGraphVisualization] No edges found, showing all jsondocs as orphaned nodes');
+            console.log('[RawGraphVisualization] Data summary:', {
+                jsondocs: projectData.jsondocs?.length || 0,
+                transforms: projectData.transforms?.length || 0,
+                humanTransforms: projectData.humanTransforms?.length || 0,
+                transformInputs: projectData.transformInputs?.length || 0,
+                transformOutputs: projectData.transformOutputs?.length || 0,
+                nodes: nodes.length,
+                edges: edges.length
+            });
+            // All jsondocs are already added to nodes above, so just proceed with layout
+        }
+
+        console.log(`[RawGraphVisualization] Final result: ${nodes.length} nodes, ${edges.length} edges`);
+        console.log(`[RawGraphVisualization] Node types:`, nodes.map(n => ({ id: n.id, type: n.type, dataType: n.data?.transform?.type || n.data?.jsondoc?.schema_type })));
 
         return getLayoutedElements(nodes, edges);
     }, [

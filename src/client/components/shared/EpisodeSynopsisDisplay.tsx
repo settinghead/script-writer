@@ -1,24 +1,36 @@
-import React, { useRef, useEffect, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Card, Descriptions, Typography, Tag, Space } from 'antd';
 import { ClockCircleOutlined, ThunderboltOutlined, EyeOutlined, FireOutlined } from '@ant-design/icons';
 import type { ElectricJsondoc } from '../../../common/types';
-import { useScrollSyncObserver, type SubItem } from '../../hooks/useScrollSyncObserver';
+import EditableEpisodeSynopsisForm from './EditableEpisodeSynopsisForm';
+import { YJSJsondocProvider } from '../../transform-jsondoc-framework/contexts/YJSJsondocContext';
+import { useProjectData } from '../../contexts/ProjectDataContext';
 
 const { Title, Text, Paragraph } = Typography;
 
+interface SynopsisItem {
+    jsondoc: ElectricJsondoc;
+    isEditable: boolean;
+    isClickToEditable: boolean;
+}
+
 interface EpisodeSynopsisDisplayProps {
-    episodeSynopsis?: ElectricJsondoc;
-    episodeSynopsisList?: ElectricJsondoc[];
+    synopsisItems?: SynopsisItem[];
 }
 
 // Single episode display component - now a pure presentational component
-const SingleEpisodeDisplay: React.FC<{ episodeSynopsis: ElectricJsondoc; setRef: (el: HTMLDivElement | null) => void }> = ({ episodeSynopsis, setRef }) => {
+const SingleEpisodeDisplay: React.FC<{
+    item: SynopsisItem;
+    onClick: () => void;
+}> = ({ item, onClick }) => {
+    const { jsondoc, isEditable, isClickToEditable } = item;
+
     // Parse episode data
     let episodeData: any = null;
     try {
-        episodeData = typeof episodeSynopsis.data === 'string'
-            ? JSON.parse(episodeSynopsis.data)
-            : episodeSynopsis.data;
+        episodeData = typeof jsondoc.data === 'string'
+            ? JSON.parse(jsondoc.data)
+            : jsondoc.data;
     } catch (error) {
         console.warn('Failed to parse episode synopsis data:', error);
         return (
@@ -36,17 +48,45 @@ const SingleEpisodeDisplay: React.FC<{ episodeSynopsis: ElectricJsondoc; setRef:
         );
     }
 
+    const cardStyle: React.CSSProperties = {
+        marginBottom: 16,
+        backgroundColor: '#1f1f1f',
+        borderColor: '#434343',
+    };
+
+    if (isClickToEditable) {
+        cardStyle.cursor = 'pointer';
+        cardStyle.borderColor = '#1890ff';
+    }
+
+    if (isEditable) {
+        return (
+            <div id={`episode-${episodeData.episodeNumber}`}>
+                <Card
+                    style={cardStyle}
+                    title={
+                        <Space>
+                            <Text strong style={{ fontSize: '16px', color: '#1890ff' }}>
+                                第{episodeData.episodeNumber}集: {episodeData.title} (编辑中)
+                            </Text>
+                        </Space>
+                    }
+                >
+                    <YJSJsondocProvider jsondocId={jsondoc.id}>
+                        <EditableEpisodeSynopsisForm jsondoc={jsondoc} />
+                    </YJSJsondocProvider>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div
-            ref={setRef} // Attach ref from parent
             id={`episode-${episodeData.episodeNumber}`}
+            onClick={isClickToEditable ? onClick : undefined}
         >
             <Card
-                style={{
-                    marginBottom: 16,
-                    backgroundColor: '#1f1f1f',
-                    borderColor: '#434343'
-                }}
+                style={cardStyle}
                 title={
                     <Space>
                         <Text strong style={{ fontSize: '16px', color: '#1890ff' }}>
@@ -132,60 +172,34 @@ const SingleEpisodeDisplay: React.FC<{ episodeSynopsis: ElectricJsondoc; setRef:
     );
 };
 
-const EpisodeSynopsisDisplay: React.FC<EpisodeSynopsisDisplayProps> = ({ episodeSynopsis, episodeSynopsisList }) => {
-    // Refs for each episode card
-    const itemRefs = useRef<Map<string, HTMLDivElement | null>>(new Map());
+const EpisodeSynopsisDisplay: React.FC<EpisodeSynopsisDisplayProps> = ({ synopsisItems = [] }) => {
+    const projectData = useProjectData();
 
     // Sort episodes by episode number
-    const sortedEpisodes = useMemo(() => {
-        const episodes = episodeSynopsisList || (episodeSynopsis ? [episodeSynopsis] : []);
-        return episodes.sort((a, b) => {
+    const sortedItems = useMemo(() => {
+        return [...synopsisItems].sort((a, b) => {
             try {
-                const aData = typeof a.data === 'string' ? JSON.parse(a.data) : a.data;
-                const bData = typeof b.data === 'string' ? JSON.parse(b.data) : b.data;
+                const aData = typeof a.jsondoc.data === 'string' ? JSON.parse(a.jsondoc.data) : a.jsondoc.data;
+                const bData = typeof b.jsondoc.data === 'string' ? JSON.parse(b.jsondoc.data) : b.jsondoc.data;
                 return (aData.episodeNumber || 0) - (bData.episodeNumber || 0);
             } catch (error) {
                 return 0;
             }
         });
-    }, [episodeSynopsis, episodeSynopsisList]);
+    }, [synopsisItems]);
 
-    // Build sub-items for scroll sync observer from refs
-    const subItems: SubItem[] = useMemo(() => {
-        return sortedEpisodes
-            .map(episode => {
-                const ref = itemRefs.current.get(episode.id);
-                if (ref) {
-                    let episodeNumber = 0;
-                    try {
-                        const data = typeof episode.data === 'string' ? JSON.parse(episode.data) : episode.data;
-                        episodeNumber = data.episodeNumber;
-                    } catch { }
-
-                    return { id: `episode-${episodeNumber}`, ref };
-                }
-                return null;
-            })
-            .filter((item): item is SubItem => item !== null && item.ref !== null);
-    }, [sortedEpisodes, itemRefs.current]);
-
-    // Initialize scroll sync observer once for all episodes
-    useScrollSyncObserver('episode-synopsis', subItems, {
-        enabled: true,
-        threshold: 0.3,
-        rootMargin: '-10% 0px -50% 0px'
-    });
-
-    // Callback to set refs in the map
-    const setItemRef = (id: string) => (el: HTMLDivElement | null) => {
-        if (el) {
-            itemRefs.current.set(id, el);
-        } else {
-            itemRefs.current.delete(id);
+    const handleCardClick = (item: SynopsisItem) => {
+        if (item.isClickToEditable) {
+            projectData.createHumanTransform.mutate({
+                transformName: 'user_edit_episode_synopsis',
+                sourceJsondocId: item.jsondoc.id,
+                derivationPath: '$',
+                fieldUpdates: {}
+            });
         }
     };
 
-    if (sortedEpisodes.length === 0) {
+    if (sortedItems.length === 0) {
         return (
             <div style={{ textAlign: 'center', padding: '40px 0', color: '#8c8c8c' }}>
                 <Text type="secondary">暂无剧集大纲</Text>
@@ -196,13 +210,13 @@ const EpisodeSynopsisDisplay: React.FC<EpisodeSynopsisDisplayProps> = ({ episode
     return (
         <div id="episode-synopsis" style={{ marginBottom: 24 }}>
             <Title level={3} style={{ marginBottom: 16, color: '#1890ff' }}>
-                每集大纲 ({sortedEpisodes.length}集)
+                每集大纲 ({sortedItems.length}集)
             </Title>
-            {sortedEpisodes.map((episode) => (
+            {sortedItems.map((item) => (
                 <SingleEpisodeDisplay
-                    key={episode.id}
-                    episodeSynopsis={episode}
-                    setRef={setItemRef(episode.id)}
+                    key={item.jsondoc.id}
+                    item={item}
+                    onClick={() => handleCardClick(item)}
                 />
             ))}
         </div>

@@ -569,14 +569,28 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
 
     // Episode synopsis display - show immediately when any exist
     if (context.canonicalContext.canonicalEpisodeSynopsisList.length > 0) {
+
+        const synopsisItems = context.canonicalContext.canonicalEpisodeSynopsisList.map(synopsis => {
+            // Episode synopsis jsondocs should be independently editable regardless of leaf node status
+            // since they form a sequential dependency chain where later episodes depend on earlier ones
+            const isDirectlyEditable = !context.hasActiveTransforms && synopsis.origin_type === 'user_input';
+            const canBecomeEditable = !context.hasActiveTransforms && synopsis.origin_type === 'ai_generated';
+
+            return {
+                jsondoc: synopsis,
+                isEditable: isDirectlyEditable,
+                isClickToEditable: canBecomeEditable,
+            };
+        });
+
         components.push({
             id: 'episode-synopsis-display',
             component: getComponentById('episode-synopsis-display'),
-            mode: 'readonly', // Keep simple - no editing for now
+            mode: 'readonly', // The container is readonly, but items can be editable
             props: {
-                episodeSynopsisList: context.canonicalContext.canonicalEpisodeSynopsisList
+                synopsisItems: synopsisItems,
             },
-            priority: componentOrder['episode-synopsis-display']
+            priority: componentOrder['episode-synopsis-display'],
         });
     }
 

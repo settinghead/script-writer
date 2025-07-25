@@ -72,21 +72,8 @@ export function computeCanonicalJsondocsFromLineage(
     const canonicalEpisodePlanning = findCanonicalJsondocByType(lineageGraph, jsondocs, 'episode_planning');
     const canonicalBrainstormInput = findCanonicalJsondocByType(lineageGraph, jsondocs, 'brainstorm_input_params');
 
-    // Find all episode synopsis jsondocs and sort by episode range
-    const canonicalEpisodeSynopsisList = jsondocs
-        .filter(j => j.schema_type === 'episode_synopsis')
-        .sort((a, b) => {
-            // Sort by first episode number for consistent ordering
-            try {
-                const aData = JSON.parse(a.data);
-                const bData = JSON.parse(b.data);
-                const aFirstEpisode = aData.episodes?.[0]?.episodeNumber || 0;
-                const bFirstEpisode = bData.episodes?.[0]?.episodeNumber || 0;
-                return aFirstEpisode - bFirstEpisode;
-            } catch {
-                return 0;
-            }
-        });
+    // Find canonical episode synopsis for each episode number
+    const canonicalEpisodeSynopsisList = findCanonicalEpisodeSynopsisByEpisode(lineageGraph, jsondocs);
 
     return {
         canonicalBrainstormIdea,
@@ -278,6 +265,13 @@ export function extractCanonicalJsondocIds(context: CanonicalJsondocContext): Se
         canonicalIds.add(context.canonicalBrainstormInput.id);
     }
 
+    // IMPORTANT: Add all canonical episode synopsis jsondocs
+    context.canonicalEpisodeSynopsisList.forEach(episodeSynopsis => {
+        canonicalIds.add(episodeSynopsis.id);
+    });
+
+    console.log('[extractCanonicalJsondocIds] Extracted', canonicalIds.size, 'canonical jsondoc IDs, including', context.canonicalEpisodeSynopsisList.length, 'episode synopsis');
+
     return canonicalIds;
 }
 
@@ -303,6 +297,12 @@ function findCanonicalJsondocByType(
     const candidateJsondocs = jsondocs.filter(a => a.schema_type === schemaType);
 
     if (candidateJsondocs.length === 0) return null;
+
+    // Special handling for episode_synopsis: always include all jsondocs regardless of lineage graph status
+    // This is because episode synopsis jsondocs can be orphaned from lineage but still canonical
+    if (schemaType === 'episode_synopsis') {
+        return findBestJsondocByPriority(candidateJsondocs, lineageGraph);
+    }
 
     // Filter to only include jsondocs that are in the lineage graph (canonical jsondocs)
     const canonicalJsondocs = candidateJsondocs.filter(jsondoc => {
@@ -380,6 +380,72 @@ function findMostRecentJsondoc(jsondocs: ElectricJsondoc[]): ElectricJsondoc | n
 
     jsondocs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     return jsondocs[0];
+}
+
+/**
+ * Find canonical episode synopsis jsondocs grouped by episode number
+ * For each episode number, find the most derived/recent version using the same logic as other canonical jsondocs
+ * 
+ * IMPORTANT: Episode synopsis jsondocs are always considered canonical regardless of lineage graph status
+ * because they can be orphaned from the lineage but still represent valid canonical content
+ */
+function findCanonicalEpisodeSynopsisByEpisode(
+    lineageGraph: LineageGraph,
+    jsondocs: ElectricJsondoc[]
+): ElectricJsondoc[] {
+    // Get all episode synopsis jsondocs (always include all, regardless of lineage graph status)
+    const episodeSynopsisJsondocs = jsondocs.filter(j => j.schema_type === 'episode_synopsis');
+
+
+    if (episodeSynopsisJsondocs.length === 0) return [];
+
+    // Group by episode number
+    const episodeGroups = new Map<number, ElectricJsondoc[]>();
+
+    for (const jsondoc of episodeSynopsisJsondocs) {
+        try {
+            const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
+            const episodeNumber = data.episodeNumber || 0;
+
+            if (!episodeGroups.has(episodeNumber)) {
+                episodeGroups.set(episodeNumber, []);
+            }
+            episodeGroups.get(episodeNumber)!.push(jsondoc);
+        } catch (error) {
+            console.warn('Failed to parse episode synopsis data for grouping:', error);
+            // Include in episode 0 as fallback
+            if (!episodeGroups.has(0)) {
+                episodeGroups.set(0, []);
+            }
+            episodeGroups.get(0)!.push(jsondoc);
+        }
+    }
+
+
+    // Find canonical jsondoc for each episode using the same prioritization logic
+    const canonicalEpisodes: ElectricJsondoc[] = [];
+
+    for (const [episodeNumber, candidates] of episodeGroups.entries()) {
+        const canonical = findBestJsondocByPriority(candidates, lineageGraph);
+        if (canonical) {
+            canonicalEpisodes.push(canonical);
+        }
+    }
+
+    // Sort by episode number for consistent ordering
+    canonicalEpisodes.sort((a, b) => {
+        try {
+            const aData = typeof a.data === 'string' ? JSON.parse(a.data) : a.data;
+            const bData = typeof b.data === 'string' ? JSON.parse(b.data) : b.data;
+            const aEpisodeNumber = aData.episodeNumber || 0;
+            const bEpisodeNumber = bData.episodeNumber || 0;
+            return aEpisodeNumber - bEpisodeNumber;
+        } catch {
+            return 0;
+        }
+    });
+
+    return canonicalEpisodes;
 }
 
 /**
