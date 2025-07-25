@@ -115,7 +115,7 @@ export class AgentService {
             if (hasBrainstorm) contextLines.push('✓ 故事创意已生成');
             if (hasOutline) contextLines.push('✓ 剧本设定已生成');
             if (hasChronicles) contextLines.push('✓ 时间顺序大纲已生成');
-            if (hasEpisodePlanning) contextLines.push('✓ 剧集框架已生成');
+            if (hasEpisodePlanning) contextLines.push('✓ 分集结构已生成');
             if (episodeSynopses.length > 0) {
                 contextLines.push(`✓ 已生成 ${episodeSynopses.length} 个分集大纲`);
             }

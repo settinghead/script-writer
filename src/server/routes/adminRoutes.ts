@@ -58,7 +58,7 @@ export function createAdminRoutes(
                         outputSchema: () => import('@/common/transform_schemas.js').then(m => m.IdeationOutputSchema)
                     }
                 },
-                'edit_灵感创意': {
+                'improve_灵感创意': {
                     templateName: 'brainstorm_edit_diff',
                     outputJsondocType: '灵感创意',
                     schemas: {
@@ -74,7 +74,7 @@ export function createAdminRoutes(
                         outputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.OutlineSettingsOutputSchema)
                     }
                 },
-                'edit_剧本设定': {
+                'improve_剧本设定': {
                     templateName: '剧本设定_edit_diff',
                     outputJsondocType: '剧本设定',
                     schemas: {
@@ -184,7 +184,7 @@ export function createAdminRoutes(
                         properties: inputProperties
                     },
                     templatePath: templateName,
-                    hasCustomTemplateVariables: tool.name === 'edit_灵感创意' // Only brainstorm edit has custom logic
+                    hasCustomTemplateVariables: tool.name === 'improve_灵感创意' // Only brainstorm edit has custom logic
                 };
             });
 
@@ -247,7 +247,7 @@ export function createAdminRoutes(
                     category: '创意生成'
                 },
                 {
-                    value: 'edit_灵感创意',
+                    value: 'improve_灵感创意',
                     label: '编辑故事创意',
                     description: '修改现有的故事创意内容',
                     category: '内容编辑'
@@ -259,7 +259,7 @@ export function createAdminRoutes(
                     category: '设定生成'
                 },
                 {
-                    value: 'edit_剧本设定',
+                    value: 'improve_剧本设定',
                     label: '编辑剧本设定',
                     description: '修改现有的剧本设定内容',
                     category: '内容编辑'
@@ -278,20 +278,20 @@ export function createAdminRoutes(
                 },
                 {
                     value: 'generate_episode_planning',
-                    label: '生成剧集框架',
+                    label: '生成分集结构',
                     description: '基于时间顺序大纲创建分集结构',
                     category: '框架生成'
                 },
                 {
                     value: 'edit_episode_planning',
-                    label: '编辑剧集框架',
-                    description: '修改现有的剧集框架内容',
+                    label: '编辑分集结构',
+                    description: '修改现有的分集结构内容',
                     category: '内容编辑'
                 },
                 {
                     value: 'generate_episode_synopsis',
                     label: '生成每集大纲',
-                    description: '基于剧集框架生成详细的每集内容',
+                    description: '基于分集结构生成详细的每集内容',
                     category: '内容生成'
                 }
             ];

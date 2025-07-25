@@ -68,7 +68,7 @@ export function generateCanonicalTree(
         { key: 'canonicalBrainstormCollection', name: 'brainstorm_collection', desc: '创意集合' },
         { key: 'canonicalOutlineSettings', name: '剧本设定', desc: '故事框架' },
         { key: 'canonicalChronicles', name: 'chronicles', desc: '时间顺序大纲' },
-        { key: 'canonicalEpisodePlanning', name: 'episode_planning', desc: '剧集框架' }
+        { key: 'canonicalEpisodePlanning', name: 'episode_planning', desc: '分集结构' }
     ];
 
     for (const type of canonicalTypes) {

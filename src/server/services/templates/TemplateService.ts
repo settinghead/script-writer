@@ -207,7 +207,7 @@ export class TemplateService {
           'brainstorm_idea_collection': '故事创意集合',
           'outline_settings': '剧本设定',
           'chronicles': '时间顺序大纲',
-          'episode_planning': '剧集框架',
+          'episode_planning': '分集结构',
           'episode_synopsis': '剧集梗概',
           'script': '剧本',
           'user_input': '用户输入'

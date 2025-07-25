@@ -27,7 +27,7 @@ export const EpisodePlanningDisplay: React.FC<EpisodePlanningDisplayProps> = ({
         return (
             <SectionWrapper
                 schemaType={"episode_planning"}
-                title="剧集框架"
+                title="分集结构"
                 sectionId="episode-planning"
                 jsondocId={effectiveJsondoc?.id}
             >
@@ -35,7 +35,7 @@ export const EpisodePlanningDisplay: React.FC<EpisodePlanningDisplayProps> = ({
                     <JsondocDisplayWrapper
                         jsondoc={effectiveJsondoc}
                         isEditable={isEditable}
-                        title="剧集框架"
+                        title="分集结构"
                         icon="🎬"
                         editableComponent={EditableEpisodePlanningForm}
                         schemaType="episode_planning"
@@ -149,7 +149,7 @@ export const EpisodePlanningDisplay: React.FC<EpisodePlanningDisplayProps> = ({
         return (
             <Alert
                 type="info"
-                message="暂无剧集框架数据"
+                message="暂无分集结构数据"
                 showIcon
             />
         );
@@ -158,7 +158,7 @@ export const EpisodePlanningDisplay: React.FC<EpisodePlanningDisplayProps> = ({
     return (
         <SectionWrapper
             schemaType={"episode_planning"}
-            title="剧集框架"
+            title="分集结构"
             sectionId="episode-planning"
             jsondocId={effectiveJsondoc?.id}
         >
@@ -166,7 +166,7 @@ export const EpisodePlanningDisplay: React.FC<EpisodePlanningDisplayProps> = ({
                 <JsondocDisplayWrapper
                     jsondoc={effectiveJsondoc}
                     isEditable={isEditable}
-                    title="剧集框架"
+                    title="分集结构"
                     icon="🎬"
                     editableComponent={EditableEpisodePlanningForm}
                     schemaType="episode_planning"

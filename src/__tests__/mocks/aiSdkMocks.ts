@@ -65,7 +65,7 @@ export function createCachedStreamObjectMock() {
             } else if (prompt.includes('templateName: episode_planning') || prompt.includes('template: episode_planning')) {
                 console.log('[Mock] Using episode planning fallback (template name match)');
                 return createFallbackEpisodePlanningObject();
-            } else if (prompt.includes('剧集框架') || prompt.includes('分集结构') || prompt.includes('episode planning') || prompt.includes('分集安排')) {
+            } else if (prompt.includes('分集结构') || prompt.includes('分集结构') || prompt.includes('episode planning') || prompt.includes('分集安排')) {
                 console.log('[Mock] Using episode planning fallback (content match)');
                 return createFallbackEpisodePlanningObject();
             } else if (prompt.includes('时间顺序大纲') || prompt.includes('时间线编年史') || prompt.includes('timeline') || prompt.includes('时间顺序') || prompt.includes('编年史')) {

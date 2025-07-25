@@ -272,7 +272,7 @@ class ApiService {
     }
 
     async generateEpisodePlanningFromChronicles(projectId: string, chroniclesJsondocId: string, numberOfEpisodes: number): Promise<any> {
-        const content = `请基于时间顺序大纲生成剧集框架。源时间顺序大纲ID: ${chroniclesJsondocId}，总集数: ${numberOfEpisodes}`;
+        const content = `请基于时间顺序大纲生成分集结构。源时间顺序大纲ID: ${chroniclesJsondocId}，总集数: ${numberOfEpisodes}`;
 
         return this.sendChatMessage(projectId, content, {
             sourceJsondocId: chroniclesJsondocId,

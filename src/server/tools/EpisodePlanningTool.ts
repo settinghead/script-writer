@@ -100,7 +100,7 @@ export function createEpisodePlanningEditToolDefinition(
 ): StreamingToolDefinition<EpisodePlanningEditInput, EpisodePlanningEditToolResult> {
     return {
         name: 'edit_episode_planning',
-        description: '编辑和改进现有剧集框架。适用场景：用户对现有剧集框架有具体的修改要求或改进建议，如调整剧集分组、修改情感节拍、更新关键事件等。使用JSON Patch格式进行精确修改，只改变需要改变的部分。系统会自动处理相关的上下文信息。',
+        description: '编辑和改进现有分集结构。适用场景：用户对现有分集结构有具体的修改要求或改进建议，如调整剧集分组、修改情感节拍、更新关键事件等。使用JSON Patch格式进行精确修改，只改变需要改变的部分。系统会自动处理相关的上下文信息。',
         inputSchema: EpisodePlanningEditInputSchema,
         outputSchema: EpisodePlanningEditToolResultSchema,
         execute: async (params: EpisodePlanningEditInput, { toolCallId }): Promise<EpisodePlanningEditToolResult> => {
@@ -202,7 +202,7 @@ export function createEpisodePlanningToolDefinition(
 ): StreamingToolDefinition<EpisodePlanningInput, EpisodePlanningToolResult> {
     return {
         name: 'generate_episode_planning',
-        description: '生成剧集框架（优化观看顺序和情感节奏）。适用场景：用户已完成相关创作步骤，需要生成适合短视频平台的剧集框架。系统会自动处理所有相关的上下文信息作为参考资料。',
+        description: '生成分集结构（优化观看顺序和情感节奏）。适用场景：用户已完成相关创作步骤，需要生成适合短视频平台的分集结构。系统会自动处理所有相关的上下文信息作为参考资料。',
         inputSchema: EpisodePlanningInputSchema,
         outputSchema: EpisodePlanningToolResultSchema,
         execute: async (params: EpisodePlanningInput, { toolCallId }): Promise<EpisodePlanningToolResult> => {

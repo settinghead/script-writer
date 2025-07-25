@@ -113,7 +113,7 @@ function getDefaultParticleType(schemaType: string): string {
         'brainstorm_collection': '创意集合',
         '剧本设定': '剧本设定',
         'chronicles': '时间顺序大纲',
-        'episode_planning': '剧集框架',
+        'episode_planning': '分集结构',
         'episode_synopsis': '每集大纲'
     };
 
@@ -130,7 +130,7 @@ function getDefaultParticleTitle(schemaType: string): string {
         'brainstorm_collection': '创意集合',
         '剧本设定': '剧本设定',
         'chronicles': '时间顺序大纲',
-        'episode_planning': '剧集框架',
+        'episode_planning': '分集结构',
         'episode_synopsis': '每集大纲'
     };
 

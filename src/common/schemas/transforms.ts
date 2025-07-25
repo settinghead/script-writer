@@ -193,24 +193,24 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     pathPattern: '^\\$$', // Root path indicator ($)
     instantiationFunction: 'createOutlineInputFromBrainstormIdea'
   },
-  'edit_灵感创意': {
-    name: 'edit_灵感创意',
+  'improve_灵感创意': {
+    name: 'improve_灵感创意',
     description: 'Edit entire brainstorm idea object',
     sourceJsondocType: '灵感创意',
     targetJsondocType: '灵感创意',
     pathPattern: '^\\$$', // Root path indicator ($)
     instantiationFunction: 'createBrainstormIdeaFromBrainstormIdea'
   },
-  'edit_灵感创意_field': {
-    name: 'edit_灵感创意_field',
+  'improve_灵感创意_field': {
+    name: 'improve_灵感创意_field',
     description: 'Edit individual fields of brainstorm ideas',
     sourceJsondocType: '灵感创意',
     targetJsondocType: '灵感创意',
     pathPattern: '^(title|body)$', // Matches title or body fields
     instantiationFunction: 'createUserInputFromBrainstormField'
   },
-  'edit_剧本设定': {
-    name: 'edit_剧本设定',
+  'improve_剧本设定': {
+    name: 'improve_剧本设定',
     description: 'Edit 剧本设定 with fine-grained field tracking',
     sourceJsondocType: '剧本设定',
     targetJsondocType: '剧本设定',

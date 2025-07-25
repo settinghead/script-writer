@@ -104,7 +104,7 @@ describe('EpisodePlanningAction', () => {
     it('renders episode planning form with correct elements', () => {
         render(<EpisodePlanningAction {...mockProps} />);
 
-        expect(screen.getByTestId('title-4')).toHaveTextContent('生成剧集框架');
+        expect(screen.getByTestId('title-4')).toHaveTextContent('生成分集结构');
         expect(screen.getByText('总集数')).toBeInTheDocument();
         expect(screen.getByTestId('episode-count-input')).toBeInTheDocument();
         expect(screen.getByTestId('generate-episode-planning-btn')).toBeInTheDocument();
@@ -220,7 +220,7 @@ describe('EpisodePlanningAction', () => {
 
         await waitFor(() => {
             expect(generateButton).not.toBeDisabled();
-            expect(generateButton.textContent).toBe('生成剧集框架');
+            expect(generateButton.textContent).toBe('生成分集结构');
         });
     });
 
@@ -235,7 +235,7 @@ describe('EpisodePlanningAction', () => {
 
         await waitFor(() => {
             expect(generateButton).not.toBeDisabled();
-            expect(generateButton.textContent).toBe('生成剧集框架');
+            expect(generateButton.textContent).toBe('生成分集结构');
         });
     });
 }); 

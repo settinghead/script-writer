@@ -28,7 +28,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
         it('should have correct tool definition structure', () => {
             expect(brainstormEditTool).toBeDefined();
             expect(brainstormEditTool.execute).toBeInstanceOf(Function);
-            expect(brainstormEditTool.name).toBe('edit_灵感创意');
+            expect(brainstormEditTool.name).toBe('improve_灵感创意');
             expect(brainstormEditTool.description).toContain('JSON Patch格式');
             expect(brainstormEditTool.inputSchema).toBeDefined();
             expect(brainstormEditTool.outputSchema).toBeDefined();
@@ -297,7 +297,7 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
         it('should use streaming transform executor instead of dual-transform approach', () => {
             // Verify that the tool definition uses the unified approach
             expect(brainstormEditTool.description).toContain('JSON Patch格式');
-            expect(brainstormEditTool.name).toBe('edit_灵感创意');
+            expect(brainstormEditTool.name).toBe('improve_灵感创意');
 
             // The tool should be properly structured for unified execution
             expect(brainstormEditTool.execute).toBeInstanceOf(Function);

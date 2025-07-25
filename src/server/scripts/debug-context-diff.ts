@@ -19,7 +19,7 @@ import { parseUnifiedDiff } from '../../common/contextDiff.js';
 // Project and jsondoc IDs
 const PROJECT_ID = '559e05ad-cd3d-459f-85b6-12d6e3496b65';
 const JSONDOC_ID = '2f812a07-019a-40a4-8d4c-5a867e7a427b';
-const TOOL_NAME = 'edit_剧本设定';
+const TOOL_NAME = 'improve_剧本设定';
 const USER_ID = 'test-user-1';
 
 // Default edit requirement

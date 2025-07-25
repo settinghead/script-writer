@@ -137,7 +137,7 @@ interface StreamingChunk {
 // Helper function to provide default parameters for tools
 const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
     switch (toolName) {
-        case 'edit_灵感创意':
+        case 'improve_灵感创意':
             return {
                 editRequirements: '调整故事内容，增强吸引力',
                 ideaIndex: 0
@@ -150,7 +150,7 @@ const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
             return {
                 '其他要求': ''
             };
-        case 'edit_剧本设定':
+        case 'improve_剧本设定':
             return {
                 editRequirements: '调整剧本设定，优化角色设定和故事背景'
             };
@@ -186,13 +186,13 @@ const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
 // Helper function to get expected jsondoc types for tools
 const getExpectedJsondocTypes = (toolName: string): string[] => {
     switch (toolName) {
-        case 'edit_灵感创意':
+        case 'improve_灵感创意':
             return ['brainstorm_collection', '灵感创意'];
         case 'generate_灵感创意s':
             return ['brainstorm_input_params'];
         case 'generate_剧本设定':
             return ['brainstorm_collection', '灵感创意'];
-        case 'edit_剧本设定':
+        case 'improve_剧本设定':
             return ['剧本设定'];
         case 'generate_chronicles':
             return ['剧本设定', 'brainstorm_collection'];

@@ -445,7 +445,7 @@ export const ReadOnlyJsondocDisplay: React.FC<ReadOnlyJsondocDisplayProps> = ({ 
                 {/* Episode Groups */}
                 <div>
                     <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '8px' }}>
-                        📚 剧集框架
+                        📚 分集结构
                     </Text>
                     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
                         {Array.isArray(parsedData.episodeGroups) && parsedData.episodeGroups.length > 0 ? (
@@ -546,7 +546,7 @@ export const ReadOnlyJsondocDisplay: React.FC<ReadOnlyJsondocDisplayProps> = ({ 
                                 styles={{ body: { padding: '24px' } }}
                             >
                                 <Text style={{ color: '#666', fontSize: '14px' }}>
-                                    暂无剧集框架
+                                    暂无分集结构
                                 </Text>
                             </Card>
                         )}

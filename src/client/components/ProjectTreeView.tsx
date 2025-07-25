@@ -416,7 +416,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                             fontWeight: episodePlanningHighlighted ? 700 : 500,
                             textShadow: episodePlanningHighlighted ? '0 0 8px rgba(255, 87, 51, 0.8)' : 'none'
                         }}>
-                            剧集框架
+                            分集结构
                         </Text>
                         <CheckCircleOutlined style={{
                             color: episodePlanningHighlighted ? '#52c41a' : '#52c41a',

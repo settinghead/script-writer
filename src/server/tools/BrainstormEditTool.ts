@@ -275,7 +275,7 @@ export function createBrainstormEditToolDefinition(
     }
 ): StreamingToolDefinition<BrainstormEditInput, BrainstormEditToolResult> {
     return {
-        name: 'edit_灵感创意',
+        name: 'improve_灵感创意',
         description: '编辑和改进现有故事创意。适用场景：用户对现有创意有具体的修改要求或改进建议。使用JSON Patch格式进行精确修改，只改变需要改变的部分，提高效率和准确性。支持各种编辑类型：内容扩展、风格调整、情节修改、结构调整等。系统会自动处理相关的上下文信息。',
         inputSchema: BrainstormEditInputSchema,
         outputSchema: BrainstormEditToolResultSchema,
@@ -340,49 +340,57 @@ export function createBrainstormEditToolDefinition(
                             ideaIndex: input.ideaIndex
                         });
 
-                        // Get default variables first
-                        const { TemplateVariableService } = await import('../services/TemplateVariableService.js');
-                        const templateService = new TemplateVariableService();
-                        console.log(`[BrainstormEditTool] Calling prepareDefaultTemplateVariables...`);
-                        const defaultVars = await templateService.prepareDefaultTemplateVariables(input, BrainstormEditInputSchema, {
-                            jsondocRepo,
-                            projectId,
-                            userId
-                        });
-                        console.log(`[BrainstormEditTool] Got default template variables:`, {
-                            keys: Object.keys(defaultVars),
-                            jsondocsKeys: Object.keys(defaultVars.jsondocs || {}),
-                            jsondocsPreview: JSON.stringify(defaultVars.jsondocs).substring(0, 300) + '...'
-                        });
+                        // Create a custom jsondocs object similar to OutlineSettingsTool
+                        const templateJsondocs: Record<string, any> = {};
+
+                        // Process each jsondoc reference
+                        for (const jsondocRef of input.jsondocs) {
+                            const sourceJsondoc = await jsondocRepo.getJsondoc(jsondocRef.jsondocId);
+                            if (sourceJsondoc) {
+                                // Use description as key, fallback to schema type
+                                const key = jsondocRef.description || sourceJsondoc.schema_type;
+
+                                templateJsondocs[key] = {
+                                    id: sourceJsondoc.id,
+                                    schemaType: sourceJsondoc.schema_type,
+                                    schema_type: sourceJsondoc.schema_type,
+                                    content: typeof sourceJsondoc.data === 'string'
+                                        ? JSON.parse(sourceJsondoc.data)
+                                        : sourceJsondoc.data,
+                                    data: typeof sourceJsondoc.data === 'string'
+                                        ? JSON.parse(sourceJsondoc.data)
+                                        : sourceJsondoc.data
+                                };
+                            }
+                        }
+
+                        console.log(`[BrainstormEditTool] Template jsondocs keys:`, Object.keys(templateJsondocs));
 
                         // Enhance with user context if available
+                        let enhancedEditRequirements = params.editRequirements;
                         if (userContext?.originalUserRequest) {
-                            const enhancedEditRequirements = `用户原始完整请求: "${userContext.originalUserRequest}"
+                            enhancedEditRequirements = `用户原始完整请求: "${userContext.originalUserRequest}"
 
 代理解释的编辑要求: "${params.editRequirements}"
 
 请根据用户的原始完整请求进行编辑，而不仅仅是代理的解释。`;
+                        }
 
-                            // Parse existing params and enhance them
-                            let existingParams = {};
-                            try {
-                                existingParams = JSON.parse(defaultVars.params || '{}');
-                            } catch (error) {
-                                console.warn('[BrainstormEditTool] Failed to parse existing params, using empty object');
-                            }
+                        // Return raw objects - let TemplateService handle format conversion
+                        // For unified diff templates, TemplateService will convert to JSON with line numbers
+                        const { jsondocs, ...otherParams } = input;
 
-                            return {
-                                ...defaultVars,
-                                params: templateService.formatAsYaml({
-                                    ...existingParams,
-                                    editRequirements: enhancedEditRequirements,
+                        return {
+                            jsondocs: templateJsondocs, // Raw objects, not YAML string
+                            params: {
+                                ...otherParams,
+                                editRequirements: enhancedEditRequirements,
+                                ...(userContext?.originalUserRequest && {
                                     originalUserRequest: userContext.originalUserRequest,
                                     agentInterpretation: params.editRequirements
                                 })
-                            };
-                        }
-
-                        return defaultVars;
+                            } // Raw objects, not YAML string
+                        };
                     }
                 };
 
@@ -410,7 +418,7 @@ export function createBrainstormEditToolDefinition(
                         }
                     },
                     transformMetadata: {
-                        toolName: 'edit_灵感创意',
+                        toolName: 'improve_灵感创意',
                         source_jsondoc_id: sourceJsondocRef.jsondocId,
                         idea_index: params.ideaIndex,
                         edit_requirements: params.editRequirements,

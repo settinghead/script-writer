@@ -21,7 +21,7 @@ const EpisodeSynopsisGenerationAction: React.FC<EpisodeSynopsisGenerationActionP
 
     const handleGenerate = useCallback(async () => {
         if (!episodePlanning) {
-            message.error('未找到剧集框架');
+            message.error('未找到分集结构');
             return;
         }
 
@@ -52,7 +52,7 @@ const EpisodeSynopsisGenerationAction: React.FC<EpisodeSynopsisGenerationActionP
 
     if (!episodePlanning) {
         return (
-            <Alert message="需要先生成剧集框架" type="warning" showIcon />
+            <Alert message="需要先生成分集结构" type="warning" showIcon />
         );
     }
 

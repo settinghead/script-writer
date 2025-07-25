@@ -36,11 +36,11 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
         try {
             await apiService.generateEpisodePlanningFromChronicles(projectId, latestChronicles.id, numberOfEpisodes);
 
-            message.success('剧集框架生成已启动');
+            message.success('分集结构生成已启动');
             onSuccess?.();
         } catch (error) {
             console.error('Error generating episode planning:', error);
-            const errorMessage = `生成剧集框架失败: ${error instanceof Error ? error.message : '未知错误'}`;
+            const errorMessage = `生成分集结构失败: ${error instanceof Error ? error.message : '未知错误'}`;
             message.error(errorMessage);
             onError?.(error instanceof Error ? error : new Error(errorMessage));
         } finally {
@@ -53,7 +53,7 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
         return (
             <Alert
                 message="需要先生成时间顺序大纲"
-                description="请先完成时间顺序大纲，然后再生成剧集框架"
+                description="请先完成时间顺序大纲，然后再生成分集结构"
                 type="warning"
                 showIcon
             />
@@ -78,11 +78,11 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
         <Space direction="vertical" style={{ width: '100%' }}>
             <Title level={4}>
                 <VideoCameraOutlined style={{ color: '#722ed1' }} />
-                生成剧集框架
+                生成分集结构
             </Title>
 
             <Text type="secondary">
-                基于时间顺序大纲（{stagesCount}个阶段）生成适合抖音短剧的剧集框架，优化观看顺序和情感节奏
+                基于时间顺序大纲（{stagesCount}个阶段）生成适合抖音短剧的分集结构，优化观看顺序和情感节奏
             </Text>
 
             <Form layout="vertical">
@@ -110,7 +110,7 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
                 style={{ width: '100%' }}
                 data-testid="generate-episode-planning-btn"
             >
-                {isGenerating ? '正在生成剧集框架...' : '生成剧集框架'}
+                {isGenerating ? '正在生成分集结构...' : '生成分集结构'}
             </AIButton>
 
 

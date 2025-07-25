@@ -323,7 +323,7 @@ export const episodeSynopsisTemplate: LLMTemplate = {
   promptTemplate: `你是专业的中国短剧编剧，专门为抖音、快手、小红书等平台创作2分钟短剧内容。
 
 ## 任务
-基于剧集框架，为指定剧集组生成详细的每集大纲。每集约2分钟，必须具有强烈的戏剧张力和平台优化的钩子设计。
+基于分集结构，为指定剧集组生成详细的每集大纲。每集约2分钟，必须具有强烈的戏剧张力和平台优化的钩子设计。
 
 ## 项目背景信息（仅供参考）
 %%jsondocs%%
@@ -420,7 +420,7 @@ const EpisodeSynopsisGenerationAction: React.FC<ActionComponentProps> = (props) 
 
   const handleGenerate = useCallback(async () => {
     if (!episodePlanning) {
-      message.error('未找到剧集框架');
+      message.error('未找到分集结构');
       return;
     }
 
@@ -451,7 +451,7 @@ const EpisodeSynopsisGenerationAction: React.FC<ActionComponentProps> = (props) 
 
   if (!episodePlanning) {
     return (
-      <Alert message="需要先生成剧集框架" type="warning" showIcon />
+      <Alert message="需要先生成分集结构" type="warning" showIcon />
     );
   }
 

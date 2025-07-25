@@ -4,8 +4,8 @@ import { EpisodePlanningOutputSchema } from '../../../common/schemas/outlineSche
 export const episodePlanningEditPatchTemplate = createUnifiedDiffTemplate({
     templateName: 'episode_planning_edit_diff',
     description: 'Episode Planning Editing (Unified Diff)',
-    outputJsondocType: '剧集框架',
-    targetTypeName: '剧集框架',
+    outputJsondocType: '分集结构',
+    targetTypeName: '分集结构',
     schema: EpisodePlanningOutputSchema,
     additionalInstructions: [
         '确保剧集分组逻辑合理，每组集数安排恰当',

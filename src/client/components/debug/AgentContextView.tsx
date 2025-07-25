@@ -137,7 +137,7 @@ function generateAISDKToolFormat(toolName: string): any {
             },
             required: ['jsondocs']
         },
-        'edit_灵感创意': {
+        'improve_灵感创意': {
             type: 'object',
             properties: {
                 jsondocs: {
@@ -193,7 +193,7 @@ function generateAISDKToolFormat(toolName: string): any {
             },
             required: ['jsondocs', 'title', 'requirements']
         },
-        'edit_剧本设定': {
+        'improve_剧本设定': {
             type: 'object',
             properties: {
                 jsondocs: {
@@ -280,7 +280,7 @@ function generateAISDKToolFormat(toolName: string): any {
                 },
                 requirements: {
                     type: 'string',
-                    description: '剧集框架生成要求'
+                    description: '分集结构生成要求'
                 }
             },
             required: ['jsondocs', 'requirements']
@@ -651,7 +651,7 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                             <Tag color="cyan" style={{ marginBottom: '4px' }}>时间顺序大纲</Tag>
                         )}
                         {canonicalContext.canonicalEpisodePlanning && (
-                            <Tag color="geekblue" style={{ marginBottom: '4px' }}>剧集框架</Tag>
+                            <Tag color="geekblue" style={{ marginBottom: '4px' }}>分集结构</Tag>
                         )}
                         {canonicalContext.canonicalBrainstormInput && (
                             <Tag color="volcano" style={{ marginBottom: '4px' }}>头脑风暴输入</Tag>

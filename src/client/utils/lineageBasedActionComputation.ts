@@ -277,8 +277,8 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
         actions.push({
             id: 'episode_planning_generation',
             type: 'form',
-            title: '生成剧集框架',
-            description: '基于时间顺序大纲生成剧集框架',
+            title: '生成分集结构',
+            description: '基于时间顺序大纲生成分集结构',
             component: EpisodePlanningAction,
             props: {
                 jsondocs: {
