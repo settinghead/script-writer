@@ -3,14 +3,13 @@
 import { createEpisodeSynopsisToolDefinition } from '../tools/EpisodeSynopsisTool';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
-import { connectToDatabase } from '../database/connection';
+import db from '../database/connection';
 
 async function testIndividualEpisodeSynopsis() {
     console.log('🧪 Testing Individual Episode Synopsis Generation...\n');
 
     try {
-        // Connect to database
-        const db = await connectToDatabase();
+        // Use imported db connection
         const jsondocRepo = new JsondocRepository(db);
         const transformRepo = new TransformRepository(db);
 
@@ -40,12 +39,15 @@ async function testIndividualEpisodeSynopsis() {
             ]
         };
 
-        const episodePlanningJsondoc = await jsondocRepo.create({
-            project_id: projectId,
-            schema_type: 'episode_planning',
-            data: episodePlanningData,
-            origin_type: 'user_input'
-        });
+        const episodePlanningJsondoc = await jsondocRepo.createJsondoc(
+            projectId,
+            'episode_planning',
+            episodePlanningData,
+            'v1',
+            undefined,
+            'completed',
+            'user_input'
+        );
 
         console.log(`✅ Created episode planning jsondoc: ${episodePlanningJsondoc.id}\n`);
 
@@ -68,10 +70,10 @@ async function testIndividualEpisodeSynopsis() {
             episodeStart: 1,
             episodeEnd: 3,
             groupTitle: '初遇篇'
-        });
+        }, { toolCallId: 'test-tool-call-id' });
 
         console.log('\n📊 Generation Results:');
-        console.log(`- Success: ${result.success}`);
+        console.log(`- Finish Reason: ${result.finishReason}`);
         console.log(`- Generated ${result.outputJsondocIds?.length || 0} episode synopsis jsondocs`);
 
         if (result.outputJsondocIds) {
@@ -79,7 +81,7 @@ async function testIndividualEpisodeSynopsis() {
 
             // Verify each episode synopsis was created correctly
             for (const jsondocId of result.outputJsondocIds) {
-                const synopsis = await jsondocRepo.findById(jsondocId);
+                const synopsis = await jsondocRepo.getJsondoc(jsondocId);
                 if (synopsis) {
                     const synopsisData = typeof synopsis.data === 'string'
                         ? JSON.parse(synopsis.data)
@@ -92,10 +94,6 @@ async function testIndividualEpisodeSynopsis() {
                     console.log(`   Origin Type: ${synopsis.origin_type}`);
                 }
             }
-        }
-
-        if (result.error) {
-            console.error('\n❌ Error:', result.error);
         }
 
         console.log('\n🎯 Testing completed successfully!');

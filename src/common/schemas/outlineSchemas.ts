@@ -152,7 +152,7 @@ export const EpisodeScriptSchema = z.object({
     title: z.string(),
     scriptContent: z.string().describe('完整剧本内容 - 包含场景、对话、动作指导'),
     wordCount: z.number().optional(),
-    estimatedDuration: z.number().describe('预估时长(分钟)').default(2),
+    estimatedDuration: z.number().describe('预估时长(分钟)'),
     episodeSynopsisJsondocId: z.string().describe('对应的分集大纲ID')
 });
 
