@@ -4,97 +4,20 @@ export interface ExportableItem {
     id: string;
     name: string;
     content: any;
-    type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '剧本设定' | 'chronicles' | 'episode_planning';
+    type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '剧本设定' | 'chronicles' | 'episode_planning' | 'episode_group';
     defaultSelected: boolean;
+    // For episode groups
+    episodeNumber?: number;
+    hasSynopsis?: boolean;
+    hasScript?: boolean;
+    synopsisContent?: any;
+    scriptContent?: any;
 }
 
 export interface ExportOptions {
     format: 'markdown' | 'docx';
     selectedItems: string[];
     filename: string;
-}
-
-/**
- * Generate exportable items from unified workflow state
- */
-export function generateExportableItems(
-    displayComponents: any[],
-    lineageGraph: any,
-    jsondocs: any[]
-): ExportableItem[] {
-    const items: ExportableItem[] = [];
-
-    for (const component of displayComponents) {
-        let item: ExportableItem | null = null;
-
-        switch (component.id) {
-            case 'brainstorm-input-editor':
-                item = {
-                    id: 'brainstorm-input-editor',
-                    name: '创意输入',
-                    content: component.props.jsondoc,
-                    type: 'brainstorm_input',
-                    defaultSelected: false
-                };
-                break;
-
-            case 'idea-collection':
-                item = {
-                    id: 'idea-collection',
-                    name: '创意集合',
-                    content: component.props.ideas,
-                    type: 'idea_collection',
-                    defaultSelected: false
-                };
-                break;
-
-            case 'single-idea-editor':
-                item = {
-                    id: 'single-idea-editor',
-                    name: '选定创意',
-                    content: component.props.brainstormIdea,
-                    type: 'chosen_idea',
-                    defaultSelected: true
-                };
-                break;
-
-            case '剧本设定-display':
-                item = {
-                    id: '剧本设定-display',
-                    name: '大纲设置',
-                    content: component.props.outlineSettings,
-                    type: '剧本设定',
-                    defaultSelected: true
-                };
-                break;
-
-            case 'chronicles-display':
-                item = {
-                    id: 'chronicles-display',
-                    name: '时间顺序大纲',
-                    content: component.props.chroniclesJsondoc,
-                    type: 'chronicles',
-                    defaultSelected: true
-                };
-                break;
-
-            case 'episode-planning-display':
-                item = {
-                    id: 'episode-planning-display',
-                    name: '剧集规划',
-                    content: component.props.episodePlanningJsondoc,
-                    type: 'episode_planning',
-                    defaultSelected: true
-                };
-                break;
-        }
-
-        if (item) {
-            items.push(item);
-        }
-    }
-
-    return items;
 }
 
 /**

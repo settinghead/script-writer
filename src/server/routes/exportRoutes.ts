@@ -27,7 +27,14 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         id: string;
         name: string;
         content: any;
-        type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '剧本设定' | 'chronicles' | 'episode_planning';
+        type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '剧本设定' | 'chronicles' | 'episode_planning' | 'episode_group';
+        defaultSelected: boolean;
+        // For episode groups
+        episodeNumber?: number;
+        hasSynopsis?: boolean;
+        hasScript?: boolean;
+        synopsisContent?: any;
+        scriptContent?: any;
     }
 
     /**
@@ -115,7 +122,8 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                 id: 'brainstorm-input-editor',
                 name: '创意输入',
                 content: canonicalContext.canonicalBrainstormInput,
-                type: 'brainstorm_input'
+                type: 'brainstorm_input',
+                defaultSelected: false
             });
         }
 
@@ -125,7 +133,8 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                 id: 'idea-collection',
                 name: '创意集合',
                 content: canonicalContext.canonicalBrainstormCollection,
-                type: 'idea_collection'
+                type: 'idea_collection',
+                defaultSelected: false
             });
         }
 
@@ -135,7 +144,8 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                 id: 'single-idea-editor',
                 name: '选定创意',
                 content: canonicalContext.canonicalBrainstormIdea,
-                type: 'chosen_idea'
+                type: 'chosen_idea',
+                defaultSelected: true
             });
         }
 
@@ -145,7 +155,8 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                 id: '剧本设定-display',
                 name: '大纲设置',
                 content: canonicalContext.canonicalOutlineSettings,
-                type: '剧本设定'
+                type: '剧本设定',
+                defaultSelected: true
             });
         }
 
@@ -155,7 +166,8 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                 id: 'chronicles-display',
                 name: '时间顺序大纲',
                 content: canonicalContext.canonicalChronicles,
-                type: 'chronicles'
+                type: 'chronicles',
+                defaultSelected: true
             });
         }
 
@@ -165,9 +177,69 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                 id: 'episode-planning-display',
                 name: '剧集规划',
                 content: canonicalContext.canonicalEpisodePlanning,
-                type: 'episode_planning'
+                type: 'episode_planning',
+                defaultSelected: true
             });
         }
+
+        // Group episodes by number and create combined items
+        const episodeGroups = new Map<number, {
+            synopsis?: any;
+            script?: any;
+        }>();
+
+        // Add synopsis jsondocs to groups
+        canonicalContext.canonicalEpisodeSynopsisList.forEach((episodeSynopsis) => {
+            try {
+                const data = typeof episodeSynopsis.data === 'string' ? JSON.parse(episodeSynopsis.data) : episodeSynopsis.data;
+                const episodeNumber = data.episodeNumber || 1;
+
+                if (!episodeGroups.has(episodeNumber)) {
+                    episodeGroups.set(episodeNumber, {});
+                }
+                episodeGroups.get(episodeNumber)!.synopsis = episodeSynopsis;
+            } catch (error) {
+                console.warn('Failed to parse episode synopsis data:', error);
+            }
+        });
+
+        // Add script jsondocs to groups
+        canonicalContext.canonicalEpisodeScriptsList.forEach((episodeScript) => {
+            try {
+                const data = typeof episodeScript.data === 'string' ? JSON.parse(episodeScript.data) : episodeScript.data;
+                const episodeNumber = data.episodeNumber || 1;
+
+                if (!episodeGroups.has(episodeNumber)) {
+                    episodeGroups.set(episodeNumber, {});
+                }
+                episodeGroups.get(episodeNumber)!.script = episodeScript;
+            } catch (error) {
+                console.warn('Failed to parse episode script data:', error);
+            }
+        });
+
+        // Create combined episode items
+        const sortedEpisodeNumbers = Array.from(episodeGroups.keys()).sort((a, b) => a - b);
+        sortedEpisodeNumbers.forEach(episodeNumber => {
+            const group = episodeGroups.get(episodeNumber)!;
+            const hasSynopsis = !!group.synopsis;
+            const hasScript = !!group.script;
+
+            if (hasSynopsis || hasScript) {
+                items.push({
+                    id: `episode-group-${episodeNumber}`,
+                    name: `第${episodeNumber}集`,
+                    content: group, // Contains both synopsis and script
+                    type: 'episode_group',
+                    defaultSelected: true,
+                    episodeNumber,
+                    hasSynopsis,
+                    hasScript,
+                    synopsisContent: group.synopsis,
+                    scriptContent: group.script
+                });
+            }
+        });
 
         return items;
     }
@@ -190,6 +262,8 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                     return formatChronicles(item.content);
                 case 'episode_planning':
                     return formatEpisodePlanning(item.content);
+                case 'episode_group':
+                    return formatEpisodeGroup(item.content);
                 default:
                     return '无法识别的内容类型';
             }
@@ -203,7 +277,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         if (!jsondoc || !jsondoc.data) return '无内容';
 
         try {
-            const data = JSON.parse(jsondoc.data);
+            const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
             let content = '';
 
             if (data.genre) content += `**类型**: ${data.genre}\n\n`;
@@ -217,37 +291,32 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         }
     }
 
-    function formatIdeaCollection(effectiveIdeas: any[]): string {
-        if (!Array.isArray(effectiveIdeas) || effectiveIdeas.length === 0) return '无创意';
+    function formatIdeaCollection(jsondoc: any): string {
+        if (!jsondoc || !jsondoc.data) return '无内容';
 
-        let content = '';
+        try {
+            const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
+            let content = '';
 
-        effectiveIdeas.forEach((idea, index) => {
-            content += `### 创意 ${index + 1}\n\n`;
-
-            // Extract idea data based on jsondocPath
-            let ideaData: any = null;
-
-            if (idea.jsondocPath === '$') {
-                // Standalone idea - get from jsondoc directly
-                // Note: We need to fetch the jsondoc separately since effectiveIdeas only contains metadata
-                content += `**来源**: 独立创意\n`;
-                content += `**ID**: ${idea.jsondocId}\n\n`;
-            } else {
-                // Idea from collection - extract from path
-                content += `**来源**: 创意集合 (${idea.jsondocPath})\n`;
-                content += `**索引**: ${idea.index}\n\n`;
+            if (data.ideas && Array.isArray(data.ideas)) {
+                data.ideas.forEach((idea: any, index: number) => {
+                    content += `### 创意 ${index + 1}\n\n`;
+                    if (idea.title) content += `**标题**: ${idea.title}\n\n`;
+                    if (idea.body) content += `**内容**: ${idea.body}\n\n`;
+                });
             }
-        });
 
-        return content;
+            return content;
+        } catch (error) {
+            return '内容解析错误';
+        }
     }
 
     function formatChosenIdea(jsondoc: any): string {
         if (!jsondoc || !jsondoc.data) return '无内容';
 
         try {
-            const data = JSON.parse(jsondoc.data);
+            const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
             let content = '';
 
             if (data.title) content += `**标题**: ${data.title}\n\n`;
@@ -263,7 +332,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         if (!jsondoc || !jsondoc.data) return '无内容';
 
         try {
-            const data = JSON.parse(jsondoc.data);
+            const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
             let content = '';
 
             if (data.title) content += `**标题**: ${data.title}\n\n`;
@@ -293,7 +362,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         if (!jsondoc || !jsondoc.data) return '无内容';
 
         try {
-            const data = JSON.parse(jsondoc.data);
+            const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
             let content = '';
 
             if (data.title) content += `**标题**: ${data.title}\n\n`;
@@ -324,7 +393,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         if (!jsondoc || !jsondoc.data) return '无内容';
 
         try {
-            const data = JSON.parse(jsondoc.data);
+            const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
             let content = '';
 
             if (data.title) content += `**标题**: ${data.title}\n\n`;
@@ -338,6 +407,97 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                     if (episode.summary) content += `**概要**: ${episode.summary}\n`;
                     if (episode.key_scenes && Array.isArray(episode.key_scenes)) {
                         content += `**关键场景**: ${episode.key_scenes.join(', ')}\n`;
+                    }
+                    content += '\n';
+                });
+            }
+
+            return content;
+        } catch (error) {
+            return '内容解析错误';
+        }
+    }
+
+    function formatEpisodeGroup(group: { synopsis?: any; script?: any }): string {
+        let content = '';
+        const hasSynopsis = !!group.synopsis;
+        const hasScript = !!group.script;
+
+        if (hasSynopsis) {
+            content += `**大纲**: \n\n`;
+            content += formatEpisodeSynopsis(group.synopsis);
+            content += '\n\n';
+        }
+
+        if (hasScript) {
+            content += `**剧本**: \n\n`;
+            content += formatEpisodeScript(group.script);
+            content += '\n\n';
+        }
+
+        return content;
+    }
+
+    function formatEpisodeSynopsis(jsondoc: any): string {
+        if (!jsondoc || !jsondoc.data) return '无内容';
+
+        try {
+            const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
+            let content = '';
+
+            if (data.episodeNumber) content += `**集数**: 第${data.episodeNumber}集\n\n`;
+            if (data.title) content += `**标题**: ${data.title}\n\n`;
+            if (data.summary) content += `**概要**: ${data.summary}\n\n`;
+
+            if (data.key_scenes && Array.isArray(data.key_scenes)) {
+                content += `**关键场景**:\n`;
+                data.key_scenes.forEach((scene: string, index: number) => {
+                    content += `${index + 1}. ${scene}\n`;
+                });
+                content += '\n';
+            }
+
+            if (data.character_development) {
+                content += `**角色发展**: ${data.character_development}\n\n`;
+            }
+
+            if (data.emotional_arc) {
+                content += `**情感线**: ${data.emotional_arc}\n\n`;
+            }
+
+            return content;
+        } catch (error) {
+            return '内容解析错误';
+        }
+    }
+
+    function formatEpisodeScript(jsondoc: any): string {
+        if (!jsondoc || !jsondoc.data) return '无内容';
+
+        try {
+            const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
+            let content = '';
+
+            if (data.episodeNumber) content += `**集数**: 第${data.episodeNumber}集\n\n`;
+            if (data.title) content += `**标题**: ${data.title}\n\n`;
+
+            if (data.scenes && Array.isArray(data.scenes)) {
+                content += `**场景**:\n\n`;
+                data.scenes.forEach((scene: any, index: number) => {
+                    content += `### 场景 ${index + 1}\n`;
+                    if (scene.location) content += `**地点**: ${scene.location}\n`;
+                    if (scene.time) content += `**时间**: ${scene.time}\n`;
+                    if (scene.characters && Array.isArray(scene.characters)) {
+                        content += `**角色**: ${scene.characters.join(', ')}\n`;
+                    }
+                    if (scene.action) content += `**动作**: ${scene.action}\n`;
+                    if (scene.dialogue && Array.isArray(scene.dialogue)) {
+                        content += `**对话**:\n`;
+                        scene.dialogue.forEach((line: any) => {
+                            if (line.character && line.text) {
+                                content += `${line.character}: ${line.text}\n`;
+                            }
+                        });
                     }
                     content += '\n';
                 });
@@ -445,15 +605,10 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                 return;
             }
 
-            // Verify user has access to the project
-            const hasAccess = await jsondocRepo.userHasProjectAccess(userId, projectId);
-            if (!hasAccess) {
-                res.status(403).json({ error: 'Access denied to this project' });
-                return;
-            }
+            // Fetch project data and generate exportable items
+            const projectData = await fetchProjectData(projectId, userId);
+            const allItems = generateExportableItems(projectData);
 
-            // Get all available items
-            const allItems = await generateExportableItems(projectId);
             res.json(allItems);
         } catch (error) {
             console.error('Error getting exportable items:', error);
@@ -473,21 +628,12 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                 return;
             }
 
-            // Verify user has access to the project
-            const hasAccess = await jsondocRepo.userHasProjectAccess(userId, projectId);
-            if (!hasAccess) {
-                res.status(403).json({ error: 'Access denied to this project' });
-                return;
-            }
-
-            // Get all available items
-            const allItems = await generateExportableItems(projectId);
-
-            // Filter to only selected items
-            const itemsToExport = allItems.filter(item => selectedItems.includes(item.id));
+            // Fetch project data and generate exportable items
+            const projectData = await fetchProjectData(projectId, userId);
+            const allItems = generateExportableItems(projectData);
 
             // Generate markdown content
-            const markdownContent = generateMarkdown(itemsToExport, selectedItems);
+            const markdownContent = generateMarkdown(allItems, selectedItems);
 
             res.json({ content: markdownContent });
         } catch (error) {

@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Button, message } from 'antd';
+import React, { useState } from 'react';
+import { Button } from 'antd';
 import { ExportOutlined } from '@ant-design/icons';
 import { ExportModal } from './ExportModal';
-import { exportService, ExportableItem } from '../services/exportService';
-import { useProjectData } from '../contexts/ProjectDataContext';
 
 interface ExportButtonProps {
     projectId: string;
@@ -15,22 +13,9 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
     isMobile = false
 }) => {
     const [showExportModal, setShowExportModal] = useState(false);
-    const [exportableItems, setExportableItems] = useState<ExportableItem[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const projectData = useProjectData();
 
-    const handleExportClick = async () => {
-        setIsLoading(true);
-        try {
-            const items = await exportService.getExportableItems(projectId);
-            setExportableItems(items);
-            setShowExportModal(true);
-        } catch (error) {
-            console.error('Failed to get exportable items:', error);
-            message.error('获取导出项目失败，请重试');
-        } finally {
-            setIsLoading(false);
-        }
+    const handleExportClick = () => {
+        setShowExportModal(true);
     };
 
     const handleCloseModal = () => {
@@ -48,7 +33,6 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
                 type="text"
                 icon={<ExportOutlined />}
                 onClick={handleExportClick}
-                loading={isLoading}
                 style={{
                     color: '#1890ff'
                 }}
@@ -60,9 +44,6 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
             <ExportModal
                 visible={showExportModal}
                 onClose={handleCloseModal}
-                exportableItems={exportableItems}
-                lineageGraph={projectData.lineageGraph}
-                jsondocs={Array.isArray(projectData.jsondocs) ? projectData.jsondocs : []}
                 projectId={projectId}
             />
         </>
