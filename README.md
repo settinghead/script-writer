@@ -18,7 +18,7 @@ A collaborative Chinese short drama script writing application built on the [Tra
 
 ### 🎭 Script Creation Pipeline
 
-**Complete Workflow**: 灵感生成 → 剧本设定 → 时间顺序大纲 → 分集结构 → 剧本创作
+**Complete Workflow**: 灵感生成 → 剧本设定 → 时间顺序大纲 → 分集结构 → 剧本生成
 
 **Brainstorming (灵感生成)**:
 - **Platform-Specific Generation** - Optimized for 抖音, 快手, 小红书, etc.
@@ -63,7 +63,7 @@ Built on the [Transform Jsondoc Framework](./TRANSFORM_JSONDOC_FRAMEWORK.md) age
 - ✅ **Outline Settings Generation** - Character development, story foundation, and commercial positioning  
 - ✅ **Chronicles Generation** - Chronological story timeline and episode progression
 - ✅ **Episode Planning Generation** - TikTok-optimized episode structure with "pulsing" emotional rhythm
-- ✅ **Episode Script Generation** - Agent-based generation with Electric SQL integration
+- ✅ **Episode Script Generation** - Complete dialogue and scene descriptions with sequential episode generation
 - ✅ **Conversational Response** - General chat with project context
 
 **🔍 Patch Approval System**:
@@ -437,7 +437,7 @@ const actions = computeActionsFromLineage(currentStage, context);
 - `outline_generation` - Idea finalized, ready for 剧本设定 generation
 - `chronicles_generation` - Outline settings complete, ready for chronicles
 - `episode_planning` - Chronicles complete, ready for episode planning generation
-- `script_generation` - Episode planning complete, ready for script writing
+- `episode_script_generation` - Episode planning complete, ready for sequential script generation
 
 **Smart Action Generation**:
 - **Context-Aware Actions** - Only shows relevant next steps based on current stage
@@ -480,8 +480,8 @@ This dual-computation system ensures that users always see the correct workflow 
 - **Outline Settings** - Character development, story foundation, and commercial elements
 - **Chronicles** - Chronological story timeline and staged progression
 - **Episode Planning** - TikTok-optimized episode structure with "pulsing" emotional rhythm
-- **Episode Synopses** - Individual episode breakdowns (to be implemented)
-- **Script Content** - Full dialogue and scene descriptions (to be implemented)
+- **Episode Content** - Complete episode synopsis and script pairs displayed sequentially for better navigation
+- **Episode Scripts** - Full dialogue, scene descriptions, and action guidance for 2-minute short drama episodes
 
 ### 🔍 Canonical Content Principle
 
@@ -510,7 +510,7 @@ Without proper management, this creates:
 // Particle system only indexes canonical jsondocs
 const canonicalIds = await canonicalJsondocService.getCanonicalJsondocIds(projectId);
 
-// Search results only show current workflow content
+// Search results only show current workflow content  
 const searchResults = await particleService.searchParticles(query, projectId);
 // Results automatically filtered to canonical content only
 ```
@@ -524,8 +524,9 @@ const searchResults = await particleService.searchParticles(query, projectId);
 **Example Workflow**:
 1. **AI generates outline** with character "古尔多·老李" → Particle created, searchable
 2. **User edits character** to "古尔多·玛丽亚" → New jsondoc created, old particle removed
-3. **Search for "古尔多"** → Only finds current "玛丽亚" version, no duplicates
-4. **User continues editing** → Search always reflects current editing state
+3. **AI generates episode scripts** referencing "玛丽亚" → Scripts automatically use latest character version
+4. **Search for "古尔多"** → Finds character in outline and script content, all current versions
+5. **User continues editing** → Search always reflects current editing state across all content types
 
 This ensures that the particle search system in 觅光助创 provides clean, relevant results that match exactly what users see in their script development workflow.
 
@@ -603,9 +604,9 @@ yText.insert(0, 'Hello collaborative world!');
 - Advanced features like complex nested object editing and dynamic array management
 - Rich read-only displays with conditional sections
 
-## Episode Planning System
+## Episode Planning & Script Generation System
 
-觅光助创 features a sophisticated episode planning system designed specifically for Chinese short drama production on platforms like 抖音, 快手, and 小红书.
+觅光助创 features a sophisticated episode planning and script generation system designed specifically for Chinese short drama production on platforms like 抖音, 快手, and 小红书.
 
 ### Core Philosophy: "Pulsing" Emotional Rhythm
 
@@ -764,7 +765,47 @@ transforms (
 - **Version Control** - Complete audit trail of episode planning changes
 - **Integration Ready** - Seamless flow to script generation and production
 
-The episode planning system represents a sophisticated approach to Chinese short drama production, combining AI-powered content optimization with collaborative editing tools specifically designed for the unique requirements of platforms like 抖音, 快手, and 小红书.
+### Episode Script Generation
+
+Building on the episode planning foundation, 觅光助创 provides complete script generation for 2-minute Chinese short drama episodes.
+
+**Sequential Script Generation**:
+- **Next Episode Only** - Scripts are generated sequentially, ensuring narrative continuity
+- **Context-Aware Generation** - Uses episode synopsis, previous scripts, and story foundation for consistency
+- **2-Minute Format** - Scripts optimized for mobile viewing with precise timing and pacing
+- **Complete Production Ready** - Includes dialogue, action directions, and scene descriptions
+
+**Script Generation Features**:
+```typescript
+interface EpisodeScript {
+  episodeNumber: number;          // Sequential episode numbering
+  title: string;                  // Episode title
+  scriptContent: string;          // Complete script with dialogue and directions
+  wordCount: number;              // Character count for timing
+  estimatedDuration: number;      // Estimated runtime (typically 2 minutes)
+  episodeSynopsisJsondocId: string; // Links to source synopsis
+}
+```
+
+**Script Content Structure**:
+- **开场钩子** (0-15秒) - Immediate attention-grabbing opening
+- **主要剧情** (15秒-1分30秒) - Core story development with rapid pacing
+- **情感高潮** (1分30秒-1分50秒) - Emotional climax and conflict resolution
+- **结尾悬念** (1分50秒-2分钟) - Cliffhanger hook for next episode
+
+**Unified Episode Content Display**:
+- **Synopsis-Script Pairs** - Episodes displayed as [Synopsis 1] [Script 1] [Synopsis 2] [Script 2] for better navigation
+- **Sequential Viewing** - Intuitive browsing through complete episode content
+- **Real-time Collaboration** - YJS-powered collaborative editing for both synopsis and scripts
+- **Visual Consistency** - Unified styling and status indicators across all episode content
+
+**Production Benefits**:
+- **Narrative Continuity** - Each script builds on previous episodes and story foundation
+- **Platform Optimization** - Content specifically tailored for vertical video consumption
+- **Production Ready** - Scripts include all necessary elements for filming
+- **Collaborative Workflow** - Team members can review and edit scripts in real-time
+
+The combined episode planning and script generation system represents a sophisticated approach to Chinese short drama production, providing complete content creation from initial planning through final scripts, all optimized for platforms like 抖音, 快手, and 小红书.
 
 ## Technical Architecture
 
@@ -1239,8 +1280,8 @@ npm run dev
 3. **Brainstorm Ideas** - Generate initial story concepts
 4. **Generate Outline Settings** - Use "生成剧本设定" to create character and story foundation
 5. **Create Chronicles** - Generate chronological story timeline and episode progression
-6. **Generate Episodes** - Create detailed episode breakdowns
-7. **Write Scripts** - Develop full dialogue and scenes
+6. **Generate Episode Planning** - Create TikTok-optimized episode structure with "pulsing" emotional rhythm
+7. **Generate Episode Scripts** - Sequentially generate complete scripts with dialogue, actions, and scene descriptions
 
 ## Available Scripts
 
@@ -1359,6 +1400,8 @@ fetch('/api/chat', {
 - `GET /api/projects/:projectId/chronicles` - Get chronicles for 剧本设定
 - `POST /api/projects/:projectId/episode-planning` - Generate episode planning from chronicles
 - `GET /api/projects/:projectId/episode-planning` - Get episode planning for project
+- `POST /api/chat/:projectId/messages` - Generate episode scripts (via agent chat with action metadata)
+- `GET /api/jsondocs?schema_type=episode_script&project_id=:projectId` - Get episode scripts for project
 
 ### YJS Collaboration
 - `GET /api/yjs/jsondoc/:jsondocId` - Get jsondoc data for YJS initialization
