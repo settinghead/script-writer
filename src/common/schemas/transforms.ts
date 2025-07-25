@@ -241,8 +241,8 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     pathPattern: '^\\$(\\..*)?$', // Root or any path like $.title, $.openingHook, $.mainPlot, etc.
     instantiationFunction: 'createEpisodeSynopsisFromEpisodeSynopsis'
   },
-  'user_edit_episode_script': {
-    name: 'user_edit_episode_script',
+  'edit_episode_script': {
+    name: 'edit_episode_script',
     description: 'Edit episode script document with whole-document editing',
     sourceJsondocType: 'episode_script',
     targetJsondocType: 'episode_script',

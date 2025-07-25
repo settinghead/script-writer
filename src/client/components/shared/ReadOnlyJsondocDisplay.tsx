@@ -556,6 +556,82 @@ export const ReadOnlyJsondocDisplay: React.FC<ReadOnlyJsondocDisplayProps> = ({ 
         );
     }
 
+    // Render episode script specific layout
+    if (schemaType === 'episode_script') {
+        return (
+            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                {/* Episode Title and Metadata */}
+                <div>
+                    <Space size="small" style={{ marginBottom: '12px' }}>
+                        <Tag color="green">剧本</Tag>
+                        <Tag color="blue">{Math.round(parsedData.estimatedDuration || 2)}分钟</Tag>
+                        <Tag color="orange">{parsedData.wordCount || 0}字</Tag>
+                    </Space>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                        📝 剧集标题
+                    </Text>
+                    {renderTextField(parsedData.title, '未设置标题')}
+                </div>
+
+                {/* Script Content */}
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '12px' }}>
+                        🎬 剧本内容
+                    </Text>
+                    <div
+                        style={{
+                            whiteSpace: 'pre-wrap',
+                            maxHeight: '400px',
+                            overflow: 'auto',
+                            backgroundColor: '#0f0f0f',
+                            padding: '16px',
+                            borderRadius: '6px',
+                            border: '1px solid #434343',
+                            marginBottom: 0
+                        }}
+                    >
+                        {parsedData.scriptContent ? (
+                            <Text style={{ color: '#fff' }}>{parsedData.scriptContent}</Text>
+                        ) : (
+                            <Text style={{ color: '#666', fontStyle: 'italic' }}>未设置剧本内容</Text>
+                        )}
+                    </div>
+                </div>
+
+                {/* Episode Number and Reference */}
+                {(parsedData.episodeNumber || parsedData.episodeSynopsisJsondocId) && (
+                    <div>
+                        <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                            📊 剧集信息
+                        </Text>
+                        <Space direction="vertical" size="small">
+                            {parsedData.episodeNumber && (
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff' }}>
+                                        集数：
+                                    </Text>
+                                    <Text style={{ color: '#fff', marginLeft: '8px' }}>
+                                        第 {parsedData.episodeNumber} 集
+                                    </Text>
+                                </div>
+                            )}
+                            {parsedData.episodeSynopsisJsondocId && (
+                                <div>
+                                    <Text strong style={{ fontSize: '14px', color: '#fff' }}>
+                                        关联大纲：
+                                    </Text>
+                                    <Text style={{ color: '#888', marginLeft: '8px', fontSize: '12px', fontFamily: 'monospace' }}>
+                                        {parsedData.episodeSynopsisJsondocId}
+                                    </Text>
+                                </div>
+                            )}
+                        </Space>
+                    </div>
+                )}
+            </Space>
+        );
+    }
+
     // Generic fallback for other schema types
     return (
         <div style={{ padding: '16px' }}>
