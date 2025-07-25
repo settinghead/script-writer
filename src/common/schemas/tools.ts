@@ -130,6 +130,7 @@ export interface WorkflowStage {
     hasChronicles?: boolean;
     hasEpisodePlanning?: boolean;
     hasBrainstormIdea?: boolean; // Specific for single idea vs collection
+    hasEpisodeSynopsis?: boolean;
 }
 
 export const getWorkflowTools = (stage: WorkflowStage): string[] => {
@@ -197,6 +198,26 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
 
         // Episode synopsis can be generated multiple times
         tools.push('generate_episode_synopsis');
+    }
+
+    // Episode script generation - after episode synopsis exists
+    if (stage.hasEpisodeSynopsis) {
+        // Add edit tools for all previous stages
+        if (stage.hasBrainstormIdea) {
+            tools.push('improve_灵感创意');
+        }
+        if (stage.hasOutlineSettings) {
+            tools.push('improve_剧本设定');
+        }
+        if (stage.hasChronicles) {
+            tools.push('edit_chronicles');
+        }
+        if (stage.hasEpisodePlanning) {
+            tools.push('edit_episode_planning');
+        }
+
+        // Episode script generation (sequential, one at a time)
+        tools.push('generate_episode_script');
     }
 
     // Remove duplicates and return

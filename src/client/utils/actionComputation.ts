@@ -120,6 +120,7 @@ function computeUnifiedContext(
                     canonicalEpisodePlanning: null,
                     canonicalBrainstormInput: null,
                     canonicalEpisodeSynopsisList: [],
+                    canonicalEpisodeScriptsList: [],
                     workflowNodes: [],
                     hasActiveTransforms: false,
                     activeTransforms: [],
@@ -167,6 +168,7 @@ function computeUnifiedContext(
                         canonicalEpisodePlanning: null,
                         canonicalBrainstormInput: null,
                         canonicalEpisodeSynopsisList: [],
+                        canonicalEpisodeScriptsList: [],
                         workflowNodes: [],
                         hasActiveTransforms: false,
                         activeTransforms: [],
@@ -198,6 +200,7 @@ function computeUnifiedContext(
                         canonicalEpisodePlanning: null,
                         canonicalBrainstormInput: null,
                         canonicalEpisodeSynopsisList: [],
+                        canonicalEpisodeScriptsList: [],
                         workflowNodes: [],
                         hasActiveTransforms: false,
                         activeTransforms: [],
@@ -231,6 +234,7 @@ function computeUnifiedContext(
                     canonicalEpisodePlanning: null,
                     canonicalBrainstormInput: null,
                     canonicalEpisodeSynopsisList: [],
+                    canonicalEpisodeScriptsList: [],
                     workflowNodes: [],
                     hasActiveTransforms: false,
                     activeTransforms: [],
@@ -263,6 +267,7 @@ function computeUnifiedContext(
                 canonicalEpisodePlanning: null,
                 canonicalBrainstormInput: null,
                 canonicalEpisodeSynopsisList: [],
+                canonicalEpisodeScriptsList: [],
                 workflowNodes: [],
                 hasActiveTransforms: false,
                 activeTransforms: [],
@@ -302,6 +307,7 @@ function computeUnifiedContext(
                 canonicalEpisodePlanning: null,
                 canonicalBrainstormInput: null,
                 canonicalEpisodeSynopsisList: [],
+                canonicalEpisodeScriptsList: [],
                 workflowNodes: [],
                 hasActiveTransforms: false,
                 activeTransforms: [],
@@ -444,7 +450,7 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         '剧本设定-display': 4,
         'chronicles-display': 5,
         'episode-planning-display': 6,
-        'episode-synopsis-display': 7
+        'episode-content-display': 7
     };
 
     // Add components based on context
@@ -567,9 +573,8 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         });
     }
 
-    // Episode synopsis display - show immediately when any exist
-    if (context.canonicalContext.canonicalEpisodeSynopsisList.length > 0) {
-
+    // Episode content display - show synopsis and script pairs
+    if (context.canonicalContext.canonicalEpisodeSynopsisList.length > 0 || context.canonicalContext.canonicalEpisodeScriptsList.length > 0) {
         const synopsisItems = context.canonicalContext.canonicalEpisodeSynopsisList.map(synopsis => {
             // Episode synopsis jsondocs should be independently editable regardless of leaf node status
             // since they form a sequential dependency chain where later episodes depend on earlier ones
@@ -583,14 +588,26 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
             };
         });
 
+        const scriptItems = context.canonicalContext.canonicalEpisodeScriptsList.map(script => {
+            const isDirectlyEditable = !context.hasActiveTransforms && script.origin_type === 'user_input';
+            const canBecomeEditable = !context.hasActiveTransforms && script.origin_type === 'ai_generated';
+
+            return {
+                jsondoc: script,
+                isEditable: isDirectlyEditable,
+                isClickToEditable: canBecomeEditable,
+            };
+        });
+
         components.push({
-            id: 'episode-synopsis-display',
-            component: getComponentById('episode-synopsis-display'),
+            id: 'episode-content-display',
+            component: getComponentById('episode-content-display'),
             mode: 'readonly', // The container is readonly, but items can be editable
             props: {
                 synopsisItems: synopsisItems,
+                scriptItems: scriptItems,
             },
-            priority: componentOrder['episode-synopsis-display'],
+            priority: componentOrder['episode-content-display'],
         });
     }
 

@@ -22,6 +22,7 @@ export interface CanonicalJsondocContext {
     canonicalEpisodePlanning: ElectricJsondoc | null;
     canonicalBrainstormInput: ElectricJsondoc | null;
     canonicalEpisodeSynopsisList: ElectricJsondoc[]; // All episode synopsis jsondocs
+    canonicalEpisodeScriptsList: ElectricJsondoc[]; // All episode script jsondocs
 
     // Workflow state
     workflowNodes: WorkflowNode[];
@@ -83,6 +84,7 @@ export function computeCanonicalJsondocsFromLineage(
         canonicalEpisodePlanning,
         canonicalBrainstormInput,
         canonicalEpisodeSynopsisList,
+        canonicalEpisodeScriptsList: findCanonicalEpisodeScriptsByEpisode(lineageGraph, jsondocs),
         workflowNodes: findMainWorkflowPath(jsondocs, lineageGraph),
         hasActiveTransforms: transforms.some(t => t.status === 'running' || t.status === 'pending'),
         activeTransforms: transforms.filter(t => t.status === 'running' || t.status === 'pending'),
@@ -413,6 +415,72 @@ function findCanonicalEpisodeSynopsisByEpisode(
             episodeGroups.get(episodeNumber)!.push(jsondoc);
         } catch (error) {
             console.warn('Failed to parse episode synopsis data for grouping:', error);
+            // Include in episode 0 as fallback
+            if (!episodeGroups.has(0)) {
+                episodeGroups.set(0, []);
+            }
+            episodeGroups.get(0)!.push(jsondoc);
+        }
+    }
+
+
+    // Find canonical jsondoc for each episode using the same prioritization logic
+    const canonicalEpisodes: ElectricJsondoc[] = [];
+
+    for (const [episodeNumber, candidates] of episodeGroups.entries()) {
+        const canonical = findBestJsondocByPriority(candidates, lineageGraph);
+        if (canonical) {
+            canonicalEpisodes.push(canonical);
+        }
+    }
+
+    // Sort by episode number for consistent ordering
+    canonicalEpisodes.sort((a, b) => {
+        try {
+            const aData = typeof a.data === 'string' ? JSON.parse(a.data) : a.data;
+            const bData = typeof b.data === 'string' ? JSON.parse(b.data) : b.data;
+            const aEpisodeNumber = aData.episodeNumber || 0;
+            const bEpisodeNumber = bData.episodeNumber || 0;
+            return aEpisodeNumber - bEpisodeNumber;
+        } catch {
+            return 0;
+        }
+    });
+
+    return canonicalEpisodes;
+}
+
+/**
+ * Find canonical episode script jsondocs grouped by episode number
+ * For each episode number, find the most derived/recent version using the same logic as other canonical jsondocs
+ * 
+ * IMPORTANT: Episode script jsondocs are always considered canonical regardless of lineage graph status
+ * because they can be orphaned from the lineage but still represent valid canonical content
+ */
+function findCanonicalEpisodeScriptsByEpisode(
+    lineageGraph: LineageGraph,
+    jsondocs: ElectricJsondoc[]
+): ElectricJsondoc[] {
+    // Get all episode script jsondocs (always include all, regardless of lineage graph status)
+    const episodeScriptJsondocs = jsondocs.filter(j => j.schema_type === 'episode_script');
+
+
+    if (episodeScriptJsondocs.length === 0) return [];
+
+    // Group by episode number
+    const episodeGroups = new Map<number, ElectricJsondoc[]>();
+
+    for (const jsondoc of episodeScriptJsondocs) {
+        try {
+            const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
+            const episodeNumber = data.episodeNumber || 0;
+
+            if (!episodeGroups.has(episodeNumber)) {
+                episodeGroups.set(episodeNumber, []);
+            }
+            episodeGroups.get(episodeNumber)!.push(jsondoc);
+        } catch (error) {
+            console.warn('Failed to parse episode script data for grouping:', error);
             // Include in episode 0 as fallback
             if (!episodeGroups.has(0)) {
                 episodeGroups.set(0, []);

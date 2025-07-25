@@ -144,4 +144,31 @@ export const EpisodeSynopsisToolResultSchema = z.object({
 // Type exports - remove group types and update individual types
 export type EpisodeSynopsisV1 = z.infer<typeof EpisodeSynopsisSchema>;
 export type EpisodeSynopsisInputV1 = z.infer<typeof EpisodeSynopsisInputSchema>;
-export type EpisodeSynopsisToolResult = z.infer<typeof EpisodeSynopsisToolResultSchema>; 
+export type EpisodeSynopsisToolResult = z.infer<typeof EpisodeSynopsisToolResultSchema>;
+
+// Episode Script Schemas
+export const EpisodeScriptSchema = z.object({
+    episodeNumber: z.number(),
+    title: z.string(),
+    scriptContent: z.string().describe('完整剧本内容 - 包含场景、对话、动作指导'),
+    wordCount: z.number().optional(),
+    estimatedDuration: z.number().describe('预估时长(分钟)').default(2),
+    episodeSynopsisJsondocId: z.string().describe('对应的分集大纲ID')
+});
+
+export const EpisodeScriptInputSchema = BaseToolInputSchema.extend({
+    episodeNumber: z.number(),
+    episodeSynopsisJsondocId: z.string(),
+    userRequirements: z.string().optional().describe('用户额外要求')
+});
+
+export const EpisodeScriptToolResultSchema = z.object({
+    outputJsondocId: z.string().describe('生成的剧本jsondoc ID'),
+    episodeNumber: z.number(),
+    message: z.string()
+});
+
+// Episode Script Type exports
+export type EpisodeScriptV1 = z.infer<typeof EpisodeScriptSchema>;
+export type EpisodeScriptInputV1 = z.infer<typeof EpisodeScriptInputSchema>;
+export type EpisodeScriptToolResult = z.infer<typeof EpisodeScriptToolResultSchema>; 

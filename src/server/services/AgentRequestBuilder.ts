@@ -9,6 +9,7 @@ import { createOutlineSettingsToolDefinition, createOutlineSettingsEditToolDefin
 import { createChroniclesToolDefinition, createChroniclesEditToolDefinition } from '../tools/ChroniclesTool';
 import { createEpisodePlanningToolDefinition, createEpisodePlanningEditToolDefinition } from '../tools/EpisodePlanningTool';
 import { createEpisodeSynopsisToolDefinition } from '../tools/EpisodeSynopsisTool';
+import { createEpisodeScriptToolDefinition } from '../tools/EpisodeScriptTool';
 import { createQueryToolDefinition } from '../tools/QueryTool';
 import { createGetJsondocContentToolDefinition } from '../tools/GetJsondocContentTool';
 import { generateCanonicalContentStructure } from '../utils/canonicalContentStructure';
@@ -277,7 +278,8 @@ export function computeAvailableToolsFromCanonicalContext(
         hasBrainstormIdea,
         hasOutlineSettings,
         hasChronicles,
-        hasEpisodePlanning
+        hasEpisodePlanning,
+        hasEpisodeSynopsis
     };
 
     const workflowToolNames = getWorkflowTools(workflowStage);
@@ -311,6 +313,9 @@ export function computeAvailableToolsFromCanonicalContext(
                 break;
             case 'generate_episode_synopsis':
                 addTool(() => createEpisodeSynopsisToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
+                break;
+            case 'generate_episode_script':
+                addTool(() => createEpisodeScriptToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
                 break;
         }
     });

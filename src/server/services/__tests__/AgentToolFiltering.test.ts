@@ -40,6 +40,7 @@ function createCanonicalContext(overrides: Partial<CanonicalJsondocContext> = {}
         canonicalEpisodePlanning: null,
         canonicalBrainstormInput: null,
         canonicalEpisodeSynopsisList: [],
+        canonicalEpisodeScriptsList: [],
         workflowNodes: [],
         hasActiveTransforms: false,
         activeTransforms: [],
@@ -225,9 +226,10 @@ describe('Agent Tool Filtering', () => {
             expect(new Set(toolNames)).toEqual(new Set([
                 'edit_chronicles',
                 'edit_episode_planning',
+                'generate_episode_script',
+                'generate_episode_synopsis',
                 'improve_剧本设定',
-                'improve_灵感创意',
-                'generate_episode_synopsis'
+                'improve_灵感创意'
             ]));
         });
 

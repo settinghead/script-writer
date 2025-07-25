@@ -9,7 +9,7 @@ import { SingleBrainstormIdeaEditor } from '../components/brainstorm/SingleBrain
 import { OutlineSettingsDisplay } from '../components/OutlineSettingsDisplay';
 import { ChroniclesDisplay } from '../components/ChroniclesDisplay';
 import { EpisodePlanningDisplay } from '../components/EpisodePlanningDisplay';
-import EpisodeSynopsisDisplay from '../components/shared/EpisodeSynopsisDisplay';
+import EpisodeContentDisplay from '../components/shared/EpisodeContentDisplay';
 
 export const COMPONENT_REGISTRY = {
     'project-creation-form': ProjectCreationForm,
@@ -19,7 +19,7 @@ export const COMPONENT_REGISTRY = {
     '剧本设定-display': OutlineSettingsDisplay,
     'chronicles-display': ChroniclesDisplay,
     'episode-planning-display': EpisodePlanningDisplay,
-    'episode-synopsis-display': EpisodeSynopsisDisplay
+    'episode-content-display': EpisodeContentDisplay
 } as const;
 
 export type ComponentRegistry = typeof COMPONENT_REGISTRY;

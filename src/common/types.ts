@@ -239,6 +239,27 @@ export interface EpisodeSynopsisInputV1 {
     episodes: number[];
 }
 
+// Episode Script interfaces
+export interface EpisodeScriptV1 {
+    episodeNumber: number;
+    title: string;
+    scriptContent: string;
+    wordCount?: number;
+    estimatedDuration: number;
+    episodeSynopsisJsondocId: string;
+}
+
+export interface EpisodeScriptInputV1 {
+    jsondocs: Array<{
+        jsondocId: string;
+        description: string;
+        schemaType: string;
+    }>;
+    episodeNumber: number;
+    episodeSynopsisJsondocId: string;
+    userRequirements?: string;
+}
+
 // ========== STRONGLY TYPED JSONDOC INTERFACES ==========
 
 // JSON Patch interface for intermediate patch storage
@@ -268,6 +289,8 @@ export type TypedJsondoc =
     | JsondocWithData<'episode_planning_input', 'v1', EpisodePlanningInputV1>
     | JsondocWithData<'episode_synopsis', 'v1', EpisodeSynopsisGroupV1>
     | JsondocWithData<'episode_synopsis_input', 'v1', EpisodeSynopsisInputV1>
+    | JsondocWithData<'episode_script', 'v1', EpisodeScriptV1>
+    | JsondocWithData<'episode_script_input', 'v1', EpisodeScriptInputV1>
     | JsondocWithData<'user_input', 'v1', UserInputV1>
     | JsondocWithData<'outline_title', 'v1', OutlineTitleV1>
     | JsondocWithData<'outline_genre', 'v1', OutlineGenreV1>

@@ -24,6 +24,7 @@ import ChroniclesGenerationAction from '../components/actions/ChroniclesGenerati
 import EpisodePlanningAction from '../components/actions/EpisodePlanningAction';
 import EpisodeGenerationAction from '../components/actions/EpisodeGenerationAction';
 import EpisodeSynopsisGenerationAction from '../components/actions/EpisodeSynopsisGenerationAction';
+import EpisodeScriptGenerationAction from '../components/actions/EpisodeScriptGenerationAction';
 
 // Action item definition
 export interface ActionItem {
@@ -397,6 +398,78 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
             }
         } catch (error) {
             console.warn('Failed to parse episode planning data for next group detection:', error);
+        }
+    }
+
+    // Episode script generation - sequential, next episode only
+    if (context.canonicalEpisodeSynopsisList.length > 0) {
+        // Find next episode that needs script generation
+        const existingScriptEpisodes = new Set(
+            context.canonicalEpisodeScriptsList.map(script => {
+                try {
+                    const data = typeof script.data === 'string' ? JSON.parse(script.data) : script.data;
+                    return data.episodeNumber;
+                } catch {
+                    return null;
+                }
+            }).filter(num => num !== null)
+        );
+
+        // Find the next episode in sequence that has synopsis but no script
+        const nextEpisodeForScript = context.canonicalEpisodeSynopsisList
+            .map(synopsis => {
+                try {
+                    const data = typeof synopsis.data === 'string' ? JSON.parse(synopsis.data) : synopsis.data;
+                    return { episodeNumber: data.episodeNumber, synopsis };
+                } catch {
+                    return null;
+                }
+            })
+            .filter(item => item !== null)
+            .sort((a, b) => a.episodeNumber - b.episodeNumber)
+            .find(item => !existingScriptEpisodes.has(item.episodeNumber));
+
+        if (nextEpisodeForScript) {
+            // Find previous episode script for context (if exists)
+            const previousEpisodeNumber = nextEpisodeForScript.episodeNumber - 1;
+            const previousScript = context.canonicalEpisodeScriptsList.find(script => {
+                try {
+                    const data = typeof script.data === 'string' ? JSON.parse(script.data) : script.data;
+                    return data.episodeNumber === previousEpisodeNumber;
+                } catch {
+                    return false;
+                }
+            });
+
+            actions.push({
+                id: 'episode_script_generation',
+                type: 'button',
+                title: `生成第${nextEpisodeForScript.episodeNumber}集剧本`,
+                description: `基于分集大纲生成完整剧本内容`,
+                component: EpisodeScriptGenerationAction,
+                props: {
+                    jsondocs: {
+                        brainstormIdea: context.canonicalBrainstormIdea,
+                        brainstormCollection: context.canonicalBrainstormCollection,
+                        outlineSettings: context.canonicalOutlineSettings,
+                        chronicles: context.canonicalChronicles,
+                        episodePlanning: context.canonicalEpisodePlanning,
+                        brainstormInput: context.canonicalBrainstormInput,
+                        episodeSynopsis: nextEpisodeForScript.synopsis,
+                        previousEpisodeScript: previousScript
+                    },
+                    workflowContext: {
+                        hasActiveTransforms: context.hasActiveTransforms,
+                        workflowNodes: context.workflowNodes
+                    },
+                    targetEpisode: {
+                        episodeNumber: nextEpisodeForScript.episodeNumber,
+                        synopsisId: nextEpisodeForScript.synopsis.id
+                    }
+                },
+                enabled: true,
+                priority: 1
+            });
         }
     }
 

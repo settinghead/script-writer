@@ -8,7 +8,9 @@ import {
   EpisodePlanningInputSchema,
   EpisodePlanningOutputSchema,
   EpisodeSynopsisInputSchema,
-  EpisodeSynopsisSchema
+  EpisodeSynopsisSchema,
+  EpisodeScriptInputSchema,
+  EpisodeScriptSchema
 } from './outlineSchemas';
 
 // Import schemas from streaming.ts 
@@ -71,6 +73,10 @@ export const JsondocSchemaRegistry = {
   // Episode synopsis schemas
   'episode_synopsis_input': EpisodeSynopsisInputSchema,
   'episode_synopsis': EpisodeSynopsisSchema,
+
+  // Episode script schemas
+  'episode_script_input': EpisodeScriptInputSchema,
+  'episode_script': EpisodeScriptSchema,
 
   // JSON Patch schema for intermediate patch storage
   'json_patch': JsonPatchSchema,

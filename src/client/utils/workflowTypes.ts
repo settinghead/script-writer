@@ -18,7 +18,7 @@ export type ComponentId =
     | '剧本设定-display'
     | 'chronicles-display'
     | 'episode-planning-display'
-    | 'episode-synopsis-display';
+    | 'episode-content-display';
 
 // Component modes
 export type ComponentMode =
