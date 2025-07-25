@@ -90,7 +90,7 @@ describe('Agent Tool Filtering', () => {
             expect(toolNames).toEqual(['generate_灵感创意s']);
         });
 
-        it('should return edit_灵感创意 when brainstorm_collection exists', () => {
+        it('should return generate_灵感创意s when brainstorm_collection exists (no committed idea)', () => {
             const context = createCanonicalContext({
                 canonicalBrainstormCollection: createMockJsondoc('collection-1', 'brainstorm_collection')
             });
@@ -105,7 +105,7 @@ describe('Agent Tool Filtering', () => {
             );
 
             const toolNames = availableTools.map(tool => tool.name);
-            expect(toolNames).toEqual(['edit_灵感创意']);
+            expect(toolNames).toEqual(['generate_灵感创意s']);
         });
 
         it('should return edit_灵感创意 and generate_剧本设定 when single 灵感创意 exists', () => {
@@ -231,8 +231,8 @@ describe('Agent Tool Filtering', () => {
             ]));
         });
 
-        it('should never include generate_灵感创意s when any brainstorm result exists', () => {
-            // Test with 灵感创意
+        it('should only include generate_灵感创意s when no committed idea exists', () => {
+            // Test with 灵感创意 (committed idea) - should NOT have generate_灵感创意s
             const contextWithIdea = createCanonicalContext({
                 canonicalBrainstormIdea: createMockJsondoc('idea-1', '灵感创意')
             });
@@ -249,7 +249,7 @@ describe('Agent Tool Filtering', () => {
             let toolNames = availableTools.map(tool => tool.name);
             expect(toolNames).not.toContain('generate_灵感创意s');
 
-            // Test with brainstorm_collection
+            // Test with brainstorm_collection only (no committed idea) - SHOULD have generate_灵感创意s
             const contextWithCollection = createCanonicalContext({
                 canonicalBrainstormCollection: createMockJsondoc('collection-1', 'brainstorm_collection')
             });
@@ -264,7 +264,7 @@ describe('Agent Tool Filtering', () => {
             );
 
             toolNames = availableTools.map(tool => tool.name);
-            expect(toolNames).not.toContain('generate_灵感创意s');
+            expect(toolNames).toContain('generate_灵感创意s');
         });
 
         it('should never include generate_剧本设定 when 剧本设定 already exists', () => {
@@ -343,8 +343,8 @@ describe('Agent Tool Filtering', () => {
             );
 
             const toolNames = availableTools.map(tool => tool.name);
-            expect(toolNames).toEqual(['edit_灵感创意']);
-            expect(toolNames).not.toContain('generate_灵感创意s');
+            expect(toolNames).toEqual(['generate_灵感创意s']);
+            expect(toolNames).not.toContain('edit_灵感创意');
         });
 
         it('should handle edge case: 灵感创意 exists but not 剧本设定 (manual creation)', () => {

@@ -136,11 +136,15 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
     const tools: string[] = [];
 
     // === BRAINSTORM STAGE ===
-    if (!stage.hasBrainstormResult) {
+    // Show generate tool if:
+    // 1. No brainstorm result at all, OR
+    // 2. Have brainstorm result but no committed idea (i.e., only have collection)
+    if (!stage.hasBrainstormResult || (stage.hasBrainstormResult && !stage.hasBrainstormIdea)) {
         tools.push('generate_灵感创意s');
     }
 
-    if (stage.hasBrainstormResult) {
+    // Show edit tool only when we have a committed idea
+    if (stage.hasBrainstormIdea) {
         tools.push('edit_灵感创意');
     }
 
