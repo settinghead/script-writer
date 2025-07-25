@@ -70,13 +70,7 @@ vi.mock('./LLMConfig', () => ({
 vi.mock('../common/utils/lineageResolution', () => ({
     buildLineageGraph: vi.fn().mockReturnValue({}),
     findLatestJsondoc: vi.fn().mockReturnValue({ jsondocId: 'test-brainstorm-1' }),
-    extractEffectiveBrainstormIdeas: vi.fn().mockReturnValue([
-        {
-            title: '误爱成宠',
-            body: '霸道总裁与普通员工的甜宠故事...',
-            metadata: { ideaIndex: 0 }
-        }
-    ]),
+
     extractEffectiveOutlines: vi.fn().mockReturnValue([]),
     findEffectiveBrainstormIdeas: vi.fn().mockReturnValue([]),
     findMainWorkflowPath: vi.fn().mockReturnValue([]),
