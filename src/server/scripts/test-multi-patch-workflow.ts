@@ -8,7 +8,7 @@
 import { db } from '../database/connection';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
-import { createBrainstormEditToolDefinition } from '../tools/BrainstormTools';
+import { createBrainstormEditToolDefinition } from '../tools/BrainstormEditTool';
 import { v4 as uuidv4 } from 'uuid';
 
 async function testMultiPatchWorkflow() {

@@ -4,7 +4,8 @@ import { TransformRepository } from '../transform-jsondoc-framework/TransformRep
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
 import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessageRepository';
 import { TemplateService } from '../services/templates/TemplateService';
-import { createBrainstormToolDefinition, createBrainstormEditToolDefinition } from '../tools/BrainstormTools';
+import { createBrainstormToolDefinition } from '../tools/BrainstormGenerationTool';
+import { createBrainstormEditToolDefinition } from '../tools/BrainstormEditTool';
 import { createOutlineSettingsToolDefinition, createOutlineSettingsEditToolDefinition } from '../tools/OutlineSettingsTool';
 import { createChroniclesToolDefinition, createChroniclesEditToolDefinition } from '../tools/ChroniclesTool';
 import { createEpisodePlanningToolDefinition, createEpisodePlanningEditToolDefinition } from '../tools/EpisodePlanningTool';
