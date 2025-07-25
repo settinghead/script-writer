@@ -76,7 +76,7 @@ export const particlePathsRegistry: Record<string, ParticlePathDefinition[]> = {
 
     'episode_synopsis': [
         {
-            path: '$.episodes[*]',
+            path: '$',
             type: '每集大纲',
             titlePath: '$.title',
             titleDefault: '每集大纲'
