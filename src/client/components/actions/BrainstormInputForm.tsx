@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button, Typography, message, Space } from 'antd';
 import { BulbOutlined, ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
 import AIButton from '../shared/AIButton';
+import { useProjectData } from '../../contexts/ProjectDataContext';
+import { computeCanonicalJsondocsFromLineage } from '../../../common/canonicalJsondocLogic';
 
 const { Title } = Typography;
 
 interface BrainstormInputFormProps extends BaseActionProps {
-    brainstormJsondoc: any;
 }
 
 // Support both old props and new ActionComponentProps
@@ -17,11 +18,38 @@ type BrainstormInputFormPropsUnion = BrainstormInputFormProps | (ActionComponent
 
 const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => {
     const { projectId, onSuccess, onError } = props;
+    const projectData = useProjectData();
 
-    // Get brainstormJsondoc from either old props or new jsondocs structure
-    const brainstormJsondoc = 'brainstormJsondoc' in props
-        ? props.brainstormJsondoc
-        : ('jsondocs' in props ? props.jsondocs.brainstormInput : null);
+    // Compute canonical context to get the latest brainstorm input jsondoc
+    const canonicalContext = useMemo(() => {
+        if (projectData.jsondocs === "pending" || projectData.jsondocs === "error" ||
+            projectData.transforms === "pending" || projectData.transforms === "error" ||
+            projectData.humanTransforms === "pending" || projectData.humanTransforms === "error" ||
+            projectData.transformInputs === "pending" || projectData.transformInputs === "error" ||
+            projectData.transformOutputs === "pending" || projectData.transformOutputs === "error" ||
+            projectData.lineageGraph === "pending" || projectData.lineageGraph === "error") {
+            return null;
+        }
+
+        return computeCanonicalJsondocsFromLineage(
+            projectData.lineageGraph,
+            projectData.jsondocs,
+            projectData.transforms,
+            projectData.humanTransforms,
+            projectData.transformInputs,
+            projectData.transformOutputs
+        );
+    }, [
+        projectData.jsondocs,
+        projectData.transforms,
+        projectData.humanTransforms,
+        projectData.transformInputs,
+        projectData.transformOutputs,
+        projectData.lineageGraph
+    ]);
+
+    // Get the canonical brainstorm input jsondoc from computed context
+    const brainstormJsondoc = canonicalContext?.canonicalBrainstormInput || null;
 
     const [isStarting, setIsStarting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -95,10 +123,54 @@ const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => 
         }
     };
 
+    // Show loading state while fetching canonical data
+    if (!canonicalContext || projectData.isLoading) {
+        return (
+            <div style={{ padding: '16px 0', textAlign: 'center' }}>
+                <Space size="large">
+                    <Button
+                        icon={<ArrowLeftOutlined />}
+                        size="large"
+                        disabled
+                        style={{
+                            minWidth: '120px',
+                            height: '48px',
+                            fontSize: '16px',
+                            borderRadius: '8px'
+                        }}
+                    >
+                        返回
+                    </Button>
+
+                    <AIButton
+                        size="large"
+                        disabled
+                        style={{
+                            minWidth: '200px',
+                            height: '48px',
+                            fontSize: '16px'
+                        }}
+                    >
+                        加载中...
+                    </AIButton>
+                </Space>
+            </div>
+        );
+    }
+
+    // If no brainstorm input jsondoc exists, show appropriate message
+    if (!brainstormJsondoc) {
+        return (
+            <div style={{ padding: '16px 0', textAlign: 'center' }}>
+                <Typography.Text type="secondary">
+                    未找到头脑风暴参数，请先创建头脑风暴参数。
+                </Typography.Text>
+            </div>
+        );
+    }
+
     return (
         <div style={{ padding: '16px 0', textAlign: 'center' }}>
-
-
             <Space size="large">
                 <Button
                     icon={<ArrowLeftOutlined />}
@@ -118,7 +190,6 @@ const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => 
                 <AIButton
                     size="large"
                     loading={isStarting}
-
                     onClick={handleStartBrainstorm}
                     style={{
                         minWidth: '200px',
@@ -127,7 +198,6 @@ const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => 
                     }}
                 >
                     {isStarting ? '启动中...' : <>开始头脑风暴 <ArrowRightOutlined /></>}
-
                 </AIButton>
             </Space>
         </div>
