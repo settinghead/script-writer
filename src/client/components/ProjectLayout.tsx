@@ -463,7 +463,7 @@ const MainContentArea: React.FC<{
                 display: 'flex',
                 flexDirection: 'column',
                 height: '100%',
-                overflow: 'hidden'
+                overflow: 'hidden',
             }}>
                 {/* Scrollable Content Container */}
                 <div
@@ -472,6 +472,8 @@ const MainContentArea: React.FC<{
                     style={{
                         flex: 1,
                         overflowY: 'auto',
+                        paddingBottom: "20vh"
+
                     }}
                 >
                     <ProjectContentRenderer projectId={projectId} scrollContainerRef={scrollContainerRef} />
