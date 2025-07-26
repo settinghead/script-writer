@@ -70,16 +70,19 @@ export function computeCanonicalJsondocsFromLineage(
 
     // Special logic: Don't include brainstorm_collection if a brainstorm idea has been selected via human transform
     let canonicalBrainstormCollection = findCanonicalJsondocByType(lineageGraph, jsondocs, 'brainstorm_collection');
+    let canonicalBrainstormInput = findCanonicalJsondocByType(lineageGraph, jsondocs, 'brainstorm_input_params');
 
     // BUSINESS RULE: If there's any canonical brainstorm idea (we've committed to an idea),
-    // then hide the brainstorm collection from context
+    // then hide the brainstorm collection and brainstorm input params from context
     if (canonicalBrainstormIdea && canonicalBrainstormCollection) {
         canonicalBrainstormCollection = null;
+    }
+    if (canonicalBrainstormIdea && canonicalBrainstormInput) {
+        canonicalBrainstormInput = null;
     }
     const canonicalOutlineSettings = findCanonicalJsondocByType(lineageGraph, jsondocs, '剧本设定');
     const canonicalChronicles = findCanonicalJsondocByType(lineageGraph, jsondocs, 'chronicles');
     const canonicalEpisodePlanning = findCanonicalJsondocByType(lineageGraph, jsondocs, 'episode_planning');
-    const canonicalBrainstormInput = findCanonicalJsondocByType(lineageGraph, jsondocs, 'brainstorm_input_params');
 
     // Find canonical episode synopsis for each episode number
     const canonicalEpisodeSynopsisList = findCanonicalEpisodeSynopsisByEpisode(lineageGraph, jsondocs);

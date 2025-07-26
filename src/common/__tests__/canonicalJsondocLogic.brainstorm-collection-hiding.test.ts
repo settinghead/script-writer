@@ -117,7 +117,7 @@ const testScenarios: TestScenario[] = [
                     { title: '创意2', body: '内容2' }
                 ]
             });
-            
+
             const selectedIdea = createJsondoc('灵感创意', 'user_input', {
                 title: '创意1',
                 body: '内容1'
@@ -149,7 +149,7 @@ const testScenarios: TestScenario[] = [
                     { title: '创意2', body: '内容2' }
                 ]
             });
-            
+
             const originalIdea = createJsondoc('灵感创意', 'user_input', {
                 title: '原创意',
                 body: '原内容'
@@ -199,7 +199,7 @@ const testScenarios: TestScenario[] = [
                     { title: '起点创意', body: '起点内容' }
                 ]
             });
-            
+
             const idea1 = createJsondoc('灵感创意', 'user_input', {
                 title: '起点创意',
                 body: '起点内容'
@@ -239,7 +239,7 @@ const testScenarios: TestScenario[] = [
                     { title: '集合创意', body: '集合内容' }
                 ]
             });
-            
+
             // Completely separate idea not derived from collection
             const standaloneIdea = createJsondoc('灵感创意', 'user_input', {
                 title: '独立创意',
@@ -309,6 +309,84 @@ describe('Canonical Jsondoc Logic - Brainstorm Collection Hiding', () => {
             expect(context.canonicalBrainstormIdea).toBeNull();
             expect(context.canonicalBrainstormCollection).toBeTruthy();
         });
+
+        it('should hide brainstorm_input_params when any canonical 灵感创意 exists', () => {
+            // Test: if canonical idea exists, brainstorm input params should be hidden
+            const inputParams = createJsondoc('brainstorm_input_params');
+            const idea = createJsondoc('灵感创意');
+
+            const lineageGraph = buildLineageGraph(
+                [inputParams, idea],
+                [],
+                [],
+                [],
+                []
+            );
+
+            const context = computeCanonicalJsondocsFromLineage(
+                lineageGraph,
+                [inputParams, idea],
+                [],
+                [],
+                [],
+                []
+            );
+
+            expect(context.canonicalBrainstormIdea).toBeTruthy();
+            expect(context.canonicalBrainstormInput).toBeNull();
+        });
+
+        it('should show brainstorm_input_params when no canonical 灵感创意 exists', () => {
+            const inputParams = createJsondoc('brainstorm_input_params');
+
+            const lineageGraph = buildLineageGraph(
+                [inputParams],
+                [],
+                [],
+                [],
+                []
+            );
+
+            const context = computeCanonicalJsondocsFromLineage(
+                lineageGraph,
+                [inputParams],
+                [],
+                [],
+                [],
+                []
+            );
+
+            expect(context.canonicalBrainstormIdea).toBeNull();
+            expect(context.canonicalBrainstormInput).toBeTruthy();
+        });
+
+        it('should hide both brainstorm_collection and brainstorm_input_params when canonical 灵感创意 exists', () => {
+            // Test: if canonical idea exists, both collection and input params should be hidden
+            const collection = createJsondoc('brainstorm_collection');
+            const inputParams = createJsondoc('brainstorm_input_params');
+            const idea = createJsondoc('灵感创意');
+
+            const lineageGraph = buildLineageGraph(
+                [collection, inputParams, idea],
+                [],
+                [],
+                [],
+                []
+            );
+
+            const context = computeCanonicalJsondocsFromLineage(
+                lineageGraph,
+                [collection, inputParams, idea],
+                [],
+                [],
+                [],
+                []
+            );
+
+            expect(context.canonicalBrainstormIdea).toBeTruthy();
+            expect(context.canonicalBrainstormCollection).toBeNull();
+            expect(context.canonicalBrainstormInput).toBeNull();
+        });
     });
 
     describe('Random Lineage Tree Scenarios', () => {
@@ -371,10 +449,10 @@ describe('Canonical Jsondoc Logic - Brainstorm Collection Hiding', () => {
                 const complexity = Math.floor(Math.random() * 5) + 1; // 1-5 complexity levels
                 const hasCollection = Math.random() > 0.3; // 70% chance of having collection
                 const hasIdea = Math.random() > 0.2; // 80% chance of having idea
-                
+
                 const jsondocs: ElectricJsondoc[] = [];
                 const humanTransforms: ElectricHumanTransform[] = [];
-                
+
                 let collection: ElectricJsondoc | null = null;
                 let latestIdea: ElectricJsondoc | null = null;
 
