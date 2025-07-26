@@ -45,7 +45,8 @@ const LoginPage: React.FC = () => {
                 throw new Error(`Failed to load test users: ${response.status}`);
             }
 
-            const users = await response.json();
+            const data = await response.json();
+            const users = data.users || [];
             setTestUsers(users);
 
             // Auto-select first user if available
@@ -64,8 +65,8 @@ const LoginPage: React.FC = () => {
         if (!selectedUser) return;
 
         try {
-            const result = await login(selectedUser);
-            if (result.success) {
+            const result = await login('test', selectedUser);
+            if (result) {
                 navigate(from, { replace: true });
             }
         } catch (error) {
