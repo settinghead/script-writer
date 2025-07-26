@@ -1,7 +1,7 @@
 import type { LLMTemplate } from '../../../common/llm/types';
 
 export const episodeSynopsisTemplate: LLMTemplate = {
-  id: 'episode_synopsis_generation',
+  id: '单集大纲生成',
   name: 'Episode Synopsis Generation',
   promptTemplate: `你是专业的中国短剧编剧，专门为抖音、快手、小红书等平台创作2分钟短剧内容。
 

@@ -116,7 +116,7 @@ export function createAdminRoutes(
                     }
                 },
                 'generate_episode_synopsis': {
-                    templateName: 'episode_synopsis_generation',
+                    templateName: '单集大纲生成',
                     outputJsondocType: 'episode_synopsis',
                     schemas: {
                         inputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.EpisodeSynopsisInputSchema),
@@ -199,7 +199,7 @@ export function createAdminRoutes(
                 'chronicles_edit_diff',
                 'episode_planning',
                 'episode_planning_edit_diff',
-                'episode_synopsis_generation',
+                '单集大纲生成',
                 'script_generation'
             ].map(templateId => {
                 try {
@@ -994,7 +994,7 @@ export function createAdminRoutes(
                 if (actionIds.includes('outline_generation')) return 'idea_editing';
                 if (actionIds.includes('chronicles_generation')) return 'outline_generation';
                 if (actionIds.includes('episode_planning_generation')) return 'chronicles_generation';
-                if (actionIds.includes('episode_synopsis_generation')) return 'episode_planning';
+                if (actionIds.includes('单集大纲生成')) return 'episode_planning';
 
                 return 'unknown';
             };

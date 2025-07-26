@@ -116,7 +116,7 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
     
     if (firstGroup) {
       actions.push({
-        id: 'episode_synopsis_generation',
+        id: '单集大纲生成',
         type: 'button',
         title: `生成第${firstGroup.episodes}集单集大纲`,
         description: `生成"${firstGroup.groupTitle}"的详细单集大纲`,
@@ -152,7 +152,7 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
     const nextGroup = allGroups.find(group => !completedRanges.has(group.episodes));
     if (nextGroup) {
       actions.push({
-        id: 'episode_synopsis_generation',
+        id: '单集大纲生成',
         type: 'button',
         title: `生成第${nextGroup.episodes}集单集大纲`,
         description: `生成"${nextGroup.groupTitle}"的详细单集大纲`,
@@ -281,7 +281,7 @@ export function createEpisodeSynopsisToolDefinition(
     execute: async (params: EpisodeSynopsisInput, { toolCallId }) => {
       // Standard streaming transform execution
       const config: StreamingTransformConfig<EpisodeSynopsisInput, EpisodeSynopsisOutput> = {
-        templateName: 'episode_synopsis_generation',
+        templateName: '单集大纲生成',
         inputSchema: EpisodeSynopsisInputSchema,
         outputSchema: EpisodeSynopsisGroupSchema
         // No custom prepareTemplateVariables - use default schema-driven
@@ -318,7 +318,7 @@ export function createEpisodeSynopsisToolDefinition(
 ```typescript
 // src/server/services/templates/episodeSynopsis.ts
 export const episodeSynopsisTemplate: LLMTemplate = {
-  id: 'episode_synopsis_generation',
+  id: '单集大纲生成',
   name: 'Episode Synopsis Generation',
   promptTemplate: `你是专业的中国短剧编剧，专门为抖音、快手、小红书等平台创作2分钟短剧内容。
 

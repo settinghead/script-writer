@@ -79,7 +79,7 @@ export function createEpisodeSynopsisToolDefinition(
 
                 // Streaming transform configuration for individual episode
                 const config: StreamingTransformConfig<typeof episodeInput, EpisodeSynopsisOutput> = {
-                    templateName: 'episode_synopsis_generation',
+                    templateName: '单集大纲生成',
                     inputSchema: z.object({
                         jsondocs: z.array(z.object({
                             jsondocId: z.string(),

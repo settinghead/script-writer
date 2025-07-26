@@ -454,7 +454,8 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
                         lineHeight: '1.2',
                         textAlign: 'center',
                         padding: '4px',
-                        whiteSpace: 'nowrap'
+                        wordBreak: 'break-all',
+                        overflowWrap: 'anywhere'
                     }}>
                         {humanTransform?.transform_name || contextData?.template_name || transform.type}
                     </Text>

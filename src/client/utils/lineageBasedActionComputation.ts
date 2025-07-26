@@ -311,7 +311,7 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
 
             if (firstGroup) {
                 actions.push({
-                    id: 'episode_synopsis_generation',
+                    id: '单集大纲生成',
                     type: 'button',
                     title: `生成第${firstGroup.episodes}集单集大纲`,
                     description: `生成"${firstGroup.groupTitle}"的详细单集大纲`,
@@ -368,7 +368,7 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
 
             if (nextGroup) {
                 actions.push({
-                    id: 'episode_synopsis_generation',
+                    id: '单集大纲生成',
                     type: 'button',
                     title: `生成第${nextGroup.episodes}集单集大纲`,
                     description: `生成"${nextGroup.groupTitle}"的详细单集大纲`,

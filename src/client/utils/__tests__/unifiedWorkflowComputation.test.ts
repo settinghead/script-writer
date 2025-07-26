@@ -71,7 +71,7 @@ vi.mock('../lineageBasedActionComputation', () => ({
                     break;
                 case 'chronicles_generation':
                     actions.push({
-                        id: 'episode_synopsis_generation',
+                        id: '单集大纲生成',
                         type: 'button',
                         title: '生成剧本',
                         description: '基于分集概要生成具体剧本',

@@ -63,7 +63,7 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
                 derivationPath = '$';
             } else {
                 // This is an item within a collection (original collection item)
-                transformName = 'edit_brainstorm_collection_idea';
+                transformName = 'select_and_edit_brainstorm_collection_idea';
                 sourceJsondocId = selectedIdea.originalJsondocId || selectedIdea.jsondocId;
                 derivationPath = selectedIdea.jsondocPath;
             }
