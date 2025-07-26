@@ -849,6 +849,7 @@ The combined episode planning and script generation system represents a sophisti
 - **YJS Integration** - Real-time collaborative editing with context-based architecture
 - **Ant Design** - Component library with dark theme throughout
 - **SectionWrapper Architecture** - Unified section management with automatic status detection
+- **Universal Component State System** - Centralized editability control with parent transform validation
 
 **Backend (Express.js + TypeScript)**:
 - **Agent Service** - Central orchestration with tool selection
@@ -863,6 +864,34 @@ The combined episode planning and script generation system represents a sophisti
 - **JsondocSchemaRegistry** - Centralized Zod validation for all jsondoc types
 - **Transform Tracking** - Complete audit trail of all modifications
 - **YJS Tables** - Real-time collaborative document storage and updates
+
+### Universal Component State System
+
+觅光助创 implements a sophisticated **Universal Component State System** that ensures consistent editability behavior across all display components, with strict enforcement of the rule that jsondocs should not be editable if their parent LLM transform is not in "complete" state.
+
+**Component State Language**:
+```typescript
+export enum ComponentState {
+  EDITABLE = 'editable',                    // User input, no descendants, can edit directly
+  CLICK_TO_EDIT = 'clickToEdit',           // AI generated, complete parent transform, can become editable
+  READ_ONLY = 'readOnly',                  // Has descendants, cannot be edited
+  PENDING_PARENT_TRANSFORM = 'pendingParentTransform', // Parent LLM transform is running/pending
+  LOADING = 'loading',                     // Data is loading
+  ERROR = 'error'                          // Error state
+}
+```
+
+**Universal State Computation**:
+- **Parent Transform Validation** - Automatically checks parent transform status from lineage graph
+- **Strict Enforcement** - Components become non-clickable when parent LLM transforms are running/pending
+- **Rich State Information** - Each component receives complete state info with reasoning
+- **Centralized Logic** - All editability rules computed in `actionComputation.ts`
+
+**Implementation Benefits**:
+- **Consistent Behavior** - All components follow universal rules
+- **Clear State Language** - Rich enum describes why components are in particular states
+- **Better Debugging** - State reasons explain component behavior
+- **Race Condition Prevention** - No components become editable while transforms are processing
 
 ### Script Writing UI Components
 
@@ -1097,20 +1126,31 @@ const textareaValue = isStringArray ? value.join('\n') : '';
 - Clear distinction between AI-generated and human-edited content
 - Builds confidence in the editing workflow
 
-### 6. **LLM-Generated Content Immutability**
-**Principle**: LLM-generated jsondocs (origin_type: 'ai_generated') are immutable and NEVER directly editable in the UI.
+### 6. **Universal Editability Control with Parent Transform Validation**
+**Principle**: Component editability is strictly controlled by a universal state system that validates parent transform status, ensuring jsondocs cannot be edited if their parent LLM transform is not in "complete" state.
 
 **Implementation**:
-- **Read-Only Display** - AI-generated content always displays in read-only mode initially
-- **Human Transform Creation** - When users click to edit, automatically create a human transform that produces a user-input jsondoc
-- **Audit Trail Preservation** - Complete lineage tracking from AI-generated → human-edited versions
-- **Visual Distinction** - Purple borders for AI-generated content, green borders for human-edited content
+- **Component State System** - Rich enum (EDITABLE, CLICK_TO_EDIT, READ_ONLY, PENDING_PARENT_TRANSFORM, LOADING, ERROR) replaces boolean editability flags
+- **Parent Transform Validation** - Automatically checks parent transform status from lineage graph
+- **Strict Enforcement** - Components become non-clickable when parent LLM transforms are running/pending
+- **LLM Content Immutability** - AI-generated jsondocs (origin_type: 'ai_generated') are immutable and require human transforms for editing
+- **Visual State Indicators** - Purple borders for AI-generated content, green borders for human-edited content, clear state reasoning
+- **Centralized Logic** - All editability rules computed in `actionComputation.ts` for consistent behavior
+
+**Component State Rules**:
+```typescript
+// User input jsondoc with no descendants → EDITABLE
+// AI-generated jsondoc + complete parent transform + no descendants → CLICK_TO_EDIT
+// Parent LLM transform running/pending → PENDING_PARENT_TRANSFORM (not clickable)
+// Jsondoc has descendants → READ_ONLY
+```
 
 **Benefits**:
-- Prevents accidental modification of AI-generated content
-- Maintains complete audit trails of all content changes
-- Clear distinction between AI and human contributions
-- Supports collaborative editing workflows
+- **Race Condition Prevention** - No components become editable while transforms are processing
+- **Consistent UI Behavior** - All components follow universal rules across the application
+- **Clear User Feedback** - Rich state information explains why content is not editable
+- **Better Debugging** - State reasons and parent transform status visible for troubleshooting
+- **Audit Trail Preservation** - Complete lineage tracking from AI-generated → human-edited versions
 
 ### 7. **Contextual Field Validation**
 **Principle**: Validate content based on Chinese short drama requirements and platform constraints.
