@@ -189,7 +189,7 @@ export const antdTheme: ThemeConfig = {
             colorBorderSecondary: AppColors.border.primary,
             paddingLG: DesignTokens.spacing.lg,
             borderRadiusLG: DesignTokens.borderRadius.lg,
-            boxShadowCard: DesignTokens.shadows.md,
+            boxShadow: DesignTokens.shadows.md,
         },
 
         // Buttons
