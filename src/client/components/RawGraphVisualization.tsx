@@ -232,7 +232,7 @@ const JsondocNode: React.FC<{
                         gap: '8px'
                     }}>
                         <DatabaseOutlined style={{ color: typeColor }} />
-                        <Text style={{ color: AppColors.text.white, fontWeight: 'bold', fontSize: '12px' }}>
+                        <Text style={{ color: AppColors.text.white, fontWeight: 'bold', fontSize: '16px' }}>
                             {jsondoc.schema_type}
                         </Text>
                         {isCanonical && (
@@ -354,15 +354,15 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
             style={{
                 background: AppColors.background.secondary,
                 border: `2px solid ${typeColor}`,
-                borderRadius: '6px',
-                padding: '8px',
-                minWidth: '100px',
-                maxWidth: '140px',
-                minHeight: '60px',
+                borderRadius: '50%',
+                padding: '12px',
+                width: '80px',
+                height: '80px',
                 color: AppColors.text.white,
                 position: 'relative',
-                transform: 'rotate(45deg)',
-                transformOrigin: 'center'
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
             }}
         >
             {/* Connection handles */}
@@ -377,102 +377,89 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
                 style={{ background: typeColor, width: 6, height: 6 }}
             />
 
-            <div style={{ transform: 'rotate(-45deg)' }}>
-                <Tooltip
-                    title={<div>
-                        <div style={{ marginBottom: '12px' }}>
-                            <div><strong>Transform ID:</strong> {transform.id}</div>
-                            <div><strong>Type:</strong> {transform.type}</div>
-                            <div><strong>Status:</strong> {transform.status}</div>
-                            <div><strong>Created:</strong> {new Date(transform.created_at).toLocaleString()}</div>
-                            {humanTransform && (
-                                <>
-                                    <div><strong>Action:</strong> {humanTransform.action_type}</div>
-                                    <div><strong>Path:</strong> {humanTransform.derivation_path}</div>
-                                    {humanTransform.transform_name && (
-                                        <div><strong>Transform Name:</strong> {humanTransform.transform_name}</div>
-                                    )}
-                                </>
-                            )}
-                            <div><strong>Context:</strong></div>
-                            <pre style={{ fontSize: '10px', maxHeight: '200px', overflow: 'auto' }}>
-                                {JSON.stringify(contextData, null, 2)}
-                            </pre>
-                        </div>
-                        <div style={{ textAlign: 'center', borderTop: '1px solid #444', paddingTop: '8px' }}>
-                            <Button
-                                type="primary"
-                                danger
-                                size="small"
-                                icon={<DeleteOutlined />}
-                                onClick={handleDelete}
-                                style={{ fontSize: '12px' }}
-                            >
-                                删除转换
-                            </Button>
-                        </div>
-                    </div>}
-                    overlayStyle={{ maxWidth: '400px' }}
-                >
-                    <div style={{ textAlign: 'center', position: 'relative' }}>
+            <Tooltip
+                title={<div>
+                    <div style={{ marginBottom: '12px' }}>
+                        <div><strong>Transform ID:</strong> {transform.id}</div>
+                        <div><strong>Type:</strong> {transform.type}</div>
+                        <div><strong>Status:</strong> {transform.status}</div>
+                        <div><strong>Created:</strong> {new Date(transform.created_at).toLocaleString()}</div>
+                        {humanTransform && (
+                            <>
+                                <div><strong>Action:</strong> {humanTransform.action_type}</div>
+                                <div><strong>Path:</strong> {humanTransform.derivation_path}</div>
+                                {humanTransform.transform_name && (
+                                    <div><strong>Transform Name:</strong> {humanTransform.transform_name}</div>
+                                )}
+                            </>
+                        )}
+                        <div><strong>Context:</strong></div>
+                        <pre style={{ fontSize: '10px', maxHeight: '200px', overflow: 'auto' }}>
+                            {JSON.stringify(contextData, null, 2)}
+                        </pre>
+                    </div>
+                    <div style={{ textAlign: 'center', borderTop: '1px solid #444', paddingTop: '8px' }}>
+                        <Button
+                            type="primary"
+                            danger
+                            size="small"
+                            icon={<DeleteOutlined />}
+                            onClick={handleDelete}
+                            style={{ fontSize: '12px' }}
+                        >
+                            删除转换
+                        </Button>
+                    </div>
+                </div>}
+                overlayStyle={{ maxWidth: '400px' }}
+            >
+                <div style={{ textAlign: 'center', position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {/* Status indicator overlay */}
+                    {isInProgress && (
                         <div style={{
+                            position: 'absolute',
+                            top: '-6px',
+                            right: '-6px',
+                            background: AppColors.background.primary,
+                            borderRadius: '50%',
+                            padding: '1px'
+                        }}>
+                            <Spin size="small" />
+                        </div>
+                    )}
+
+                    {isFailed && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '-6px',
+                            right: '-6px',
+                            background: AppColors.status.error,
+                            borderRadius: '50%',
+                            padding: '1px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            marginBottom: '4px',
-                            gap: '4px'
+                            width: '12px',
+                            height: '12px'
                         }}>
-                            {transform.type === 'human' ?
-                                <UserOutlined style={{ color: typeColor, fontSize: '10px' }} /> :
-                                <RobotOutlined style={{ color: typeColor, fontSize: '10px' }} />
-                            }
-                            <Text style={{ color: AppColors.text.white, fontWeight: 'bold', fontSize: '9px' }}>
-                                {transform.type.toUpperCase()}
-                            </Text>
+                            <CloseOutlined style={{ color: AppColors.text.white, fontSize: '8px' }} />
                         </div>
+                    )}
 
-                        {/* Status indicator overlay */}
-                        {isInProgress && (
-                            <div style={{
-                                position: 'absolute',
-                                top: '-6px',
-                                right: '-6px',
-                                background: AppColors.background.primary,
-                                borderRadius: '50%',
-                                padding: '1px'
-                            }}>
-                                <Spin size="small" />
-                            </div>
-                        )}
-
-                        {isFailed && (
-                            <div style={{
-                                position: 'absolute',
-                                top: '-6px',
-                                right: '-6px',
-                                background: AppColors.status.error,
-                                borderRadius: '50%',
-                                padding: '1px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: '12px',
-                                height: '12px'
-                            }}>
-                                <CloseOutlined style={{ color: AppColors.text.white, fontSize: '8px' }} />
-                            </div>
-                        )}
-
-                        <Text style={{ color: '#ccc', fontSize: '8px' }}>
-                            {transform.status}
-                        </Text>
-                        <br />
-                        <Text style={{ color: '#999', fontSize: '7px' }}>
-                            {new Date(transform.created_at).toLocaleString()}
-                        </Text>
-                    </div>
-                </Tooltip>
-            </div>
+                    {/* Transform name in large font */}
+                    <Text style={{
+                        color: AppColors.text.white,
+                        fontWeight: 'bold',
+                        fontSize: '14px',
+                        lineHeight: '1.2',
+                        textAlign: 'center',
+                        padding: '4px',
+                        whiteSpace: 'nowrap'
+                    }}>
+                        {humanTransform?.transform_name || contextData?.template_name || transform.type}
+                    </Text>
+                </div>
+            </Tooltip>
         </div>
     );
 };
@@ -489,7 +476,7 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
     dagreGraph.setGraph({ rankdir: direction, nodesep: 100, ranksep: 150, edgesep: 50 }); // Add edgesep for better spacing
 
     nodes.forEach((node) => {
-        dagreGraph.setNode(node.id, { width: node.type === 'jsondoc' ? 240 : 80, height: node.type === 'jsondoc' ? 140 : 60 });
+        dagreGraph.setNode(node.id, { width: node.type === 'jsondoc' ? 240 : 80, height: node.type === 'jsondoc' ? 140 : 80 });
     });
 
     edges.forEach((edge) => {
@@ -504,7 +491,7 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
         node.sourcePosition = Position.Right;
         node.position = {
             x: nodeWithPosition.x - (node.type === 'jsondoc' ? 120 : 40),
-            y: nodeWithPosition.y - (node.type === 'jsondoc' ? 70 : 30),
+            y: nodeWithPosition.y - (node.type === 'jsondoc' ? 70 : 40),
         };
     });
 

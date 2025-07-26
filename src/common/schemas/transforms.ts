@@ -149,8 +149,8 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     instantiationFunction: 'createBrainstormToolInput'
   },
   // Collection-specific transforms
-  'edit_brainstorm_collection_idea': {
-    name: 'edit_brainstorm_collection_idea',
+  'select_and_edit_brainstorm_collection_idea': {
+    name: 'select_and_edit_brainstorm_collection_idea',
     description: 'Edit individual idea within brainstorm collection',
     sourceJsondocType: 'brainstorm_collection',
     targetJsondocType: '灵感创意',
