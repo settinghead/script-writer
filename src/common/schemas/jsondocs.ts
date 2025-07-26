@@ -71,8 +71,8 @@ export const JsondocSchemaRegistry = {
   'episode_planning': EpisodePlanningOutputSchema,
 
   // Episode synopsis schemas
-  'episode_synopsis_input': EpisodeSynopsisInputSchema,
-  'episode_synopsis': EpisodeSynopsisSchema,
+  '单集大纲_input': EpisodeSynopsisInputSchema,
+  '单集大纲': EpisodeSynopsisSchema,
 
   // Episode script schemas
   'episode_script_input': EpisodeScriptInputSchema,

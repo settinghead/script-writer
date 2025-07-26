@@ -198,18 +198,18 @@ describe('Agent Tool Filtering', () => {
                 'edit_episode_planning',
                 'edit_剧本设定',
                 'edit_灵感创意',
-                'generate_episode_synopsis'
+                'generate_单集大纲'
             ]));
         });
 
-        it('should return all edit tools plus generate_episode_synopsis when episode_synopsis exists', () => {
+        it('should return all edit tools plus generate_单集大纲 when 单集大纲 exists', () => {
             const context = createCanonicalContext({
                 canonicalBrainstormIdea: createMockJsondoc('idea-1', '灵感创意'),
                 canonicalOutlineSettings: createMockJsondoc('outline-1', '剧本设定'),
                 canonicalChronicles: createMockJsondoc('chronicles-1', 'chronicles'),
                 canonicalEpisodePlanning: createMockJsondoc('planning-1', 'episode_planning'),
                 canonicalEpisodeSynopsisList: [
-                    createMockJsondoc('synopsis-1', 'episode_synopsis')
+                    createMockJsondoc('synopsis-1', '单集大纲')
                 ]
             });
 
@@ -227,7 +227,7 @@ describe('Agent Tool Filtering', () => {
                 'edit_chronicles',
                 'edit_episode_planning',
                 'generate_episode_script',
-                'generate_episode_synopsis',
+                'generate_单集大纲',
                 'edit_剧本设定',
                 'edit_灵感创意'
             ]));
@@ -367,15 +367,15 @@ describe('Agent Tool Filtering', () => {
             expect(new Set(toolNames)).toEqual(new Set(['generate_剧本设定', 'edit_灵感创意']));
         });
 
-        it('should always allow generate_episode_synopsis when episode_planning exists (can generate multiple groups)', () => {
+        it('should always allow generate_单集大纲 when episode_planning exists (can generate multiple groups)', () => {
             const context = createCanonicalContext({
                 canonicalBrainstormIdea: createMockJsondoc('idea-1', '灵感创意'),
                 canonicalOutlineSettings: createMockJsondoc('outline-1', '剧本设定'),
                 canonicalChronicles: createMockJsondoc('chronicles-1', 'chronicles'),
                 canonicalEpisodePlanning: createMockJsondoc('planning-1', 'episode_planning'),
                 canonicalEpisodeSynopsisList: [
-                    createMockJsondoc('synopsis-1', 'episode_synopsis'),
-                    createMockJsondoc('synopsis-2', 'episode_synopsis')
+                    createMockJsondoc('synopsis-1', '单集大纲'),
+                    createMockJsondoc('synopsis-2', '单集大纲')
                 ]
             });
 
@@ -389,7 +389,7 @@ describe('Agent Tool Filtering', () => {
             );
 
             const toolNames = availableTools.map(tool => tool.name);
-            expect(toolNames).toContain('generate_episode_synopsis');
+            expect(toolNames).toContain('generate_单集大纲');
         });
     });
 

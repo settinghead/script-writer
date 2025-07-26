@@ -92,7 +92,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
         availableTools.push('edit_episode_planning');
 
         // Episode synopsis can be generated multiple times
-        availableTools.push('generate_episode_synopsis');
+        availableTools.push('generate_单集大纲');
     }
 
     // Remove duplicates and return
@@ -197,7 +197,7 @@ describe('AgentContextView Tool Filtering', () => {
             expect(tools).toEqual(['edit_灵感创意', 'edit_剧本设定', 'generate_chronicles']);
         });
 
-        it('should return all edit tools plus generate_episode_synopsis when episode_planning exists', () => {
+        it('should return all edit tools plus generate_单集大纲 when episode_planning exists', () => {
             const mockIdea = createMockJsondoc('idea-1', '灵感创意', 'user_input');
             const mockOutline = createMockJsondoc('outline-1', '剧本设定');
             const mockChronicles = createMockJsondoc('chronicles-1', 'chronicles');
@@ -224,7 +224,7 @@ describe('AgentContextView Tool Filtering', () => {
                 'edit_剧本设定',
                 'edit_chronicles',
                 'edit_episode_planning',
-                'generate_episode_synopsis'
+                'generate_单集大纲'
             ]);
         });
 

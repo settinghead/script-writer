@@ -36,7 +36,7 @@ export function createEpisodeSynopsisToolDefinition(
 ): StreamingToolDefinition<EpisodeSynopsisInput, EpisodeSynopsisToolResult> {
 
     return {
-        name: 'generate_episode_synopsis',
+        name: 'generate_单集大纲',
         description: '为指定范围的剧集生成详细的单集大纲，包含2分钟短剧结构、钩子设计、悬念元素等',
         inputSchema: EpisodeSynopsisInputSchema,
         outputSchema: EpisodeSynopsisToolResultSchema,
@@ -66,7 +66,7 @@ export function createEpisodeSynopsisToolDefinition(
                     contextJsondocs.push({
                         jsondocId: prevEpisode.jsondocId,
                         description: `第${prevEpisode.data.episodeNumber}集大纲`,
-                        schemaType: 'episode_synopsis'
+                        schemaType: '单集大纲'
                     });
                 }
 
@@ -100,10 +100,10 @@ export function createEpisodeSynopsisToolDefinition(
                     userId,
                     transformRepo,
                     jsondocRepo,
-                    outputJsondocType: 'episode_synopsis',
+                    outputJsondocType: '单集大纲',
                     executionMode: { mode: 'full-object' },
                     transformMetadata: {
-                        toolName: 'generate_episode_synopsis',
+                        toolName: 'generate_单集大纲',
                         ...jsondocMetadata, // Include all jsondoc IDs with their schema types as keys
                         target_episode_number: episodeNumber,
                         group_title: params.groupTitle,

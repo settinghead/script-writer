@@ -4,7 +4,7 @@
 
 The script-writer project uses Qwen models (via LLM config), but prompts aren't optimized for Qwen's Context Cache, leading to inefficient repeated computations (e.g., shared jsondocs aren't cached as prefixes). Additionally, for multi-batch tasks like episode synopsis generation (e.g., 1-6 then 7-12), we lack a way to reconstruct and append to prior LLM conversation history, forcing full re-contextualization each time. This causes failures in agent tool execution due to bloated contexts and misses caching opportunities (cached tokens cost 40% of input tokens, per [Context Cache](https://help.aliyun.com/zh/model-studio/context-cache)).
 
-**Explicit Goal**: Ensure all episode synopsis generations leverage Qwen's Context Cache by restoring the exact conversation history from the DB, appending a new user message with instructions for the next group (e.g., episode range and title), and sending the updated history to the agent LLM. The LLM will then call the `generate_episode_synopsis` tool with the new parameters, enabling efficient continuations while reusing cached prefixes for shared context (e.g., upstream jsondocs).
+**Explicit Goal**: Ensure all episode synopsis generations leverage Qwen's Context Cache by restoring the exact conversation history from the DB, appending a new user message with instructions for the next group (e.g., episode range and title), and sending the updated history to the agent LLM. The LLM will then call the `generate_单集大纲` tool with the new parameters, enabling efficient continuations while reusing cached prefixes for shared context (e.g., upstream jsondocs).
 
 This long-term plan introduces:
 - Prompt restructuring for cache-friendly prefixes.
@@ -78,7 +78,7 @@ No backward compatibility needed—replace existing storage/logic. Follow repo r
    ```
 
 4. **Reconstruction Logic**:
-   - In `ChatMessageRepository.ts`, implement `reconstructHistoryForAction(toolName, projectId, params)`: Query prior conversations for toolName (e.g., 'generate_episode_synopsis'), sort by created_at, reconstruct the exact multi-message history, and append a new user message (e.g., {role: 'user', content: `Generate the next episode synopsis group: ${JSON.stringify(params)}`}).
+   - In `ChatMessageRepository.ts`, implement `reconstructHistoryForAction(toolName, projectId, params)`: Query prior conversations for toolName (e.g., 'generate_单集大纲'), sort by created_at, reconstruct the exact multi-message history, and append a new user message (e.g., {role: 'user', content: `Generate the next episode synopsis group: ${JSON.stringify(params)}`}).
    - In `EpisodeSynopsisTool.ts`, check for prior synopsis conversations (e.g., by groupTitle or episodes). If found, reconstruct the history and pass as multi-message array to LLM via `executeStreamingTransform` (add `conversationHistory` param). This ensures caching of shared prefixes.
 
    **Algorithm Sketch for Reconstruction**:
@@ -107,7 +107,7 @@ No backward compatibility needed—replace existing storage/logic. Follow repo r
    ```
 
 5. **Integration in Agent**:
-   - In `AgentService.ts`, before streaming, check if request is a continuation (e.g., keyword "continue" or matching tool/params). If yes, reconstruct history and use multi-message prompt. The agent LLM will process the appended message and call `generate_episode_synopsis` with new params (e.g., episodes 7-12).
+   - In `AgentService.ts`, before streaming, check if request is a continuation (e.g., keyword "continue" or matching tool/params). If yes, reconstruct history and use multi-message prompt. The agent LLM will process the appended message and call `generate_单集大纲` with new params (e.g., episodes 7-12).
 
    **Algorithm Sketch for Agent Integration**:
    ```
@@ -116,7 +116,7 @@ No backward compatibility needed—replace existing storage/logic. Follow repo r
        isContinuation = request.contains('continue') or matchesPriorParams(request.params)
        
        if isContinuation:
-           history = reconstructHistoryForAction('generate_episode_synopsis', projectId, request.params)
+           history = reconstructHistoryForAction('generate_单集大纲', projectId, request.params)
            prompt = buildMultiMessagePrompt(history)  // Convert to Qwen-compatible multi-message
        else:
            prompt = buildStandardPrompt(request)
@@ -125,9 +125,9 @@ No backward compatibility needed—replace existing storage/logic. Follow repo r
        result = streamText({model: qwenModel, prompt})
        
        // If tool called successfully, save updated history
-       if result.toolCalled == 'generate_episode_synopsis':
+       if result.toolCalled == 'generate_单集大纲':
            updatedMessages = history.concat(result.newMessages)  // Append LLM response/tool result
-           saveConversation(result.toolCallId, projectId, 'generate_episode_synopsis', updatedMessages)
+           saveConversation(result.toolCallId, projectId, 'generate_单集大纲', updatedMessages)
    ```
 
 6. **Testing**:

@@ -4132,7 +4132,7 @@ availableTools = [
 ]
 ```
 
-**Has episode_planning** → All edit tools + `generate_episode_synopsis`
+**Has episode_planning** → All edit tools + `generate_单集大纲`
 ```typescript
 // Episode planning exists, can edit any stage or generate episodes
 availableTools = [
@@ -4140,7 +4140,7 @@ availableTools = [
   'edit_剧本设定',
   'edit_chronicles', 
   'edit_episode_planning',
-  'generate_episode_synopsis'
+  'generate_单集大纲'
 ]
 ```
 
@@ -4149,7 +4149,7 @@ availableTools = [
 1. **Never show generate tools** if the corresponding jsondoc already exists
 2. **Only show edit tools** if the corresponding jsondoc exists
 3. **Show next-stage generate tools** only when prerequisites are met
-4. **Special handling** for `generate_episode_synopsis` (can be used multiple times)
+4. **Special handling** for `generate_单集大纲` (can be used multiple times)
 
 ### Technical Implementation
 

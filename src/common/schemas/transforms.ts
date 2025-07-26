@@ -242,11 +242,11 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     pathPattern: '^\\$(\\..*)?$', // Root or any path like $.episodeGroups[0].groupTitle, $.overallStrategy, etc.
     instantiationFunction: 'createEpisodePlanningFromEpisodePlanning'
   },
-  'user_edit_episode_synopsis': {
-    name: 'user_edit_episode_synopsis',
+  'user_edit_单集大纲': {
+    name: 'user_edit_单集大纲',
     description: 'Edit episode synopsis document with whole-document editing',
-    sourceJsondocType: 'episode_synopsis',
-    targetJsondocType: 'episode_synopsis',
+    sourceJsondocType: '单集大纲',
+    targetJsondocType: '单集大纲',
     pathPattern: '^\\$(\\..*)?$', // Root or any path like $.title, $.openingHook, $.mainPlot, etc.
     instantiationFunction: 'createEpisodeSynopsisFromEpisodeSynopsis'
   },

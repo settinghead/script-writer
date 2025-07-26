@@ -109,7 +109,7 @@ export class AgentService {
             const hasOutline = allJsondocs.some((j: any) => j.schema_type === '剧本设定');
             const hasChronicles = allJsondocs.some((j: any) => j.schema_type === 'chronicles');
             const hasEpisodePlanning = allJsondocs.some((j: any) => j.schema_type === 'episode_planning');
-            const episodeSynopses = allJsondocs.filter((j: any) => j.schema_type === 'episode_synopsis');
+            const episodeSynopses = allJsondocs.filter((j: any) => j.schema_type === '单集大纲');
 
             if (hasInput) contextLines.push('✓ 用户输入已创建');
             if (hasBrainstorm) contextLines.push('✓ 故事创意已生成');
@@ -254,7 +254,7 @@ ${minimalContext}
         }
 
         // For episode synopsis generation, try to reconstruct history
-        const toolName = 'generate_episode_synopsis';
+        const toolName = 'generate_单集大纲';
         const hasExisting = await this.chatMessageRepo.hasExistingConversation(projectId, toolName);
 
         if (!hasExisting) {
@@ -648,7 +648,7 @@ ${conversationText}
                             );
 
                             // Save conversation history for episode synopsis tool
-                            if (currentToolCall.toolName === 'generate_episode_synopsis') {
+                            if (currentToolCall.toolName === 'generate_单集大纲') {
                                 await this.saveConversationHistory(
                                     projectId,
                                     currentToolCall.toolName,

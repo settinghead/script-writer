@@ -307,7 +307,7 @@ function generateAISDKToolFormat(toolName: string): any {
             },
             required: ['jsondocs', 'editRequirements']
         },
-        'generate_episode_synopsis': {
+        'generate_单集大纲': {
             type: 'object',
             properties: {
                 jsondocs: {

@@ -115,9 +115,9 @@ export function createAdminRoutes(
                         outputSchema: () => Promise.resolve(JsonPatchOperationsSchema)
                     }
                 },
-                'generate_episode_synopsis': {
+                'generate_单集大纲': {
                     templateName: '单集大纲生成',
-                    outputJsondocType: 'episode_synopsis',
+                    outputJsondocType: '单集大纲',
                     schemas: {
                         inputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.EpisodeSynopsisInputSchema),
                         outputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.EpisodeSynopsisSchema)
@@ -290,7 +290,7 @@ export function createAdminRoutes(
                     category: '内容编辑'
                 },
                 {
-                    value: 'generate_episode_synopsis',
+                    value: 'generate_单集大纲',
                     label: '生成单集大纲',
                     description: '基于分集结构生成详细的每集内容',
                     category: '内容生成'

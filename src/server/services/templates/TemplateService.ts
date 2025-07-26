@@ -210,7 +210,7 @@ export class TemplateService {
           'outline_settings': '剧本设定',
           'chronicles': '时间顺序大纲',
           'episode_planning': '分集结构',
-          'episode_synopsis': '剧集梗概',
+          '单集大纲': '剧集梗概',
           'script': '剧本',
           'user_input': '用户输入'
         };

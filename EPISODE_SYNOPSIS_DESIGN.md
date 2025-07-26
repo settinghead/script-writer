@@ -76,7 +76,7 @@ export function computeCanonicalJsondocsFromLineage(...): CanonicalJsondocContex
   // ... existing logic
   
   const canonicalEpisodeSynopsisList = jsondocs
-    .filter(j => j.schema_type === 'episode_synopsis')
+    .filter(j => j.schema_type === '单集大纲')
     .sort((a, b) => {
       // Sort by first episode number for consistent ordering
       const aData = JSON.parse(a.data);
@@ -232,7 +232,7 @@ const jsondocChecks = useMemo(() => {
   // ... existing checks
   
   const hasEpisodeSynopsis = projectData.jsondocs.some(jsondoc =>
-    jsondoc.schema_type === 'episode_synopsis'
+    jsondoc.schema_type === '单集大纲'
   );
 
   return {
@@ -274,7 +274,7 @@ export function createEpisodeSynopsisToolDefinition(
   cachingOptions?: CachingOptions
 ): StreamingToolDefinition<EpisodeSynopsisInput, EpisodeSynopsisToolResult> {
   return {
-    name: 'generate_episode_synopsis',
+    name: 'generate_单集大纲',
     description: '生成指定剧集组的详细单集大纲，包含2分钟短剧结构、钩子设计、悬念元素等',
     inputSchema: EpisodeSynopsisInputSchema,
     outputSchema: EpisodeSynopsisToolResultSchema,
@@ -294,9 +294,9 @@ export function createEpisodeSynopsisToolDefinition(
         userId,
         transformRepo,
         jsondocRepo,
-        outputJsondocType: 'episode_synopsis',
+        outputJsondocType: '单集大纲',
         transformMetadata: {
-          toolName: 'generate_episode_synopsis',
+          toolName: 'generate_单集大纲',
           target_group_title: params.groupTitle,
           target_episode_range: params.episodeRange
         },
@@ -383,15 +383,15 @@ export const episodeSynopsisTemplate: LLMTemplate = {
 // src/common/schemas/jsondocs.ts
 export const JsondocSchemaRegistry = {
   // ... existing schemas
-  'episode_synopsis': EpisodeSynopsisGroupSchema,
-  'episode_synopsis_input': EpisodeSynopsisInputSchema
+  '单集大纲': EpisodeSynopsisGroupSchema,
+  '单集大纲_input': EpisodeSynopsisInputSchema
 } as const;
 
 // src/common/types.ts
 export type TypedJsondoc =
   // ... existing types
-  | JsondocWithData<'episode_synopsis', 'v1', EpisodeSynopsisGroupV1>
-  | JsondocWithData<'episode_synopsis_input', 'v1', EpisodeSynopsisInputV1>
+  | JsondocWithData<'单集大纲', 'v1', EpisodeSynopsisGroupV1>
+  | JsondocWithData<'单集大纲_input', 'v1', EpisodeSynopsisInputV1>
 ```
 
 ### 4. Agent Service Integration
@@ -430,7 +430,7 @@ const EpisodeSynopsisGenerationAction: React.FC<ActionComponentProps> = (props) 
       await apiService.sendChatMessage(projectId, 
         `生成第${nextGroup.episodeRange}集单集大纲：${nextGroup.groupTitle}`,
         {
-          action: 'generate_episode_synopsis',
+          action: 'generate_单集大纲',
           episodePlanningId: episodePlanning.id,
           groupTitle: nextGroup.groupTitle,
           episodeRange: nextGroup.episodeRange,

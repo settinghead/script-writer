@@ -314,9 +314,9 @@ function findCanonicalJsondocByType(
 
     if (candidateJsondocs.length === 0) return null;
 
-    // Special handling for episode_synopsis: always include all jsondocs regardless of lineage graph status
+    // Special handling for 单集大纲: always include all jsondocs regardless of lineage graph status
     // This is because episode synopsis jsondocs can be orphaned from lineage but still canonical
-    if (schemaType === 'episode_synopsis') {
+    if (schemaType === '单集大纲') {
         return findBestJsondocByPriority(candidateJsondocs, lineageGraph);
     }
 
@@ -416,7 +416,7 @@ function findCanonicalEpisodeSynopsisByEpisode(
     jsondocs: ElectricJsondoc[]
 ): ElectricJsondoc[] {
     // Get all episode synopsis jsondocs (always include all, regardless of lineage graph status)
-    const episodeSynopsisJsondocs = jsondocs.filter(j => j.schema_type === 'episode_synopsis');
+    const episodeSynopsisJsondocs = jsondocs.filter(j => j.schema_type === '单集大纲');
 
 
     if (episodeSynopsisJsondocs.length === 0) return [];

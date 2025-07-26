@@ -5,7 +5,7 @@
 
 export interface ToolDefinition {
     name: string;
-    category: 'particle_search' | 'brainstorm' | 'outline' | 'chronicles' | 'episode_planning' | 'episode_synopsis';
+    category: 'particle_search' | 'brainstorm' | 'outline' | 'chronicles' | 'episode_planning' | '单集大纲';
     description: string;
     alwaysAvailable?: boolean; // Tools that are always available when their system is ready
 }
@@ -79,8 +79,8 @@ export const ALL_AGENT_TOOLS: ToolDefinition[] = [
 
     // === EPISODE SYNOPSIS TOOLS ===
     {
-        name: 'generate_episode_synopsis',
-        category: 'episode_synopsis',
+        name: 'generate_单集大纲',
+        category: '单集大纲',
         description: '生成分集大纲'
     }
 ];
@@ -197,7 +197,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
         tools.push('edit_episode_planning');
 
         // Episode synopsis can be generated multiple times
-        tools.push('generate_episode_synopsis');
+        tools.push('generate_单集大纲');
     }
 
     // Episode script generation - after episode synopsis exists

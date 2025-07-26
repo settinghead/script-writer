@@ -36,7 +36,7 @@ describe('EpisodeSynopsisTool', () => {
                 userId
             );
 
-            expect(toolDef.name).toBe('generate_episode_synopsis');
+            expect(toolDef.name).toBe('generate_单集大纲');
             expect(toolDef.description).toContain('为指定范围的剧集生成详细的单集大纲');
             expect(toolDef.inputSchema).toBe(EpisodeSynopsisInputSchema);
             expect(typeof toolDef.execute).toBe('function');
@@ -80,7 +80,7 @@ describe('EpisodeSynopsisTool', () => {
             // Mock generated episode synopsis jsondocs
             const mockEpisode1Synopsis = {
                 id: 'episode-1-synopsis-id',
-                schema_type: 'episode_synopsis',
+                schema_type: '单集大纲',
                 project_id: projectId,
                 data: {
                     episodeNumber: 1,
@@ -96,7 +96,7 @@ describe('EpisodeSynopsisTool', () => {
 
             const mockEpisode2Synopsis = {
                 id: 'episode-2-synopsis-id',
-                schema_type: 'episode_synopsis',
+                schema_type: '单集大纲',
                 project_id: projectId,
                 data: {
                     episodeNumber: 2,
@@ -185,7 +185,7 @@ describe('EpisodeSynopsisTool', () => {
 
             const mockEpisodeSynopsis = {
                 id: 'episode-5-synopsis-id',
-                schema_type: 'episode_synopsis',
+                schema_type: '单集大纲',
                 project_id: projectId,
                 data: {
                     episodeNumber: 5,
@@ -280,7 +280,7 @@ describe('EpisodeSynopsisTool', () => {
             // Mock 4 episodes to test the "previous 2 episodes" context logic
             const mockJsondocs = Array.from({ length: 4 }, (_, i) => ({
                 id: `episode-${i + 1}-synopsis-id`,
-                schema_type: 'episode_synopsis',
+                schema_type: '单集大纲',
                 project_id: projectId,
                 data: {
                     episodeNumber: i + 1,

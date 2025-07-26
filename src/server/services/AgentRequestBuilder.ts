@@ -107,7 +107,7 @@ export async function buildContextForRequestType(
     // Episode synopsis list
     if (canonicalContext.canonicalEpisodeSynopsisList.length > 0) {
         canonicalContext.canonicalEpisodeSynopsisList.forEach((synopsis, index) => {
-            formatJsondocForContext(synopsis, `episode_synopsis_${index + 1}`);
+            formatJsondocForContext(synopsis, `单集大纲_${index + 1}`);
         });
     }
 
@@ -137,7 +137,7 @@ export function buildPromptForRequestType(
 4. **剧本设定生成 (剧本设定)**：基于选定的创意生成详细的剧本框架，包括人物角色设定、故事背景、商业卖点、爽点设计等
 5. **时间顺序大纲生成 (chronicles)**：创建完整的故事时序结构，按照故事内在逻辑顺序（非播出顺序）梳理剧情发展脉络
 6. **分集结构生成 (episode_planning)**：基于时间顺序大纲，重新组织内容为适合短视频平台的分集结构，优化观看节奏和悬念设置
-7. **分集大纲生成 (episode_synopsis)**：为每个剧集组生成详细的单集大纲，包含具体情节和转折点
+7. **分集大纲生成 (单集大纲)**：为每个剧集组生成详细的单集大纲，包含具体情节和转折点
 8. **剧本撰写 (episode_script)**：基于分集大纲生成完整的剧本内容，包含对话、动作指导和场景描述（注意这部分还没有实现）
 
 ### 一些例子
@@ -198,7 +198,7 @@ ${context}
  * 1. Never show generate tools if the corresponding jsondoc already exists
  * 2. Only show edit tools if the corresponding jsondoc exists
  * 3. Show next-stage generate tools only when prerequisites are met
- * 4. generate_episode_synopsis is special - can be used multiple times
+ * 4. generate_单集大纲 is special - can be used multiple times
  */
 export function computeAvailableToolsFromCanonicalContext(
     context: CanonicalJsondocContext,
@@ -294,7 +294,7 @@ export function computeAvailableToolsFromCanonicalContext(
             case 'edit_episode_planning':
                 addTool(() => createEpisodePlanningEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
                 break;
-            case 'generate_episode_synopsis':
+            case 'generate_单集大纲':
                 addTool(() => createEpisodeSynopsisToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
                 break;
             case 'generate_episode_script':

@@ -170,7 +170,7 @@ const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
             return {
                 editRequirements: '调整剧集分组，优化观看顺序和情感节拍'
             };
-        case 'generate_episode_synopsis':
+        case 'generate_单集大纲':
             return {
                 groupTitle: '第一组：相遇篇',
                 episodeStart: 1,
@@ -201,7 +201,7 @@ const getExpectedJsondocTypes = (toolName: string): string[] => {
             return ['chronicles', '剧本设定'];
         case 'edit_episode_planning':
             return ['episode_planning'];
-        case 'generate_episode_synopsis':
+        case 'generate_单集大纲':
             return ['episode_planning'];
         default:
             console.error(`[getExpectedJsondocTypes] Missing expected jsondoc types for tool: ${toolName}`);

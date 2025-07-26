@@ -85,7 +85,7 @@ export function createEpisodeScriptToolDefinition(
                 outputJsondocType: 'episode_script',
                 transformMetadata: {
                     episode_number: params.episodeNumber,
-                    episode_synopsis_id: params.episodeSynopsisJsondocId,
+                    单集大纲_id: params.episodeSynopsisJsondocId,
                     tool_call_id: toolCallId
                 },
                 updateIntervalChunks: 3,

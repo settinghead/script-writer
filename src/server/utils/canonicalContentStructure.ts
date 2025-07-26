@@ -100,7 +100,7 @@ export function generateCanonicalContentStructure(
 
     // Handle episode synopsis list separately
     if (canonicalContext.canonicalEpisodeSynopsisList.length > 0) {
-        lines.push('episode_synopsis (multiple):');
+        lines.push('单集大纲 (multiple):');
         canonicalContext.canonicalEpisodeSynopsisList.forEach((synopsis, index) => {
             try {
                 const data = typeof synopsis.data === 'string' ? JSON.parse(synopsis.data) : synopsis.data;
@@ -109,7 +109,7 @@ export function generateCanonicalContentStructure(
                     'unknown';
                 lines.push(`  [${index}] ${synopsis.id} (episodes ${episodeRange}):`);
 
-                const paths = extractFieldPaths('episode_synopsis', data);
+                const paths = extractFieldPaths('单集大纲', data);
                 paths.sort();
                 for (const path of paths) {
                     lines.push(`    ${path}`);

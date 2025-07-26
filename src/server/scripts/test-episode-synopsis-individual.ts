@@ -99,7 +99,7 @@ async function testIndividualEpisodeSynopsis() {
         console.log('\n🎯 Testing completed successfully!');
         console.log('\n💡 Key Features Verified:');
         console.log('✅ Individual episode jsondocs created (not groups)');
-        console.log('✅ Each episode has proper schema_type: "episode_synopsis"');
+        console.log('✅ Each episode has proper schema_type: "单集大纲"');
         console.log('✅ Cumulative context used for later episodes');
         console.log('✅ Multiple StreamingTransformExecutor calls made');
         console.log('✅ Transform relationships properly established');
