@@ -4,7 +4,6 @@ import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useAgentContextParams } from '../../hooks/useAgentContextParams';
 import { useDebounce } from '../../hooks/useDebounce';
 import { computeUnifiedWorkflowState } from '../../utils/actionComputation';
-import { computeCanonicalJsondocsFromLineage } from '../../../common/canonicalJsondocLogic';
 import type { CanonicalJsondocContext } from '../../../common/canonicalJsondocLogic';
 import { getAllToolNames, getParticleSearchToolNames, getWorkflowTools, ALL_AGENT_TOOLS, type WorkflowStage } from '../../../common/schemas/tools';
 
@@ -374,8 +373,8 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
     const projectData = useProjectData();
 
     // Use pre-computed canonical context from project data
-    const canonicalContext = projectData.canonicalContext === "pending" || projectData.canonicalContext === "error" 
-        ? null 
+    const canonicalContext = projectData.canonicalContext === "pending" || projectData.canonicalContext === "error"
+        ? null
         : projectData.canonicalContext;
 
     // Use the persistent params hook
@@ -445,10 +444,10 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
 
         try {
             // Use pre-computed canonical context from project data
-            const canonicalContextData = projectData.canonicalContext === "pending" || projectData.canonicalContext === "error" 
-                ? null 
+            const canonicalContextData = projectData.canonicalContext === "pending" || projectData.canonicalContext === "error"
+                ? null
                 : projectData.canonicalContext;
-            
+
             if (!canonicalContextData) return null;
 
             // Compute filtered tools based on canonical context
