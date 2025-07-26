@@ -1,8 +1,11 @@
 import React, { HTMLAttributes } from 'react';
-import { Card, Typography } from 'antd';
+import { Typography } from 'antd';
 import { StarFilled } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { getJsondocAtPath } from '../../../common/transform-jsondoc-framework/lineageResolution';
+import { StyledCard, StatusBadge, Inline, Stack } from '../shared/StyledComponents';
+import { AppColors } from '@/common/theme/colors';
+import { DesignTokens } from '@/common/theme/designSystem';
 import './BrainstormIdeaCard.css';
 
 const { Text } = Typography;
@@ -17,146 +20,186 @@ export const BrainstormIdeaEditor: React.FC<{
     hasEditableDescendants: boolean;
     ideaOutlines: any[];
     onIdeaClick: (collectionId: string, index: number) => void;
-} & HTMLAttributes<HTMLDivElement>> = ({ jsondocId, jsondocPath, originalCollectionId, index, isSelected, isChosen, hasEditableDescendants, onIdeaClick, ...props }) => {
-    const projectData = useProjectData();
+} & HTMLAttributes<HTMLDivElement>> = ({
+    jsondocId,
+    jsondocPath,
+    originalCollectionId,
+    index,
+    isSelected,
+    isChosen,
+    hasEditableDescendants,
+    onIdeaClick,
+    ...props
+}) => {
+        const projectData = useProjectData();
 
-    // Get the jsondoc data to display
-    const jsondoc = projectData.getJsondocById(jsondocId);
+        // Get the jsondoc data to display
+        const jsondoc = projectData.getJsondocById(jsondocId);
 
-    let ideaData: any = null;
+        let ideaData: any = null;
 
-    if (jsondoc) {
-        try {
-            const parsedData = JSON.parse(jsondoc.data);
-            ideaData = jsondocPath === '$' ? parsedData : getJsondocAtPath(jsondoc, jsondocPath);
-        } catch (error) {
-            console.warn(`[BrainstormIdeaEditor] Failed to parse jsondoc data for ${jsondocId}:`, error);
+        if (jsondoc) {
+            try {
+                const parsedData = JSON.parse(jsondoc.data);
+                ideaData = jsondocPath === '$' ? parsedData : getJsondocAtPath(jsondoc, jsondocPath);
+            } catch (error) {
+                console.warn(`[BrainstormIdeaEditor] Failed to parse jsondoc data for ${jsondocId}:`, error);
+            }
         }
-    }
 
+        // Don't render anything if we don't have data
+        if (!ideaData) {
+            return null;
+        }
 
+        const title = ideaData.title || `创意 ${index + 1}`;
+        const body = ideaData.body || '';
 
-    // Don't render anything if we don't have data
-    if (!ideaData) {
-        return null;
-    }
+        // Check if this is a derived jsondoc (has been edited)
+        const hasBeenEdited = jsondoc?.origin_type === 'user_input' || jsondoc?.isEditable || false;
 
-    const title = ideaData.title || `创意 ${index + 1}`;
-    const body = ideaData.body || '';
+        // Determine if this idea is clickable
+        const isClickable = !isChosen && !hasEditableDescendants;
 
-    // Check if this is a derived jsondoc (has been edited)
-    const hasBeenEdited = jsondoc?.origin_type === 'user_input' || jsondoc?.isEditable || false;
+        // Determine card variant and styling based on state
+        const getCardStyling = () => {
+            if (isChosen) {
+                return {
+                    backgroundColor: AppColors.human.primary + '20',
+                    border: `2px solid ${AppColors.status.success}`,
+                    boxShadow: `${DesignTokens.shadows.md}, ${DesignTokens.shadows.glow.human}`,
+                    opacity: 1,
+                };
+            }
+            if (isSelected) {
+                return {
+                    backgroundColor: AppColors.ai.primary + '20',
+                    border: `2px solid ${AppColors.ai.primary}`,
+                    boxShadow: `${DesignTokens.shadows.md}, ${DesignTokens.shadows.glow.ai}`,
+                    opacity: 1,
+                };
+            }
+            return {
+                backgroundColor: AppColors.background.card,
+                border: `1px solid ${AppColors.border.primary}`,
+                boxShadow: DesignTokens.shadows.sm,
+                opacity: hasEditableDescendants ? 0.6 : 0.8,
+            };
+        };
 
-    // Determine if this idea is clickable
-    const isClickable = !isChosen && !hasEditableDescendants;
+        const getStatusInfo = () => {
+            if (isChosen) {
+                return { status: 'human' as const, text: '✏️ 正在编辑', icon: <StarFilled /> };
+            }
+            if (hasEditableDescendants) {
+                return { status: 'processing' as const, text: '📝 已有编辑版本' };
+            }
+            if (hasBeenEdited) {
+                return { status: 'success' as const, text: '📝 已编辑版本' };
+            }
+            return { status: 'ai' as const, text: 'AI生成' };
+        };
 
-    return (
-        <Card
-            key={`${jsondocId}-${index}`}
-            styles={{ body: { padding: '12px' } }}
-            hoverable={false} // Disable Ant Design's built-in hover to use our custom CSS
-            onClick={() => isClickable && onIdeaClick(originalCollectionId, index)}
-            {...props}
-            style={{
-                backgroundColor: isChosen ? '#2d3f2d' : (isSelected ? '#2d3436' : '#262626'),
-                border: isChosen ? '2px solid #52c41a' : (isSelected ? '2px solid #1890ff' : '1px solid #434343'),
-                transition: 'all 0.2s ease',
-                animation: 'fadeIn 0.3s ease-out',
-                position: 'relative',
-                opacity: hasEditableDescendants ? 0.6 : (isChosen ? 1 : 0.8),
-                cursor: isClickable ? 'pointer' : 'default',
-                ...props.style
-            }}
-            className={`idea-card ${isClickable ? 'clickable' : ''} ${isSelected ? 'selected' : ''} ${isChosen ? 'chosen' : ''}`}
-        >
-            {/* Status indicator */}
-            <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                {isChosen && <StarFilled style={{ color: '#52c41a', fontSize: '12px' }} />}
-                <Text style={{
-                    fontSize: '10px',
-                    color: isChosen ? '#52c41a' : (hasEditableDescendants ? '#722ed1' : (hasBeenEdited ? '#52c41a' : '#1890ff')),
-                    fontWeight: 'bold'
-                }}>
-                    {isChosen ? '✏️ 正在编辑' :
-                        hasEditableDescendants ? '📝 已有编辑版本' :
-                            (hasBeenEdited ? '📝 已编辑版本' : 'AI生成')}
-                </Text>
-            </div>
+        const statusInfo = getStatusInfo();
+        const cardStyling = getCardStyling();
 
-            {/* Idea content */}
-            <div style={{ marginBottom: '8px' }}>
-                <div style={{ marginBottom: '4px' }}>
-                    <Text style={{
-                        fontSize: isClickable ? '14px' : '12px',
-                        color: isClickable ? '#ffffff' : '#d9d9d9',
-                        fontWeight: 'bold',
-                        opacity: isChosen ? 0.6 : 1
-                    }}>
-                        {title}
-                    </Text>
-                </div>
-                <div>
-                    <Text style={{
-                        fontSize: isClickable ? '13px' : '11px',
-                        color: isClickable ? '#e6e6e6' : '#b0b0b0',
-                        lineHeight: '1.4',
-                        opacity: isChosen ? 0.6 : 1
-                    }}>
-                        {body.length > 150 ? `${body.substring(0, 150)}...` : body}
-                    </Text>
-                </div>
-            </div>
+        return (
+            <StyledCard
+                key={`${jsondocId}-${index}`}
+                onClick={() => isClickable && onIdeaClick(originalCollectionId, index)}
+                {...props}
+                style={{
+                    ...cardStyling,
+                    cursor: isClickable ? 'pointer' : 'default',
+                    transition: DesignTokens.transitions.medium,
+                    position: 'relative',
+                    ...props.style
+                }}
+                className={`
+                idea-card 
+                ${isClickable ? 'clickable hover-lift' : ''} 
+                ${isSelected ? 'selected' : ''} 
+                ${isChosen ? 'chosen' : ''} 
+                animate-fade-in
+                ${props.className || ''}
+            `}
+            >
+                <Stack gap="sm">
+                    {/* Status indicator */}
+                    <StatusBadge
+                        status={statusInfo.status}
+                        text={statusInfo.text}
+                        icon={statusInfo.icon}
+                    />
 
-            {/* Click hint for clickable ideas */}
-            {!isChosen && !hasEditableDescendants && (
-                <div style={{
-                    textAlign: 'center',
-                    paddingTop: '8px',
-                    borderTop: '1px solid #434343'
-                }}>
-                    <Text style={{
-                        fontSize: '10px',
-                        color: '#888',
-                        fontStyle: 'italic'
-                    }}>
-                        点击选择
-                    </Text>
-                </div>
-            )}
+                    {/* Idea content */}
+                    <Stack gap="xs">
+                        <Text style={{
+                            fontSize: isClickable ? DesignTokens.typography.fontSize.sm : DesignTokens.typography.fontSize.xs,
+                            color: isClickable ? AppColors.text.primary : AppColors.text.secondary,
+                            fontWeight: DesignTokens.typography.fontWeight.semibold,
+                            opacity: isChosen ? 0.8 : 1,
+                            lineHeight: DesignTokens.typography.lineHeight.tight,
+                        }}>
+                            {title}
+                        </Text>
 
-            {/* Chosen idea indicator */}
-            {isChosen && (
-                <div style={{
-                    textAlign: 'center',
-                    paddingTop: '8px',
-                    borderTop: '1px solid #52c41a'
-                }}>
-                    <Text style={{
-                        fontSize: '10px',
-                        color: '#52c41a',
-                        fontWeight: 'bold'
-                    }}>
-                        已选中进行编辑
-                    </Text>
-                </div>
-            )}
+                        <Text style={{
+                            fontSize: isClickable ? DesignTokens.typography.fontSize.sm : DesignTokens.typography.fontSize.xs,
+                            color: isClickable ? AppColors.text.secondary : AppColors.text.muted,
+                            lineHeight: DesignTokens.typography.lineHeight.normal,
+                            opacity: isChosen ? 0.7 : 1,
+                        }}>
+                            {body.length > 150 ? `${body.substring(0, 150)}...` : body}
+                        </Text>
+                    </Stack>
 
-            {/* Editable descendants indicator */}
-            {hasEditableDescendants && !isChosen && (
-                <div style={{
-                    textAlign: 'center',
-                    paddingTop: '8px',
-                    borderTop: '1px solid #722ed1'
-                }}>
-                    <Text style={{
-                        fontSize: '10px',
-                        color: '#722ed1',
-                        fontWeight: 'bold'
-                    }}>
-                        已选其他创意，仅供参考
-                    </Text>
-                </div>
-            )}
-        </Card>
-    );
-};
+                    {/* Status Footer */}
+                    {!isChosen && !hasEditableDescendants && (
+                        <div className="flex-center py-xs" style={{
+                            borderTop: `1px solid ${AppColors.border.primary}`,
+                            marginTop: DesignTokens.spacing.xs,
+                        }}>
+                            <Text style={{
+                                fontSize: DesignTokens.typography.fontSize.xs,
+                                color: AppColors.text.muted,
+                                fontStyle: 'italic',
+                            }}>
+                                点击选择
+                            </Text>
+                        </div>
+                    )}
+
+                    {isChosen && (
+                        <div className="flex-center py-xs" style={{
+                            borderTop: `1px solid ${AppColors.status.success}`,
+                            marginTop: DesignTokens.spacing.xs,
+                        }}>
+                            <Text style={{
+                                fontSize: DesignTokens.typography.fontSize.xs,
+                                color: AppColors.status.success,
+                                fontWeight: DesignTokens.typography.fontWeight.semibold,
+                            }}>
+                                已选中进行编辑
+                            </Text>
+                        </div>
+                    )}
+
+                    {hasEditableDescendants && !isChosen && (
+                        <div className="flex-center py-xs" style={{
+                            borderTop: `1px solid ${AppColors.status.processing}`,
+                            marginTop: DesignTokens.spacing.xs,
+                        }}>
+                            <Text style={{
+                                fontSize: DesignTokens.typography.fontSize.xs,
+                                color: AppColors.status.processing,
+                                fontWeight: DesignTokens.typography.fontWeight.semibold,
+                            }}>
+                                已选其他创意，仅供参考
+                            </Text>
+                        </div>
+                    )}
+                </Stack>
+            </StyledCard>
+        );
+    };

@@ -4,7 +4,7 @@ import '@ant-design/v5-patch-for-react-19';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { Layout, Typography, ConfigProvider, theme, Button, Drawer, Menu, Dropdown, Avatar, App as AntdApp } from 'antd';
+import { Layout, Typography, ConfigProvider, Button, Drawer, Menu, Dropdown, Avatar, App as AntdApp } from 'antd';
 import { MenuOutlined, UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProjectDataProvider } from './contexts/ProjectDataContext';
@@ -16,10 +16,12 @@ import ProjectAccessGuard from './components/ProjectAccessGuard';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
 
+// Import design system
+import { antdTheme } from '@/common/theme/designSystem';
 
-
-// Import CSS for any custom styling needed
+// Import CSS for styling
 import "./index.css";
+import "./styles/utilities.css";
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -262,15 +264,7 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <ConfigProvider
-        theme={{
-          algorithm: theme.darkAlgorithm,
-          token: {
-            colorPrimary: '#1890ff',
-            borderRadius: 8,
-          }
-        }}
-      >
+      <ConfigProvider theme={antdTheme}>
         <AntdApp>
           <Router>
             <AuthProvider>
