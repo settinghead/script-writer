@@ -89,18 +89,7 @@ const ProjectsList: React.FC = () => {
     const handleViewProject = (project: ProjectSummary) => {
         // Navigate based on current phase
         switch (project.currentPhase) {
-            case 'brainstorming':
-                navigate(`/projects/${project.id}/brainstorm`);
-                break;
-            case 'outline':
-                navigate(`/projects/${project.id}/outline`);
-                break;
-            case 'episodes':
-                navigate(`/projects/${project.id}/episodes`);
-                break;
-            case 'scripts':
-                navigate(`/projects/${project.id}/scripts`);
-                break;
+
             default:
                 navigate(`/projects/${project.id}/brainstorm`);
         }
