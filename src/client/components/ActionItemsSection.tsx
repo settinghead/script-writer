@@ -99,9 +99,21 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
 
 
 
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px', width: '100%', padding: '24px' }}>
-
-
+        <div
+            style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '24px',
+                width: '100%',
+                padding: '36px 32px',
+                background: 'linear-gradient(145deg, #232323 60%, #181818 100%)',
+                borderRadius: '12px',
+                boxShadow:
+                    '0 12px 36px 0 rgba(0,0,0,0.60), 0 4px 16px 0 rgba(80,80,80,0.22), 0 2px 8px 0 rgba(255,255,255,0.06) inset',
+                border: '2.5px solid #232323',
+                transition: 'box-shadow 0.2s cubic-bezier(.4,2,.6,1)'
+            }}
+        >
             {/* Actions on the right */}
             {actions.length > 0 ? (
                 <div style={{ display: "flex", flexWrap: "wrap", width: "100%", justifyContent: "center" }}>

@@ -16,8 +16,9 @@ import ProjectAccessGuard from './components/ProjectAccessGuard';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
 
-// Import design system
+// Import design system and styled theme
 import { antdTheme } from '@/common/theme/designSystem';
+import { ThemeProvider } from './styled-system';
 
 // Import CSS for styling
 import "./index.css";
@@ -264,7 +265,7 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <ConfigProvider theme={antdTheme}>
+      <ThemeProvider>
         <AntdApp>
           <Router>
             <AuthProvider>
@@ -276,7 +277,7 @@ const App: React.FC = () => {
           </Router>
           <StagewiseToolbar />
         </AntdApp>
-      </ConfigProvider>
+      </ThemeProvider>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );

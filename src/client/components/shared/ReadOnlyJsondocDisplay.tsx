@@ -593,7 +593,6 @@ export const ReadOnlyJsondocDisplay: React.FC<ReadOnlyJsondocDisplayProps> = ({ 
                     <div
                         style={{
                             whiteSpace: 'pre-wrap',
-                            maxHeight: '400px',
                             overflow: 'auto',
                             backgroundColor: '#0f0f0f',
                             padding: '16px',

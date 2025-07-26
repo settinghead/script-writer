@@ -484,7 +484,8 @@ const MainContentArea: React.FC<{
                             textAlign: "center",
                             color: "#888",
                             fontStyle: "italic",
-                            userSelect: "none"
+                            userSelect: "none",
+                            fontSize: "12px"
                         }}
                     >
                         - 到底了 -
