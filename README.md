@@ -902,6 +902,7 @@ export enum ComponentState {
 - **Automatic Jsondoc Resolution** - Finds latest versions in editing chains (AI-generated → human-edited)
 - **Smart Status Detection** - Loading/failed/normal states based on transform status
 - **Visual Indicators** - Clear feedback for editing states and completion status
+- **Universal Component States** - All components receive `componentState` prop with consistent editability rules
 
 **Specialized Editing Components**:
 - **BrainstormIdeaEditor** - Multi-idea editing with TypedJsondoc validation
