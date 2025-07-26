@@ -7,7 +7,7 @@ import { useProjectData } from '../contexts/ProjectDataContext';
 import { AppColors, ColorUtils } from '../../common/theme/colors';
 import 'reactflow/dist/style.css';
 import { ElectricJsondoc } from '@/common/types';
-import { computeCanonicalJsondocsFromLineage, extractCanonicalJsondocIds } from '../../common/canonicalJsondocLogic';
+import { extractCanonicalJsondocIds } from '../../common/canonicalJsondocLogic';
 
 const { Text } = Typography;
 
@@ -550,6 +550,11 @@ const RawGraphVisualization: React.FC = () => {
         }
     }, []);
 
+    // Use pre-computed canonical context from project data
+    const canonicalContext = projectData.canonicalContext === "pending" || projectData.canonicalContext === "error"
+        ? null
+        : projectData.canonicalContext;
+
     // Process lineage data and convert to React Flow format
     const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
         // Handle loading/error states
@@ -579,15 +584,7 @@ const RawGraphVisualization: React.FC = () => {
         const lineageGraph = projectData.lineageGraph;
 
         // Compute canonical jsondocs using the canonical logic
-        const canonicalContext = computeCanonicalJsondocsFromLineage(
-            lineageGraph,
-            projectData.jsondocs,
-            projectData.transforms,
-            projectData.humanTransforms,
-            projectData.transformInputs,
-            projectData.transformOutputs
-        );
-        const canonicalJsondocIds = extractCanonicalJsondocIds(canonicalContext);
+        const canonicalJsondocIds = canonicalContext ? extractCanonicalJsondocIds(canonicalContext) : new Set<string>();
 
         const nodes: Node[] = [];
         const edges: Edge[] = [];
@@ -795,7 +792,8 @@ const RawGraphVisualization: React.FC = () => {
         showJsondocs,
         showTransforms,
         showHumanTransforms,
-        showLLMTransforms
+        showLLMTransforms,
+        canonicalContext // Add canonicalContext to dependencies
     ]);
 
     const [nodes, setNodes, onNodesChange] = useNodesState(flowNodes);

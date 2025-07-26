@@ -373,6 +373,11 @@ function generateAISDKToolFormat(toolName: string): any {
 export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId }) => {
     const projectData = useProjectData();
 
+    // Use pre-computed canonical context from project data
+    const canonicalContext = projectData.canonicalContext === "pending" || projectData.canonicalContext === "error" 
+        ? null 
+        : projectData.canonicalContext;
+
     // Use the persistent params hook
     const {
         params,
@@ -439,31 +444,28 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
         }
 
         try {
-            // Compute canonical context using the same logic as server
-            const canonicalContext = computeCanonicalJsondocsFromLineage(
-                projectData.lineageGraph,
-                projectData.jsondocs,
-                projectData.transforms,
-                projectData.humanTransforms,
-                projectData.transformInputs,
-                projectData.transformOutputs
-            );
+            // Use pre-computed canonical context from project data
+            const canonicalContextData = projectData.canonicalContext === "pending" || projectData.canonicalContext === "error" 
+                ? null 
+                : projectData.canonicalContext;
+            
+            if (!canonicalContextData) return null;
 
             // Compute filtered tools based on canonical context
-            const filteredTools = computeAvailableToolsFromCanonicalContext(canonicalContext);
+            const filteredTools = computeAvailableToolsFromCanonicalContext(canonicalContextData);
             const excludedTools = getAllToolNames().filter(tool => !filteredTools.includes(tool));
 
             return {
-                canonicalContext,
+                canonicalContext: canonicalContextData,
                 filteredTools,
                 excludedTools,
                 hasCanonicalContent: !!(
-                    canonicalContext.canonicalBrainstormIdea ||
-                    canonicalContext.canonicalBrainstormCollection ||
-                    canonicalContext.canonicalOutlineSettings ||
-                    canonicalContext.canonicalChronicles ||
-                    canonicalContext.canonicalEpisodePlanning ||
-                    canonicalContext.canonicalBrainstormInput
+                    canonicalContextData.canonicalBrainstormIdea ||
+                    canonicalContextData.canonicalBrainstormCollection ||
+                    canonicalContextData.canonicalOutlineSettings ||
+                    canonicalContextData.canonicalChronicles ||
+                    canonicalContextData.canonicalEpisodePlanning ||
+                    canonicalContextData.canonicalBrainstormInput
                 )
             };
         } catch (error) {

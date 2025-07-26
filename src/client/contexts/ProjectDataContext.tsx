@@ -5,12 +5,13 @@ import { createElectricConfig, isElectricDebugLoggingEnabled } from '../../commo
 import { apiService } from '../services/apiService';
 import {
     buildLineageGraph,
-    LineageGraph,
+    type LineageGraph,
     addLineageToJsondocs,
     findLatestJsondocForPath,
     getJsondocAtPath,
     getLatestVersionForPath
 } from '../../common/transform-jsondoc-framework/lineageResolution';
+import { computeCanonicalJsondocsFromLineage } from '../../common/canonicalJsondocLogic';
 import type {
     ProjectDataContextType,
     ElectricJsondoc,
@@ -411,6 +412,22 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         return graph;
     }, [jsondocs, transforms, humanTransforms, transformInputs, transformOutputs]);
 
+    // Memoized canonical context computation
+    const canonicalContext = useMemo(() => {
+        if (!jsondocs || !transforms || !humanTransforms || !transformInputs || !transformOutputs || lineageGraph === "pending") {
+            return "pending" as const;
+        }
+
+        return computeCanonicalJsondocsFromLineage(
+            lineageGraph,
+            jsondocs,
+            transforms,
+            humanTransforms,
+            transformInputs,
+            transformOutputs
+        );
+    }, [jsondocs, transforms, humanTransforms, transformInputs, transformOutputs, lineageGraph]);
+
     // Remove brainstorm-specific logic - moved to brainstorm components
 
     // Memoized selectors
@@ -661,6 +678,9 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
 
         // Lineage graph (globally shared)
         lineageGraph,
+
+        // Canonical context (pre-computed)
+        canonicalContext,
 
         // Selectors
         ...selectors,

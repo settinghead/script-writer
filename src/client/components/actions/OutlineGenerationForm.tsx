@@ -5,6 +5,7 @@ import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
 import { AIButton } from '../shared';
+import { useProjectData } from '../../contexts/ProjectDataContext';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -21,22 +22,45 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
     const { projectId, onSuccess, onError } = props;
     const [isGenerating, setIsGenerating] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const projectData = useProjectData();
 
-    // Get chosen idea from props (new way) or null (old way - will show nothing to do)
-    const chosenIdea = 'jsondocs' in props ? props.jsondocs.brainstormIdea : null;
-    const chosenIdeaLoading = false; // No longer needed with resolved props
+    // Use pre-computed canonical context from project data
+    const canonicalContext = projectData.canonicalContext;
 
-    // Get the chosen brainstorm idea data (simplified with resolved props)
+    // Get the canonical brainstorm idea jsondoc from computed context
+    const canonicalBrainstormIdea = canonicalContext === "pending" || canonicalContext === "error"
+        ? null
+        : canonicalContext?.canonicalBrainstormIdea || null;
+
+    // Check if we have the required brainstorm idea to generate the outline
+    const hasBrainstormIdea = !!canonicalBrainstormIdea;
+
+    // Check if the brainstorm idea is original (no parent) to determine if we should show go back button
+    const isOriginalIdea = useMemo(() => {
+        if (!canonicalBrainstormIdea || !canonicalContext || projectData.lineageGraph === "pending" || projectData.lineageGraph === "error") {
+            return false;
+        }
+
+        const lineageNode = projectData.lineageGraph.nodes.get(canonicalBrainstormIdea.id);
+        if (!lineageNode || lineageNode.type !== 'jsondoc') {
+            return false;
+        }
+
+        // If sourceTransform is 'none', it means this is the original/root jsondoc
+        return lineageNode.sourceTransform === 'none';
+    }, [canonicalBrainstormIdea, canonicalContext, projectData.lineageGraph]);
+
+    // Get the chosen brainstorm idea data
     const { sourceJsondocId, ideaData } = useMemo(() => {
-        if (!chosenIdea) return { sourceJsondocId: null, ideaData: null };
+        if (!canonicalBrainstormIdea) return { sourceJsondocId: null, ideaData: null };
 
-        // chosenIdea is now an ElectricJsondoc, so use its id directly
-        const jsondocId = chosenIdea.id;
+        // canonicalBrainstormIdea is an ElectricJsondoc, so use its id directly
+        const jsondocId = canonicalBrainstormIdea.id;
 
         // Parse the jsondoc data to get the actual idea content
         let parsedIdeaData;
         try {
-            parsedIdeaData = JSON.parse(chosenIdea.data);
+            parsedIdeaData = JSON.parse(canonicalBrainstormIdea.data);
         } catch (error) {
             console.warn('Failed to parse brainstorm idea data:', error);
             parsedIdeaData = {
@@ -46,7 +70,7 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
         }
 
         return { sourceJsondocId: jsondocId, ideaData: parsedIdeaData };
-    }, [chosenIdea]);
+    }, [canonicalBrainstormIdea]);
 
     // Handle outline generation
     const handleGenerateOutline = useCallback(async (values: OutlineFormValues) => {
@@ -99,17 +123,17 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
         }
     }, [sourceJsondocId, onSuccess, onError]);
 
-    // Show loading state while chosen idea is loading
-    if (chosenIdeaLoading) {
+    // Show loading state while fetching canonical data
+    if (!canonicalContext || projectData.isLoading) {
         return (
             <div style={{ textAlign: 'center', }}>
-                <Text type="secondary">加载选中的创意...</Text>
+                <Text type="secondary">加载中...</Text>
             </div>
         );
     }
 
     // Show error if no chosen idea found
-    if (!chosenIdea || !sourceJsondocId) {
+    if (!canonicalBrainstormIdea || !sourceJsondocId) {
         return (
             <div style={{ textAlign: 'center', }}>
                 <Text type="secondary">Nothing to do</Text>
@@ -119,18 +143,20 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'center' }}>
-            {/* Go back button */}
-            <Button
-                icon={<ArrowLeftOutlined />}
-                loading={isDeleting}
-                onClick={handleGoBack}
-                style={{
-                    minWidth: '120px',
-                    height: '40px'
-                }}
-            >
-                {isDeleting ? '返回中...' : '返回'}
-            </Button>
+            {/* Go back button - only show if this is the original idea (not derived) */}
+            {isOriginalIdea && (
+                <Button
+                    icon={<ArrowLeftOutlined />}
+                    loading={isDeleting}
+                    onClick={handleGoBack}
+                    style={{
+                        minWidth: '120px',
+                        height: '40px'
+                    }}
+                >
+                    {isDeleting ? '返回中...' : '返回'}
+                </Button>
+            )}
 
             {/* Generate button */}
             <AIButton

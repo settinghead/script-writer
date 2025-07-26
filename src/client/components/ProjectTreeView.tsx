@@ -17,7 +17,6 @@ import { useProjectInitialMode } from '../transform-jsondoc-framework/useLineage
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useCurrentSection, type CurrentSection } from '../hooks/useCurrentSection';
 import { useChosenBrainstormIdea } from '../hooks/useChosenBrainstormIdea';
-import { computeCanonicalJsondocsFromLineage } from '../../common/canonicalJsondocLogic';
 import { useScrollSync } from '../contexts/ScrollSyncContext';
 
 const { Text } = Typography;
@@ -47,26 +46,10 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
     const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
     const [selectedKeys, setSelectedKeys] = useState<React.Key[]>([]);
 
-    // Compute canonical context using the canonical logic
-    const canonicalContext = useMemo(() => {
-        if (projectData.jsondocs === "pending" || projectData.jsondocs === "error" ||
-            projectData.transforms === "pending" || projectData.transforms === "error" ||
-            projectData.humanTransforms === "pending" || projectData.humanTransforms === "error" ||
-            projectData.transformInputs === "pending" || projectData.transformInputs === "error" ||
-            projectData.transformOutputs === "pending" || projectData.transformOutputs === "error" ||
-            projectData.lineageGraph === "pending" || projectData.lineageGraph === "error") {
-            return null;
-        }
-
-        return computeCanonicalJsondocsFromLineage(
-            projectData.lineageGraph,
-            projectData.jsondocs,
-            projectData.transforms,
-            projectData.humanTransforms,
-            projectData.transformInputs,
-            projectData.transformOutputs
-        );
-    }, [projectData]);
+    // Use pre-computed canonical context from project data
+    const canonicalContext = projectData.canonicalContext === "pending" || projectData.canonicalContext === "error"
+        ? null
+        : projectData.canonicalContext;
 
     // Extract all episodes from canonical episode synopsis list at the top level
     const allEpisodes = useMemo(() => {

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { UseMutationResult } from '@tanstack/react-query';
+import type { CanonicalJsondocContext } from './canonicalJsondocLogic';
 import type { LineageGraph } from './transform-jsondoc-framework/lineageResolution.js';
 import type { ChroniclesStage } from './schemas/outlineSchemas.js';
 
@@ -551,6 +552,9 @@ export interface ProjectDataContextType {
 
     // Lineage graph (globally shared)
     lineageGraph: LineageGraph | "pending" | "error";
+
+    // Canonical context (pre-computed)
+    canonicalContext: CanonicalJsondocContext | "pending" | "error";
 
     // Selectors (memoized)
     // NEW: Collection-aware selectors

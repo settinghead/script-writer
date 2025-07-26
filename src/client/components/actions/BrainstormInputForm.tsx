@@ -6,7 +6,6 @@ import { ActionComponentProps } from '../../utils/lineageBasedActionComputation'
 import { apiService } from '../../services/apiService';
 import AIButton from '../shared/AIButton';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { computeCanonicalJsondocsFromLineage } from '../../../common/canonicalJsondocLogic';
 
 const { Title } = Typography;
 
@@ -20,50 +19,27 @@ const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => 
     const { projectId, onSuccess, onError } = props;
     const projectData = useProjectData();
 
-    // Compute canonical context to get the latest brainstorm input jsondoc
-    const canonicalContext = useMemo(() => {
-        if (projectData.jsondocs === "pending" || projectData.jsondocs === "error" ||
-            projectData.transforms === "pending" || projectData.transforms === "error" ||
-            projectData.humanTransforms === "pending" || projectData.humanTransforms === "error" ||
-            projectData.transformInputs === "pending" || projectData.transformInputs === "error" ||
-            projectData.transformOutputs === "pending" || projectData.transformOutputs === "error" ||
-            projectData.lineageGraph === "pending" || projectData.lineageGraph === "error") {
-            return null;
-        }
-
-        return computeCanonicalJsondocsFromLineage(
-            projectData.lineageGraph,
-            projectData.jsondocs,
-            projectData.transforms,
-            projectData.humanTransforms,
-            projectData.transformInputs,
-            projectData.transformOutputs
-        );
-    }, [
-        projectData.jsondocs,
-        projectData.transforms,
-        projectData.humanTransforms,
-        projectData.transformInputs,
-        projectData.transformOutputs,
-        projectData.lineageGraph
-    ]);
+    // Use pre-computed canonical context from project data
+    const canonicalContext = projectData.canonicalContext;
 
     // Get the canonical brainstorm input jsondoc from computed context
-    const brainstormJsondoc = canonicalContext?.canonicalBrainstormInput || null;
+    const canonicalBrainstormInput = canonicalContext === "pending" || canonicalContext === "error"
+        ? null
+        : canonicalContext?.canonicalBrainstormInput || null;
 
     const [isStarting, setIsStarting] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
     const handleStartBrainstorm = async () => {
-        if (isStarting || !brainstormJsondoc) return;
+        if (isStarting || !canonicalBrainstormInput) return;
 
         try {
             // Get current jsondoc data
             let currentData;
             try {
-                currentData = typeof brainstormJsondoc.data === 'string'
-                    ? JSON.parse(brainstormJsondoc.data)
-                    : brainstormJsondoc.data;
+                currentData = typeof canonicalBrainstormInput.data === 'string'
+                    ? JSON.parse(canonicalBrainstormInput.data)
+                    : canonicalBrainstormInput.data;
             } catch (error) {
                 console.error('Failed to parse jsondoc data:', error);
                 message.error('无法读取头脑风暴参数');
@@ -84,11 +60,11 @@ const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => 
             setIsStarting(true);
 
             // Use apiService to send chat message
-            const userRequest = `基于jsondoc ID ${brainstormJsondoc.id} 的头脑风暴参数，生成${currentData.numberOfIdeas || 3}个创意想法。平台：${currentData.platform}，类型：${currentData.genre}${currentData.other_requirements ? `，其他要求：${currentData.other_requirements}` : ''}`;
+            const userRequest = `基于jsondoc ID ${canonicalBrainstormInput.id} 的头脑风暴参数，生成${currentData.numberOfIdeas || 3}个创意想法。平台：${currentData.platform}，类型：${currentData.genre}${currentData.other_requirements ? `，其他要求：${currentData.other_requirements}` : ''}`;
 
             await apiService.sendChatMessage(projectId, userRequest, {
                 action: 'start_brainstorm',
-                jsondocId: brainstormJsondoc.id
+                jsondocId: canonicalBrainstormInput.id
             });
 
             message.success('头脑风暴已开始！请查看聊天面板了解进度。');
@@ -104,13 +80,13 @@ const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => 
     };
 
     const handleGoBack = async () => {
-        if (isDeleting || !brainstormJsondoc) return;
+        if (isDeleting || !canonicalBrainstormInput) return;
 
         try {
             setIsDeleting(true);
 
             // Use apiService to delete the brainstorm input jsondoc
-            await apiService.deleteBrainstormInput(brainstormJsondoc.id);
+            await apiService.deleteBrainstormInput(canonicalBrainstormInput.id);
 
             onSuccess?.(); // This will trigger a re-render and return to initial state
         } catch (error) {
@@ -159,7 +135,7 @@ const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => 
     }
 
     // If no brainstorm input jsondoc exists, show appropriate message
-    if (!brainstormJsondoc) {
+    if (!canonicalBrainstormInput) {
         return (
             <div style={{ padding: '16px 0', textAlign: 'center' }}>
                 <Typography.Text type="secondary">

@@ -4,7 +4,7 @@ import { ToolOutlined, BugOutlined, FileTextOutlined, DatabaseOutlined, SaveOutl
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useDebugParams } from '../../hooks/useDebugParams';
-import { computeCanonicalJsondocsFromLineage, extractCanonicalJsondocIds } from '../../../common/canonicalJsondocLogic';
+import { extractCanonicalJsondocIds } from '../../../common/canonicalJsondocLogic';
 import { buildLineageGraph } from '../../../common/transform-jsondoc-framework/lineageResolution';
 import { applyPatch, deepClone } from 'fast-json-patch';
 import * as Diff from 'diff';
@@ -235,6 +235,13 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
         transformOutputs,
         isLoading: contextLoading
     } = useProjectData();
+
+    // Get the pre-computed canonical context
+    const projectDataContext = useProjectData();
+    const canonicalContextFromData = projectDataContext.canonicalContext === "pending" || projectDataContext.canonicalContext === "error"
+        ? null
+        : projectDataContext.canonicalContext;
+
     const [canonicalJsondocIds, setCanonicalJsondocIds] = useState<Set<string>>(new Set());
     const [promptResult, setPromptResult] = useState<PromptResult | null>(null);
     const [loading, setLoading] = useState(false);
@@ -428,15 +435,13 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
         try {
             setJsondocsLoading(true);
 
-            // Build canonical context using ProjectDataContext data
-            const canonicalContext = computeCanonicalJsondocsFromLineage(
-                lineageGraph,
-                rawJsondocs,
-                transforms || [],
-                humanTransforms || [],
-                transformInputs || [],
-                transformOutputs || []
-            );
+            // Use pre-computed canonical context from project data
+            const canonicalContext = canonicalContextFromData;
+
+            if (!canonicalContext) {
+                setJsondocsLoading(false);
+                return;
+            }
 
             const canonicalIds = extractCanonicalJsondocIds(canonicalContext);
 
