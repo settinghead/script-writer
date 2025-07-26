@@ -71,7 +71,7 @@ export function computeCanonicalJsondocsFromLineage(
     // Special logic: Don't include brainstorm_collection if a brainstorm idea has been selected via human transform
     let canonicalBrainstormCollection = findCanonicalJsondocByType(lineageGraph, jsondocs, 'brainstorm_collection');
 
-        // BUSINESS RULE: If there's any canonical brainstorm idea (we've committed to an idea),
+    // BUSINESS RULE: If there's any canonical brainstorm idea (we've committed to an idea),
     // then hide the brainstorm collection from context
     if (canonicalBrainstormIdea && canonicalBrainstormCollection) {
         canonicalBrainstormCollection = null;
