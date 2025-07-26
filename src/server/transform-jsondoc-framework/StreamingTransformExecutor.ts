@@ -319,8 +319,7 @@ export class StreamingTransformExecutor {
                     seed,
                     temperature,
                     topP,
-                    maxTokens: 32768,
-                    // maxTokens,
+                    maxTokens,
                     executionMode // Pass execution mode for better streaming strategy detection
                 });
 
@@ -992,8 +991,7 @@ export class StreamingTransformExecutor {
                 seed,
                 temperature,
                 topP,
-                maxTokens: 32768,
-                // maxTokens
+                maxTokens
             });
         }
 
@@ -1014,8 +1012,7 @@ export class StreamingTransformExecutor {
             seed,
             temperature,
             topP,
-            maxTokens: 32768,
-            // maxTokens
+            maxTokens
         };
 
         try {
@@ -1098,8 +1095,7 @@ export class StreamingTransformExecutor {
                 seed,
                 temperature,
                 topP,
-                maxTokens: 32768,
-                // maxTokens
+                maxTokens
             });
 
             // Convert text stream to JSON patch operations stream
@@ -1120,8 +1116,7 @@ export class StreamingTransformExecutor {
                     seed,
                     temperature,
                     topP,
-                    maxTokens: 32768,
-                    // maxTokens
+                    maxTokens
                 });
 
                 return this.convertTextStreamToJsonPatches(retryResponse.textStream, templateName);

@@ -536,13 +536,12 @@ ${conversationText}
                 model: enhancedModel, // Use enhanced model instead of base model
                 tools: tools,
                 maxSteps: 25, // Allow more steps for complex editing workflows
-                maxTokens: 32768,
                 prompt: completePrompt,
                 // Pass AI SDK options directly
                 ...(seed && { seed }),
                 ...(temperature && { temperature }),
                 ...(topP && { topP }),
-                // ...(maxTokens && { maxTokens })
+                ...(maxTokens && { maxTokens })
             });
 
             console.log('\n\n--- Agent Stream & Final Output ---');
