@@ -11,6 +11,7 @@ import { createChroniclesToolDefinition, createChroniclesEditToolDefinition } fr
 import { createEpisodePlanningToolDefinition, createEpisodePlanningEditToolDefinition } from '../tools/EpisodePlanningTool';
 import { createEpisodeSynopsisToolDefinition } from '../tools/EpisodeSynopsisTool';
 import { JsonPatchOperationsSchema } from '@/common/schemas/transforms';
+import { StreamingExecutionMode } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 
 /**
  * Admin routes for debugging and development
@@ -467,7 +468,7 @@ export function createAdminRoutes(
             };
 
             // Determine execution mode for edit tools
-            let executionMode: any = undefined;
+            let executionMode: StreamingExecutionMode | null = null;
             const isEditTool = toolName.includes('edit') || toolInfo.templateName.endsWith('_diff');
 
             if (isEditTool && input.jsondocs && input.jsondocs.length > 0) {
@@ -487,6 +488,14 @@ export function createAdminRoutes(
                     res.end();
                     return;
                 }
+            }
+
+            if (toolName.startsWith("generate_")) {
+                executionMode = {
+                    mode: "full-object"
+                }
+            } else {
+                throw new Error("Unknown toolName: " + toolName);
             }
 
             // Execute the streaming transform with dryRun: true and streaming callback

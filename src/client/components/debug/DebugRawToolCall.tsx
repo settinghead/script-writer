@@ -174,8 +174,8 @@ const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
         case 'generate_episode_synopsis':
             return {
                 groupTitle: '第一组：相遇篇',
-                episodeRange: '第1-5集',
-                episodes: [1, 2, 3, 4, 5]
+                episodeStart: 1,
+                episodeEnd: 1
             };
         default:
             console.error(`[getDefaultParamsForTool] Missing default parameters for tool: ${toolName}`);
