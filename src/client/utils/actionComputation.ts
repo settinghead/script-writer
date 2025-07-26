@@ -13,6 +13,15 @@ import { getComponentById } from './componentRegistry';
 import {
     type CanonicalJsondocContext
 } from '../../common/canonicalJsondocLogic';
+// Import the new component state system
+import {
+    ComponentState,
+    ComponentStateInfo,
+    computeComponentState,
+    isDirectlyEditable,
+    canClickToEdit,
+    isInteractive
+} from './componentState';
 
 // Re-export types from lineageBasedActionComputation for backward compatibility
 export type { ActionItem } from './lineageBasedActionComputation';
@@ -25,7 +34,7 @@ export interface ComputedActions {
 }
 
 // Legacy helper functions - kept for backward compatibility with other parts of the app
-// TODO: Eventually migrate all usage to lineage-based functions
+// TODO: Eventually migrate all usage to universal component state functions
 
 // Helper function to check if an jsondoc is a leaf node (no descendants)
 export const isLeafNode = (jsondocId: string, transformInputs: any[]): boolean => {
@@ -41,14 +50,14 @@ export const canBecomeEditable = (jsondoc: TypedJsondoc, transformInputs: any[])
 };
 
 // Helper function to check if an jsondoc should be directly editable
-export const isDirectlyEditable = (jsondoc: TypedJsondoc, transformInputs: any[]): boolean => {
+export const isDirectlyEditableOld = (jsondoc: TypedJsondoc, transformInputs: any[]): boolean => {
     // User-created jsondocs should be directly editable if they have no descendants
     return isLeafNode(jsondoc.id, transformInputs) && jsondoc.origin_type === 'user_input';
 };
 
 // Helper function to check if an jsondoc can be edited (either directly or via click-to-edit)
 export const canBeEdited = (jsondoc: TypedJsondoc, transformInputs: any[]): boolean => {
-    return isDirectlyEditable(jsondoc, transformInputs) || canBecomeEditable(jsondoc, transformInputs);
+    return isDirectlyEditableOld(jsondoc, transformInputs) || canBecomeEditable(jsondoc, transformInputs);
 };
 
 // ==============================================================================
@@ -84,6 +93,9 @@ interface UnifiedComputationContext {
 
     // Actions from lineage computation
     actions: ActionItem[];
+
+    // Add project data for component state computation
+    projectData: ProjectDataContextType;
 }
 
 /**
@@ -137,7 +149,8 @@ function computeUnifiedContext(
                 lineageGraph: null,
                 transformInputs: [],
                 jsondocs: [],
-                actions: []
+                actions: [],
+                projectData: projectData
             };
         }
 
@@ -185,7 +198,8 @@ function computeUnifiedContext(
                     lineageGraph: null,
                     transformInputs: [],
                     jsondocs: projectData.jsondocs,
-                    actions: []
+                    actions: [],
+                    projectData: projectData
                 };
             } else {
                 return {
@@ -217,7 +231,8 @@ function computeUnifiedContext(
                     lineageGraph: null,
                     transformInputs: [],
                     jsondocs: projectData.jsondocs,
-                    actions: []
+                    actions: [],
+                    projectData: projectData
                 };
             }
         } else if (brainstormCollections.length > 0) {
@@ -251,7 +266,8 @@ function computeUnifiedContext(
                 lineageGraph: null,
                 transformInputs: [],
                 jsondocs: projectData.jsondocs,
-                actions: []
+                actions: [],
+                projectData: projectData
             };
         }
 
@@ -284,7 +300,8 @@ function computeUnifiedContext(
             lineageGraph: null,
             transformInputs: [],
             jsondocs: [],
-            actions: []
+            actions: [],
+            projectData: projectData
         };
     }
 
@@ -324,7 +341,8 @@ function computeUnifiedContext(
             lineageGraph: null,
             transformInputs: [],
             jsondocs: [],
-            actions: []
+            actions: [],
+            projectData: projectData
         };
     }
 
@@ -365,7 +383,8 @@ function computeUnifiedContext(
             lineageGraph: null,
             transformInputs: [],
             jsondocs: [],
-            actions: []
+            actions: [],
+            projectData: projectData
         };
     }
 
@@ -457,12 +476,14 @@ function computeUnifiedContext(
         lineageGraph,
         transformInputs,
         jsondocs,
-        actions: lineageResult.actions
+        actions: lineageResult.actions,
+        projectData
     };
 }
 
 /**
  * Compute display components from unified context
+ * Uses the new universal component state system
  */
 function computeDisplayComponentsFromContext(context: UnifiedComputationContext): DisplayComponent[] {
 
@@ -479,21 +500,17 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         'episode-content-display': 7
     };
 
-    // Add components based on context
+    // Add components based on context using universal component state system
     if (context.brainstormInput) {
-        // Determine if the brainstorm input is actually editable
-        const isBrainstormInputLeafNode = isLeafNode(context.brainstormInput.id, context.transformInputs);
-        const isBrainstormInputEditable = !context.hasActiveTransforms &&
-            isBrainstormInputLeafNode &&
-            context.brainstormInput.origin_type === 'user_input';
+        const componentState = computeComponentState(context.brainstormInput, context.projectData);
 
         components.push({
             id: 'brainstorm-input-editor',
             component: getComponentById('brainstorm-input-editor'),
-            mode: isBrainstormInputEditable ? 'editable' : 'readonly',
+            mode: isDirectlyEditable(componentState.state) ? 'editable' : 'readonly',
             props: {
                 jsondoc: context.brainstormInput,
-                isEditable: isBrainstormInputEditable,
+                componentState, // Pass full state info instead of isEditable
                 minimized: false // Always full mode when at brainstorm_input stage
             },
             priority: componentOrder['brainstorm-input-editor']
@@ -502,38 +519,31 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
 
     // Only show idea collection if we have a brainstorm collection (not individual ideas)
     if (context.canonicalContext.canonicalBrainstormCollection && context.brainstormIdeas.length > 0) {
+        const componentState = computeComponentState(context.canonicalContext.canonicalBrainstormCollection, context.projectData);
+
         components.push({
             id: 'idea-collection',
             component: getComponentById('idea-collection'),
-            mode: context.hasActiveTransforms ? 'readonly' : 'editable',
+            mode: isInteractive(componentState.state) ? 'editable' : 'readonly',
             props: {
-                // Remove ideas prop - let component use its own useLatestBrainstormIdeas hook
+                componentState, // Pass state info
                 selectionMode: true,
-                isLoading: context.hasActiveTransforms
+                isLoading: componentState.state === ComponentState.LOADING || componentState.state === ComponentState.PENDING_PARENT_TRANSFORM
             },
             priority: componentOrder['idea-collection']
         });
     }
 
     if (context.chosenIdea) {
-        // Determine if the brainstorm idea is actually editable
-        const isIdeaLeafNode = isLeafNode(context.chosenIdea.id, context.transformInputs);
-        const isIdeaEditable = !context.hasActiveTransforms &&
-            isIdeaLeafNode &&
-            context.chosenIdea.origin_type === 'user_input';
-
-        const ideaData = typeof context.chosenIdea.data === 'string'
-            ? JSON.parse(context.chosenIdea.data)
-            : context.chosenIdea.data;
-
+        const componentState = computeComponentState(context.chosenIdea, context.projectData);
 
         components.push({
             id: 'single-idea-editor',
             component: getComponentById('single-idea-editor'),
-            mode: context.hasActiveTransforms ? 'readonly' : 'editable',
+            mode: isInteractive(componentState.state) ? 'editable' : 'readonly',
             props: {
-                brainstormIdea: context.chosenIdea, // Pass the full jsondoc, not just the data
-                isEditable: isIdeaEditable,
+                brainstormIdea: context.chosenIdea,
+                componentState, // Pass state info instead of isEditable
                 currentStage: 'idea_editing' // This will be removed from UnifiedWorkflowState
             },
             priority: componentOrder['single-idea-editor']
@@ -541,59 +551,45 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
     }
 
     if (context.outlineSettings) {
-        // Determine if the 剧本设定 jsondoc is actually editable
-        const isOutlineLeafNode = isLeafNode(context.outlineSettings.id, context.transformInputs);
-        const isOutlineEditable = !context.hasActiveTransforms &&
-            isOutlineLeafNode &&
-            context.outlineSettings.origin_type === 'user_input';
-
+        const componentState = computeComponentState(context.outlineSettings, context.projectData);
 
         components.push({
             id: '剧本设定-display',
             component: getComponentById('剧本设定-display'),
-            mode: context.hasActiveTransforms ? 'readonly' : 'editable',
+            mode: isInteractive(componentState.state) ? 'editable' : 'readonly',
             props: {
                 outlineSettings: context.outlineSettings,
-                isEditable: isOutlineEditable
+                componentState // Pass state info instead of isEditable
             },
             priority: componentOrder['剧本设定-display']
         });
     }
 
     if (context.canonicalChronicles) {
-        // Determine if the chronicles jsondoc is actually editable
-        const isChroniclesLeafNode = isLeafNode(context.canonicalChronicles.id, context.transformInputs);
-        const isChroniclesEditable = !context.hasActiveTransforms &&
-            !context.canonicalEpisodePlanning &&
-            isChroniclesLeafNode &&
-            context.canonicalChronicles.origin_type === 'user_input';
+        const componentState = computeComponentState(context.canonicalChronicles, context.projectData);
 
         components.push({
             id: 'chronicles-display',
             component: getComponentById('chronicles-display'),
-            mode: isChroniclesEditable ? 'editable' : 'readonly',
+            mode: isInteractive(componentState.state) ? 'editable' : 'readonly',
             props: {
                 chroniclesJsondoc: context.canonicalChronicles,
-                isEditable: isChroniclesEditable
+                componentState // Pass state info instead of isEditable
             },
             priority: componentOrder['chronicles-display']
         });
     }
 
     if (context.canonicalEpisodePlanning) {
-        // Determine if the episode planning jsondoc is actually editable
-        const isEpisodePlanningLeafNode = isLeafNode(context.canonicalEpisodePlanning.id, context.transformInputs);
-        const isEpisodePlanningEditable = !context.hasActiveTransforms &&
-            isEpisodePlanningLeafNode &&
-            context.canonicalEpisodePlanning.origin_type === 'user_input';
+        const componentState = computeComponentState(context.canonicalEpisodePlanning, context.projectData);
 
         components.push({
             id: 'episode-planning-display',
             component: getComponentById('episode-planning-display'),
-            mode: isEpisodePlanningEditable ? 'editable' : 'readonly',
+            mode: isInteractive(componentState.state) ? 'editable' : 'readonly',
             props: {
                 episodePlanningJsondoc: context.canonicalEpisodePlanning,
-                isEditable: isEpisodePlanningEditable
+                componentState // Pass state info instead of isEditable
             },
             priority: componentOrder['episode-planning-display']
         });
@@ -602,26 +598,20 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
     // Episode content display - show synopsis and script pairs
     if (context.canonicalContext.canonicalEpisodeSynopsisList.length > 0 || context.canonicalContext.canonicalEpisodeScriptsList.length > 0) {
         const synopsisItems = context.canonicalContext.canonicalEpisodeSynopsisList.map(synopsis => {
-            // Episode synopsis jsondocs should be independently editable regardless of leaf node status
-            // since they form a sequential dependency chain where later episodes depend on earlier ones
-            const isDirectlyEditable = !context.hasActiveTransforms && synopsis.origin_type === 'user_input';
-            const canBecomeEditable = !context.hasActiveTransforms && synopsis.origin_type === 'ai_generated';
+            const componentState = computeComponentState(synopsis, context.projectData);
 
             return {
                 jsondoc: synopsis,
-                isEditable: isDirectlyEditable,
-                isClickToEditable: canBecomeEditable,
+                componentState, // Use universal state instead of boolean flags
             };
         });
 
         const scriptItems = context.canonicalContext.canonicalEpisodeScriptsList.map(script => {
-            const isDirectlyEditable = !context.hasActiveTransforms && script.origin_type === 'user_input';
-            const canBecomeEditable = !context.hasActiveTransforms && script.origin_type === 'ai_generated';
+            const componentState = computeComponentState(script, context.projectData);
 
             return {
                 jsondoc: script,
-                isEditable: isDirectlyEditable,
-                isClickToEditable: canBecomeEditable,
+                componentState, // Use universal state instead of boolean flags
             };
         });
 

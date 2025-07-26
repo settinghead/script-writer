@@ -4,7 +4,12 @@ import { EditOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { YJSJsondocProvider } from '../contexts/YJSJsondocContext';
 import { ReadOnlyJsondocDisplay } from '../../components/shared/ReadOnlyJsondocDisplay';
-import { canBecomeEditable, isDirectlyEditable } from '../../utils/actionComputation';
+import {
+    computeComponentState,
+    ComponentState,
+    isDirectlyEditable,
+    canClickToEdit
+} from '../../utils/componentState';
 import { TypedJsondoc } from '../../../common/types';
 
 const { Text, Title } = Typography;
@@ -48,34 +53,27 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
     const projectData = useProjectData();
     const [isCreatingTransform, setIsCreatingTransform] = useState(false);
 
-    // Check editability with the new logic
-    const editabilityState = useMemo(() => {
-        if (!jsondoc || !Array.isArray(projectData.transformInputs)) {
-            return { isDirectlyEditable: false, canBecomeEditable: false };
-        }
-
-        return {
-            isDirectlyEditable: isDirectlyEditable(jsondoc, projectData.transformInputs),
-            canBecomeEditable: canBecomeEditable(jsondoc, projectData.transformInputs)
-        };
-    }, [jsondoc, projectData.transformInputs]);
+    // Use universal component state system
+    const componentState = useMemo(() => {
+        if (!jsondoc) return null;
+        return computeComponentState(jsondoc, projectData);
+    }, [jsondoc, projectData]);
 
     // Determine the effective editability
     const effectiveIsEditable = useMemo(() => {
         // If explicitly set as editable, use that
         if (isEditable) return true;
 
-        // If it's a user-created jsondoc with no descendants, it should be directly editable
-        if (editabilityState.isDirectlyEditable) return true;
+        // Check component state
+        if (!componentState) return false;
+        return isDirectlyEditable(componentState.state);
+    }, [isEditable, componentState]);
 
-        return false;
-    }, [isEditable, editabilityState.isDirectlyEditable]);
-
-    // Check if this jsondoc can become editable via click-to-edit (only for AI-generated)
+    // Check if this jsondoc can become editable via click-to-edit
     const canEdit = useMemo(() => {
-        if (effectiveIsEditable || !jsondoc) return false;
-        return editabilityState.canBecomeEditable;
-    }, [effectiveIsEditable, jsondoc, editabilityState.canBecomeEditable]);
+        if (effectiveIsEditable || !jsondoc || !componentState) return false;
+        return canClickToEdit(componentState.state);
+    }, [effectiveIsEditable, jsondoc, componentState]);
 
     // Handle creating an editable version
     const handleCreateEditableVersion = useCallback(async () => {

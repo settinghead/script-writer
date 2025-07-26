@@ -453,13 +453,21 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         // Step 13: Test active transforms disable editability
         console.log('✅ Step 13: Testing active transforms disable editability...');
 
-        // Create a mock with running transforms
+        // Create a mock with a running parent transform for jsondoc-4
+        const transformsWithRunningParent = [...transforms];
+        transformsWithRunningParent[2] = {
+            ...transforms[2], // transform-3 (parent of jsondoc-4)
+            status: 'running', // Make the parent transform running
+            streaming_status: 'running'
+        };
+
         const mockProjectDataWithActiveTransforms = {
             ...mockProjectData,
+            transforms: transformsWithRunningParent,
             canonicalContext: {
                 ...canonicalContext,
                 hasActiveTransforms: true,
-                activeTransforms: [transforms[0]] // Include first transform as active
+                activeTransforms: [transformsWithRunningParent[2]] // Include the running parent transform
             }
         };
 
@@ -475,9 +483,10 @@ describe('Brainstorm Edit Chain Integration Test', () => {
             component.id === 'single-idea-editor'
         );
         expect(disabledSingleIdeaEditor).toBeTruthy();
-        expect(disabledSingleIdeaEditor?.props.isEditable).toBe(false); // Should be disabled
+        // With the new component state system, we check componentState instead of isEditable
+        expect(disabledSingleIdeaEditor?.props.componentState?.state).toBe('pendingParentTransform');
 
-        console.log('  - Component isEditable when transforms active:', disabledSingleIdeaEditor?.props.isEditable);
+        console.log('  - Component state when transforms active:', disabledSingleIdeaEditor?.props.componentState?.state);
         console.log('✅ Step 13: Active transforms correctly disable editability');
 
         // Assert final expectations
