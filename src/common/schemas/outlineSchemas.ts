@@ -138,7 +138,7 @@ export const EpisodeSynopsisInputSchema = BaseToolInputSchema.extend({
 
 // Updated tool result schema for individual episode
 export const EpisodeSynopsisToolResultSchema = z.object({
-    outputJsondocIds: z.array(z.string()).describe('生成的每集大纲jsondoc ID列表'),
+    outputJsondocIds: z.array(z.string()).describe('生成的单集大纲jsondoc ID列表'),
     finishReason: z.string()
 });
 

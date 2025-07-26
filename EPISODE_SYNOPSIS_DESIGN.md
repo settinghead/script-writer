@@ -2,7 +2,7 @@
 
 ## Overview
 
-The episode synopsis (每集大纲) system is the next phase after episode planning in the Chinese short drama workflow. It generates detailed plot summaries for individual episodes with 2-minute structures optimized for 抖音, 快手, and 小红书.
+The episode synopsis (单集大纲) system is the next phase after episode planning in the Chinese short drama workflow. It generates detailed plot summaries for individual episodes with 2-minute structures optimized for 抖音, 快手, and 小红书.
 
 ## Key Insights from Codebase Analysis
 
@@ -118,8 +118,8 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
       actions.push({
         id: 'episode_synopsis_generation',
         type: 'button',
-        title: `生成第${firstGroup.episodes}集每集大纲`,
-        description: `生成"${firstGroup.groupTitle}"的详细每集大纲`,
+        title: `生成第${firstGroup.episodes}集单集大纲`,
+        description: `生成"${firstGroup.groupTitle}"的详细单集大纲`,
         component: EpisodeSynopsisGenerationAction,
         props: {
           jsondocs: {
@@ -154,8 +154,8 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
       actions.push({
         id: 'episode_synopsis_generation',
         type: 'button',
-        title: `生成第${nextGroup.episodes}集每集大纲`,
-        description: `生成"${nextGroup.groupTitle}"的详细每集大纲`,
+        title: `生成第${nextGroup.episodes}集单集大纲`,
+        description: `生成"${nextGroup.groupTitle}"的详细单集大纲`,
         component: EpisodeSynopsisGenerationAction,
         props: {
           // ... same as above
@@ -249,7 +249,7 @@ if (jsondocChecks.hasEpisodeSynopsis) {
     key: 'episode-synopsis-section',
     title: (
       <Space style={{ /* highlighted styling */ }}>
-        <Text>每集大纲</Text>
+        <Text>单集大纲</Text>
         <CheckCircleOutlined style={{ color: '#52c41a', fontSize: '12px' }} />
       </Space>
     ),
@@ -275,7 +275,7 @@ export function createEpisodeSynopsisToolDefinition(
 ): StreamingToolDefinition<EpisodeSynopsisInput, EpisodeSynopsisToolResult> {
   return {
     name: 'generate_episode_synopsis',
-    description: '生成指定剧集组的详细每集大纲，包含2分钟短剧结构、钩子设计、悬念元素等',
+    description: '生成指定剧集组的详细单集大纲，包含2分钟短剧结构、钩子设计、悬念元素等',
     inputSchema: EpisodeSynopsisInputSchema,
     outputSchema: EpisodeSynopsisToolResultSchema,
     execute: async (params: EpisodeSynopsisInput, { toolCallId }) => {
@@ -323,7 +323,7 @@ export const episodeSynopsisTemplate: LLMTemplate = {
   promptTemplate: `你是专业的中国短剧编剧，专门为抖音、快手、小红书等平台创作2分钟短剧内容。
 
 ## 任务
-基于分集结构，为指定剧集组生成详细的每集大纲。每集约2分钟，必须具有强烈的戏剧张力和平台优化的钩子设计。
+基于分集结构，为指定剧集组生成详细的单集大纲。每集约2分钟，必须具有强烈的戏剧张力和平台优化的钩子设计。
 
 ## 项目背景信息（仅供参考）
 %%jsondocs%%
@@ -428,7 +428,7 @@ const EpisodeSynopsisGenerationAction: React.FC<ActionComponentProps> = (props) 
     try {
       // Send chat message to trigger generation (following existing pattern)
       await apiService.sendChatMessage(projectId, 
-        `生成第${nextGroup.episodeRange}集每集大纲：${nextGroup.groupTitle}`,
+        `生成第${nextGroup.episodeRange}集单集大纲：${nextGroup.groupTitle}`,
         {
           action: 'generate_episode_synopsis',
           episodePlanningId: episodePlanning.id,
@@ -464,7 +464,7 @@ const EpisodeSynopsisGenerationAction: React.FC<ActionComponentProps> = (props) 
         onClick={handleGenerate}
         style={{ fontSize: '16px' }}
       >
-        {isGenerating ? '生成中...' : `生成第${nextGroup.episodeRange}集每集大纲`}
+        {isGenerating ? '生成中...' : `生成第${nextGroup.episodeRange}集单集大纲`}
       </AIButton>
     </div>
   );
@@ -498,7 +498,7 @@ const EpisodeSynopsisDisplay: React.FC<{
 
   return (
     <div id="episode-synopsis">
-      <Title level={3}>每集大纲 ({allEpisodes.length}集)</Title>
+      <Title level={3}>单集大纲 ({allEpisodes.length}集)</Title>
       
       {allEpisodes.map(episode => (
         <Card key={episode.episodeNumber} style={{ marginBottom: 16 }}>

@@ -29,11 +29,11 @@ const EpisodeGenerationAction: React.FC<EpisodeGenerationActionProps> = (props) 
         try {
             await apiService.generateEpisodesFromChronicles(projectId, latestChronicles.id);
 
-            message.success('每集大纲生成已启动');
+            message.success('单集大纲生成已启动');
             onSuccess?.();
         } catch (error) {
             console.error('Error generating episodes:', error);
-            const errorMessage = `生成每集大纲失败: ${error instanceof Error ? error.message : '未知错误'}`;
+            const errorMessage = `生成单集大纲失败: ${error instanceof Error ? error.message : '未知错误'}`;
             message.error(errorMessage);
             onError?.(error instanceof Error ? error : new Error(errorMessage));
         } finally {
@@ -46,7 +46,7 @@ const EpisodeGenerationAction: React.FC<EpisodeGenerationActionProps> = (props) 
         return (
             <Alert
                 message="需要先生成时间顺序大纲"
-                description="请先完成时间顺序大纲，然后再生成每集大纲"
+                description="请先完成时间顺序大纲，然后再生成单集大纲"
                 type="warning"
                 showIcon
                 style={{ margin: '16px 0' }}
@@ -82,7 +82,7 @@ const EpisodeGenerationAction: React.FC<EpisodeGenerationActionProps> = (props) 
                         fontSize: '16px'
                     }}
                 >
-                    {isGenerating ? '生成中...' : '生成每集大纲 ➤'}
+                    {isGenerating ? '生成中...' : '生成单集大纲 ➤'}
                 </AIButton>
             </div>
         </div>

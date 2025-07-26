@@ -313,8 +313,8 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
                 actions.push({
                     id: 'episode_synopsis_generation',
                     type: 'button',
-                    title: `生成第${firstGroup.episodes}集每集大纲`,
-                    description: `生成"${firstGroup.groupTitle}"的详细每集大纲`,
+                    title: `生成第${firstGroup.episodes}集单集大纲`,
+                    description: `生成"${firstGroup.groupTitle}"的详细单集大纲`,
                     component: EpisodeSynopsisGenerationAction,
                     props: {
                         jsondocs: {
@@ -370,8 +370,8 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
                 actions.push({
                     id: 'episode_synopsis_generation',
                     type: 'button',
-                    title: `生成第${nextGroup.episodes}集每集大纲`,
-                    description: `生成"${nextGroup.groupTitle}"的详细每集大纲`,
+                    title: `生成第${nextGroup.episodes}集单集大纲`,
+                    description: `生成"${nextGroup.groupTitle}"的详细单集大纲`,
                     component: EpisodeSynopsisGenerationAction,
                     props: {
                         jsondocs: {

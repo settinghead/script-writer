@@ -29,7 +29,7 @@ const EpisodeSynopsisGenerationAction: React.FC<EpisodeSynopsisGenerationActionP
         try {
             // Send chat message to trigger generation (following existing pattern)
             await apiService.sendChatMessage(projectId,
-                `生成第${nextGroup.episodeRange}集每集大纲：${nextGroup.groupTitle}`,
+                `生成第${nextGroup.episodeRange}集单集大纲：${nextGroup.groupTitle}`,
                 {
                     action: 'generate_episode_synopsis',
                     episodePlanningId: episodePlanning.id,
@@ -65,12 +65,12 @@ const EpisodeSynopsisGenerationAction: React.FC<EpisodeSynopsisGenerationActionP
                 onClick={handleGenerate}
                 style={{ fontSize: '16px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', border: 'none' }}
             >
-                {isGenerating ? '生成中...' : `生成第${nextGroup.episodeRange}集每集大纲`}
+                {isGenerating ? '生成中...' : `生成第${nextGroup.episodeRange}集单集大纲`}
             </Button>
 
             <div style={{ marginTop: 8 }}>
                 <Text type="secondary">
-                    将为"{nextGroup.groupTitle}"生成详细的每集大纲
+                    将为"{nextGroup.groupTitle}"生成详细的单集大纲
                 </Text>
             </div>
         </div>

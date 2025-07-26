@@ -37,7 +37,7 @@ describe('EpisodeSynopsisTool', () => {
             );
 
             expect(toolDef.name).toBe('generate_episode_synopsis');
-            expect(toolDef.description).toContain('为指定范围的剧集生成详细的每集大纲');
+            expect(toolDef.description).toContain('为指定范围的剧集生成详细的单集大纲');
             expect(toolDef.inputSchema).toBe(EpisodeSynopsisInputSchema);
             expect(typeof toolDef.execute).toBe('function');
         });

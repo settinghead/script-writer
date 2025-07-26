@@ -37,7 +37,7 @@ export function createEpisodeSynopsisToolDefinition(
 
     return {
         name: 'generate_episode_synopsis',
-        description: '为指定范围的剧集生成详细的每集大纲，包含2分钟短剧结构、钩子设计、悬念元素等',
+        description: '为指定范围的剧集生成详细的单集大纲，包含2分钟短剧结构、钩子设计、悬念元素等',
         inputSchema: EpisodeSynopsisInputSchema,
         outputSchema: EpisodeSynopsisToolResultSchema,
 

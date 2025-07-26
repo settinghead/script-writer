@@ -291,7 +291,7 @@ export function createAdminRoutes(
                 },
                 {
                     value: 'generate_episode_synopsis',
-                    label: '生成每集大纲',
+                    label: '生成单集大纲',
                     description: '基于分集结构生成详细的每集内容',
                     category: '内容生成'
                 }

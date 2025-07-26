@@ -505,7 +505,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                             fontWeight: episodeSynopsisHighlighted ? 700 : 500,
                             textShadow: episodeSynopsisHighlighted ? '0 0 8px rgba(24, 144, 255, 0.8)' : 'none'
                         }}>
-                            每集大纲
+                            单集大纲
                         </Text>
                         <CheckCircleOutlined style={{
                             color: episodeSynopsisHighlighted ? '#52c41a' : '#52c41a',
