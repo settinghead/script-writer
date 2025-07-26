@@ -96,56 +96,38 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
 
 
     return (
-        <Card
-            style={{
-                backgroundColor: '#1a1a1a',
-                display: 'flex',
-                flexDirection: 'row',
-                justifyContent: 'center',
-            }}
-
-        >
-            {/* Hader */}
 
 
-            {/* Horizontal layout: workflow steps on left, actions on right */}
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px', width: '100%' }}>
-                {/* Workflow steps take available space */}
-                {/* <div style={{ flex: 1 }}>
-                    {steps.length > 0 && (
-                        <WorkflowSteps steps={steps} inline={true} />
-                    )}
-                </div> */}
 
-                {/* Actions on the right */}
-                <div style={{ flexShrink: 0 }}>
-                    {actions.length > 0 ? (
-                        <Row gutter={[16, 16]}>
-                            {actions.map((action: any, index: number) => (
-                                <Col xs={24} sm={12} key={`${action.type}-${index}`}>
-                                    <ActionItemRenderer
-                                        action={action}
-                                        projectId={projectId}
-                                        hasActiveTransforms={hasActiveTransforms}
-                                        onSuccess={() => {
-                                            // Action completed successfully
-                                        }}
-                                        onError={(error: Error) => {
-                                            console.error('❌ Action failed:', action.type, error);
-                                        }}
-                                    />
-                                </Col>
-                            ))}
-                        </Row>
-                    ) : (
-                        <div style={{ textAlign: 'center', padding: '24px', color: '#666' }}>
-                            <Text type="secondary">生成中(完成后可编辑)...</Text>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px', width: '100%' }}>
+
+
+            {/* Actions on the right */}
+            {actions.length > 0 ? (
+                <div style={{ display: "flex", flexWrap: "wrap", width: "100%", justifyContent: "center" }}>
+                    {actions.map((action: any, index: number) => (
+                        <div key={`${action.type}-${index}`}>
+                            <ActionItemRenderer
+                                action={action}
+                                projectId={projectId}
+                                hasActiveTransforms={hasActiveTransforms}
+                                onSuccess={() => {
+                                    // Action completed successfully
+                                }}
+                                onError={(error: Error) => {
+                                    console.error('❌ Action failed:', action.type, error);
+                                }}
+                            />
                         </div>
-                    )}
+                    ))}
                 </div>
-            </div>
+            ) : (
+                <div style={{ textAlign: 'center', padding: '24px', color: '#666' }}>
+                    <Text type="secondary">生成中(完成后可编辑)...</Text>
+                </div>
+            )}
+        </div>
 
 
-        </Card>
     );
 }; 
