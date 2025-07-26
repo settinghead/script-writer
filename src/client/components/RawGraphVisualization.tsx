@@ -354,10 +354,11 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
             style={{
                 background: AppColors.background.secondary,
                 border: `2px solid ${typeColor}`,
-                borderRadius: '8px',
-                padding: '12px',
-                minWidth: '180px',
-                maxWidth: '250px',
+                borderRadius: '6px',
+                padding: '8px',
+                minWidth: '100px',
+                maxWidth: '140px',
+                minHeight: '60px',
                 color: AppColors.text.white,
                 position: 'relative',
                 transform: 'rotate(45deg)',
@@ -368,12 +369,12 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
             <Handle
                 type="target"
                 position={Position.Left}
-                style={{ background: typeColor, width: 8, height: 8 }}
+                style={{ background: typeColor, width: 6, height: 6 }}
             />
             <Handle
                 type="source"
                 position={Position.Right}
-                style={{ background: typeColor, width: 8, height: 8 }}
+                style={{ background: typeColor, width: 6, height: 6 }}
             />
 
             <div style={{ transform: 'rotate(-45deg)' }}>
@@ -418,14 +419,14 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            marginBottom: '6px',
-                            gap: '6px'
+                            marginBottom: '4px',
+                            gap: '4px'
                         }}>
                             {transform.type === 'human' ?
-                                <UserOutlined style={{ color: typeColor }} /> :
-                                <RobotOutlined style={{ color: typeColor }} />
+                                <UserOutlined style={{ color: typeColor, fontSize: '10px' }} /> :
+                                <RobotOutlined style={{ color: typeColor, fontSize: '10px' }} />
                             }
-                            <Text style={{ color: AppColors.text.white, fontWeight: 'bold', fontSize: '11px' }}>
+                            <Text style={{ color: AppColors.text.white, fontWeight: 'bold', fontSize: '9px' }}>
                                 {transform.type.toUpperCase()}
                             </Text>
                         </div>
@@ -434,11 +435,11 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
                         {isInProgress && (
                             <div style={{
                                 position: 'absolute',
-                                top: '-8px',
-                                right: '-8px',
+                                top: '-6px',
+                                right: '-6px',
                                 background: AppColors.background.primary,
                                 borderRadius: '50%',
-                                padding: '2px'
+                                padding: '1px'
                             }}>
                                 <Spin size="small" />
                             </div>
@@ -447,26 +448,26 @@ const TransformNode: React.FC<{ data: any }> = ({ data }) => {
                         {isFailed && (
                             <div style={{
                                 position: 'absolute',
-                                top: '-8px',
-                                right: '-8px',
+                                top: '-6px',
+                                right: '-6px',
                                 background: AppColors.status.error,
                                 borderRadius: '50%',
-                                padding: '2px',
+                                padding: '1px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                width: '16px',
-                                height: '16px'
+                                width: '12px',
+                                height: '12px'
                             }}>
-                                <CloseOutlined style={{ color: AppColors.text.white, fontSize: '10px' }} />
+                                <CloseOutlined style={{ color: AppColors.text.white, fontSize: '8px' }} />
                             </div>
                         )}
 
-                        <Text style={{ color: '#ccc', fontSize: '9px' }}>
+                        <Text style={{ color: '#ccc', fontSize: '8px' }}>
                             {transform.status}
                         </Text>
                         <br />
-                        <Text style={{ color: '#999', fontSize: '8px' }}>
+                        <Text style={{ color: '#999', fontSize: '7px' }}>
                             {new Date(transform.created_at).toLocaleString()}
                         </Text>
                     </div>
@@ -488,7 +489,7 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
     dagreGraph.setGraph({ rankdir: direction, nodesep: 100, ranksep: 150, edgesep: 50 }); // Add edgesep for better spacing
 
     nodes.forEach((node) => {
-        dagreGraph.setNode(node.id, { width: node.type === 'jsondoc' ? 240 : 140, height: node.type === 'jsondoc' ? 140 : 100 });
+        dagreGraph.setNode(node.id, { width: node.type === 'jsondoc' ? 240 : 80, height: node.type === 'jsondoc' ? 140 : 60 });
     });
 
     edges.forEach((edge) => {
@@ -502,8 +503,8 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'LR') => 
         node.targetPosition = Position.Left;
         node.sourcePosition = Position.Right;
         node.position = {
-            x: nodeWithPosition.x - (node.type === 'jsondoc' ? 120 : 70),
-            y: nodeWithPosition.y - (node.type === 'jsondoc' ? 70 : 50),
+            x: nodeWithPosition.x - (node.type === 'jsondoc' ? 120 : 40),
+            y: nodeWithPosition.y - (node.type === 'jsondoc' ? 70 : 30),
         };
     });
 
