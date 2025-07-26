@@ -90,6 +90,7 @@
     "jsonwebtoken": "^9.0.2",
     "kysely": "^0.28.2",
     "lib0": "^0.2.109",
+    "liquid-glass-react": "^1.1.1",
     "lodash": "^4.17.21",
     "log-update": "^6.1.0",
     "lucide-react": "^0.525.0",
