@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Typography, Form, Input, InputNumber, Select, message } from 'antd';
-import { FileTextOutlined, RightOutlined } from '@ant-design/icons';
+import { Typography, Form, Input, InputNumber, Select, message, Button, Space } from 'antd';
+import { FileTextOutlined, RightOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
@@ -20,6 +20,7 @@ type OutlineGenerationFormProps = BaseActionProps | ActionComponentProps;
 const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
     const { projectId, onSuccess, onError } = props;
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Get chosen idea from props (new way) or null (old way - will show nothing to do)
     const chosenIdea = 'jsondocs' in props ? props.jsondocs.brainstormIdea : null;
@@ -76,6 +77,28 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
         }
     }, [sourceJsondocId, projectId, onSuccess, onError, ideaData]);
 
+    // Handle go back - delete the chosen brainstorm idea jsondoc
+    const handleGoBack = useCallback(async () => {
+        if (isDeleting || !sourceJsondocId) return;
+
+        try {
+            setIsDeleting(true);
+
+            // Use apiService to delete the brainstorm idea jsondoc
+            await apiService.deleteBrainstormInput(sourceJsondocId);
+
+            message.success('已返回');
+            onSuccess?.(); // This will trigger a re-render and return to previous state
+        } catch (error) {
+            console.error('[OutlineGenerationForm] Error deleting brainstorm idea:', error);
+            const errorMessage = `返回失败：${error instanceof Error ? error.message : '未知错误'}`;
+            message.error(errorMessage);
+            onError?.(error instanceof Error ? error : new Error(errorMessage));
+        } finally {
+            setIsDeleting(false);
+        }
+    }, [sourceJsondocId, onSuccess, onError]);
+
     // Show loading state while chosen idea is loading
     if (chosenIdeaLoading) {
         return (
@@ -96,12 +119,25 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'center' }}>
+            {/* Go back button */}
+            <Button
+                icon={<ArrowLeftOutlined />}
+                loading={isDeleting}
+                onClick={handleGoBack}
+                style={{
+                    minWidth: '120px',
+                    height: '40px'
+                }}
+            >
+                {isDeleting ? '返回中...' : '返回'}
+            </Button>
+
             {/* Generate button */}
             <AIButton
                 type="primary"
                 onClick={() => handleGenerateOutline({ title: ideaData?.title || '', requirements: '' })}
                 loading={isGenerating}
-                disabled={isGenerating}
+                disabled={isGenerating || isDeleting}
                 style={{
                     minWidth: '140px',
                     height: '40px'
