@@ -140,40 +140,6 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
         return [];
     }, [electricJsondocs, fallbackJsondocs]);
 
-    // Fallback API call when Electric SQL is not working
-    useEffect(() => {
-        const fetchFallbackData = async () => {
-            // Only fetch if Electric SQL is not providing data and we haven't already fetched
-            if ((!electricJsondocs || electricJsondocs.length === 0) &&
-                !jsondocsLoading &&
-                !fallbackLoading &&
-                fallbackJsondocs.length === 0) {
-
-                setFallbackLoading(true);
-
-                try {
-                    const response = await fetch(`/api/jsondocs?projectId=${projectId}`, {
-                        credentials: 'include'
-                    });
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        setFallbackJsondocs(data);
-                    } else {
-                        console.error('[ProjectDataContext] Fallback API failed:', response.status);
-                    }
-                } catch (error) {
-                    console.error('[ProjectDataContext] Fallback API error:', error);
-                } finally {
-                    setFallbackLoading(false);
-                }
-            }
-        };
-
-        // Delay the fallback call to give Electric SQL a chance
-        const timeoutId = setTimeout(fetchFallbackData, 2000);
-        return () => clearTimeout(timeoutId);
-    }, [projectId, electricJsondocs, jsondocsLoading, fallbackLoading, fallbackJsondocs.length]);
 
     const transformsConfig = useMemo(() => ({
         ...electricConfig,
@@ -191,16 +157,6 @@ export const ProjectDataProvider: React.FC<ProjectDataProviderProps> = ({
     }), [electricConfig, projectWhereClause]);
 
     const { data: transforms, isLoading: transformsLoading, error: transformsError } = useShape<ElectricTransform>(transformsConfig);
-
-    // Debug transforms data
-    useEffect(() => {
-        if (transforms) {
-            // console.log('[ProjectDataContext] Transforms loaded:', transforms.length);
-            // console.log('[ProjectDataContext] Transform types:', transforms.map(t => t.type));
-            // console.log('[ProjectDataContext] Human transforms:', transforms.filter(t => t.type === 'human').length);
-            // console.log('[ProjectDataContext] LLM transforms:', transforms.filter(t => t.type === 'llm').length);
-        }
-    }, [transforms]);
 
     const humanTransformsConfig = useMemo(() => ({
         ...electricConfig,
