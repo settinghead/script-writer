@@ -25,6 +25,7 @@ const AIButton: React.FC<AIButtonProps> = ({
         transition: 'all 0.3s ease',
         position: 'relative',
         overflow: 'hidden',
+        fontSize: '18px',
         ...style
     };
 

@@ -99,7 +99,7 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
 
 
 
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px', width: '100%', padding: '24px' }}>
 
 
             {/* Actions on the right */}
