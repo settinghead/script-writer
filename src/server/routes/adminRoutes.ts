@@ -59,7 +59,7 @@ export function createAdminRoutes(
                         outputSchema: () => import('@/common/transform_schemas.js').then(m => m.IdeationOutputSchema)
                     }
                 },
-                'improve_灵感创意': {
+                'edit_灵感创意': {
                     templateName: 'brainstorm_edit_diff',
                     outputJsondocType: '灵感创意',
                     schemas: {
@@ -185,7 +185,7 @@ export function createAdminRoutes(
                         properties: inputProperties
                     },
                     templatePath: templateName,
-                    hasCustomTemplateVariables: tool.name === 'improve_灵感创意' // Only brainstorm edit has custom logic
+                    hasCustomTemplateVariables: tool.name === 'edit_灵感创意' // Only brainstorm edit has custom logic
                 };
             });
 
@@ -248,7 +248,7 @@ export function createAdminRoutes(
                     category: '创意生成'
                 },
                 {
-                    value: 'improve_灵感创意',
+                    value: 'edit_灵感创意',
                     label: '编辑故事创意',
                     description: '修改现有的故事创意内容',
                     category: '内容编辑'

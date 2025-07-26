@@ -136,7 +136,7 @@ function generateAISDKToolFormat(toolName: string): any {
             },
             required: ['jsondocs']
         },
-        'improve_灵感创意': {
+        'edit_灵感创意': {
             type: 'object',
             properties: {
                 jsondocs: {

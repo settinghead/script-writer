@@ -112,7 +112,7 @@ async function testStreamingPatches() {
                 }
             },
             transformMetadata: {
-                toolName: 'improve_灵感创意',
+                toolName: 'edit_灵感创意',
                 source_jsondoc_id: originalIdea.id,
                 idea_index: 0,
                 edit_requirements: editInput.editRequirements,

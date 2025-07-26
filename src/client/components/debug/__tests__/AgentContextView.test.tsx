@@ -42,7 +42,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
     }
 
     if (hasBrainstormResult) {
-        availableTools.push('improve_灵感创意');
+        availableTools.push('edit_灵感创意');
     }
 
     if (context.canonicalBrainstormIdea && !hasOutlineSettings) {
@@ -52,7 +52,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
     if (hasOutlineSettings) {
         // Add edit tools for previous stages
         if (context.canonicalBrainstormIdea) {
-            availableTools.push('improve_灵感创意');
+            availableTools.push('edit_灵感创意');
         }
         availableTools.push('improve_剧本设定');
 
@@ -65,7 +65,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
     if (hasChronicles) {
         // Add edit tools for previous stages
         if (context.canonicalBrainstormIdea) {
-            availableTools.push('improve_灵感创意');
+            availableTools.push('edit_灵感创意');
         }
         if (hasOutlineSettings) {
             availableTools.push('improve_剧本设定');
@@ -81,7 +81,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
     if (hasEpisodePlanning) {
         // Add edit tools for all previous stages
         if (context.canonicalBrainstormIdea) {
-            availableTools.push('improve_灵感创意');
+            availableTools.push('edit_灵感创意');
         }
         if (hasOutlineSettings) {
             availableTools.push('improve_剧本设定');
@@ -130,7 +130,7 @@ describe('AgentContextView Tool Filtering', () => {
             expect(tools).toEqual(['generate_灵感创意s']);
         });
 
-        it('should return improve_灵感创意 when brainstorm_collection exists', () => {
+        it('should return edit_灵感创意 when brainstorm_collection exists', () => {
             const mockCollection = createMockJsondoc('collection-1', 'brainstorm_collection');
             const context: CanonicalJsondocContext = {
                 canonicalBrainstormIdea: null,
@@ -149,10 +149,10 @@ describe('AgentContextView Tool Filtering', () => {
             };
 
             const tools = computeAvailableToolsFromCanonicalContext(context);
-            expect(tools).toEqual(['improve_灵感创意']);
+            expect(tools).toEqual(['edit_灵感创意']);
         });
 
-        it('should return improve_灵感创意 and generate_剧本设定 when single 灵感创意 exists', () => {
+        it('should return edit_灵感创意 and generate_剧本设定 when single 灵感创意 exists', () => {
             const mockIdea = createMockJsondoc('idea-1', '灵感创意', 'user_input');
             const context: CanonicalJsondocContext = {
                 canonicalBrainstormIdea: mockIdea,
@@ -171,7 +171,7 @@ describe('AgentContextView Tool Filtering', () => {
             };
 
             const tools = computeAvailableToolsFromCanonicalContext(context);
-            expect(tools).toEqual(['improve_灵感创意', 'generate_剧本设定']);
+            expect(tools).toEqual(['edit_灵感创意', 'generate_剧本设定']);
         });
 
         it('should return appropriate tools when 剧本设定 exists', () => {
@@ -194,7 +194,7 @@ describe('AgentContextView Tool Filtering', () => {
             };
 
             const tools = computeAvailableToolsFromCanonicalContext(context);
-            expect(tools).toEqual(['improve_灵感创意', 'improve_剧本设定', 'generate_chronicles']);
+            expect(tools).toEqual(['edit_灵感创意', 'improve_剧本设定', 'generate_chronicles']);
         });
 
         it('should return all edit tools plus generate_episode_synopsis when episode_planning exists', () => {
@@ -220,7 +220,7 @@ describe('AgentContextView Tool Filtering', () => {
 
             const tools = computeAvailableToolsFromCanonicalContext(context);
             expect(tools).toEqual([
-                'improve_灵感创意',
+                'edit_灵感创意',
                 'improve_剧本设定',
                 'edit_chronicles',
                 'edit_episode_planning',

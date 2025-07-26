@@ -36,7 +36,7 @@ export const ALL_AGENT_TOOLS: ToolDefinition[] = [
         description: '生成多个故事创意'
     },
     {
-        name: 'improve_灵感创意',
+        name: 'edit_灵感创意',
         category: 'brainstorm',
         description: '编辑现有故事创意'
     },
@@ -146,7 +146,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
 
     // Show edit tool only when we have a committed idea
     if (stage.hasBrainstormIdea) {
-        tools.push('improve_灵感创意');
+        tools.push('edit_灵感创意');
     }
 
     // === 剧本设定 STAGE ===
@@ -157,7 +157,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
     if (stage.hasOutlineSettings) {
         // Add edit tools for previous stages
         if (stage.hasBrainstormIdea) {
-            tools.push('improve_灵感创意');
+            tools.push('edit_灵感创意');
         }
         tools.push('improve_剧本设定');
 
@@ -170,7 +170,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
     if (stage.hasChronicles) {
         // Add edit tools for previous stages
         if (stage.hasBrainstormIdea) {
-            tools.push('improve_灵感创意');
+            tools.push('edit_灵感创意');
         }
         if (stage.hasOutlineSettings) {
             tools.push('improve_剧本设定');
@@ -186,7 +186,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
     if (stage.hasEpisodePlanning) {
         // Add edit tools for all previous stages
         if (stage.hasBrainstormIdea) {
-            tools.push('improve_灵感创意');
+            tools.push('edit_灵感创意');
         }
         if (stage.hasOutlineSettings) {
             tools.push('improve_剧本设定');
@@ -204,7 +204,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
     if (stage.hasEpisodeSynopsis) {
         // Add edit tools for all previous stages
         if (stage.hasBrainstormIdea) {
-            tools.push('improve_灵感创意');
+            tools.push('edit_灵感创意');
         }
         if (stage.hasOutlineSettings) {
             tools.push('improve_剧本设定');

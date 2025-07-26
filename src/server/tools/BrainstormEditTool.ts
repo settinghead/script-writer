@@ -275,7 +275,7 @@ export function createBrainstormEditToolDefinition(
     }
 ): StreamingToolDefinition<BrainstormEditInput, BrainstormEditToolResult> {
     return {
-        name: 'improve_灵感创意',
+        name: 'edit_灵感创意',
         description: '编辑和改进现有故事创意。适用场景：用户对现有创意有具体的修改要求或改进建议。使用JSON Patch格式进行精确修改，只改变需要改变的部分，提高效率和准确性。支持各种编辑类型：内容扩展、风格调整、情节修改、结构调整等。系统会自动处理相关的上下文信息。',
         inputSchema: BrainstormEditInputSchema,
         outputSchema: BrainstormEditToolResultSchema,
@@ -418,7 +418,7 @@ export function createBrainstormEditToolDefinition(
                         }
                     },
                     transformMetadata: {
-                        toolName: 'improve_灵感创意',
+                        toolName: 'edit_灵感创意',
                         source_jsondoc_id: sourceJsondocRef.jsondocId,
                         idea_index: params.ideaIndex,
                         edit_requirements: params.editRequirements,

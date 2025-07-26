@@ -4099,23 +4099,23 @@ The system follows strict workflow progression rules:
 availableTools = ['generate_灵感创意s']
 ```
 
-**Has brainstorm_collection** → Only `improve_灵感创意`
+**Has brainstorm_collection** → Only `edit_灵感创意`
 ```typescript  
 // Multiple ideas generated, user needs to select/edit one
-availableTools = ['improve_灵感创意']
+availableTools = ['edit_灵感创意']
 ```
 
-**Has 灵感创意** → `improve_灵感创意` + `generate_剧本设定`
+**Has 灵感创意** → `edit_灵感创意` + `generate_剧本设定`
 ```typescript
 // Single idea exists, can edit it or proceed to next stage
-availableTools = ['improve_灵感创意', 'generate_剧本设定']
+availableTools = ['edit_灵感创意', 'generate_剧本设定']
 ```
 
 **Has 剧本设定** → Edit tools for previous stages + `generate_chronicles`
 ```typescript
 // Outline exists, can edit previous work or proceed
 availableTools = [
-  'improve_灵感创意', 
+  'edit_灵感创意', 
   'improve_剧本设定', 
   'generate_chronicles'
 ]
@@ -4125,7 +4125,7 @@ availableTools = [
 ```typescript
 // Chronicles exist, can edit previous work or proceed
 availableTools = [
-  'improve_灵感创意',
+  'edit_灵感创意',
   'improve_剧本设定', 
   'edit_chronicles',
   'generate_episode_planning'
@@ -4136,7 +4136,7 @@ availableTools = [
 ```typescript
 // Episode planning exists, can edit any stage or generate episodes
 availableTools = [
-  'improve_灵感创意',
+  'edit_灵感创意',
   'improve_剧本设定',
   'edit_chronicles', 
   'edit_episode_planning',
@@ -4280,7 +4280,7 @@ const context = {
   ...
 };
 const tools = computeAvailableToolsFromCanonicalContext(context, ...);
-// Result: ['improve_灵感创意', 'improve_剧本设定', 'generate_chronicles']
+// Result: ['edit_灵感创意', 'improve_剧本设定', 'generate_chronicles']
 
 // User request: "基于现有设定生成时间顺序大纲"
 // Agent sees: Edit tools for existing content + chronicles generation

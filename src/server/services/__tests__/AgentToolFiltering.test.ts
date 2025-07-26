@@ -109,7 +109,7 @@ describe('Agent Tool Filtering', () => {
             expect(toolNames).toEqual(['generate_灵感创意s']);
         });
 
-        it('should return improve_灵感创意 and generate_剧本设定 when single 灵感创意 exists', () => {
+        it('should return edit_灵感创意 and generate_剧本设定 when single 灵感创意 exists', () => {
             const context = createCanonicalContext({
                 canonicalBrainstormIdea: createMockJsondoc('idea-1', '灵感创意')
             });
@@ -124,7 +124,7 @@ describe('Agent Tool Filtering', () => {
             );
 
             const toolNames = availableTools.map(tool => tool.name).sort();
-            expect(new Set(toolNames)).toEqual(new Set(['generate_剧本设定', 'improve_灵感创意']));
+            expect(new Set(toolNames)).toEqual(new Set(['generate_剧本设定', 'edit_灵感创意']));
         });
 
         it('should return appropriate tools when 剧本设定 exists', () => {
@@ -145,7 +145,7 @@ describe('Agent Tool Filtering', () => {
             const toolNames = availableTools.map(tool => tool.name);
             expect(new Set(toolNames)).toEqual(new Set([
                 'improve_剧本设定',
-                'improve_灵感创意',
+                'edit_灵感创意',
                 'generate_chronicles'
             ]));
         });
@@ -170,7 +170,7 @@ describe('Agent Tool Filtering', () => {
             expect(new Set(toolNames)).toEqual(new Set([
                 'edit_chronicles',
                 'improve_剧本设定',
-                'improve_灵感创意',
+                'edit_灵感创意',
                 'generate_episode_planning'
             ]));
         });
@@ -197,7 +197,7 @@ describe('Agent Tool Filtering', () => {
                 'edit_chronicles',
                 'edit_episode_planning',
                 'improve_剧本设定',
-                'improve_灵感创意',
+                'edit_灵感创意',
                 'generate_episode_synopsis'
             ]));
         });
@@ -229,7 +229,7 @@ describe('Agent Tool Filtering', () => {
                 'generate_episode_script',
                 'generate_episode_synopsis',
                 'improve_剧本设定',
-                'improve_灵感创意'
+                'edit_灵感创意'
             ]));
         });
 
@@ -346,7 +346,7 @@ describe('Agent Tool Filtering', () => {
 
             const toolNames = availableTools.map(tool => tool.name);
             expect(toolNames).toEqual(['generate_灵感创意s']);
-            expect(toolNames).not.toContain('improve_灵感创意');
+            expect(toolNames).not.toContain('edit_灵感创意');
         });
 
         it('should handle edge case: 灵感创意 exists but not 剧本设定 (manual creation)', () => {
@@ -364,7 +364,7 @@ describe('Agent Tool Filtering', () => {
             );
 
             const toolNames = availableTools.map(tool => tool.name).sort();
-            expect(new Set(toolNames)).toEqual(new Set(['generate_剧本设定', 'improve_灵感创意']));
+            expect(new Set(toolNames)).toEqual(new Set(['generate_剧本设定', 'edit_灵感创意']));
         });
 
         it('should always allow generate_episode_synopsis when episode_planning exists (can generate multiple groups)', () => {
