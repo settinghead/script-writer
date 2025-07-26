@@ -79,8 +79,8 @@ import {
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
 import { TypedJsondoc } from '@/common/jsondocs';
 import { createJsondocProcessor } from './shared/JsondocProcessor';
-import { computeCanonicalJsondocsFromLineage } from '../../common/canonicalJsondocLogic';
-import { buildLineageGraph } from '../../common/transform-jsondoc-framework/lineageResolution';
+import { CanonicalJsondocService } from '../services/CanonicalJsondocService';
+import { db } from '../database/connection';
 
 const OutlineSettingsToolResultSchema = z.object({
     outputJsondocId: z.string(),
@@ -129,24 +129,10 @@ async function extractSourceOutlineSettingsData(
     const transformInputs = await jsondocRepo.getAllProjectTransformInputsForLineage(projectId);
     const transformOutputs = await jsondocRepo.getAllProjectTransformOutputsForLineage(projectId);
 
-    // Build lineage graph
-    const lineageGraph = buildLineageGraph(
-        jsondocs,
-        transforms,
-        humanTransforms,
-        transformInputs,
-        transformOutputs
-    );
-
-    // Compute canonical jsondocs using the same logic as actionComputation.ts
-    const canonicalContext = computeCanonicalJsondocsFromLineage(
-        lineageGraph,
-        jsondocs,
-        transforms,
-        humanTransforms,
-        transformInputs,
-        transformOutputs
-    );
+    // Use centralized canonical service to avoid duplicating computation
+    const transformRepo = new TransformRepository(db);
+    const canonicalService = new CanonicalJsondocService(db, jsondocRepo, transformRepo);
+    const { canonicalContext } = await canonicalService.getProjectCanonicalData(projectId);
 
     // Get the canonical 剧本设定
     const canonicalOutlineSettings = canonicalContext.canonicalOutlineSettings;

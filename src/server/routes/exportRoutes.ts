@@ -5,8 +5,8 @@ import { JsondocRepository } from '../transform-jsondoc-framework/JsondocReposit
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
 import { deduceProjectTitle } from '../../common/utils/projectTitleDeduction';
-import { computeCanonicalJsondocsFromLineage, extractCanonicalJsondocIds } from '../../common/canonicalJsondocLogic';
-import { buildLineageGraph } from '../../common/transform-jsondoc-framework/lineageResolution';
+import { CanonicalJsondocService } from '../services/CanonicalJsondocService';
+import { extractCanonicalJsondocIds } from '../../common/canonicalJsondocLogic';
 import { db } from '../database/connection';
 
 export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
@@ -16,6 +16,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
     const jsondocRepo = new JsondocRepository(db);
     const transformRepo = new TransformRepository(db);
     const projectRepo = new ProjectRepository(db);
+    const canonicalService = new CanonicalJsondocService(db, jsondocRepo, transformRepo);
 
     interface ExportRequest {
         format: 'markdown' | 'docx';
@@ -47,41 +48,45 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
             throw new Error('Access denied to project');
         }
 
-        // Fetch all project data needed for lineage computation
-        let jsondocs, transforms, humanTransforms, transformInputs, transformOutputs;
         try {
-            jsondocs = await jsondocRepo.getAllProjectJsondocsForLineage(projectId);
-            transforms = await jsondocRepo.getAllProjectTransformsForLineage(projectId);
-            humanTransforms = await jsondocRepo.getAllProjectHumanTransformsForLineage(projectId);
-            transformInputs = await jsondocRepo.getAllProjectTransformInputsForLineage(projectId);
-            transformOutputs = await jsondocRepo.getAllProjectTransformOutputsForLineage(projectId);
+            // Use centralized canonical service to get all data at once
+            const { lineageGraph, canonicalContext } = await canonicalService.getProjectCanonicalData(projectId);
+
+            // Also get the raw data for any legacy needs
+            const jsondocs = await jsondocRepo.getAllProjectJsondocsForLineage(projectId);
+            const transforms = await jsondocRepo.getAllProjectTransformsForLineage(projectId);
+            const humanTransforms = await jsondocRepo.getAllProjectHumanTransformsForLineage(projectId);
+            const transformInputs = await jsondocRepo.getAllProjectTransformInputsForLineage(projectId);
+            const transformOutputs = await jsondocRepo.getAllProjectTransformOutputsForLineage(projectId);
+
+            console.log('Fetched project data:', {
+                jsondocs: jsondocs ? jsondocs.length : 'undefined',
+                transforms: transforms ? transforms.length : 'undefined',
+                humanTransforms: humanTransforms ? humanTransforms.length : 'undefined',
+                transformInputs: transformInputs ? transformInputs.length : 'undefined',
+                transformOutputs: transformOutputs ? transformOutputs.length : 'undefined'
+            });
+
+            return {
+                jsondocs,
+                transforms,
+                humanTransforms,
+                transformInputs,
+                transformOutputs,
+                lineageGraph,
+                canonicalContext
+            };
         } catch (error) {
             console.error('Error fetching project data:', error);
             throw error;
         }
-
-        console.log('Fetched project data:', {
-            jsondocs: jsondocs ? jsondocs.length : 'undefined',
-            transforms: transforms ? transforms.length : 'undefined',
-            humanTransforms: humanTransforms ? humanTransforms.length : 'undefined',
-            transformInputs: transformInputs ? transformInputs.length : 'undefined',
-            transformOutputs: transformOutputs ? transformOutputs.length : 'undefined'
-        });
-
-        return {
-            jsondocs,
-            transforms,
-            humanTransforms,
-            transformInputs,
-            transformOutputs
-        };
     }
 
     /**
      * Generate exportable items from project data using canonical jsondoc logic
      */
     function generateExportableItems(projectData: any): ExportableItem[] {
-        const { jsondocs, transforms, humanTransforms, transformInputs, transformOutputs } = projectData;
+        const { jsondocs, transforms, humanTransforms, transformInputs, transformOutputs, canonicalContext } = projectData;
 
         // Safety check for undefined data
         if (!jsondocs || !transforms || !humanTransforms || !transformInputs || !transformOutputs) {
@@ -95,24 +100,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
             return [];
         }
 
-        // Build lineage graph
-        const lineageGraph = buildLineageGraph(
-            jsondocs,
-            transforms,
-            humanTransforms,
-            transformInputs,
-            transformOutputs
-        );
-
-        // Get canonical jsondocs context
-        const canonicalContext = computeCanonicalJsondocsFromLineage(
-            lineageGraph,
-            jsondocs,
-            transforms,
-            humanTransforms,
-            transformInputs,
-            transformOutputs
-        );
+        // Use the pre-computed canonical context passed in projectData
 
         const items: ExportableItem[] = [];
 

@@ -8,7 +8,6 @@ import {
     findParentJsondocsBySchemaType,
     hasHumanTransformForPath,
     findEffectiveBrainstormIdeas,
-    buildLineageGraph,
     type LineageNode,
     type LineageResolutionResult,
     type EffectiveBrainstormIdea,

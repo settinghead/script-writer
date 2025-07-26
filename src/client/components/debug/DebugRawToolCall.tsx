@@ -5,7 +5,6 @@ import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useDebugParams } from '../../hooks/useDebugParams';
 import { extractCanonicalJsondocIds } from '../../../common/canonicalJsondocLogic';
-import { buildLineageGraph } from '../../../common/transform-jsondoc-framework/lineageResolution';
 import { applyPatch, deepClone } from 'fast-json-patch';
 import * as Diff from 'diff';
 import { applyContextDiffToJSON, applyContextDiffAndGeneratePatches } from '../../../common/contextDiff';

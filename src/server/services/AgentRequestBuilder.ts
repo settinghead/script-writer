@@ -1,8 +1,9 @@
 import { z } from 'zod';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { computeCanonicalJsondocsFromLineage, type CanonicalJsondocContext } from '../../common/canonicalJsondocLogic';
-import { buildLineageGraph } from '../../common/transform-jsondoc-framework/lineageResolution';
+import { CanonicalJsondocService } from './CanonicalJsondocService';
+import { type CanonicalJsondocContext } from '../../common/canonicalJsondocLogic';
+import { db } from '../database/connection';
 import { createBrainstormToolDefinition } from '../tools/BrainstormGenerationTool';
 import { createBrainstormEditToolDefinition } from '../tools/BrainstormEditTool';
 import { createOutlineSettingsToolDefinition, createOutlineSettingsEditToolDefinition } from '../tools/OutlineSettingsTool';
@@ -39,31 +40,10 @@ export async function buildContextForRequestType(
 ): Promise<string> {
     console.log(`[ContextBuilder] Building context for request type: general`);
 
-    // Get all project data for lineage computation - same as tools
-    const jsondocs = await jsondocRepo.getAllProjectJsondocsForLineage(projectId);
-    const transforms = await jsondocRepo.getAllProjectTransformsForLineage(projectId);
-    const humanTransforms = await jsondocRepo.getAllProjectHumanTransformsForLineage(projectId);
-    const transformInputs = await jsondocRepo.getAllProjectTransformInputsForLineage(projectId);
-    const transformOutputs = await jsondocRepo.getAllProjectTransformOutputsForLineage(projectId);
-
-    // Build lineage graph - same as tools
-    const lineageGraph = buildLineageGraph(
-        jsondocs,
-        transforms,
-        humanTransforms,
-        transformInputs,
-        transformOutputs
-    );
-
-    // Compute canonical jsondocs using the same logic as tools
-    const canonicalContext = computeCanonicalJsondocsFromLineage(
-        lineageGraph,
-        jsondocs,
-        transforms,
-        humanTransforms,
-        transformInputs,
-        transformOutputs
-    );
+    // Use centralized canonical service to avoid duplicating computation
+    const transformRepo = new TransformRepository(db);
+    const canonicalService = new CanonicalJsondocService(db, jsondocRepo, transformRepo);
+    const { canonicalContext } = await canonicalService.getProjectCanonicalData(projectId);
 
     // Generate canonical content structure overview (table of contents)
     const contentStructure = generateCanonicalContentStructure(canonicalContext, projectId);
@@ -355,31 +335,9 @@ export async function buildAgentConfiguration(
     const prompt = buildPromptForRequestType(request.userRequest, context);
     console.log(`[AgentConfigBuilder] Built prompt (${prompt.length} chars)`);
 
-    // Compute canonical context for tool filtering
-    const jsondocs = await jsondocRepo.getAllProjectJsondocsForLineage(projectId);
-    const transforms = await jsondocRepo.getAllProjectTransformsForLineage(projectId);
-    const humanTransforms = await jsondocRepo.getAllProjectHumanTransformsForLineage(projectId);
-    const transformInputs = await jsondocRepo.getAllProjectTransformInputsForLineage(projectId);
-    const transformOutputs = await jsondocRepo.getAllProjectTransformOutputsForLineage(projectId);
-
-    // Build lineage graph for canonical context computation
-    const lineageGraph = buildLineageGraph(
-        jsondocs,
-        transforms,
-        humanTransforms,
-        transformInputs,
-        transformOutputs
-    );
-
-    // Compute canonical jsondocs context
-    const canonicalContext = computeCanonicalJsondocsFromLineage(
-        lineageGraph,
-        jsondocs,
-        transforms,
-        humanTransforms,
-        transformInputs,
-        transformOutputs
-    );
+    // Use centralized canonical service for tool filtering  
+    const canonicalService = new CanonicalJsondocService(db, jsondocRepo, transformRepo);
+    const { canonicalContext } = await canonicalService.getProjectCanonicalData(projectId);
 
     // Build filtered tools based on canonical context
     const tools = computeAvailableToolsFromCanonicalContext(

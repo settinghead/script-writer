@@ -2,11 +2,21 @@ import { Kysely } from 'kysely';
 import { DB } from '../database/types';
 import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
 import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
-import { buildLineageGraph } from '../../common/transform-jsondoc-framework/lineageResolution';
+import {
+    buildLineageGraph,
+    type LineageGraph
+} from '../../common/transform-jsondoc-framework/lineageResolution';
 import {
     computeCanonicalJsondocsFromLineage,
-    extractCanonicalJsondocIds
+    extractCanonicalJsondocIds,
+    type CanonicalJsondocContext
 } from '../../common/canonicalJsondocLogic';
+
+export interface ProjectCanonicalData {
+    lineageGraph: LineageGraph;
+    canonicalContext: CanonicalJsondocContext;
+    canonicalIds: Set<string>;
+}
 
 /**
  * Service for determining canonical jsondocs - those that should be displayed in UI
@@ -20,13 +30,12 @@ export class CanonicalJsondocService {
     ) { }
 
     /**
-     * Get all canonical (active) jsondoc IDs for a project.
-     * These are the jsondocs that should be displayed in components
-     * and therefore should have active particles.
+     * Compute complete canonical data for a project including lineage graph and canonical context
+     * This centralizes the common pattern used across multiple server services
      */
-    async getCanonicalJsondocIds(projectId: string): Promise<Set<string>> {
+    async getProjectCanonicalData(projectId: string): Promise<ProjectCanonicalData> {
         try {
-            // Get all project data using the correct method names
+            // Load all project data
             const [jsondocs, transforms, humanTransforms, transformInputs, transformOutputs] = await Promise.all([
                 this.jsondocRepo.getAllProjectJsondocsForLineage(projectId),
                 this.jsondocRepo.getAllProjectTransformsForLineage(projectId),
@@ -44,7 +53,7 @@ export class CanonicalJsondocService {
                 transformOutputs
             );
 
-            // Use shared canonical jsondoc computation
+            // Compute canonical context
             const canonicalContext = computeCanonicalJsondocsFromLineage(
                 lineageGraph,
                 jsondocs,
@@ -54,15 +63,51 @@ export class CanonicalJsondocService {
                 transformOutputs
             );
 
-            // Extract canonical jsondoc IDs
+            // Extract canonical IDs
             const canonicalIds = extractCanonicalJsondocIds(canonicalContext);
 
-            return canonicalIds;
-
+            return {
+                lineageGraph,
+                canonicalContext,
+                canonicalIds
+            };
         } catch (error) {
-            console.error(`[CanonicalJsondocService] Failed to compute canonical jsondocs for project ${projectId}:`, error);
-            return new Set();
+            console.error(`[CanonicalJsondocService] Failed to compute canonical data for project ${projectId}:`, error);
+            // Return empty/default values
+            return {
+                lineageGraph: {
+                    nodes: new Map(),
+                    edges: new Map(),
+                    rootNodes: new Set(),
+                    paths: new Map()
+                },
+                canonicalContext: {
+                    canonicalBrainstormIdea: null,
+                    canonicalBrainstormCollection: null,
+                    canonicalOutlineSettings: null,
+                    canonicalChronicles: null,
+                    canonicalEpisodePlanning: null,
+                    canonicalBrainstormInput: null,
+                    canonicalEpisodeSynopsisList: [],
+                    canonicalEpisodeScriptsList: [],
+                    workflowNodes: [],
+                    hasActiveTransforms: false,
+                    activeTransforms: [],
+                    lineageGraph: { nodes: new Map(), edges: new Map(), rootNodes: new Set(), paths: new Map() },
+                    rootNodes: [],
+                    leafNodes: []
+                },
+                canonicalIds: new Set()
+            };
         }
+    }
+
+    /**
+     * Legacy method - now uses the centralized computation
+     */
+    async getCanonicalJsondocIds(projectId: string): Promise<Set<string>> {
+        const canonicalData = await this.getProjectCanonicalData(projectId);
+        return canonicalData.canonicalIds;
     }
 
     /**
