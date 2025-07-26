@@ -217,15 +217,7 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     pathPattern: '^\\$(\\..*)?$', // Root or any path like $.title, $.characters[0].name, etc.
     instantiationFunction: 'createOutlineSettingsFromOutlineSettings'
   },
-  // Add missing edit_剧本设定 transform to match frontend naming expectations
-  'edit_剧本设定': {
-    name: 'edit_剧本设定',
-    description: 'Edit 剧本设定 document with whole-document editing',
-    sourceJsondocType: '剧本设定',
-    targetJsondocType: '剧本设定',
-    pathPattern: '^\\$(\\..*)?$', // Root or any path like $.title, $.characters[0].name, etc.
-    instantiationFunction: 'createOutlineSettingsFromOutlineSettings'
-  },
+
   'edit_chronicles': {
     name: 'edit_chronicles',
     description: 'Edit chronicles document with whole-document editing',
