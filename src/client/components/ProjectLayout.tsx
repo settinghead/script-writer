@@ -472,12 +472,23 @@ const MainContentArea: React.FC<{
                     style={{
                         flex: 1,
                         overflowY: 'auto',
-                        paddingBottom: "20vh"
 
                     }}
                 >
                     <ProjectContentRenderer projectId={projectId} scrollContainerRef={scrollContainerRef} />
                     <Outlet />
+                    <div
+                        style={{
+                            marginTop: "20vh",
+                            marginBottom: "20px",
+                            textAlign: "center",
+                            color: "#888",
+                            fontStyle: "italic",
+                            userSelect: "none"
+                        }}
+                    >
+                        - 到底了 -
+                    </div>
                 </div>
 
                 {/* Sticky Action Items Section */}
