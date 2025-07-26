@@ -1555,25 +1555,6 @@ export class StreamingTransformExecutor {
 
         // Step 4: Execute operations
 
-        // Delete removed patches
-        for (const jsondocId of toDelete) {
-            // console.log(`[upsertPatchJsondocs] Deleting patch jsondoc ${jsondocId}`);
-            try {
-                // First remove the transform output reference
-                const { db } = await import('../database/connection.js');
-                await db
-                    .deleteFrom('transform_outputs')
-                    .where('transform_id', '=', transformId)
-                    .where('jsondoc_id', '=', jsondocId)
-                    .execute();
-
-                // Then delete the jsondoc
-                await jsondocRepo.deleteJsondoc(jsondocId);
-            } catch (error) {
-                console.warn(`[upsertPatchJsondocs] Failed to delete jsondoc ${jsondocId}:`, error);
-            }
-        }
-
         // Update changed patches
         for (const { id, patch, index } of toUpdate) {
             // console.log(`[upsertPatchJsondocs] Updating patch jsondoc ${id} for ${patch.op}:${patch.path}`);
@@ -1636,6 +1617,27 @@ export class StreamingTransformExecutor {
             ], projectId);
 
         }
+
+
+        // Delete removed patches
+        for (const jsondocId of toDelete) {
+            // console.log(`[upsertPatchJsondocs] Deleting patch jsondoc ${jsondocId}`);
+            try {
+                // First remove the transform output reference
+                const { db } = await import('../database/connection.js');
+                await db
+                    .deleteFrom('transform_outputs')
+                    .where('transform_id', '=', transformId)
+                    .where('jsondoc_id', '=', jsondocId)
+                    .execute();
+
+                // Then delete the jsondoc
+                await jsondocRepo.deleteJsondoc(jsondocId);
+            } catch (error) {
+                console.warn(`[upsertPatchJsondocs] Failed to delete jsondoc ${jsondocId}:`, error);
+            }
+        }
+
 
         return;
     }
