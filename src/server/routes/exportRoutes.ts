@@ -141,7 +141,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         if (canonicalContext.canonicalOutlineSettings) {
             items.push({
                 id: '剧本设定-display',
-                name: '大纲设置',
+                name: '剧本设定',
                 content: canonicalContext.canonicalOutlineSettings,
                 type: '剧本设定',
                 defaultSelected: true

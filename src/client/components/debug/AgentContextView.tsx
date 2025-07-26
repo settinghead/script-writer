@@ -192,7 +192,7 @@ function generateAISDKToolFormat(toolName: string): any {
             },
             required: ['jsondocs', 'title', 'requirements']
         },
-        'improve_剧本设定': {
+        'edit_剧本设定': {
             type: 'object',
             properties: {
                 jsondocs: {

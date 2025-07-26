@@ -75,7 +75,7 @@ export function createAdminRoutes(
                         outputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.OutlineSettingsOutputSchema)
                     }
                 },
-                'improve_剧本设定': {
+                'edit_剧本设定': {
                     templateName: '剧本设定_edit_diff',
                     outputJsondocType: '剧本设定',
                     schemas: {
@@ -260,7 +260,7 @@ export function createAdminRoutes(
                     category: '设定生成'
                 },
                 {
-                    value: 'improve_剧本设定',
+                    value: 'edit_剧本设定',
                     label: '编辑剧本设定',
                     description: '修改现有的剧本设定内容',
                     category: '内容编辑'

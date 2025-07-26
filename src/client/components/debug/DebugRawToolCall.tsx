@@ -149,7 +149,7 @@ const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
             return {
                 '其他要求': ''
             };
-        case 'improve_剧本设定':
+        case 'edit_剧本设定':
             return {
                 editRequirements: '调整剧本设定，优化角色设定和故事背景'
             };
@@ -191,7 +191,7 @@ const getExpectedJsondocTypes = (toolName: string): string[] => {
             return ['brainstorm_input_params'];
         case 'generate_剧本设定':
             return ['brainstorm_collection', '灵感创意'];
-        case 'improve_剧本设定':
+        case 'edit_剧本设定':
             return ['剧本设定'];
         case 'generate_chronicles':
             return ['剧本设定', 'brainstorm_collection'];

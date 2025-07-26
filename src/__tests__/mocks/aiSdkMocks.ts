@@ -51,7 +51,7 @@ export function createCachedStreamObjectMock() {
             console.log(`[Mock] Contains '剧本设定'?`, prompt.includes('剧本设定'));
             console.log(`[Mock] Contains 'chronicles'?`, prompt.includes('chronicles'));
             console.log(`[Mock] Contains '时间线编年史'?`, prompt.includes('时间线编年史'));
-            console.log(`[Mock] Contains '大纲设置'?`, prompt.includes('大纲设置'));
+            console.log(`[Mock] Contains '剧本设定'?`, prompt.includes('剧本设定'));
             console.log(`[Mock] Contains '故事创意'?`, prompt.includes('故事创意'));
             console.log(`[Mock] Contains '时间顺序'?`, prompt.includes('时间顺序'));
 
@@ -71,7 +71,7 @@ export function createCachedStreamObjectMock() {
             } else if (prompt.includes('时间顺序大纲') || prompt.includes('时间线编年史') || prompt.includes('timeline') || prompt.includes('时间顺序') || prompt.includes('编年史')) {
                 console.log('[Mock] Using chronicles fallback (content match)');
                 return createFallbackChroniclesObject();
-            } else if (prompt.includes('大纲设置') || (prompt.includes('故事创意') && prompt.includes('制定详细的大纲设置'))) {
+            } else if (prompt.includes('剧本设定') || (prompt.includes('故事创意') && prompt.includes('制定详细的剧本设定'))) {
                 console.log('[Mock] Using 剧本设定 fallback (content match)');
                 return createFallbackOutlineObject();
             } else if (prompt.includes('outline') || prompt.includes('Outline') || prompt.includes('大纲')) {

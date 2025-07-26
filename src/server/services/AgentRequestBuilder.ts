@@ -147,7 +147,7 @@ export function buildPromptForRequestType(
 意图分类：修改
 你的动作：
 1. 使用queryJsondocs查询目前的人物角色设定（比如：“男主 恋爱对象”）
-2. 根据历史信息，用"improve_剧本设定"工具，创建新人物，比如”小花“，给工具的instruction: “添加一个新人物，名叫小花。小花在李成被罚钱时出现，并且帮助了他，而且对李成有好感”
+2. 根据历史信息，用"edit_剧本设定"工具，创建新人物，比如”小花“，给工具的instruction: “添加一个新人物，名叫小花。小花在李成被罚钱时出现，并且帮助了他，而且对李成有好感”
 3. 回复一个友好的消息，{ "humanReadableMessage"：“好的，已经添加了新人物小花，并且让小花在李成最低谷时出现，帮助了他...” }
 
 
@@ -279,7 +279,7 @@ export function computeAvailableToolsFromCanonicalContext(
             case 'generate_剧本设定':
                 addTool(() => createOutlineSettingsToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
                 break;
-            case 'improve_剧本设定':
+            case 'edit_剧本设定':
                 addTool(() => createOutlineSettingsEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
                 break;
             case 'generate_chronicles':

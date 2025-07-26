@@ -209,8 +209,8 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     pathPattern: '^(title|body)$', // Matches title or body fields
     instantiationFunction: 'createUserInputFromBrainstormField'
   },
-  'improve_剧本设定': {
-    name: 'improve_剧本设定',
+  'edit_剧本设定': {
+    name: 'edit_剧本设定',
     description: 'Edit 剧本设定 with fine-grained field tracking',
     sourceJsondocType: '剧本设定',
     targetJsondocType: '剧本设定',

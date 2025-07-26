@@ -204,7 +204,7 @@ export function createOutlineSettingsEditToolDefinition(
     }
 ): StreamingToolDefinition<OutlineSettingsEditInput, OutlineSettingsEditToolResult> {
     return {
-        name: 'improve_剧本设定',
+        name: 'edit_剧本设定',
         description: '编辑和改进现有剧本设定设置。适用场景：用户对现有剧本设定有具体的修改要求或改进建议，如修改角色设定、调整卖点、更新故事背景等。使用JSON Patch格式进行精确修改，只改变需要改变的部分。系统会自动处理相关的上下文信息。',
         inputSchema: OutlineSettingsEditInputSchema,
         outputSchema: OutlineSettingsEditToolResultSchema,
@@ -308,7 +308,7 @@ export function createOutlineSettingsEditToolDefinition(
                         originalJsondoc: canonicalOutlineSettingsJsondoc // Use the canonical outline settings jsondoc
                     },
                     transformMetadata: {
-                        toolName: 'improve_剧本设定',
+                        toolName: 'edit_剧本设定',
                         source_jsondoc_id: canonicalOutlineSettingsJsondoc.id, // Use the canonical outline settings jsondoc ID
                         canonical_剧本设定_id: canonicalOutlineSettingsJsondoc.id,
                         edit_requirements: params.editRequirements,

@@ -1,16 +1,16 @@
 // Define types locally to avoid path issues
 interface LLMTemplate {
-    id: string;
-    name: string;
-    promptTemplate: string;
-    outputFormat: string;
-    responseWrapper?: string;
+  id: string;
+  name: string;
+  promptTemplate: string;
+  outputFormat: string;
+  responseWrapper?: string;
 }
 
 export const outlineSettingsTemplate: LLMTemplate = {
-    id: '剧本设定',
-    name: 'Outline Settings Generation',
-    promptTemplate: `你是一位专门从事中国社交媒体平台短视频内容的创意总监和编剧。你的任务是根据选定的故事创意，制定详细的大纲设置，为后续的剧本创作奠定坚实基础。
+  id: '剧本设定',
+  name: 'Outline Settings Generation',
+  promptTemplate: `你是一位专门从事中国社交媒体平台短视频内容的创意总监和编剧。你的任务是根据选定的故事创意，制定详细的剧本设定，为后续的剧本创作奠定坚实基础。
 
 你必须遵循以下原则：
 1. 深入分析故事创意的核心元素和潜力
@@ -29,7 +29,7 @@ export const outlineSettingsTemplate: LLMTemplate = {
 
 ## 输出要求
 
-基于输入的故事创意和参数，生成完整的大纲设置。确保所有元素都紧密围绕故事核心，同时满足平台特色和受众偏好。**请尽可能创造性地添加丰富的细节和元素。**
+基于输入的故事创意和参数，生成完整的剧本设定。确保所有元素都紧密围绕故事核心，同时满足平台特色和受众偏好。**请尽可能创造性地添加丰富的细节和元素。**
 
 输出必须是一个完整的JSON对象，包含以下结构：
 
@@ -99,6 +99,6 @@ export const outlineSettingsTemplate: LLMTemplate = {
 - 角色描述要生动具体，避免模板化表述
 - 充分发挥创意，添加丰富的背景细节和故事元素
 - 确保所有内容都围绕故事主线，逻辑连贯`,
-    outputFormat: 'json',
-    responseWrapper: '```json\n%%content%%\n```'
+  outputFormat: 'json',
+  responseWrapper: '```json\n%%content%%\n```'
 }; 

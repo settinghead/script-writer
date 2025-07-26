@@ -48,7 +48,7 @@ export const ALL_AGENT_TOOLS: ToolDefinition[] = [
         description: '生成剧本设定和角色背景'
     },
     {
-        name: 'improve_剧本设定',
+        name: 'edit_剧本设定',
         category: 'outline',
         description: '编辑剧本设定，包含角色设定、基本信息、目标观众、主题、卖点、故事设定等等'
     },
@@ -159,7 +159,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
         if (stage.hasBrainstormIdea) {
             tools.push('edit_灵感创意');
         }
-        tools.push('improve_剧本设定');
+        tools.push('edit_剧本设定');
 
         // Add next generation tool
         if (!stage.hasChronicles) {
@@ -173,7 +173,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
             tools.push('edit_灵感创意');
         }
         if (stage.hasOutlineSettings) {
-            tools.push('improve_剧本设定');
+            tools.push('edit_剧本设定');
         }
         tools.push('edit_chronicles');
 
@@ -189,7 +189,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
             tools.push('edit_灵感创意');
         }
         if (stage.hasOutlineSettings) {
-            tools.push('improve_剧本设定');
+            tools.push('edit_剧本设定');
         }
         if (stage.hasChronicles) {
             tools.push('edit_chronicles');
@@ -207,7 +207,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
             tools.push('edit_灵感创意');
         }
         if (stage.hasOutlineSettings) {
-            tools.push('improve_剧本设定');
+            tools.push('edit_剧本设定');
         }
         if (stage.hasChronicles) {
             tools.push('edit_chronicles');

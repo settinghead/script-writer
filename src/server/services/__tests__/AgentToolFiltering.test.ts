@@ -144,7 +144,7 @@ describe('Agent Tool Filtering', () => {
 
             const toolNames = availableTools.map(tool => tool.name);
             expect(new Set(toolNames)).toEqual(new Set([
-                'improve_剧本设定',
+                'edit_剧本设定',
                 'edit_灵感创意',
                 'generate_chronicles'
             ]));
@@ -169,7 +169,7 @@ describe('Agent Tool Filtering', () => {
             const toolNames = availableTools.map(tool => tool.name);
             expect(new Set(toolNames)).toEqual(new Set([
                 'edit_chronicles',
-                'improve_剧本设定',
+                'edit_剧本设定',
                 'edit_灵感创意',
                 'generate_episode_planning'
             ]));
@@ -196,7 +196,7 @@ describe('Agent Tool Filtering', () => {
             expect(new Set(toolNames)).toEqual(new Set([
                 'edit_chronicles',
                 'edit_episode_planning',
-                'improve_剧本设定',
+                'edit_剧本设定',
                 'edit_灵感创意',
                 'generate_episode_synopsis'
             ]));
@@ -228,7 +228,7 @@ describe('Agent Tool Filtering', () => {
                 'edit_episode_planning',
                 'generate_episode_script',
                 'generate_episode_synopsis',
-                'improve_剧本设定',
+                'edit_剧本设定',
                 'edit_灵感创意'
             ]));
         });

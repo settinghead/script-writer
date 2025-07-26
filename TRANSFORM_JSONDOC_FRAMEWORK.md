@@ -4116,7 +4116,7 @@ availableTools = ['edit_灵感创意', 'generate_剧本设定']
 // Outline exists, can edit previous work or proceed
 availableTools = [
   'edit_灵感创意', 
-  'improve_剧本设定', 
+  'edit_剧本设定', 
   'generate_chronicles'
 ]
 ```
@@ -4126,7 +4126,7 @@ availableTools = [
 // Chronicles exist, can edit previous work or proceed
 availableTools = [
   'edit_灵感创意',
-  'improve_剧本设定', 
+  'edit_剧本设定', 
   'edit_chronicles',
   'generate_episode_planning'
 ]
@@ -4137,7 +4137,7 @@ availableTools = [
 // Episode planning exists, can edit any stage or generate episodes
 availableTools = [
   'edit_灵感创意',
-  'improve_剧本设定',
+  'edit_剧本设定',
   'edit_chronicles', 
   'edit_episode_planning',
   'generate_episode_synopsis'
@@ -4280,7 +4280,7 @@ const context = {
   ...
 };
 const tools = computeAvailableToolsFromCanonicalContext(context, ...);
-// Result: ['edit_灵感创意', 'improve_剧本设定', 'generate_chronicles']
+// Result: ['edit_灵感创意', 'edit_剧本设定', 'generate_chronicles']
 
 // User request: "基于现有设定生成时间顺序大纲"
 // Agent sees: Edit tools for existing content + chronicles generation
