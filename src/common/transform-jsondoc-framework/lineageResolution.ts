@@ -1692,7 +1692,7 @@ function traceForwardFromJsondoc(
                 nextJsondoc.schema_type === '灵感创意' ||
                 nextJsondoc.schema_type === '剧本设定' ||
                 nextJsondoc.schema_type === 'chronicles' ||
-                nextJsondoc.schema_type === 'episode_planning';
+                nextJsondoc.schema_type === '分集结构';
 
 
 
@@ -1778,8 +1778,8 @@ function createWorkflowNodeFromJsondoc(
         nodeType = 'chronicles';
         title = '分集概要';
         navigationTarget = '#chronicles';
-    } else if (jsondoc.schema_type === 'episode_planning') {
-        nodeType = 'episode_planning';
+    } else if (jsondoc.schema_type === '分集结构') {
+        nodeType = '分集结构';
         title = '分集结构';
         navigationTarget = '#episode-planning';
     } else {

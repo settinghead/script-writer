@@ -99,17 +99,17 @@ export function createAdminRoutes(
                         outputSchema: () => Promise.resolve(JsonPatchOperationsSchema)
                     }
                 },
-                'generate_episode_planning': {
-                    templateName: 'episode_planning',
-                    outputJsondocType: 'episode_planning',
+                'generate_分集结构': {
+                    templateName: '分集结构',
+                    outputJsondocType: '分集结构',
                     schemas: {
                         inputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.EpisodePlanningInputSchema),
                         outputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.EpisodePlanningOutputSchema)
                     }
                 },
-                'edit_episode_planning': {
-                    templateName: 'episode_planning_edit_diff',
-                    outputJsondocType: 'episode_planning',
+                'edit_分集结构': {
+                    templateName: '分集结构_edit_diff',
+                    outputJsondocType: '分集结构',
                     schemas: {
                         inputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.EpisodePlanningEditInputSchema),
                         outputSchema: () => Promise.resolve(JsonPatchOperationsSchema)
@@ -197,8 +197,8 @@ export function createAdminRoutes(
                 '剧本设定_edit_diff',
                 'chronicles',
                 'chronicles_edit_diff',
-                'episode_planning',
-                'episode_planning_edit_diff',
+                '分集结构',
+                '分集结构_edit_diff',
                 '单集大纲生成',
                 'script_generation'
             ].map(templateId => {
@@ -278,13 +278,13 @@ export function createAdminRoutes(
                     category: '内容编辑'
                 },
                 {
-                    value: 'generate_episode_planning',
+                    value: 'generate_分集结构',
                     label: '生成分集结构',
                     description: '基于时间顺序大纲创建分集结构',
                     category: '框架生成'
                 },
                 {
-                    value: 'edit_episode_planning',
+                    value: 'edit_分集结构',
                     label: '编辑分集结构',
                     description: '修改现有的分集结构内容',
                     category: '内容编辑'
@@ -993,8 +993,8 @@ export function createAdminRoutes(
                 if (actionIds.includes('brainstorm_creation')) return 'initial';
                 if (actionIds.includes('outline_generation')) return 'idea_editing';
                 if (actionIds.includes('chronicles_generation')) return 'outline_generation';
-                if (actionIds.includes('episode_planning_generation')) return 'chronicles_generation';
-                if (actionIds.includes('单集大纲生成')) return 'episode_planning';
+                if (actionIds.includes('分集结构_generation')) return 'chronicles_generation';
+                if (actionIds.includes('单集大纲生成')) return '分集结构';
 
                 return 'unknown';
             };

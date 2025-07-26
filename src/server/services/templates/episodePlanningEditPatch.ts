@@ -2,7 +2,7 @@ import { createUnifiedDiffTemplate } from './unifiedDiffBase';
 import { EpisodePlanningOutputSchema } from '../../../common/schemas/outlineSchemas';
 
 export const episodePlanningEditPatchTemplate = createUnifiedDiffTemplate({
-    templateName: 'episode_planning_edit_diff',
+    templateName: '分集结构_edit_diff',
     description: 'Episode Planning Editing (Unified Diff)',
     outputJsondocType: '分集结构',
     targetTypeName: '分集结构',

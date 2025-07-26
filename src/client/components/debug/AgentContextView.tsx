@@ -261,7 +261,7 @@ function generateAISDKToolFormat(toolName: string): any {
             },
             required: ['jsondocs', 'editRequirements']
         },
-        'generate_episode_planning': {
+        'generate_分集结构': {
             type: 'object',
             properties: {
                 jsondocs: {
@@ -284,7 +284,7 @@ function generateAISDKToolFormat(toolName: string): any {
             },
             required: ['jsondocs', 'requirements']
         },
-        'edit_episode_planning': {
+        'edit_分集结构': {
             type: 'object',
             properties: {
                 jsondocs: {

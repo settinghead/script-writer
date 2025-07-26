@@ -67,8 +67,8 @@ export const JsondocSchemaRegistry = {
   'chronicles': ChroniclesOutputSchema,
 
   // Episode planning schemas
-  'episode_planning_input': EpisodePlanningInputSchema,
-  'episode_planning': EpisodePlanningOutputSchema,
+  '分集结构_input': EpisodePlanningInputSchema,
+  '分集结构': EpisodePlanningOutputSchema,
 
   // Episode synopsis schemas
   '单集大纲_input': EpisodeSynopsisInputSchema,

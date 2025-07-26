@@ -4,7 +4,7 @@ export interface ExportableItem {
     id: string;
     name: string;
     content: any;
-    type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '剧本设定' | 'chronicles' | 'episode_planning' | 'episode_group';
+    type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '剧本设定' | 'chronicles' | '分集结构' | 'episode_group';
     defaultSelected: boolean;
     // For episode groups
     episodeNumber?: number;

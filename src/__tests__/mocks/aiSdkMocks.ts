@@ -62,7 +62,7 @@ export function createCachedStreamObjectMock() {
             } else if (prompt.includes('templateName: chronicles') || prompt.includes('template: chronicles')) {
                 console.log('[Mock] Using chronicles fallback (template name match)');
                 return createFallbackChroniclesObject();
-            } else if (prompt.includes('templateName: episode_planning') || prompt.includes('template: episode_planning')) {
+            } else if (prompt.includes('templateName: 分集结构') || prompt.includes('template: 分集结构')) {
                 console.log('[Mock] Using episode planning fallback (template name match)');
                 return createFallbackEpisodePlanningObject();
             } else if (prompt.includes('分集结构') || prompt.includes('分集结构') || prompt.includes('episode planning') || prompt.includes('分集安排')) {

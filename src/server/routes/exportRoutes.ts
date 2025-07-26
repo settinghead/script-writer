@@ -28,7 +28,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         id: string;
         name: string;
         content: any;
-        type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '剧本设定' | 'chronicles' | 'episode_planning' | 'episode_group';
+        type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '剧本设定' | 'chronicles' | '分集结构' | 'episode_group';
         defaultSelected: boolean;
         // For episode groups
         episodeNumber?: number;
@@ -165,7 +165,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                 id: 'episode-planning-display',
                 name: '剧集规划',
                 content: canonicalContext.canonicalEpisodePlanning,
-                type: 'episode_planning',
+                type: '分集结构',
                 defaultSelected: true
             });
         }
@@ -248,7 +248,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                     return formatOutlineSettings(item.content);
                 case 'chronicles':
                     return formatChronicles(item.content);
-                case 'episode_planning':
+                case '分集结构':
                     return formatEpisodePlanning(item.content);
                 case 'episode_group':
                     return formatEpisodeGroup(item.content);

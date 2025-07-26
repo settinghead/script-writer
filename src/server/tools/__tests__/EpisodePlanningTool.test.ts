@@ -36,7 +36,7 @@ describe('EpisodePlanningTool', () => {
                 userId
             );
 
-            expect(toolDef.name).toBe('generate_episode_planning');
+            expect(toolDef.name).toBe('generate_分集结构');
             expect(toolDef.description).toContain('生成分集结构');
             expect(toolDef.inputSchema).toBe(EpisodePlanningInputSchema);
             expect(typeof toolDef.execute).toBe('function');
@@ -129,9 +129,9 @@ describe('EpisodePlanningTool', () => {
                 userId,
                 transformRepo: mockTransformRepo,
                 jsondocRepo: mockJsondocRepo,
-                outputJsondocType: 'episode_planning',
+                outputJsondocType: '分集结构',
                 transformMetadata: {
-                    toolName: 'generate_episode_planning',
+                    toolName: 'generate_分集结构',
                     chronicles: 'chronicles-id',
                     灵感创意: 'brainstorm-id',
                     剧本设定: 'outline-id',
@@ -139,7 +139,7 @@ describe('EpisodePlanningTool', () => {
                     requirements: 'Test requirements'
                 },
             });
-            expect(calls[0][0].config.templateName).toBe('episode_planning');
+            expect(calls[0][0].config.templateName).toBe('分集结构');
         });
 
         it('should handle missing jsondocs gracefully', async () => {
@@ -180,14 +180,14 @@ describe('EpisodePlanningTool', () => {
                 userId,
                 transformRepo: mockTransformRepo,
                 jsondocRepo: mockJsondocRepo,
-                outputJsondocType: 'episode_planning',
+                outputJsondocType: '分集结构',
                 transformMetadata: {
-                    toolName: 'generate_episode_planning',
+                    toolName: 'generate_分集结构',
                     numberOfEpisodes: 20,
                     requirements: 'Test requirements'
                 },
             });
-            expect(calls[0][0].config.templateName).toBe('episode_planning');
+            expect(calls[0][0].config.templateName).toBe('分集结构');
         });
 
         it('should handle access denied gracefully', async () => {
@@ -238,14 +238,14 @@ describe('EpisodePlanningTool', () => {
                 userId,
                 transformRepo: mockTransformRepo,
                 jsondocRepo: mockJsondocRepo,
-                outputJsondocType: 'episode_planning',
+                outputJsondocType: '分集结构',
                 transformMetadata: {
-                    toolName: 'generate_episode_planning',
+                    toolName: 'generate_分集结构',
                     numberOfEpisodes: 20,
                     requirements: 'Test requirements'
                 },
             });
-            expect(calls[0][0].config.templateName).toBe('episode_planning');
+            expect(calls[0][0].config.templateName).toBe('分集结构');
         });
 
         it('should pass caching options to streaming transform', async () => {
@@ -286,9 +286,9 @@ describe('EpisodePlanningTool', () => {
                 userId,
                 transformRepo: mockTransformRepo,
                 jsondocRepo: mockJsondocRepo,
-                outputJsondocType: 'episode_planning',
+                outputJsondocType: '分集结构',
                 transformMetadata: {
-                    toolName: 'generate_episode_planning',
+                    toolName: 'generate_分集结构',
                     numberOfEpisodes: 20,
                     requirements: 'Test requirements'
                 },
@@ -298,7 +298,7 @@ describe('EpisodePlanningTool', () => {
                 topP: 0.9,
                 maxTokens: 2000
             });
-            expect(calls[0][0].config.templateName).toBe('episode_planning');
+            expect(calls[0][0].config.templateName).toBe('分集结构');
         });
     });
 }); 

@@ -5,7 +5,7 @@
 
 export interface ToolDefinition {
     name: string;
-    category: 'particle_search' | 'brainstorm' | 'outline' | 'chronicles' | 'episode_planning' | '单集大纲';
+    category: 'particle_search' | 'brainstorm' | 'outline' | 'chronicles' | '分集结构' | '单集大纲';
     description: string;
     alwaysAvailable?: boolean; // Tools that are always available when their system is ready
 }
@@ -67,13 +67,13 @@ export const ALL_AGENT_TOOLS: ToolDefinition[] = [
 
     // === EPISODE PLANNING TOOLS ===
     {
-        name: 'generate_episode_planning',
-        category: 'episode_planning',
+        name: 'generate_分集结构',
+        category: '分集结构',
         description: '生成分集结构'
     },
     {
-        name: 'edit_episode_planning',
-        category: 'episode_planning',
+        name: 'edit_分集结构',
+        category: '分集结构',
         description: '编辑分集结构'
     },
 
@@ -179,7 +179,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
 
         // Add next generation tool
         if (!stage.hasEpisodePlanning) {
-            tools.push('generate_episode_planning');
+            tools.push('generate_分集结构');
         }
     }
 
@@ -194,7 +194,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
         if (stage.hasChronicles) {
             tools.push('edit_chronicles');
         }
-        tools.push('edit_episode_planning');
+        tools.push('edit_分集结构');
 
         // Episode synopsis can be generated multiple times
         tools.push('generate_单集大纲');
@@ -213,7 +213,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
             tools.push('edit_chronicles');
         }
         if (stage.hasEpisodePlanning) {
-            tools.push('edit_episode_planning');
+            tools.push('edit_分集结构');
         }
 
         // Episode script generation (sequential, one at a time)

@@ -276,7 +276,7 @@ class ApiService {
 
         return this.sendChatMessage(projectId, content, {
             sourceJsondocId: chroniclesJsondocId,
-            action: 'episode_planning_generation',
+            action: '分集结构_generation',
             numberOfEpisodes
         });
     }

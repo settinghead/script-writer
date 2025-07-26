@@ -99,7 +99,7 @@ export function createEpisodePlanningEditToolDefinition(
     }
 ): StreamingToolDefinition<EpisodePlanningEditInput, EpisodePlanningEditToolResult> {
     return {
-        name: 'edit_episode_planning',
+        name: 'edit_分集结构',
         description: '编辑和改进现有分集结构。适用场景：用户对现有分集结构有具体的修改要求或改进建议，如调整剧集分组、修改情感节拍、更新关键事件等。使用JSON Patch格式进行精确修改，只改变需要改变的部分。系统会自动处理相关的上下文信息。',
         inputSchema: EpisodePlanningEditInputSchema,
         outputSchema: EpisodePlanningEditToolResultSchema,
@@ -116,11 +116,11 @@ export function createEpisodePlanningEditToolDefinition(
                 throw new Error('Source jsondoc not found');
             }
 
-            const outputJsondocType: TypedJsondoc['schema_type'] = 'episode_planning';
+            const outputJsondocType: TypedJsondoc['schema_type'] = '分集结构';
 
             // Create config for JSON patch generation
             const config: StreamingTransformConfig<EpisodePlanningEditInput, JsonPatchOperation[]> = {
-                templateName: 'episode_planning_edit_diff',
+                templateName: '分集结构_edit_diff',
                 inputSchema: EpisodePlanningEditInputSchema,
                 outputSchema: JsonPatchOperationsSchema, // JSON patch operations for external output
                 prepareTemplateVariables: async (input) => {
@@ -147,10 +147,10 @@ export function createEpisodePlanningEditToolDefinition(
                         originalJsondoc: originalEpisodePlanning
                     },
                     transformMetadata: {
-                        toolName: 'edit_episode_planning',
+                        toolName: 'edit_分集结构',
                         source_jsondoc_id: sourceJsondocRef.jsondocId,
                         edit_requirements: params.editRequirements,
-                        original_episode_planning: originalEpisodePlanning,
+                        original_分集结构: originalEpisodePlanning,
                         total_episodes: totalEpisodes,
                         first_group_title: firstGroupTitle,
                         method: 'json_patch',
@@ -201,7 +201,7 @@ export function createEpisodePlanningToolDefinition(
     }
 ): StreamingToolDefinition<EpisodePlanningInput, EpisodePlanningToolResult> {
     return {
-        name: 'generate_episode_planning',
+        name: 'generate_分集结构',
         description: '生成分集结构（优化观看顺序和情感节奏）。适用场景：用户已完成相关创作步骤，需要生成适合短视频平台的分集结构。系统会自动处理所有相关的上下文信息作为参考资料。',
         inputSchema: EpisodePlanningInputSchema,
         outputSchema: EpisodePlanningToolResultSchema,
@@ -216,7 +216,7 @@ export function createEpisodePlanningToolDefinition(
 
             // Create streaming config with all extracted data
             const config: StreamingTransformConfig<EpisodePlanningInput, EpisodePlanningOutput> = {
-                templateName: 'episode_planning',
+                templateName: '分集结构',
                 inputSchema: EpisodePlanningInputSchema,
                 outputSchema: EpisodePlanningOutputSchema
                 // No custom prepareTemplateVariables - use default schema-driven extraction
@@ -229,10 +229,10 @@ export function createEpisodePlanningToolDefinition(
                 userId,
                 transformRepo,
                 jsondocRepo,
-                outputJsondocType: 'episode_planning',
+                outputJsondocType: '分集结构',
                 executionMode: { mode: 'full-object' },
                 transformMetadata: {
-                    toolName: 'generate_episode_planning',
+                    toolName: 'generate_分集结构',
                     ...jsondocMetadata, // Include all jsondoc IDs with their schema types as keys
                     numberOfEpisodes: params.numberOfEpisodes,
                     requirements: params.requirements

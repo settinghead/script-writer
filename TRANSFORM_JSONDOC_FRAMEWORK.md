@@ -4121,25 +4121,25 @@ availableTools = [
 ]
 ```
 
-**Has chronicles** → Edit tools for previous stages + `generate_episode_planning`
+**Has chronicles** → Edit tools for previous stages + `generate_分集结构`
 ```typescript
 // Chronicles exist, can edit previous work or proceed
 availableTools = [
   'edit_灵感创意',
   'edit_剧本设定', 
   'edit_chronicles',
-  'generate_episode_planning'
+  'generate_分集结构'
 ]
 ```
 
-**Has episode_planning** → All edit tools + `generate_单集大纲`
+**Has 分集结构** → All edit tools + `generate_单集大纲`
 ```typescript
 // Episode planning exists, can edit any stage or generate episodes
 availableTools = [
   'edit_灵感创意',
   'edit_剧本设定',
   'edit_chronicles', 
-  'edit_episode_planning',
+  'edit_分集结构',
   'generate_单集大纲'
 ]
 ```

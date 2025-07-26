@@ -108,7 +108,7 @@ export class AgentService {
             const hasBrainstorm = allJsondocs.some((j: any) => j.schema_type === '灵感创意');
             const hasOutline = allJsondocs.some((j: any) => j.schema_type === '剧本设定');
             const hasChronicles = allJsondocs.some((j: any) => j.schema_type === 'chronicles');
-            const hasEpisodePlanning = allJsondocs.some((j: any) => j.schema_type === 'episode_planning');
+            const hasEpisodePlanning = allJsondocs.some((j: any) => j.schema_type === '分集结构');
             const episodeSynopses = allJsondocs.filter((j: any) => j.schema_type === '单集大纲');
 
             if (hasInput) contextLines.push('✓ 用户输入已创建');

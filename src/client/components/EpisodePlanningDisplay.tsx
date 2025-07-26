@@ -26,7 +26,7 @@ export const EpisodePlanningDisplay: React.FC<EpisodePlanningDisplayProps> = ({
 
         return (
             <SectionWrapper
-                schemaType={"episode_planning"}
+                schemaType={"分集结构"}
                 title="分集结构"
                 sectionId="episode-planning"
                 jsondocId={effectiveJsondoc?.id}
@@ -38,7 +38,7 @@ export const EpisodePlanningDisplay: React.FC<EpisodePlanningDisplayProps> = ({
                         title="分集结构"
                         icon="🎬"
                         editableComponent={EditableEpisodePlanningForm}
-                        schemaType="episode_planning"
+                        schemaType="分集结构"
                         enableClickToEdit={true}
                     />
                 </div>
@@ -55,9 +55,9 @@ export const EpisodePlanningDisplay: React.FC<EpisodePlanningDisplayProps> = ({
 
     // Find the root episode planning jsondoc using lineage resolution approach
     const rootEpisodePlanningJsondoc = useMemo(() => {
-        // First try: Look for episode_planning
+        // First try: Look for 分集结构
         const episodePlanningJsondocs = jsondocs.filter(jsondoc =>
-            jsondoc.schema_type === 'episode_planning' &&
+            jsondoc.schema_type === '分集结构' &&
             jsondoc.data
         );
 
@@ -157,7 +157,7 @@ export const EpisodePlanningDisplay: React.FC<EpisodePlanningDisplayProps> = ({
 
     return (
         <SectionWrapper
-            schemaType={"episode_planning"}
+            schemaType={"分集结构"}
             title="分集结构"
             sectionId="episode-planning"
             jsondocId={effectiveJsondoc?.id}
@@ -169,7 +169,7 @@ export const EpisodePlanningDisplay: React.FC<EpisodePlanningDisplayProps> = ({
                     title="分集结构"
                     icon="🎬"
                     editableComponent={EditableEpisodePlanningForm}
-                    schemaType="episode_planning"
+                    schemaType="分集结构"
                     enableClickToEdit={true}
                 />
             </div>

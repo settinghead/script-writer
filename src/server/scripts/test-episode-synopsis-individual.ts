@@ -41,7 +41,7 @@ async function testIndividualEpisodeSynopsis() {
 
         const episodePlanningJsondoc = await jsondocRepo.createJsondoc(
             projectId,
-            'episode_planning',
+            '分集结构',
             episodePlanningData,
             'v1',
             undefined,
@@ -65,7 +65,7 @@ async function testIndividualEpisodeSynopsis() {
         // Test the tool execution
         const result = await toolDef.execute({
             jsondocs: [
-                { jsondocId: episodePlanningJsondoc.id, description: 'Episode Planning', schemaType: 'episode_planning' }
+                { jsondocId: episodePlanningJsondoc.id, description: 'Episode Planning', schemaType: '分集结构' }
             ],
             episodeStart: 1,
             episodeEnd: 3,

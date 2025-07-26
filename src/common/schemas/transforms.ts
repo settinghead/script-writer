@@ -30,11 +30,11 @@ export const TransformRegistry = {
   },
 
   // Episode Planning Transform
-  'episode_planning_generation': {
-    pathPattern: '^\\$\\[episode_planning\\]$',
+  '分集结构_generation': {
+    pathPattern: '^\\$\\[分集结构\\]$',
     inputSchema: EpisodePlanningInputSchema,
     outputSchema: EpisodePlanningOutputSchema,
-    outputType: 'episode_planning'
+    outputType: '分集结构'
   },
 
   // Brainstorm edit transforms
@@ -226,11 +226,11 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     pathPattern: '^\\$(\\..*)?$', // Root or any path like $.stages[0].title, $.stages[1].event, etc.
     instantiationFunction: 'createChroniclesFromChronicles'
   },
-  'edit_episode_planning': {
-    name: 'edit_episode_planning',
+  'edit_分集结构': {
+    name: 'edit_分集结构',
     description: 'Edit episode planning document with whole-document editing',
-    sourceJsondocType: 'episode_planning',
-    targetJsondocType: 'episode_planning',
+    sourceJsondocType: '分集结构',
+    targetJsondocType: '分集结构',
     pathPattern: '^\\$(\\..*)?$', // Root or any path like $.episodeGroups[0].groupTitle, $.overallStrategy, etc.
     instantiationFunction: 'createEpisodePlanningFromEpisodePlanning'
   },

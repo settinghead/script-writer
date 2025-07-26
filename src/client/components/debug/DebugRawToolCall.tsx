@@ -161,12 +161,12 @@ const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
             return {
                 editRequirements: '调整时间线，优化故事发展节奏'
             };
-        case 'generate_episode_planning':
+        case 'generate_分集结构':
             return {
                 numberOfEpisodes: 20,
                 requirements: '适合短视频平台，每集2-3分钟，注重钩子设计和悬念'
             };
-        case 'edit_episode_planning':
+        case 'edit_分集结构':
             return {
                 editRequirements: '调整剧集分组，优化观看顺序和情感节拍'
             };
@@ -197,12 +197,12 @@ const getExpectedJsondocTypes = (toolName: string): string[] => {
             return ['剧本设定', 'brainstorm_collection'];
         case 'edit_chronicles':
             return ['chronicles'];
-        case 'generate_episode_planning':
+        case 'generate_分集结构':
             return ['chronicles', '剧本设定'];
-        case 'edit_episode_planning':
-            return ['episode_planning'];
+        case 'edit_分集结构':
+            return ['分集结构'];
         case 'generate_单集大纲':
-            return ['episode_planning'];
+            return ['分集结构'];
         default:
             console.error(`[getExpectedJsondocTypes] Missing expected jsondoc types for tool: ${toolName}`);
             throw new Error(`Expected jsondoc types not defined for tool: ${toolName}. Please add it to getExpectedJsondocTypes() function.`);

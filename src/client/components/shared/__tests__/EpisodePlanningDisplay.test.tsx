@@ -143,7 +143,7 @@ describe('EpisodePlanningDisplay', () => {
     const mockEpisodePlanningJsondoc = {
         id: 'episode-planning-123',
         project_id: 'test-project',
-        schema_type: 'episode_planning' as const,
+        schema_type: '分集结构' as const,
         schema_version: 'v1' as const,
         origin_type: 'user_input' as const,
         created_at: new Date().toISOString(),
@@ -171,7 +171,7 @@ describe('EpisodePlanningDisplay', () => {
     it('renders loading state', () => {
         mockUseLineageResolution.mockReturnValue({
             latestJsondocId: null,
-            resolvedPath: 'episode_planning',
+            resolvedPath: '分集结构',
             lineagePath: [],
             depth: 0,
             isLoading: true,
@@ -188,7 +188,7 @@ describe('EpisodePlanningDisplay', () => {
     it('renders error state', () => {
         mockUseLineageResolution.mockReturnValue({
             latestJsondocId: null,
-            resolvedPath: 'episode_planning',
+            resolvedPath: '分集结构',
             lineagePath: [],
             depth: 0,
             isLoading: false,
@@ -213,7 +213,7 @@ describe('EpisodePlanningDisplay', () => {
 
         mockUseLineageResolution.mockReturnValue({
             latestJsondocId: mockEpisodePlanningJsondoc.id,
-            resolvedPath: 'episode_planning',
+            resolvedPath: '分集结构',
             lineagePath: [],
             depth: 0,
             isLoading: false,
@@ -246,7 +246,7 @@ describe('EpisodePlanningDisplay', () => {
 
         mockUseLineageResolution.mockReturnValue({
             latestJsondocId: readonlyJsondoc.id,
-            resolvedPath: 'episode_planning',
+            resolvedPath: '分集结构',
             lineagePath: [],
             depth: 0,
             isLoading: false,
@@ -273,7 +273,7 @@ describe('EpisodePlanningDisplay', () => {
 
         mockUseLineageResolution.mockReturnValue({
             latestJsondocId: null,
-            resolvedPath: 'episode_planning',
+            resolvedPath: '分集结构',
             lineagePath: [],
             depth: 0,
             isLoading: false,

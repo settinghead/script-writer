@@ -82,7 +82,7 @@ export function computeCanonicalJsondocsFromLineage(
     }
     const canonicalOutlineSettings = findCanonicalJsondocByType(lineageGraph, jsondocs, '剧本设定');
     const canonicalChronicles = findCanonicalJsondocByType(lineageGraph, jsondocs, 'chronicles');
-    const canonicalEpisodePlanning = findCanonicalJsondocByType(lineageGraph, jsondocs, 'episode_planning');
+    const canonicalEpisodePlanning = findCanonicalJsondocByType(lineageGraph, jsondocs, '分集结构');
 
     // Find canonical episode synopsis for each episode number
     const canonicalEpisodeSynopsisList = findCanonicalEpisodeSynopsisByEpisode(lineageGraph, jsondocs);

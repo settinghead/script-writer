@@ -8,7 +8,7 @@ interface LLMTemplate {
 }
 
 export const episodePlanningTemplate: LLMTemplate = {
-    id: 'episode_planning',
+    id: '分集结构',
     name: 'Episode Planning Generation',
     promptTemplate: `你是一位专门从事抖音短剧内容的资深编剧。你的任务是基于时间顺序大纲，创建适合短视频平台的分集结构，重点关注节奏紧凑、起承转合的完整戏剧结构。
 

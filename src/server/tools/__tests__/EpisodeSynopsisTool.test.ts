@@ -45,7 +45,7 @@ describe('EpisodeSynopsisTool', () => {
         it('should process episode synopsis generation for multiple episodes', async () => {
             const mockEpisodePlanningJsondoc = {
                 id: 'episode-planning-id',
-                schema_type: 'episode_planning',
+                schema_type: '分集结构',
                 project_id: projectId,
                 data: {
                     totalEpisodes: 30,
@@ -139,7 +139,7 @@ describe('EpisodeSynopsisTool', () => {
 
             const input = {
                 jsondocs: [
-                    { jsondocId: 'episode-planning-id', description: 'Episode planning', schemaType: 'episode_planning' as const },
+                    { jsondocId: 'episode-planning-id', description: 'Episode planning', schemaType: '分集结构' as const },
                     { jsondocId: 'chronicles-id', description: 'Chronicles', schemaType: 'chronicles' as const }
                 ],
                 episodeStart: 1,
@@ -178,7 +178,7 @@ describe('EpisodeSynopsisTool', () => {
         it('should handle single episode generation', async () => {
             const mockEpisodePlanningJsondoc = {
                 id: 'episode-planning-id',
-                schema_type: 'episode_planning',
+                schema_type: '分集结构',
                 project_id: projectId,
                 data: { totalEpisodes: 30 }
             };
@@ -220,7 +220,7 @@ describe('EpisodeSynopsisTool', () => {
 
             const input = {
                 jsondocs: [
-                    { jsondocId: 'episode-planning-id', description: 'Episode planning', schemaType: 'episode_planning' as const }
+                    { jsondocId: 'episode-planning-id', description: 'Episode planning', schemaType: '分集结构' as const }
                 ],
                 episodeStart: 5,
                 episodeEnd: 5,
@@ -245,7 +245,7 @@ describe('EpisodeSynopsisTool', () => {
             // Valid input
             const validInput = {
                 jsondocs: [
-                    { jsondocId: 'test-id', description: 'Test', schemaType: 'episode_planning' as const }
+                    { jsondocId: 'test-id', description: 'Test', schemaType: '分集结构' as const }
                 ],
                 episodeStart: 1,
                 episodeEnd: 3,
@@ -266,7 +266,7 @@ describe('EpisodeSynopsisTool', () => {
             // Invalid input - wrong episode range (but valid schema)
             const invalidRangeInput = {
                 jsondocs: [
-                    { jsondocId: 'test-id', description: 'Test', schemaType: 'episode_planning' as const }
+                    { jsondocId: 'test-id', description: 'Test', schemaType: '分集结构' as const }
                 ],
                 episodeStart: 5,
                 episodeEnd: 3, // End before start
@@ -296,7 +296,7 @@ describe('EpisodeSynopsisTool', () => {
 
             const mockEpisodePlanningJsondoc = {
                 id: 'episode-planning-id',
-                schema_type: 'episode_planning',
+                schema_type: '分集结构',
                 project_id: projectId,
                 data: { totalEpisodes: 30 }
             };
@@ -328,7 +328,7 @@ describe('EpisodeSynopsisTool', () => {
 
             const input = {
                 jsondocs: [
-                    { jsondocId: 'episode-planning-id', description: 'Episode planning', schemaType: 'episode_planning' as const }
+                    { jsondocId: 'episode-planning-id', description: 'Episode planning', schemaType: '分集结构' as const }
                 ],
                 episodeStart: 1,
                 episodeEnd: 4,

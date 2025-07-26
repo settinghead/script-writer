@@ -74,7 +74,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
 
         // Add next generation tool
         if (!hasEpisodePlanning) {
-            availableTools.push('generate_episode_planning');
+            availableTools.push('generate_分集结构');
         }
     }
 
@@ -89,7 +89,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
         if (hasChronicles) {
             availableTools.push('edit_chronicles');
         }
-        availableTools.push('edit_episode_planning');
+        availableTools.push('edit_分集结构');
 
         // Episode synopsis can be generated multiple times
         availableTools.push('generate_单集大纲');
@@ -197,11 +197,11 @@ describe('AgentContextView Tool Filtering', () => {
             expect(tools).toEqual(['edit_灵感创意', 'edit_剧本设定', 'generate_chronicles']);
         });
 
-        it('should return all edit tools plus generate_单集大纲 when episode_planning exists', () => {
+        it('should return all edit tools plus generate_单集大纲 when 分集结构 exists', () => {
             const mockIdea = createMockJsondoc('idea-1', '灵感创意', 'user_input');
             const mockOutline = createMockJsondoc('outline-1', '剧本设定');
             const mockChronicles = createMockJsondoc('chronicles-1', 'chronicles');
-            const mockEpisodePlanning = createMockJsondoc('episode-planning-1', 'episode_planning');
+            const mockEpisodePlanning = createMockJsondoc('episode-planning-1', '分集结构');
             const context: CanonicalJsondocContext = {
                 canonicalBrainstormIdea: mockIdea,
                 canonicalBrainstormCollection: null,
@@ -223,7 +223,7 @@ describe('AgentContextView Tool Filtering', () => {
                 'edit_灵感创意',
                 'edit_剧本设定',
                 'edit_chronicles',
-                'edit_episode_planning',
+                'edit_分集结构',
                 'generate_单集大纲'
             ]);
         });

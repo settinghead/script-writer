@@ -101,7 +101,7 @@ export async function buildContextForRequestType(
 
     // Episode planning
     if (canonicalContext.canonicalEpisodePlanning) {
-        formatJsondocForContext(canonicalContext.canonicalEpisodePlanning, 'episode_planning');
+        formatJsondocForContext(canonicalContext.canonicalEpisodePlanning, '分集结构');
     }
 
     // Episode synopsis list
@@ -136,7 +136,7 @@ export function buildPromptForRequestType(
 3. **创意选择与编辑**：用户从AI生成的多个创意中选择一个，或者对选定的创意进行进一步编辑和完善
 4. **剧本设定生成 (剧本设定)**：基于选定的创意生成详细的剧本框架，包括人物角色设定、故事背景、商业卖点、爽点设计等
 5. **时间顺序大纲生成 (chronicles)**：创建完整的故事时序结构，按照故事内在逻辑顺序（非播出顺序）梳理剧情发展脉络
-6. **分集结构生成 (episode_planning)**：基于时间顺序大纲，重新组织内容为适合短视频平台的分集结构，优化观看节奏和悬念设置
+6. **分集结构生成 (分集结构)**：基于时间顺序大纲，重新组织内容为适合短视频平台的分集结构，优化观看节奏和悬念设置
 7. **分集大纲生成 (单集大纲)**：为每个剧集组生成详细的单集大纲，包含具体情节和转折点
 8. **剧本撰写 (单集剧本)**：基于分集大纲生成完整的剧本内容，包含对话、动作指导和场景描述（注意这部分还没有实现）
 
@@ -288,10 +288,10 @@ export function computeAvailableToolsFromCanonicalContext(
             case 'edit_chronicles':
                 addTool(() => createChroniclesEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
                 break;
-            case 'generate_episode_planning':
+            case 'generate_分集结构':
                 addTool(() => createEpisodePlanningToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
                 break;
-            case 'edit_episode_planning':
+            case 'edit_分集结构':
                 addTool(() => createEpisodePlanningEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
                 break;
             case 'generate_单集大纲':

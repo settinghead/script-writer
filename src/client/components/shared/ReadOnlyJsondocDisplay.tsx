@@ -421,7 +421,7 @@ export const ReadOnlyJsondocDisplay: React.FC<ReadOnlyJsondocDisplayProps> = ({ 
     }
 
     // Render episode planning specific layout
-    if (schemaType === 'episode_planning') {
+    if (schemaType === '分集结构') {
         return (
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 {/* Total Episodes */}

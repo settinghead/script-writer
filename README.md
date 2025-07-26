@@ -436,7 +436,7 @@ const actions = computeActionsFromLineage(currentStage, context);
 - `idea_editing` - Single idea available (manual or selected), ready for editing
 - `outline_generation` - Idea finalized, ready for 剧本设定 generation
 - `chronicles_generation` - Outline settings complete, ready for chronicles
-- `episode_planning` - Chronicles complete, ready for episode planning generation
+- `分集结构` - Chronicles complete, ready for episode planning generation
 - `单集剧本_generation` - Episode planning complete, ready for sequential script generation
 
 **Smart Action Generation**:
@@ -714,7 +714,7 @@ Chronicles (Time Order) → Episode Planning (Viewing Order) → Script Writing
 ```sql
 -- Episode planning jsondocs
 jsondocs (
-  schema_type: 'episode_planning',
+  schema_type: '分集结构',
   data: EpisodePlanningOutput,
   origin_type: 'ai_generated' | 'human'
 )
@@ -722,7 +722,7 @@ jsondocs (
 -- Transform tracking
 transforms (
   transform_type: 'llm',
-  tool_name: 'generate_episode_planning',
+  tool_name: 'generate_分集结构',
   metadata: {
     chronicles_jsondoc_id: string,
     numberOfEpisodes: number,

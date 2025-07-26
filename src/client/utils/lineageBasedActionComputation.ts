@@ -276,7 +276,7 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
     // Add episode planning generation if we have chronicles but no episode planning
     if (context.canonicalChronicles && !context.canonicalEpisodePlanning) {
         actions.push({
-            id: 'episode_planning_generation',
+            id: '分集结构_generation',
             type: 'form',
             title: '生成分集结构',
             description: '基于时间顺序大纲生成分集结构',
