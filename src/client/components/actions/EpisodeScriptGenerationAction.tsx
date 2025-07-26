@@ -34,7 +34,7 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
             await apiService.sendChatMessage(projectId,
                 `生成第${targetEpisode.episodeNumber}集剧本`,
                 {
-                    action: 'generate_episode_script',
+                    action: 'generate_单集剧本',
                     episodeNumber: targetEpisode.episodeNumber,
                     episodeSynopsisJsondocId: targetEpisode.synopsisId
                 }

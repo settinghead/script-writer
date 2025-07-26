@@ -29,7 +29,7 @@ export function createEpisodeScriptToolDefinition(
     }
 ): StreamingToolDefinition<EpisodeScriptInput, EpisodeScriptToolResult> {
     return {
-        name: 'generate_episode_script',
+        name: 'generate_单集剧本',
         description: '为指定集数生成完整的剧本内容，包含对话、动作指导和场景描述',
         inputSchema: EpisodeScriptInputSchema,
         outputSchema: EpisodeScriptToolResultSchema,
@@ -82,7 +82,7 @@ export function createEpisodeScriptToolDefinition(
                 userId,
                 transformRepo,
                 jsondocRepo,
-                outputJsondocType: 'episode_script',
+                outputJsondocType: '单集剧本',
                 transformMetadata: {
                     episode_number: params.episodeNumber,
                     单集大纲_id: params.episodeSynopsisJsondocId,

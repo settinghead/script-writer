@@ -217,7 +217,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
         }
 
         // Episode script generation (sequential, one at a time)
-        tools.push('generate_episode_script');
+        tools.push('generate_单集剧本');
     }
 
     // Remove duplicates and return

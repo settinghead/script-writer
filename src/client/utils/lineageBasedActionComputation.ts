@@ -442,7 +442,7 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
             });
 
             actions.push({
-                id: 'episode_script_generation',
+                id: '单集剧本_generation',
                 type: 'button',
                 title: `生成第${nextEpisodeForScript.episodeNumber}集剧本`,
                 description: `基于分集大纲生成完整剧本内容`,

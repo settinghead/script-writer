@@ -569,7 +569,7 @@ export const ReadOnlyJsondocDisplay: React.FC<ReadOnlyJsondocDisplayProps> = ({ 
     }
 
     // Render episode script specific layout
-    if (schemaType === 'episode_script') {
+    if (schemaType === '单集剧本') {
         return (
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 {/* Episode Title and Metadata */}

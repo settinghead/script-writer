@@ -226,7 +226,7 @@ describe('Agent Tool Filtering', () => {
             expect(new Set(toolNames)).toEqual(new Set([
                 'edit_chronicles',
                 'edit_episode_planning',
-                'generate_episode_script',
+                'generate_单集剧本',
                 'generate_单集大纲',
                 'edit_剧本设定',
                 'edit_灵感创意'

@@ -75,8 +75,8 @@ export const JsondocSchemaRegistry = {
   '单集大纲': EpisodeSynopsisSchema,
 
   // Episode script schemas
-  'episode_script_input': EpisodeScriptInputSchema,
-  'episode_script': EpisodeScriptSchema,
+  '单集剧本_input': EpisodeScriptInputSchema,
+  '单集剧本': EpisodeScriptSchema,
 
   // JSON Patch schema for intermediate patch storage
   'json_patch': JsonPatchSchema,

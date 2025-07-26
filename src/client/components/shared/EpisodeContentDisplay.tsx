@@ -177,7 +177,7 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
                                 title={`第${pair.episodeNumber}集剧本`}
                                 icon="📝"
                                 editableComponent={EditableEpisodeScriptForm}
-                                schemaType="episode_script"
+                                schemaType="单集剧本"
                                 enableClickToEdit={pair.script.isClickToEditable}
                             />
                         </div>

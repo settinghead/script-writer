@@ -320,9 +320,9 @@ function findCanonicalJsondocByType(
         return findBestJsondocByPriority(candidateJsondocs, lineageGraph);
     }
 
-    // Special handling for episode_script: always include all jsondocs regardless of lineage graph status
+    // Special handling for 单集剧本: always include all jsondocs regardless of lineage graph status
     // This is because episode script jsondocs can be orphaned from lineage but still canonical
-    if (schemaType === 'episode_script') {
+    if (schemaType === '单集剧本') {
         return findBestJsondocByPriority(candidateJsondocs, lineageGraph);
     }
 
@@ -482,7 +482,7 @@ function findCanonicalEpisodeScriptsByEpisode(
     jsondocs: ElectricJsondoc[]
 ): ElectricJsondoc[] {
     // Get all episode script jsondocs (always include all, regardless of lineage graph status)
-    const episodeScriptJsondocs = jsondocs.filter(j => j.schema_type === 'episode_script');
+    const episodeScriptJsondocs = jsondocs.filter(j => j.schema_type === '单集剧本');
 
 
     if (episodeScriptJsondocs.length === 0) return [];

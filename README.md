@@ -437,7 +437,7 @@ const actions = computeActionsFromLineage(currentStage, context);
 - `outline_generation` - Idea finalized, ready for 剧本设定 generation
 - `chronicles_generation` - Outline settings complete, ready for chronicles
 - `episode_planning` - Chronicles complete, ready for episode planning generation
-- `episode_script_generation` - Episode planning complete, ready for sequential script generation
+- `单集剧本_generation` - Episode planning complete, ready for sequential script generation
 
 **Smart Action Generation**:
 - **Context-Aware Actions** - Only shows relevant next steps based on current stage
@@ -1658,7 +1658,7 @@ fetch('/api/chat', {
 - `POST /api/projects/:projectId/episode-planning` - Generate episode planning from chronicles
 - `GET /api/projects/:projectId/episode-planning` - Get episode planning for project
 - `POST /api/chat/:projectId/messages` - Generate episode scripts (via agent chat with action metadata)
-- `GET /api/jsondocs?schema_type=episode_script&project_id=:projectId` - Get episode scripts for project
+- `GET /api/jsondocs?schema_type=单集剧本&project_id=:projectId` - Get episode scripts for project
 
 ### YJS Collaboration
 - `GET /api/yjs/jsondoc/:jsondocId` - Get jsondoc data for YJS initialization

@@ -138,7 +138,7 @@ export function buildPromptForRequestType(
 5. **时间顺序大纲生成 (chronicles)**：创建完整的故事时序结构，按照故事内在逻辑顺序（非播出顺序）梳理剧情发展脉络
 6. **分集结构生成 (episode_planning)**：基于时间顺序大纲，重新组织内容为适合短视频平台的分集结构，优化观看节奏和悬念设置
 7. **分集大纲生成 (单集大纲)**：为每个剧集组生成详细的单集大纲，包含具体情节和转折点
-8. **剧本撰写 (episode_script)**：基于分集大纲生成完整的剧本内容，包含对话、动作指导和场景描述（注意这部分还没有实现）
+8. **剧本撰写 (单集剧本)**：基于分集大纲生成完整的剧本内容，包含对话、动作指导和场景描述（注意这部分还没有实现）
 
 ### 一些例子
 
@@ -297,7 +297,7 @@ export function computeAvailableToolsFromCanonicalContext(
             case 'generate_单集大纲':
                 addTool(() => createEpisodeSynopsisToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
                 break;
-            case 'generate_episode_script':
+            case 'generate_单集剧本':
                 addTool(() => createEpisodeScriptToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
                 break;
         }

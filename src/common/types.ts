@@ -291,8 +291,8 @@ export type TypedJsondoc =
     | JsondocWithData<'episode_planning_input', 'v1', EpisodePlanningInputV1>
     | JsondocWithData<'单集大纲', 'v1', EpisodeSynopsisGroupV1>
     | JsondocWithData<'单集大纲_input', 'v1', EpisodeSynopsisInputV1>
-    | JsondocWithData<'episode_script', 'v1', EpisodeScriptV1>
-    | JsondocWithData<'episode_script_input', 'v1', EpisodeScriptInputV1>
+    | JsondocWithData<'单集剧本', 'v1', EpisodeScriptV1>
+    | JsondocWithData<'单集剧本_input', 'v1', EpisodeScriptInputV1>
     | JsondocWithData<'user_input', 'v1', UserInputV1>
     | JsondocWithData<'outline_title', 'v1', OutlineTitleV1>
     | JsondocWithData<'outline_genre', 'v1', OutlineGenreV1>
