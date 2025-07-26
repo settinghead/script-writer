@@ -1,9 +1,9 @@
 import type { LLMTemplate } from '../../../common/llm/types';
 
 export const episodeScriptTemplate: LLMTemplate = {
-    id: 'episode_script_generation',
-    name: 'Episode Script Generation',
-    promptTemplate: `你是专业的中国短剧编剧，专门为抖音、快手、小红书等平台创作2分钟短剧剧本。
+  id: 'episode_script_generation',
+  name: 'Episode Script Generation',
+  promptTemplate: `你是专业的中国短剧编剧，专门为抖音、快手、小红书等平台创作2分钟短剧剧本。
 
 ## 参考资料
 
@@ -110,6 +110,6 @@ export const episodeScriptTemplate: LLMTemplate = {
 
 ## 生成参数
 %%params%%`,
-    outputFormat: 'json',
-    variables: ['jsondocs', 'params']
+  outputFormat: 'json',
+  variables: ['jsondocs', 'params']
 }; 
