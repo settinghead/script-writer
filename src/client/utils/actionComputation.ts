@@ -11,7 +11,6 @@ import {
 } from './workflowTypes';
 import { getComponentById } from './componentRegistry';
 import {
-    computeCanonicalJsondocsFromLineage,
     type CanonicalJsondocContext
 } from '../../common/canonicalJsondocLogic';
 
@@ -331,17 +330,44 @@ function computeUnifiedContext(
 
 
 
-    // *** USE CANONICAL JSONDOC LOGIC ***
-    const canonicalContext = computeCanonicalJsondocsFromLineage(
-        projectData.lineageGraph,
-        projectData.jsondocs,
-        projectData.transforms,
-        projectData.humanTransforms,
-        projectData.transformInputs,
-        projectData.transformOutputs
-    );
+    // *** USE PRE-COMPUTED CANONICAL JSONDOC CONTEXT ***
+    const canonicalContext = projectData.canonicalContext === "pending" || projectData.canonicalContext === "error"
+        ? null
+        : projectData.canonicalContext;
 
-
+    if (!canonicalContext) {
+        return {
+            hasActiveTransforms: false,
+            isManualPath: false,
+            canonicalContext: {
+                canonicalBrainstormIdea: null,
+                canonicalBrainstormCollection: null,
+                canonicalOutlineSettings: null,
+                canonicalChronicles: null,
+                canonicalEpisodePlanning: null,
+                canonicalBrainstormInput: null,
+                canonicalEpisodeSynopsisList: [],
+                canonicalEpisodeScriptsList: [],
+                workflowNodes: [],
+                hasActiveTransforms: false,
+                activeTransforms: [],
+                lineageGraph: { nodes: new Map(), edges: new Map(), rootNodes: new Set(), paths: new Map() },
+                rootNodes: [],
+                leafNodes: []
+            },
+            canonicalBrainstormJsondocs: [],
+            brainstormInput: null,
+            brainstormIdeas: [],
+            chosenIdea: null,
+            outlineSettings: null,
+            canonicalChronicles: null,
+            canonicalEpisodePlanning: null,
+            lineageGraph: null,
+            transformInputs: [],
+            jsondocs: [],
+            actions: []
+        };
+    }
 
     // Use the lineage-based computation for actions and stage detection
     const lineageResult = computeActionsFromLineage(

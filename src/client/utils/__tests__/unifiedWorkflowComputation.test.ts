@@ -138,6 +138,22 @@ const createMockProjectData = (overrides: Partial<ProjectDataContextType> = {}):
         paths: new Map(),
         rootNodes: new Set()
     },
+    canonicalContext: {
+        canonicalBrainstormIdea: null,
+        canonicalBrainstormCollection: null,
+        canonicalOutlineSettings: null,
+        canonicalChronicles: null,
+        canonicalEpisodePlanning: null,
+        canonicalBrainstormInput: null,
+        canonicalEpisodeSynopsisList: [],
+        canonicalEpisodeScriptsList: [],
+        workflowNodes: [],
+        hasActiveTransforms: false,
+        activeTransforms: [],
+        lineageGraph: { nodes: new Map(), edges: new Map(), rootNodes: new Set(), paths: new Map() },
+        rootNodes: [],
+        leafNodes: []
+    },
     getIdeaCollections: () => [],
     getJsondocAtPath: () => null,
     getLatestVersionForPath: () => null,
@@ -172,39 +188,36 @@ const createMockProjectData = (overrides: Partial<ProjectDataContextType> = {}):
 describe('Unified Workflow Computation', () => {
     describe('computeWorkflowParameters', () => {
         it('should compute parameters for active project', () => {
+            const brainstormInputJsondoc = {
+                id: 'brainstorm-input-1',
+                schema_type: 'brainstorm_input_params' as const,
+                schema_version: 'v1' as const,
+                data: '{"platform": "douyin", "requirements": "test"}',
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-01-01T00:00:00Z',
+                project_id: 'test-project',
+                type: 'user_input' as const,
+                type_version: 'v1',
+                origin_type: 'user_input' as const
+            };
+
             const mockProjectData = createMockProjectData({
-                jsondocs: [{
-                    id: 'brainstorm-input-1',
-                    schema_type: 'brainstorm_input_params',
-                    data: '{"platform": "douyin", "requirements": "test"}',
-                    created_at: '2024-01-01T00:00:00Z'
-                }] as any,
-                transforms: [{
-                    id: 'transform-1',
-                    status: 'completed',
-                    type: 'llm',
-                    project_id: 'test-project',
-                    created_at: '2024-01-01T00:00:00Z'
-                }] as any,
-                // Provide a proper lineage graph with the brainstorm input jsondoc
-                lineageGraph: {
-                    nodes: new Map([
-                        ['brainstorm-input-1', {
-                            type: 'jsondoc' as const,
-                            jsondocId: 'brainstorm-input-1',
-                            isLeaf: true,
-                            depth: 0,
-                            jsondocType: 'brainstorm_input_params',
-                            sourceTransform: 'none',
-                            schemaType: 'brainstorm_input_params',
-                            originType: 'user_input',
-                            jsondoc: { id: 'brainstorm-input-1' } as any,
-                            createdAt: '2024-01-01T00:00:00Z'
-                        }]
-                    ]),
-                    edges: new Map(),
-                    paths: new Map(),
-                    rootNodes: new Set(['brainstorm-input-1'])
+                jsondocs: [brainstormInputJsondoc],
+                canonicalContext: {
+                    canonicalBrainstormIdea: null,
+                    canonicalBrainstormCollection: null,
+                    canonicalOutlineSettings: null,
+                    canonicalChronicles: null,
+                    canonicalEpisodePlanning: null,
+                    canonicalBrainstormInput: brainstormInputJsondoc,
+                    canonicalEpisodeSynopsisList: [],
+                    canonicalEpisodeScriptsList: [],
+                    workflowNodes: [],
+                    hasActiveTransforms: false,
+                    activeTransforms: [],
+                    lineageGraph: { nodes: new Map(), edges: new Map(), rootNodes: new Set(), paths: new Map() },
+                    rootNodes: [],
+                    leafNodes: []
                 }
             });
 
@@ -219,52 +232,36 @@ describe('Unified Workflow Computation', () => {
 
     describe('computeUnifiedWorkflowState', () => {
         it('should compute complete unified state', () => {
+            const brainstormInputJsondoc = {
+                id: 'brainstorm-input-1',
+                schema_type: 'brainstorm_input_params' as const,
+                schema_version: 'v1' as const,
+                data: '{"platform": "douyin", "requirements": "test"}',
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-01-01T00:00:00Z',
+                project_id: 'test-project',
+                type: 'user_input' as const,
+                type_version: 'v1',
+                origin_type: 'user_input' as const
+            };
+
             const mockProjectData = createMockProjectData({
-                jsondocs: [
-                    {
-                        id: 'brainstorm-input-1',
-                        schema_type: 'brainstorm_input_params',
-                        data: '{"platform": "douyin", "requirements": "test"}',
-                        created_at: '2024-01-01T00:00:00Z'
-                    },
-                    {
-                        id: 'ideas-1',
-                        schema_type: '灵感创意',
-                        data: '{"title": "Test Idea", "body": "Test body"}',
-                        created_at: '2024-01-01T00:00:00Z'
-                    }
-                ] as any,
-                transformInputs: [] as any,
-                lineageGraph: {
-                    nodes: new Map([
-                        ['brainstorm-input-1', {
-                            type: 'jsondoc' as const,
-                            jsondocId: 'brainstorm-input-1',
-                            isLeaf: false,
-                            depth: 0,
-                            jsondocType: 'brainstorm_input_params',
-                            sourceTransform: 'none',
-                            schemaType: 'brainstorm_input_params',
-                            originType: 'user_input',
-                            jsondoc: { id: 'brainstorm-input-1' } as any,
-                            createdAt: '2024-01-01T00:00:00Z'
-                        }],
-                        ['ideas-1', {
-                            type: 'jsondoc' as const,
-                            jsondocId: 'ideas-1',
-                            isLeaf: true,
-                            depth: 1,
-                            jsondocType: '灵感创意',
-                            sourceTransform: 'none',
-                            schemaType: '灵感创意',
-                            originType: 'ai_generated',
-                            jsondoc: { id: 'ideas-1' } as any,
-                            createdAt: '2024-01-01T00:00:00Z'
-                        }]
-                    ]),
-                    edges: new Map(),
-                    paths: new Map(),
-                    rootNodes: new Set(['brainstorm-input-1'])
+                jsondocs: [brainstormInputJsondoc],
+                canonicalContext: {
+                    canonicalBrainstormIdea: null,
+                    canonicalBrainstormCollection: null,
+                    canonicalOutlineSettings: null,
+                    canonicalChronicles: null,
+                    canonicalEpisodePlanning: null,
+                    canonicalBrainstormInput: brainstormInputJsondoc,
+                    canonicalEpisodeSynopsisList: [],
+                    canonicalEpisodeScriptsList: [],
+                    workflowNodes: [],
+                    hasActiveTransforms: false,
+                    activeTransforms: [],
+                    lineageGraph: { nodes: new Map(), edges: new Map(), rootNodes: new Set(), paths: new Map() },
+                    rootNodes: [],
+                    leafNodes: []
                 }
             });
 
@@ -276,51 +273,36 @@ describe('Unified Workflow Computation', () => {
         });
 
         it('should handle different workflow stages', () => {
+            const brainstormInputJsondoc = {
+                id: 'brainstorm-input-1',
+                schema_type: 'brainstorm_input_params' as const,
+                schema_version: 'v1' as const,
+                data: '{"platform": "douyin", "requirements": "test"}',
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-01-01T00:00:00Z',
+                project_id: 'test-project',
+                type: 'user_input' as const,
+                type_version: 'v1',
+                origin_type: 'user_input' as const
+            };
+
             const mockProjectData = createMockProjectData({
-                jsondocs: [
-                    {
-                        id: 'brainstorm-input-1',
-                        schema_type: 'brainstorm_input_params',
-                        data: '{"platform": "douyin", "requirements": "test"}',
-                        created_at: '2024-01-01T00:00:00Z'
-                    },
-                    {
-                        id: 'ideas-1',
-                        schema_type: '灵感创意',
-                        data: '{"title": "Test Idea", "body": "Test body"}',
-                        created_at: '2024-01-01T00:00:00Z'
-                    }
-                ] as any,
-                lineageGraph: {
-                    nodes: new Map([
-                        ['brainstorm-input-1', {
-                            type: 'jsondoc' as const,
-                            jsondocId: 'brainstorm-input-1',
-                            isLeaf: false,
-                            depth: 0,
-                            jsondocType: 'brainstorm_input_params',
-                            sourceTransform: 'none',
-                            schemaType: 'brainstorm_input_params',
-                            originType: 'user_input',
-                            jsondoc: { id: 'brainstorm-input-1' } as any,
-                            createdAt: '2024-01-01T00:00:00Z'
-                        }],
-                        ['ideas-1', {
-                            type: 'jsondoc' as const,
-                            jsondocId: 'ideas-1',
-                            isLeaf: true,
-                            depth: 1,
-                            jsondocType: '灵感创意',
-                            sourceTransform: 'none',
-                            schemaType: '灵感创意',
-                            originType: 'ai_generated',
-                            jsondoc: { id: 'ideas-1' } as any,
-                            createdAt: '2024-01-01T00:00:00Z'
-                        }]
-                    ]),
-                    edges: new Map(),
-                    paths: new Map(),
-                    rootNodes: new Set(['brainstorm-input-1'])
+                jsondocs: [brainstormInputJsondoc],
+                canonicalContext: {
+                    canonicalBrainstormIdea: null,
+                    canonicalBrainstormCollection: null,
+                    canonicalOutlineSettings: null,
+                    canonicalChronicles: null,
+                    canonicalEpisodePlanning: null,
+                    canonicalBrainstormInput: brainstormInputJsondoc,
+                    canonicalEpisodeSynopsisList: [],
+                    canonicalEpisodeScriptsList: [],
+                    workflowNodes: [],
+                    hasActiveTransforms: false,
+                    activeTransforms: [],
+                    lineageGraph: { nodes: new Map(), edges: new Map(), rootNodes: new Set(), paths: new Map() },
+                    rootNodes: [],
+                    leafNodes: []
                 }
             });
 

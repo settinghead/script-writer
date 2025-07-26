@@ -366,6 +366,17 @@ describe('Brainstorm Edit Chain Integration Test', () => {
 
         // Import the unified workflow computation function
         const { computeUnifiedWorkflowState } = await import('../../client/utils/actionComputation.js');
+        const { computeCanonicalJsondocsFromLineage } = await import('../../common/canonicalJsondocLogic.js');
+
+        // Compute canonical context for the mock data
+        const canonicalContext = computeCanonicalJsondocsFromLineage(
+            lineageGraph,
+            jsondocs,
+            transforms,
+            humanTransforms,
+            transformInputs,
+            transformOutputs
+        );
 
         // Create mock project data context with minimal required properties
         const mockProjectData = {
@@ -375,6 +386,7 @@ describe('Brainstorm Edit Chain Integration Test', () => {
             transformInputs,
             transformOutputs,
             lineageGraph, // Add the lineage graph that was built earlier
+            canonicalContext, // Add the computed canonical context
             isLoading: false,
             isError: false,
             error: null
@@ -444,19 +456,11 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         // Create a mock with running transforms
         const mockProjectDataWithActiveTransforms = {
             ...mockProjectData,
-            transforms: [
-                ...transforms,
-                {
-                    id: 'active-transform',
-                    type: 'llm',
-                    status: 'running',
-                    created_at: new Date().toISOString(),
-                    project_id: 'test-project',
-                    transform_name: 'test-transform',
-                    user_id: 'test-user',
-                    updated_at: new Date().toISOString()
-                }
-            ]
+            canonicalContext: {
+                ...canonicalContext,
+                hasActiveTransforms: true,
+                activeTransforms: [transforms[0]] // Include first transform as active
+            }
         };
 
         // Test that hasActiveTransforms is correctly detected
