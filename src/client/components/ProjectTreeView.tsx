@@ -630,7 +630,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             // Parse navigation target to determine section and subId
             if (node.navigationTarget.startsWith('#episode-')) {
                 const targetId = node.navigationTarget.substring(1); // Remove '#'
-                
+
                 // Check if it's a sub-item (synopsis or script)
                 if (targetId.includes('-synopsis') || targetId.includes('-script')) {
                     // Extract episode number and type
@@ -638,7 +638,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                     if (match) {
                         const episodeNumber = match[1];
                         const type = match[2];
-                        
+
                         // Scroll to the specific episode content with sub-type
                         scrollTo('episode-content', `episode-${episodeNumber}-${type}`);
                     }

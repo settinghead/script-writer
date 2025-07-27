@@ -3,6 +3,7 @@ import { Card, Typography, Space, Tag, Divider } from 'antd';
 import { ElectricJsondoc } from '../../../common/types';
 import { JsondocDisplayWrapper } from '../../transform-jsondoc-framework/components/JsondocDisplayWrapper';
 import EditableEpisodeScriptForm from './EditableEpisodeScriptForm';
+import { useScrollSync } from '../../contexts/ScrollSyncContext';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -27,6 +28,8 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
     synopsisItems,
     scriptItems
 }) => {
+    const { registerScrollHandler, unregisterScrollHandler } = useScrollSync();
+
     // Group items by episode number and create pairs
     const episodePairs = React.useMemo(() => {
         const pairs = new Map<number, EpisodePair>();
@@ -69,19 +72,73 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
         return Array.from(pairs.values()).sort((a, b) => a.episodeNumber - b.episodeNumber);
     }, [synopsisItems, scriptItems]);
 
+    // Register scroll handler for episode content navigation
+    React.useEffect(() => {
+        const scrollHandler = (subId?: string) => {
+            if (!subId) {
+                // Scroll to the top of episode content section
+                const element = document.getElementById('episode-content-section');
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+                return;
+            }
+
+            // Handle specific episode or episode sub-item navigation
+            if (subId.includes('-synopsis')) {
+                // Navigate to specific episode synopsis
+                const match = subId.match(/^episode-(\d+)-synopsis$/);
+                if (match) {
+                    const episodeNumber = parseInt(match[1]);
+                    const element = document.getElementById(`episode-${episodeNumber}-synopsis`);
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            } else if (subId.includes('-script')) {
+                // Navigate to specific episode script
+                const match = subId.match(/^episode-(\d+)-script$/);
+                if (match) {
+                    const episodeNumber = parseInt(match[1]);
+                    const element = document.getElementById(`episode-${episodeNumber}-script`);
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            } else if (subId.startsWith('episode-')) {
+                // Navigate to specific episode (general)
+                const match = subId.match(/^episode-(\d+)$/);
+                if (match) {
+                    const episodeNumber = parseInt(match[1]);
+                    const element = document.getElementById(`episode-${episodeNumber}`);
+                    if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            }
+        };
+
+        registerScrollHandler('episode-content', scrollHandler);
+
+        return () => {
+            unregisterScrollHandler('episode-content');
+        };
+    }, [registerScrollHandler, unregisterScrollHandler]);
+
     if (episodePairs.length === 0) {
         return null;
     }
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }} size="large">
+        <Space direction="vertical" style={{ width: '100%' }} size="large" id="episode-content-section">
             <Title level={3}>分集内容</Title>
 
             {episodePairs.map((pair) => (
-                <div key={pair.episodeNumber}>
+                <div key={pair.episodeNumber} id={`episode-${pair.episodeNumber}`}>
                     {/* Episode Synopsis */}
                     {pair.synopsis && (
                         <Card
+                            id={`episode-${pair.episodeNumber}-synopsis`}
                             title={
                                 <Space>
                                     <span>第{pair.episodeNumber}集大纲</span>
@@ -170,7 +227,7 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
 
                     {/* Episode Script */}
                     {pair.script && (
-                        <div style={{ marginBottom: '24px' }}>
+                        <div style={{ marginBottom: '24px' }} id={`episode-${pair.episodeNumber}-script`}>
                             <JsondocDisplayWrapper
                                 jsondoc={pair.script.jsondoc}
                                 isEditable={pair.script.isEditable}
