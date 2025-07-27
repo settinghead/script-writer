@@ -218,8 +218,8 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     instantiationFunction: 'createOutlineSettingsFromOutlineSettings'
   },
 
-  'edit_chronicles': {
-    name: 'edit_chronicles',
+  'edit_时间顺序大纲': {
+    name: 'edit_时间顺序大纲',
     description: 'Edit chronicles document with whole-document editing',
     sourceJsondocType: 'chronicles',
     targetJsondocType: 'chronicles',

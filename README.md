@@ -1671,7 +1671,7 @@ fetch('/api/chat', {
 # Create editable chronicle stage
 POST /api/jsondocs/chronicles-jsondoc-id/human-transform
 {
-  "transformName": "edit_chronicles_stage",
+  "transformName": "edit_时间顺序大纲_stage",
   "derivationPath": "$.stages[0]",
   "fieldUpdates": {}
 }

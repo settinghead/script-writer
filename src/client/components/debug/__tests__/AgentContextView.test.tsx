@@ -70,7 +70,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
         if (hasOutlineSettings) {
             availableTools.push('edit_剧本设定');
         }
-        availableTools.push('edit_chronicles');
+        availableTools.push('edit_时间顺序大纲');
 
         // Add next generation tool
         if (!hasEpisodePlanning) {
@@ -87,7 +87,7 @@ function computeAvailableToolsFromCanonicalContext(context: CanonicalJsondocCont
             availableTools.push('edit_剧本设定');
         }
         if (hasChronicles) {
-            availableTools.push('edit_chronicles');
+            availableTools.push('edit_时间顺序大纲');
         }
         availableTools.push('edit_分集结构');
 
@@ -222,7 +222,7 @@ describe('AgentContextView Tool Filtering', () => {
             expect(tools).toEqual([
                 'edit_灵感创意',
                 'edit_剧本设定',
-                'edit_chronicles',
+                'edit_时间顺序大纲',
                 'edit_分集结构',
                 'generate_单集大纲'
             ]);

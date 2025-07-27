@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-export type CurrentSection = 'ideas' | '剧本设定' | 'chronicles' | 'episode-planning' | 'episode-synopsis' | null;
+export type CurrentSection = 'ideas' | 'ideation-edit' | '剧本设定' | 'chronicles' | 'episode-planning' | 'episode-content' | null;
 
 /**
  * Hook to detect which section is currently visible in the viewport

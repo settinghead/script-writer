@@ -157,7 +157,7 @@ const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
             return {
                 requirements: '按时间顺序展开故事，注重情感节拍和冲突设置'
             };
-        case 'edit_chronicles':
+        case 'edit_时间顺序大纲':
             return {
                 editRequirements: '调整时间线，优化故事发展节奏'
             };
@@ -195,7 +195,7 @@ const getExpectedJsondocTypes = (toolName: string): string[] => {
             return ['剧本设定'];
         case 'generate_chronicles':
             return ['剧本设定', 'brainstorm_collection'];
-        case 'edit_chronicles':
+        case 'edit_时间顺序大纲':
             return ['chronicles'];
         case 'generate_分集结构':
             return ['chronicles', '剧本设定'];

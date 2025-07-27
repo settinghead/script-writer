@@ -238,7 +238,7 @@ function generateAISDKToolFormat(toolName: string): any {
             },
             required: ['jsondocs', 'requirements']
         },
-        'edit_chronicles': {
+        'edit_时间顺序大纲': {
             type: 'object',
             properties: {
                 jsondocs: {

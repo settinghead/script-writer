@@ -91,7 +91,7 @@ export function createAdminRoutes(
                         outputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.ChroniclesOutputSchema)
                     }
                 },
-                'edit_chronicles': {
+                'edit_时间顺序大纲': {
                     templateName: 'chronicles_edit_diff',
                     outputJsondocType: 'chronicles',
                     schemas: {
@@ -272,7 +272,7 @@ export function createAdminRoutes(
                     category: '结构生成'
                 },
                 {
-                    value: 'edit_chronicles',
+                    value: 'edit_时间顺序大纲',
                     label: '编辑时间顺序大纲',
                     description: '修改现有的时间顺序大纲内容',
                     category: '内容编辑'

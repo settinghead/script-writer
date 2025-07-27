@@ -4127,7 +4127,7 @@ availableTools = [
 availableTools = [
   'edit_灵感创意',
   'edit_剧本设定', 
-  'edit_chronicles',
+  'edit_时间顺序大纲',
   'generate_分集结构'
 ]
 ```
@@ -4138,7 +4138,7 @@ availableTools = [
 availableTools = [
   'edit_灵感创意',
   'edit_剧本设定',
-  'edit_chronicles', 
+  'edit_时间顺序大纲', 
   'edit_分集结构',
   'generate_单集大纲'
 ]

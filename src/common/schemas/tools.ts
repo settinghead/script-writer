@@ -60,7 +60,7 @@ export const ALL_AGENT_TOOLS: ToolDefinition[] = [
         description: '生成时间顺序大纲'
     },
     {
-        name: 'edit_chronicles',
+        name: 'edit_时间顺序大纲',
         category: 'chronicles',
         description: '编辑时间顺序大纲'
     },
@@ -175,7 +175,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
         if (stage.hasOutlineSettings) {
             tools.push('edit_剧本设定');
         }
-        tools.push('edit_chronicles');
+        tools.push('edit_时间顺序大纲');
 
         // Add next generation tool
         if (!stage.hasEpisodePlanning) {
@@ -192,7 +192,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
             tools.push('edit_剧本设定');
         }
         if (stage.hasChronicles) {
-            tools.push('edit_chronicles');
+            tools.push('edit_时间顺序大纲');
         }
         tools.push('edit_分集结构');
 
@@ -210,7 +210,7 @@ export const getWorkflowTools = (stage: WorkflowStage): string[] => {
             tools.push('edit_剧本设定');
         }
         if (stage.hasChronicles) {
-            tools.push('edit_chronicles');
+            tools.push('edit_时间顺序大纲');
         }
         if (stage.hasEpisodePlanning) {
             tools.push('edit_分集结构');
