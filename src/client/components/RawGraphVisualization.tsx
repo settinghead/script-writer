@@ -236,7 +236,7 @@ const JsondocNode: React.FC<{
                             {(() => {
                                 try {
                                     const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
-                                    
+
                                     // For episode-based content, prioritize episode number
                                     if (jsondoc.schema_type === '单集大纲' || jsondoc.schema_type === '单集剧本') {
                                         const episodeNumber = data.episodeNumber || data.episode_number || '';
@@ -244,13 +244,13 @@ const JsondocNode: React.FC<{
                                             return `第${episodeNumber}集`;
                                         }
                                     }
-                                    
+
                                     // For other content, try to use title
                                     const title = data.title || data.synopsis || '';
                                     if (title) {
                                         return title.length > 20 ? `${title.substring(0, 20)}...` : title;
                                     }
-                                    
+
                                     // Fallback to schema type
                                     return jsondoc.schema_type;
                                 } catch (error) {
@@ -316,23 +316,11 @@ const JsondocNode: React.FC<{
                                         preview = 'JSON修改提议';
                                     }
                                 } else if (jsondoc.schema_type === '单集大纲') {
-                                    const episodeNumber = data.episodeNumber || data.episode_number || '';
                                     const title = data.title || data.synopsis || '';
-                                    if (episodeNumber) {
-                                        const truncatedTitle = title && title.length > 30 ? title.substring(0, 30) + '...' : title;
-                                        preview = `第${episodeNumber}集${truncatedTitle ? '\n' + truncatedTitle : ''}`;
-                                    } else {
-                                        preview = title.length > 25 ? `${title.substring(0, 25)}...` : title || '单集大纲';
-                                    }
+                                    preview = title ? (title.length > 40 ? `${title.substring(0, 40)}...` : title) : '单集大纲';
                                 } else if (jsondoc.schema_type === '单集剧本') {
-                                    const episodeNumber = data.episodeNumber || data.episode_number || '';
                                     const title = data.title || data.synopsis || '';
-                                    if (episodeNumber) {
-                                        const truncatedTitle = title && title.length > 30 ? title.substring(0, 30) + '...' : title;
-                                        preview = `第${episodeNumber}集${truncatedTitle ? '\n' + truncatedTitle : ''}`;
-                                    } else {
-                                        preview = title.length > 25 ? `${title.substring(0, 25)}...` : title || '单集剧本';
-                                    }
+                                    preview = title ? (title.length > 40 ? `${title.substring(0, 40)}...` : title) : '单集剧本';
                                 } else {
                                     // Generic preview for other types
                                     const keys = Object.keys(data);
