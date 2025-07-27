@@ -262,7 +262,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                                                         style={{
                                                             cursor: 'pointer',
                                                             border: selectedItems.includes(item.id) ? '2px solid #1890ff' : '1px solid #d9d9d9',
-                                                            backgroundColor: selectedItems.includes(item.id) ? '#f6ffff' : 'transparent'
+                                                            backgroundColor: selectedItems.includes(item.id) ? '#ffffff' : '#ffffff'
                                                         }}
                                                         onClick={() => handleItemChange(item.id, !selectedItems.includes(item.id))}
                                                         hoverable
