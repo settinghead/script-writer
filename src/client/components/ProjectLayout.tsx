@@ -243,8 +243,8 @@ const MobileRightDrawer: React.FC<{
                         children: (
                             <div style={{
                                 padding: '12px',
-                                height: 'calc(100vh - 200px)', // Leave space for drawer header and other content
-                                overflow: 'hidden' // Let ProjectTreeView handle its own scrolling
+                                height: 'calc(100vh - 150px)', // Leave space for drawer header and other content
+                                overflow: 'auto' // Let ProjectTreeView handle its own scrolling
                             }}>
                                 <ProjectTreeView width={280} />
                             </div>
@@ -355,8 +355,8 @@ const DesktopRightSidebar: React.FC<{
                                         children: (
                                             <div style={{
                                                 padding: '12px',
-                                                height: 'calc(100vh - 200px)', // Leave space for tabs and other content
-                                                overflow: 'hidden' // Let ProjectTreeView handle its own scrolling
+                                                height: 'calc(100vh - 150px)', // Leave space for tabs and other content
+                                                overflow: 'auto' // Let ProjectTreeView handle its own scrolling
                                             }}>
                                                 <ProjectTreeView width={width - 48} />
                                             </div>
