@@ -23,6 +23,10 @@ const { Text } = Typography;
 
 // Compact tree styles
 const compactTreeStyles = `
+.compact-tree {
+    height: 100%;
+}
+
 .compact-tree .ant-tree-treenode {
     padding: 2px 0 !important;
 }
@@ -54,32 +58,6 @@ const compactTreeStyles = `
 
 .compact-tree .ant-tree-title {
     font-size: 14px !important;
-}
-
-.compact-tree .ant-tree-child-tree {
-    margin: 0 !important;
-}
-
-.compact-tree .ant-tree-child-tree .ant-tree-treenode {
-    padding: 0 !important;
-    margin: 0 !important;
-    line-height: 1 !important;
-}
-
-.compact-tree .ant-tree-child-tree .ant-tree-node-content-wrapper {
-    padding: 1px 4px !important;
-    min-height: 14px !important;
-    line-height: 1 !important;
-    margin: 0 !important;
-    height: 14px !important;
-}
-
-.compact-tree .ant-tree-child-tree .ant-tree-title {
-    font-size: 13px !important;
-    line-height: 1 !important;
-    height: 14px !important;
-    display: flex !important;
-    align-items: center !important;
 }
 `;
 
@@ -525,73 +503,18 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                 ...allScripts.map(s => s.episodeNumber)
             ])].sort((a, b) => a - b);
 
-            // Build episode children nodes with sub-nodes for synopsis and script
+            // Build episode children nodes - simplified without sub-children
             const episodeChildren: ProjectTreeNode[] = episodeNumbers.map((num) => {
                 const synopsis = allEpisodes.find(e => e.episodeNumber === num);
                 const script = allScripts.find(s => s.episodeNumber === num);
                 const episodeId = `episode-${num}`;
                 const isEpisodeHighlighted = currentPosition?.section === 'episode-content' &&
-                    currentPosition?.subId?.startsWith(episodeId);
+                    currentPosition?.subId === episodeId;
 
                 // Get episode title from synopsis data
                 let episodeTitle = `第${num}集`;
                 if (synopsis && synopsis.title) {
                     episodeTitle = `第${num}集: ${synopsis.title}`;
-                }
-
-                // Sub-children for synopsis and script
-                const subChildren: ProjectTreeNode[] = [];
-
-                if (synopsis) {
-                    const synopsisId = `${episodeId}-synopsis`;
-                    const isSynopsisHighlighted = currentPosition?.subId === synopsisId;
-                    subChildren.push({
-                        key: synopsisId,
-                        title: (
-                            <Text style={{
-                                color: isSynopsisHighlighted ? '#ffffff' : '#ccc',
-                                fontWeight: isSynopsisHighlighted ? 600 : 400,
-                                padding: isSynopsisHighlighted ? '2px 6px' : '0',
-                                borderRadius: '4px',
-                                background: isSynopsisHighlighted ?
-                                    'linear-gradient(135deg, rgba(24, 144, 255, 0.3) 0%, rgba(64, 169, 255, 0.2) 100%)' :
-                                    'none',
-                                border: isSynopsisHighlighted ? '1px solid rgba(24, 144, 255, 0.5)' : 'none',
-                                transition: 'all 0.2s ease-in-out',
-                                display: 'inline-block'
-                            }}>
-                                📖 大纲
-                            </Text>
-                        ),
-                        selectable: true,
-                        navigationTarget: `#${synopsisId}`,
-                    });
-                }
-
-                if (script) {
-                    const scriptId = `${episodeId}-script`;
-                    const isScriptHighlighted = currentPosition?.subId === scriptId;
-                    subChildren.push({
-                        key: scriptId,
-                        title: (
-                            <Text style={{
-                                color: isScriptHighlighted ? '#ffffff' : '#ccc',
-                                fontWeight: isScriptHighlighted ? 600 : 400,
-                                padding: isScriptHighlighted ? '2px 6px' : '0',
-                                borderRadius: '4px',
-                                background: isScriptHighlighted ?
-                                    'linear-gradient(135deg, rgba(24, 144, 255, 0.3) 0%, rgba(64, 169, 255, 0.2) 100%)' :
-                                    'none',
-                                border: isScriptHighlighted ? '1px solid rgba(24, 144, 255, 0.5)' : 'none',
-                                transition: 'all 0.2s ease-in-out',
-                                display: 'inline-block'
-                            }}>
-                                📝 剧本
-                            </Text>
-                        ),
-                        selectable: true,
-                        navigationTarget: `#${scriptId}`,
-                    });
                 }
 
                 return {
@@ -630,9 +553,8 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                             </Text>
                         </div>
                     ),
-                    selectable: subChildren.length === 0,
-                    navigationTarget: subChildren.length === 0 ? `#${episodeId}` : undefined,
-                    children: subChildren.length > 0 ? subChildren : undefined,
+                    selectable: true,
+                    navigationTarget: `#${episodeId}`,
                 };
             });
 
@@ -707,21 +629,8 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             if (node.navigationTarget.startsWith('#episode-')) {
                 const targetId = node.navigationTarget.substring(1); // Remove '#'
 
-                // Check if it's a sub-item (synopsis or script)
-                if (targetId.includes('-synopsis') || targetId.includes('-script')) {
-                    // Extract episode number and type
-                    const match = targetId.match(/^episode-(\d+)-(synopsis|script)$/);
-                    if (match) {
-                        const episodeNumber = match[1];
-                        const type = match[2];
-
-                        // Scroll to the specific episode content with sub-type
-                        scrollTo('episode-content', `episode-${episodeNumber}-${type}`);
-                    }
-                } else {
-                    // Regular episode navigation
-                    scrollTo('episode-content', targetId);
-                }
+                // Simple episode navigation - scroll to episode content
+                scrollTo('episode-content', targetId);
             } else {
                 // Section-level navigation
                 const section = node.navigationTarget.substring(1); // Remove '#'
@@ -791,41 +700,23 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
     }
 
     return (
-        <div
-            style={{
-                width,
-                height: '100%',
-                background: 'rgba(0, 0, 0, 0.6)',
-                backdropFilter: 'blur(8px)',
-                borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-                padding: '16px 8px',
-                overflow: 'auto',
-                display: 'flex',
-                flexDirection: 'column'
-            }}
-        >
+        <>
             <style>{compactTreeStyles}</style>
-            <div style={{
-                flex: 1,
-                overflow: 'auto',
-                minHeight: 0 // Important for flex child to be scrollable
-            }}>
-                <Tree
-                    treeData={treeData}
-                    showIcon={true}
-                    selectable={true}
-                    onSelect={handleSelect}
-                    selectedKeys={selectedKeys}
-                    expandedKeys={expandedKeys}
-                    onExpand={setExpandedKeys}
-                    style={{
-                        background: 'transparent',
-                        color: '#fff'
-                    }}
-                    className="compact-tree"
-                />
-            </div>
-        </div>
+            <Tree
+                treeData={treeData}
+                showIcon={true}
+                selectable={true}
+                onSelect={handleSelect}
+                selectedKeys={selectedKeys}
+                expandedKeys={expandedKeys}
+                onExpand={setExpandedKeys}
+                style={{
+                    background: 'transparent',
+                    color: '#fff'
+                }}
+                className="compact-tree"
+            />
+        </>
     );
 };
 
