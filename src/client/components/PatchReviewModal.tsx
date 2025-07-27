@@ -294,21 +294,40 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
     const [isProcessing, setIsProcessing] = useState(false);
     const [modalVisible, setModalVisible] = useState(true);
 
-    // Reset modal visibility when new patches arrive
+    // Combined effect for modal visibility and patch selection
     useEffect(() => {
-        if (patches && patches.length > 0) {
-            setModalVisible(true);
-            console.log(`[PatchReviewModal] New patches detected: ${patches.length}, showing modal`);
-        }
-    }, [patches?.length]); // Only depend on patch count to avoid excessive re-renders
+        if (!patches || patches.length === 0) return;
 
-    // Auto-select all patches when they load
-    useEffect(() => {
-        if (patches && patches.length > 0 && selectedPatches.size === 0) {
-            const allPatchIds = new Set(patches.map(patch => patch.patchJsondoc.id));
-            setSelectedPatches(allPatchIds);
-        }
-    }, [patches, selectedPatches.size]);
+        // Show modal if there are patches
+        setModalVisible(true);
+
+        setSelectedPatches(prev => {
+            const currentIds = patches.map(patch => patch.patchJsondoc.id);
+
+            // Initial load: select all if no selections yet
+            if (prev.size === 0 && currentIds.length > 0) {
+                return new Set(currentIds);
+            }
+
+            const newSet = new Set(prev);
+
+            // Add new patches as selected
+            currentIds.forEach(id => {
+                if (!prev.has(id)) {
+                    newSet.add(id);
+                }
+            });
+
+            // Remove stale IDs no longer in patches
+            prev.forEach(id => {
+                if (!currentIds.includes(id)) {
+                    newSet.delete(id);
+                }
+            });
+
+            return newSet;
+        });
+    }, [patches]);
 
     // Handle patch selection
     const handlePatchSelection = useCallback((patchId: string, selected: boolean) => {
@@ -325,13 +344,15 @@ export const PatchReviewModal: React.FC<PatchReviewModalProps> = ({ projectId })
 
     // Handle select all/none
     const handleSelectAll = useCallback((selectAll: boolean) => {
-        if (patches && patches.length > 0) {
+        if (!patches) return;
+
+        setSelectedPatches(() => {
             if (selectAll) {
-                setSelectedPatches(new Set(patches.map(patch => patch.patchJsondoc.id)));
+                return new Set(patches.map(patch => patch.patchJsondoc.id));
             } else {
-                setSelectedPatches(new Set());
+                return new Set();
             }
-        }
+        });
     }, [patches]);
 
     // Handle approval
