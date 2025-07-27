@@ -16,7 +16,7 @@ import { generateCanonicalContentStructure } from '../utils/canonicalContentStru
 import type { GeneralAgentRequest } from '../transform-jsondoc-framework/AgentService';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
 import { getParticleSearchToolNames, getWorkflowTools, type WorkflowStage } from '../../common/schemas/tools';
-import { getParticleSystem } from './ParticleSystemInitializer';
+import { getParticleSystem } from '../transform-jsondoc-framework/particles/ParticleSystemInitializer';
 
 // Simplified to just general type
 export type RequestType = 'general';

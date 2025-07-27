@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { UnifiedParticleSearch } from '../UnifiedParticleSearch';
+import { UnifiedParticleSearch } from '../../transform-jsondoc-framework/particles/UnifiedParticleSearch';
 import type { Kysely } from 'kysely';
 import type { DB } from '../../database/types';
-import type { EmbeddingService } from '../EmbeddingService';
-import type { ParticleService } from '../ParticleService';
+import type { EmbeddingService } from '../../transform-jsondoc-framework/EmbeddingService';
+import type { ParticleService } from '../../transform-jsondoc-framework/particles/ParticleService';
 
 // Mock the dependencies
 const mockDb = {

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { db } from '../database/connection';
-import { initializeParticleSystem } from '../services/ParticleSystemInitializer';
+import { initializeParticleSystem } from '../transform-jsondoc-framework/particles/ParticleSystemInitializer';
 import { ParticleTemplateProcessor } from '../services/ParticleTemplateProcessor';
 import { TemplateService } from '../services/templates/TemplateService';
 

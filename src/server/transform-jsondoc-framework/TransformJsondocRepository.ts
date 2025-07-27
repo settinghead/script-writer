@@ -1,18 +1,20 @@
 import { Kysely, sql } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
 import {
-    Transform,
     TransformInput,
     TransformOutput,
-    LLMPrompt,
     LLMTransform,
     HumanTransform,
-    Jsondoc,
     validateJsondocData
-} from '../../common/jsondocs';
+} from '../../common/transform-jsondoc-types';
 import type { DB } from '../database/types';
 import { buildLineageGraph, findLatestJsondoc } from '../../common/transform-jsondoc-framework/lineageResolution';
-import type { ElectricJsondoc, ElectricTransform, ElectricHumanTransform, ElectricTransformInput, ElectricTransformOutput, TypedJsondoc } from '../../common/types';
+import type { TypedJsondoc } from '../../common/types';
+import type {
+    ElectricJsondoc, ElectricTransform, ElectricHumanTransform, ElectricTransformInput,
+    ElectricTransformOutput, Transform,
+    Jsondoc
+} from '../../common/transform-jsondoc-types';
 
 export class TransformJsondocRepository {
     constructor(private db: Kysely<DB>) { }

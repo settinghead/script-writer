@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
-import { UnifiedParticleSearch } from '../services/UnifiedParticleSearch';
+import { UnifiedParticleSearch } from '../transform-jsondoc-framework/particles/UnifiedParticleSearch';
 
 // Input schema for the query tool
 export const QueryToolInputSchema = z.object({

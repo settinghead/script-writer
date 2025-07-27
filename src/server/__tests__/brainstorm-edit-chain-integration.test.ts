@@ -7,7 +7,7 @@ import type {
     ElectricHumanTransform,
     ElectricTransformInput,
     ElectricTransformOutput
-} from '../../common/types';
+} from '@/common/transform-jsondoc-types';
 
 describe('Brainstorm Edit Chain Integration Test', () => {
     it('should properly track lineage through a complete brainstorm edit chain', async () => {

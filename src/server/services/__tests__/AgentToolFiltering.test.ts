@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { computeAvailableToolsFromCanonicalContext } from '../AgentRequestBuilder';
 import type { CanonicalJsondocContext } from '../../../common/canonicalJsondocLogic';
-import type { ElectricJsondoc } from '../../../common/types';
+import type { ElectricJsondoc } from '@/common/transform-jsondoc-types';
 import type { StreamingToolDefinition } from '../../transform-jsondoc-framework/StreamingAgentFramework';
 
 // Mock tool definitions for testing

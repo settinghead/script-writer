@@ -1,4 +1,5 @@
-import { ElectricJsondoc, ProjectDataContextType, TypedJsondoc } from '../../common/types';
+import { ProjectDataContextType, TypedJsondoc } from '../../common/types';
+import { ElectricJsondoc } from '@/common/transform-jsondoc-types';
 import { SelectedJsondocAndPath } from '../stores/actionItemsStore';
 import {
     computeActionsFromLineage,

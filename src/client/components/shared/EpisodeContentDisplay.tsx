@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Typography, Space, Tag, Divider, Collapse } from 'antd';
-import { ElectricJsondoc } from '../../../common/types';
+import { ElectricJsondoc } from '@/common/transform-jsondoc-types';
 import { JsondocDisplayWrapper } from '../../transform-jsondoc-framework/components/JsondocDisplayWrapper';
 import EditableEpisodeScriptForm from './EditableEpisodeScriptForm';
 import { useScrollSync } from '../../contexts/ScrollSyncContext';

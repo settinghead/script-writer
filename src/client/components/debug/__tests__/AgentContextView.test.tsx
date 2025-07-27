@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { CanonicalJsondocContext } from '../../../../common/canonicalJsondocLogic';
-import type { ElectricJsondoc } from '../../../../common/types';
+import type { ElectricJsondoc } from '@/common/transform-jsondoc-types';
 import type { LineageGraph } from '../../../../common/transform-jsondoc-framework/lineageResolution';
 
 // Import the function we want to test - we'll need to extract it from the component

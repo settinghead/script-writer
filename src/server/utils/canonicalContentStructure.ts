@@ -1,5 +1,5 @@
 import type { CanonicalJsondocContext } from '../../common/canonicalJsondocLogic';
-import type { ElectricJsondoc } from '../../common/types';
+import type { ElectricJsondoc } from '@/common/transform-jsondoc-types';
 
 /**
  * Core function that generates canonical jsondoc content structure from canonical context

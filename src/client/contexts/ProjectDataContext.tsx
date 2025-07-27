@@ -13,7 +13,9 @@ import {
 } from '../../common/transform-jsondoc-framework/lineageResolution';
 import { computeCanonicalJsondocsFromLineage } from '../../common/canonicalJsondocLogic';
 import type {
-    ProjectDataContextType,
+    ProjectDataContextType
+} from '../../common/types';
+import type {
     ElectricJsondoc,
     ElectricTransform,
     ElectricHumanTransform,
@@ -24,7 +26,7 @@ import type {
     CreateTransformRequest,
     UpdateJsondocRequest,
     HumanTransformRequest
-} from '../../common/types';
+} from '@/common/transform-jsondoc-types';
 
 // Entity-specific mutation status tracking
 export type MutationStatus = 'idle' | 'pending' | 'success' | 'error';

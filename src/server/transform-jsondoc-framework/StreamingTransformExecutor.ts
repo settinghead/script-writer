@@ -1787,7 +1787,7 @@ export async function executeStreamingTransform<TInput, TOutput>(
     params: StreamingTransformParams<TInput, TOutput>
 ): Promise<StreamingTransformResult> {
     // Try to get global particle processor if available
-    const { getParticleTemplateProcessor } = await import('../services/ParticleSystemInitializer.js');
+    const { getParticleTemplateProcessor } = await import('./particles/ParticleSystemInitializer.js');
     const particleProcessor = getParticleTemplateProcessor() || undefined;
 
     const executor = new StreamingTransformExecutor(particleProcessor);

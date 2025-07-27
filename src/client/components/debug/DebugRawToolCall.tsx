@@ -14,7 +14,7 @@ import type {
     ElectricHumanTransform,
     ElectricTransformInput,
     ElectricTransformOutput
-} from '../../../common/types';
+} from '@/common/transform-jsondoc-types';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;

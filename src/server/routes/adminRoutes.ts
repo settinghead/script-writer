@@ -1049,7 +1049,7 @@ export function createAdminRoutes(
             console.log(`[AdminRoutes] Starting nuke & rebore for project ${projectId}`);
 
             // Get particle system
-            const { getParticleSystem } = await import('../services/ParticleSystemInitializer.js');
+            const { getParticleSystem } = await import('../transform-jsondoc-framework/particles/ParticleSystemInitializer.js');
             const particleSystem = getParticleSystem();
 
             if (!particleSystem) {

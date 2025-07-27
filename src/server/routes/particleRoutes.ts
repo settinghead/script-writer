@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { createAuthMiddleware } from '../middleware/auth';
 import { AuthDatabase } from '../database/auth';
-import { getParticleSystem } from '../services/ParticleSystemInitializer';
+import { getParticleSystem } from '../transform-jsondoc-framework/particles/ParticleSystemInitializer';
 import { db } from '../database/connection';
 
 const router = Router();

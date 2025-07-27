@@ -1,6 +1,6 @@
 import { embed, EmbedResult, embedMany } from 'ai';
 import { createHash } from 'crypto';
-import { getEmbeddingCredentials, getEmbeddingModel } from '../transform-jsondoc-framework/LLMConfig';
+import { getEmbeddingCredentials, getEmbeddingModel } from './LLMConfig';
 import { db } from '../database/connection';
 
 export interface EmbeddingResult {

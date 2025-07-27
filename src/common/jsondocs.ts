@@ -6,90 +6,7 @@ import { JsondocSchemaRegistry } from './schemas/jsondocs';
 import type { TypedJsondoc } from './types';
 
 
-// Project-related interfaces
-export interface Project {
-    id: string;
-    name: string;
-    description?: string;
-    project_type: string;
-    status: 'active' | 'archived' | 'deleted';
-    created_at: string;
-    updated_at: string;
-}
 
-export interface ProjectUser {
-    id: number;
-    project_id: string;
-    user_id: string;
-    role: 'owner' | 'collaborator' | 'viewer';
-    joined_at: string;
-}
-
-// Base jsondoc interface
-export interface Jsondoc {
-    id: string;
-    project_id: string;
-
-    // NEW: Schema and origin types
-    schema_type: TypedJsondoc['schema_type'];
-    schema_version: string;
-    origin_type: TypedJsondoc['origin_type'];
-    data: any;
-    metadata?: any;
-    created_at: string;
-}
-
-// Base transform interface
-export interface Transform {
-    id: string;
-    project_id: string;
-    type: 'llm' | 'human' | 'ai_patch' | 'human_patch_approval';
-    type_version: string;
-    status: 'running' | 'completed' | 'failed' | 'cancelled';
-    retry_count: number;
-    max_retries: number;
-    execution_context?: any;
-    tool_call_id?: string;
-    created_at: string;
-}
-
-// Transform input/output links
-export interface TransformInput {
-    id: number;
-    transform_id: string;
-    jsondoc_id: string;
-    input_role?: string;
-}
-
-export interface TransformOutput {
-    id: number;
-    transform_id: string;
-    jsondoc_id: string;
-    output_role?: string;
-}
-
-// LLM-specific data
-export interface LLMPrompt {
-    id: string;
-    transform_id: string;
-    prompt_text: string;
-    prompt_role: string;
-}
-
-export interface LLMTransform {
-    transform_id: string;
-    model_name: string;
-    model_parameters?: any;
-    raw_response?: string;
-    token_usage?: any;
-}
-
-export interface HumanTransform {
-    transform_id: string;
-    action_type: string;
-    interface_context?: any;
-    change_description?: string;
-}
 
 // ========== JSONDOC TYPE DEFINITIONS ==========
 
@@ -267,18 +184,3 @@ export interface WorkflowContextV1 {
 }
 
 
-
-export function validateJsondocData(schemaType: TypedJsondoc['schema_type'],
-    schemaVersion: TypedJsondoc['schema_version'], data: any): boolean {
-
-    // Use Zod schemas for new jsondoc types
-    if (schemaType in JsondocSchemaRegistry) {
-        const schema = JsondocSchemaRegistry[schemaType as keyof typeof JsondocSchemaRegistry];
-        const result = schema.safeParse(data);
-        return result.success;
-    }
-
-    return false;
-
-
-}

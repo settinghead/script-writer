@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { EmbeddingService } from '../EmbeddingService';
+import { EmbeddingService } from '../../transform-jsondoc-framework/EmbeddingService';
 import { embedMany, embed } from 'ai';
 
 // Mock the AI SDK functions

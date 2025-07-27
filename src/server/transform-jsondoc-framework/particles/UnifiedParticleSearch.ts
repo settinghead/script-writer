@@ -1,6 +1,6 @@
 import { Kysely, sql } from 'kysely';
-import { DB } from '../database/types';
-import { EmbeddingService } from './EmbeddingService';
+import { DB } from '../../database/types';
+import { EmbeddingService } from '../EmbeddingService';
 import { ParticleService, ParticleSearchResult } from './ParticleService';
 
 export interface UnifiedSearchOptions {

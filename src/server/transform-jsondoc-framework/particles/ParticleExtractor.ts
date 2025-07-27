@@ -1,9 +1,9 @@
-import { EmbeddingService } from './EmbeddingService';
-import { TypedJsondoc } from '../../common/jsondocs.js';
+import { EmbeddingService } from '../EmbeddingService.js';
+import { TypedJsondoc } from '../../../common/jsondocs.js';
 import { dump } from 'js-yaml';
 import { createHash } from 'crypto';
 import { JSONPath } from 'jsonpath-plus';
-import { getParticlePathsForSchemaType, ParticlePathDefinition } from './particleRegistry';
+import { getParticlePathsForSchemaType, ParticlePathDefinition } from '../../services/particleRegistry.js';
 
 export interface ParticleData {
     id: string;

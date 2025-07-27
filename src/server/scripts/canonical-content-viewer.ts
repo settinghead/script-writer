@@ -16,7 +16,7 @@ import { db } from '../database/connection';
 import { buildLineageGraph } from '../../common/transform-jsondoc-framework/lineageResolution';
 import { computeCanonicalJsondocsFromLineage } from '../../common/canonicalJsondocLogic';
 import { generateCanonicalContentStructure } from '../utils/canonicalContentStructure';
-import type { ElectricJsondoc, ElectricTransform, ElectricHumanTransform, ElectricTransformInput, ElectricTransformOutput } from '../../common/types';
+import type { ElectricJsondoc, ElectricTransform, ElectricHumanTransform, ElectricTransformInput, ElectricTransformOutput } from '@/common/transform-jsondoc-types';
 
 /**
  * Main function to extract and display canonical jsondoc content structure for a project

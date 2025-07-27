@@ -7,7 +7,7 @@ import dagre from 'dagre';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { AppColors, ColorUtils } from '../../common/theme/colors';
 import 'reactflow/dist/style.css';
-import { ElectricJsondoc } from '@/common/types';
+import { ElectricJsondoc } from '@/common/transform-jsondoc-types';
 import { extractCanonicalJsondocIds } from '../../common/canonicalJsondocLogic';
 
 const { Text } = Typography;

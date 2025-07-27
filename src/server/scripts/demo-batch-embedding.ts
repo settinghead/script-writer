@@ -11,8 +11,8 @@
  * Usage: ./run-ts src/server/scripts/demo-batch-embedding.ts
  */
 
-import { EmbeddingService } from '../services/EmbeddingService.js';
-import { ParticleExtractor } from '../services/ParticleExtractor.js';
+import { EmbeddingService } from '../transform-jsondoc-framework/EmbeddingService.js';
+import { ParticleExtractor } from '../transform-jsondoc-framework/particles/ParticleExtractor.js';
 import { TypedJsondoc } from '../../common/jsondocs.js';
 
 async function demonstrateBatchEmbedding() {

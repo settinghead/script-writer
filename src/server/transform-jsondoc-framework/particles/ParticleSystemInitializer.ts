@@ -1,13 +1,13 @@
 import { Kysely } from 'kysely';
-import { EmbeddingService } from './EmbeddingService';
+import { EmbeddingService } from '../EmbeddingService';
 import { ParticleExtractor } from './ParticleExtractor';
 import { ParticleService } from './ParticleService';
 import { ParticleEventBus } from './ParticleEventBus';
-import { ParticleTemplateProcessor } from './ParticleTemplateProcessor';
+import { ParticleTemplateProcessor } from '../../services/ParticleTemplateProcessor';
 import { UnifiedParticleSearch } from './UnifiedParticleSearch';
 
-import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
-import { DB } from '../database/types';
+import { TransformJsondocRepository } from '../TransformJsondocRepository';
+import { DB } from '../../database/types';
 
 export interface ParticleSystemServices {
     embeddingService: EmbeddingService;

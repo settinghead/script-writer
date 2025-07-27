@@ -1,4 +1,4 @@
-import { ParticleService } from './ParticleService';
+import { ParticleService } from '../transform-jsondoc-framework/particles/ParticleService';
 import { dump } from 'js-yaml';
 
 export interface ParticleReference {

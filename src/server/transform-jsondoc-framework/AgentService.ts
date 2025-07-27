@@ -5,7 +5,7 @@ import { createAgentTool } from './StreamingAgentFramework';
 import { buildAgentConfiguration, buildPromptForRequestType } from '../services/AgentRequestBuilder';
 import { getLLMModel } from './LLMConfig';
 import { createUserContextMiddleware } from '../middleware/UserContextMiddleware';
-import { getParticleSystem } from '../services/ParticleSystemInitializer';
+import { getParticleSystem } from './particles/ParticleSystemInitializer';
 
 // Schema for general agent requests
 export const GeneralAgentRequestSchema = z.object({

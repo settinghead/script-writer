@@ -1,12 +1,11 @@
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 
-import { Project } from '../../common/jsondocs';
-import { v4 as uuidv4 } from 'uuid';
-import { db } from '../database/connection';
+
 import type { Kysely } from 'kysely';
 import type { DB } from '../database/types';
 import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessageRepository';
+import { Project } from '../../common/transform-jsondoc-types';
 
 export class ProjectService {
     private db: Kysely<DB>;

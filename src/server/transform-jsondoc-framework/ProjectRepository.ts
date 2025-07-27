@@ -1,6 +1,6 @@
 import { Kysely } from 'kysely';
 import { v4 as uuidv4 } from 'uuid';
-import { Project, ProjectUser } from '../../common/jsondocs';
+import { Project, ProjectUser } from '../../common/transform-jsondoc-types';
 import type { DB } from '../database/types';
 
 export class ProjectRepository {

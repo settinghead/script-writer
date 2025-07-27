@@ -1,10 +1,10 @@
 import { Kysely, sql } from 'kysely';
-import { DB } from '../database/types';
-import { EmbeddingService } from './EmbeddingService';
+import { DB } from '../../database/types.js';
+import { EmbeddingService } from '../EmbeddingService.js';
 import { ParticleExtractor, ParticleData } from './ParticleExtractor';
-import { TypedJsondoc } from '../../common/jsondocs.js';
-import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
-import { CanonicalJsondocService } from './CanonicalJsondocService';
+import { TypedJsondoc } from '../../../common/jsondocs.js';
+import { TransformJsondocRepository } from '../TransformJsondocRepository.js';
+import { CanonicalJsondocService } from '../../services/CanonicalJsondocService.js';
 
 
 export interface ParticleSearchResult {

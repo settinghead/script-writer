@@ -9,7 +9,7 @@ import type {
     ElectricHumanTransform,
     ElectricTransformInput,
     ElectricTransformOutput
-} from './types';
+} from './transform-jsondoc-types';
 import { applyPatch, deepClone } from 'fast-json-patch';
 
 // Core canonical jsondoc context (without React components)

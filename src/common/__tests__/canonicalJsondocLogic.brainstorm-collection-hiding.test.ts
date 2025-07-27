@@ -7,7 +7,7 @@ import type {
     ElectricHumanTransform,
     ElectricTransformInput,
     ElectricTransformOutput
-} from '../types';
+} from '../transform-jsondoc-types';
 
 // Helper function to create a random UUID-like string
 function randomId(): string {

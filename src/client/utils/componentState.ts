@@ -1,10 +1,12 @@
 // Component State System for Universal Editability Control
 
 import type {
-    ElectricJsondoc,
-    ElectricTransform,
     ProjectDataContextType
 } from '../../common/types';
+import type {
+    ElectricJsondoc,
+    ElectricTransform
+} from '@/common/transform-jsondoc-types';
 
 /**
  * Component State Enum - Rich language for describing component states

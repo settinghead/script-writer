@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ParticleExtractor } from '../ParticleExtractor';
-import { EmbeddingService } from '../EmbeddingService';
+import { ParticleExtractor } from '../../transform-jsondoc-framework/particles/ParticleExtractor';
+import { EmbeddingService } from '../../transform-jsondoc-framework/EmbeddingService';
 
 // Mock the embedding service
 vi.mock('../EmbeddingService');

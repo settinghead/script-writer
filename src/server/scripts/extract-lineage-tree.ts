@@ -2,7 +2,7 @@
 import { db } from '../database/connection';
 import { buildLineageGraph, findMainWorkflowPath } from '../../common/transform-jsondoc-framework/lineageResolution';
 import type { LineageGraph } from '../../common/transform-jsondoc-framework/lineageResolution';
-import { ElectricJsondoc, ElectricTransform, ElectricHumanTransform, ElectricTransformInput, ElectricTransformOutput } from '../../common/types';
+import { ElectricJsondoc, ElectricTransform, ElectricHumanTransform, ElectricTransformInput, ElectricTransformOutput } from '@/common/transform-jsondoc-types';
 
 // Function to print the tree recursively
 function printTree(nodeId: string, graph: LineageGraph, visited: Set<string> = new Set(), depth: number = 0) {

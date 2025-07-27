@@ -176,7 +176,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         }>();
 
         // Add synopsis jsondocs to groups
-        canonicalContext.canonicalEpisodeSynopsisList.forEach((episodeSynopsis: import('../../common/types').ElectricJsondoc) => {
+        canonicalContext.canonicalEpisodeSynopsisList.forEach((episodeSynopsis: import('../../common/transform-jsondoc-types').ElectricJsondoc) => {
             try {
                 const data = typeof episodeSynopsis.data === 'string' ? JSON.parse(episodeSynopsis.data) : episodeSynopsis.data;
                 const episodeNumber = data.episodeNumber || 1;
@@ -191,7 +191,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         });
 
         // Add script jsondocs to groups
-        canonicalContext.canonicalEpisodeScriptsList.forEach((episodeScript: import('../../common/types').ElectricJsondoc) => {
+        canonicalContext.canonicalEpisodeScriptsList.forEach((episodeScript: import('../../common/transform-jsondoc-types').ElectricJsondoc) => {
             try {
                 const data = typeof episodeScript.data === 'string' ? JSON.parse(episodeScript.data) : episodeScript.data;
                 const episodeNumber = data.episodeNumber || 1;

@@ -5,7 +5,7 @@
  */
 
 import { AgentService } from '../transform-jsondoc-framework/AgentService';
-import { getParticleSystem } from '../services/ParticleSystemInitializer';
+import { getParticleSystem } from '../transform-jsondoc-framework/particles/ParticleSystemInitializer';
 import db from '../database/connection';
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 

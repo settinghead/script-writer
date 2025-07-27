@@ -1,7 +1,7 @@
 import React from 'react';
 import { Space, Typography } from 'antd';
 import { FileTextOutlined, ClockCircleOutlined, NumberOutlined } from '@ant-design/icons';
-import { ElectricJsondoc } from '../../../common/types';
+import { ElectricJsondoc } from '@/common/transform-jsondoc-types';
 import { YJSTextField, YJSTextAreaField, YJSNumberField } from '../../transform-jsondoc-framework/components/YJSField';
 
 const { Text } = Typography;

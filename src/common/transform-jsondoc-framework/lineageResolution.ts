@@ -8,13 +8,15 @@
  */
 
 import type {
+    TypedJsondoc
+} from '../types';
+import type {
     ElectricJsondoc,
     ElectricTransform,
     ElectricHumanTransform,
     ElectricTransformInput,
-    ElectricTransformOutput,
-    TypedJsondoc
-} from '../types';
+    ElectricTransformOutput
+} from '../transform-jsondoc-types';
 import { IdeaWithTitle } from '../types';
 
 // ============================================================================
@@ -924,8 +926,8 @@ export function findLatestBrainstormIdeas(
  */
 export function findLatestBrainstormIdeasWithLineage(
     graph: LineageGraph,
-    jsondocs: import('../types').ElectricJsondoc[]
-): import('../types').ElectricJsondocWithLineage[] {
+    jsondocs: import('../../common/transform-jsondoc-types').ElectricJsondoc[]
+): import('../../common/transform-jsondoc-types').ElectricJsondocWithLineage[] {
     const latestBrainstormIdeas = findLeafNodesByType(graph, jsondocs, '灵感创意');
     return addLineageToJsondocs(latestBrainstormIdeas, graph);
 }
@@ -936,9 +938,9 @@ export function findLatestBrainstormIdeasWithLineage(
  * Add lineage information to jsondocs based on the lineage graph
  */
 export function addLineageToJsondocs(
-    jsondocs: import('../types').ElectricJsondoc[],
+    jsondocs: import('../../common/transform-jsondoc-types').ElectricJsondoc[],
     graph: LineageGraph
-): import('../types').ElectricJsondocWithLineage[] {
+): import('../../common/transform-jsondoc-types').ElectricJsondocWithLineage[] {
     return jsondocs.map(jsondoc => {
         const node = graph.nodes.get(jsondoc.id);
 

@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { Kysely } from 'kysely';
-import { DB } from '../database/types';
+import { DB } from '../../database/types';
 import { ParticleService } from './ParticleService';
 import { Client } from 'pg';
 

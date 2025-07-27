@@ -64,7 +64,7 @@ agentService.setChatMessageRepository(chatMessageRepo);
 let particleSystemInitialized = false;
 (async () => {
   try {
-    const { initializeParticleSystem } = await import('./services/ParticleSystemInitializer.js');
+    const { initializeParticleSystem } = await import('./transform-jsondoc-framework/particles/ParticleSystemInitializer.js');
     await initializeParticleSystem(db);
     particleSystemInitialized = true;
     console.log('🎯 Particle system initialized successfully');
