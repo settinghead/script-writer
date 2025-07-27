@@ -21,6 +21,68 @@ import { useScrollSync } from '../contexts/ScrollSyncContext';
 
 const { Text } = Typography;
 
+// Compact tree styles
+const compactTreeStyles = `
+.compact-tree .ant-tree-treenode {
+    padding: 2px 0 !important;
+}
+
+.compact-tree .ant-tree-indent-unit {
+    width: 12px !important;
+}
+
+.compact-tree .ant-tree-switcher {
+    width: 16px !important;
+    height: 20px !important;
+    line-height: 20px !important;
+    margin-right: 2px !important;
+}
+
+.compact-tree .ant-tree-node-content-wrapper {
+    padding: 2px 4px !important;
+    margin: 0 !important;
+    min-height: 20px !important;
+    line-height: 20px !important;
+}
+
+.compact-tree .ant-tree-iconEle {
+    width: 16px !important;
+    height: 16px !important;
+    line-height: 16px !important;
+    margin-right: 4px !important;
+}
+
+.compact-tree .ant-tree-title {
+    font-size: 14px !important;
+}
+
+.compact-tree .ant-tree-child-tree {
+    margin: 0 !important;
+}
+
+.compact-tree .ant-tree-child-tree .ant-tree-treenode {
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+}
+
+.compact-tree .ant-tree-child-tree .ant-tree-node-content-wrapper {
+    padding: 1px 4px !important;
+    min-height: 14px !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+    height: 14px !important;
+}
+
+.compact-tree .ant-tree-child-tree .ant-tree-title {
+    font-size: 13px !important;
+    line-height: 1 !important;
+    height: 14px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+`;
+
 interface ProjectTreeViewProps {
     width?: number;
 }
@@ -535,7 +597,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                 return {
                     key: episodeId,
                     title: (
-                        <Space style={{
+                        <div style={{
                             padding: isEpisodeHighlighted ? '2px 6px' : '0',
                             borderRadius: '4px',
                             background: isEpisodeHighlighted ?
@@ -543,23 +605,31 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                                 'none',
                             border: isEpisodeHighlighted ? '1px solid rgba(24, 144, 255, 0.5)' : 'none',
                             transition: 'all 0.2s ease-in-out',
-                            display: 'inline-flex',
-                            alignItems: 'center'
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            minWidth: 0, // Allow flex shrinking
+                            overflow: 'hidden'
                         }}>
+                            <PlayCircleOutlined style={{
+                                color: isEpisodeHighlighted ? '#1890ff' : '#666',
+                                fontSize: '12px',
+                                flexShrink: 0 // Prevent icon from shrinking
+                            }} />
                             <Text style={{
                                 color: isEpisodeHighlighted ? '#ffffff' : '#ccc',
-                                fontSize: '13px',
+                                fontSize: '14px',
                                 fontWeight: isEpisodeHighlighted ? 600 : 400,
-                                textShadow: isEpisodeHighlighted ? '0 0 6px rgba(24, 144, 255, 0.6)' : 'none'
+                                textShadow: isEpisodeHighlighted ? '0 0 6px rgba(24, 144, 255, 0.6)' : 'none',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                minWidth: 0 // Allow text to shrink and show ellipsis
                             }}>
                                 {episodeTitle}
                             </Text>
-                        </Space>
+                        </div>
                     ),
-                    icon: <PlayCircleOutlined style={{
-                        color: isEpisodeHighlighted ? '#1890ff' : '#666',
-                        fontSize: '12px',
-                    }} />,
                     selectable: subChildren.length === 0,
                     navigationTarget: subChildren.length === 0 ? `#${episodeId}` : undefined,
                     children: subChildren.length > 0 ? subChildren : undefined,
@@ -734,6 +804,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                 flexDirection: 'column'
             }}
         >
+            <style>{compactTreeStyles}</style>
             <div style={{
                 flex: 1,
                 overflow: 'auto',
@@ -751,6 +822,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                         background: 'transparent',
                         color: '#fff'
                     }}
+                    className="compact-tree"
                 />
             </div>
         </div>
