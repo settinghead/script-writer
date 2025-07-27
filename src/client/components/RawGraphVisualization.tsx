@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { ReactFlow, Node, Edge, Background, Controls, MiniMap, useNodesState, useEdgesState, BackgroundVariant, MarkerType, Handle, Position, NodeTypes } from 'reactflow';
 import { Typography, Checkbox, Space, Tooltip, Spin, Button, message, Modal } from 'antd';
 import { DatabaseOutlined, UserOutlined, RobotOutlined, CloseOutlined, DeleteOutlined } from '@ant-design/icons';
+import SchemaTypeIcon from './shared/SchemaTypeIcon';
 import dagre from 'dagre';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { AppColors, ColorUtils } from '../../common/theme/colors';
@@ -283,9 +284,12 @@ const JsondocNode: React.FC<{
                             </span>
                         )}
                     </div>
-                    <Text style={{ color: AppColors.text.secondary, fontSize: '10px' }}>
-                        {jsondoc.schema_type}
-                    </Text>
+                    <SchemaTypeIcon
+                        schemaType={jsondoc.schema_type}
+                        originType={originType}
+                        showText={true}
+                        size="small"
+                    />
                     <br />
                     <div style={{ color: AppColors.text.tertiary, fontSize: '9px', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>
                         {(() => {

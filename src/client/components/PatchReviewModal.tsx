@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Modal, Button, Space, Card, Typography, Checkbox, message, Tag, Divider } from 'antd';
 import { CheckOutlined, CloseOutlined, EditOutlined } from '@ant-design/icons';
+import SchemaTypeIcon from './shared/SchemaTypeIcon';
 import { usePendingPatchApproval, type PendingPatchItem } from '../hooks/usePendingPatchApproval';
 
 import * as Diff from 'diff';
@@ -204,7 +205,13 @@ const PatchCard: React.FC<{
                         onChange={(e) => onSelectionChange(e.target.checked)}
                     />
                     <Text strong>修改提议 #{patchItem.patchIndex + 1}</Text>
-                    <Tag color="blue">{originalJsondoc.schema_type}</Tag>
+                    <Tag color="blue">
+                        <SchemaTypeIcon 
+                            schemaType={originalJsondoc.schema_type} 
+                            showText={true}
+                            size="small"
+                        />
+                    </Tag>
                     {sourceTransformMetadata?.toolName && (
                         <Tag color="green">{sourceTransformMetadata.toolName}</Tag>
                     )}

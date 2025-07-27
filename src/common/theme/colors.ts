@@ -95,5 +95,43 @@ export const ColorUtils = {
             case 'json_patch': return AppColors.status.warning; // Orange for patch jsondocs
             default: return AppColors.text.muted;
         }
+    },
+
+    // Get appropriate icon name for jsondoc schema type
+    getSchemaTypeIcon: (type: string): string => {
+        switch (type) {
+            case '灵感创意': return 'BulbOutlined';
+            case 'brainstorm_collection': return 'BulbOutlined';
+            case 'brainstorm_input_params': return 'UserOutlined';
+            case '剧本设定': return 'FileTextOutlined';
+            case 'chronicles': return 'HistoryOutlined';
+            case '分集结构': return 'VideoCameraOutlined';
+            case '单集大纲': return 'PlayCircleOutlined';
+            case '单集剧本': return 'FileTextOutlined';
+            case 'json_patch': return 'EditOutlined';
+            case 'outline_input': return 'UserOutlined';
+            case 'outline_response': return 'FileTextOutlined';
+            case 'user_input': return 'UserOutlined';
+            default: return 'DatabaseOutlined';
+        }
+    },
+
+    // Get human-readable display name for schema type
+    getSchemaTypeDisplayName: (type: string): string => {
+        switch (type) {
+            case '灵感创意': return '灵感创意';
+            case 'brainstorm_collection': return '创意集合';
+            case 'brainstorm_input_params': return '头脑风暴参数';
+            case '剧本设定': return '剧本设定';
+            case 'chronicles': return '故事编年史';
+            case '分集结构': return '分集结构';
+            case '单集大纲': return '单集大纲';
+            case '单集剧本': return '单集剧本';
+            case 'json_patch': return '修改提议';
+            case 'outline_input': return '大纲输入';
+            case 'outline_response': return '大纲响应';
+            case 'user_input': return '用户输入';
+            default: return type;
+        }
     }
 }; 
