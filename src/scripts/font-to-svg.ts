@@ -132,7 +132,7 @@ async function fontToSvg(options: FontToSvgOptions): Promise<void> {
         const missingChars: string[] = [];
         for (const char of options.text) {
             const glyph = font.charToGlyph(char);
-            if (!glyph || glyph === font.notdefGlyph) {
+            if (!glyph || !glyph.unicode || glyph.index === 0) {
                 missingChars.push(char);
             }
         }
@@ -144,7 +144,7 @@ async function fontToSvg(options: FontToSvgOptions): Promise<void> {
 
         // Create SVG path for the text
         const fontPath = font.getPath(options.text, 0, options.fontSize!, options.fontSize!);
-        const pathData = fontPath.toPathData();
+        const pathData = fontPath.toPathData(2);
 
         // Calculate text dimensions for proper SVG viewBox
         const bbox = fontPath.getBoundingBox();
