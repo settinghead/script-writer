@@ -67,6 +67,11 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                             episodeRange: data.episodeRange,
                             jsondocId: synopsisJsondoc.id
                         })));
+                    } else if (data.episodeNumber) {
+                        episodes.push({
+                            ...data,
+                            jsondocId: synopsisJsondoc.id
+                        });
                     }
                 } catch (error) {
                     console.warn('Failed to parse episode synopsis data:', error);
@@ -75,6 +80,36 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         }
         return episodes.sort((a: any, b: any) => a.episodeNumber - b.episodeNumber);
     }, [canonicalContext?.canonicalEpisodeSynopsisList]);
+
+    // Extract all scripts similarly
+    const allScripts = useMemo(() => {
+        const scripts = [];
+        if (canonicalContext?.canonicalEpisodeScriptsList) {
+            for (const scriptJsondoc of canonicalContext.canonicalEpisodeScriptsList) {
+                try {
+                    const data = typeof scriptJsondoc.data === 'string'
+                        ? JSON.parse(scriptJsondoc.data)
+                        : scriptJsondoc.data;
+                    if (data.episodes && Array.isArray(data.episodes)) {
+                        scripts.push(...data.episodes.map((episode: any) => ({
+                            ...episode,
+                            groupTitle: data.groupTitle,
+                            episodeRange: data.episodeRange,
+                            jsondocId: scriptJsondoc.id
+                        })));
+                    } else if (data.episodeNumber) {
+                        scripts.push({
+                            ...data,
+                            jsondocId: scriptJsondoc.id
+                        });
+                    }
+                } catch (error) {
+                    console.warn('Failed to parse episode script data:', error);
+                }
+            }
+        }
+        return scripts.sort((a: any, b: any) => a.episodeNumber - b.episodeNumber);
+    }, [canonicalContext?.canonicalEpisodeScriptsList]);
 
     // Function to determine if a tree node should be highlighted
     const shouldHighlightNode = useCallback((navigationTarget?: string): boolean => {
@@ -109,10 +144,11 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         // For other sections, use the standard mapping
         const navigationTargetToSection: Record<string, CurrentSection> = {
             '#ideas': 'ideas',
+            '#ideation-edit': 'ideation-edit',
             '#剧本设定': '剧本设定',
             '#chronicles': 'chronicles',
             '#episode-planning': 'episode-planning',
-            '#episode-synopsis': 'episode-synopsis'
+            '#episode-content': 'episode-content'
         };
 
         const nodeSection = navigationTargetToSection[navigationTarget];
@@ -419,18 +455,76 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
             sections.push(episodePlanningSection);
         }
 
-        // 6. EPISODE SYNOPSIS SECTION - with hierarchical episodes
-        if (jsondocChecks.hasEpisodeSynopsis) {
-            const episodeSynopsisHighlighted = shouldHighlightNode('#episode-synopsis') ||
-                (currentPosition?.section === 'episode-synopsis' && !currentPosition?.subId);
+        // 6. EPISODE CONTENT SECTION - with hierarchical episodes including scripts
+        if (jsondocChecks.hasEpisodeSynopsis || (canonicalContext?.canonicalEpisodeScriptsList?.length ?? 0) > 0) {
+            // Get unique sorted episode numbers from both synopses and scripts
+            const episodeNumbers = [...new Set([
+                ...allEpisodes.map(e => e.episodeNumber),
+                ...allScripts.map(s => s.episodeNumber)
+            ])].sort((a, b) => a - b);
 
-            // Use pre-computed episodes from top-level useMemo
+            // Build episode children nodes with sub-nodes for synopsis and script
+            const episodeChildren: ProjectTreeNode[] = episodeNumbers.map((num) => {
+                const synopsis = allEpisodes.find(e => e.episodeNumber === num);
+                const script = allScripts.find(s => s.episodeNumber === num);
+                const episodeId = `episode-${num}`;
+                const isEpisodeHighlighted = currentPosition?.section === 'episode-content' &&
+                    currentPosition?.subId?.startsWith(episodeId);
 
-            // Build episode children nodes
-            const episodeChildren: ProjectTreeNode[] = allEpisodes.map((episode: any) => {
-                const episodeId = `episode-${episode.episodeNumber}`;
-                const isEpisodeHighlighted = currentPosition?.section === 'episode-synopsis' &&
-                    currentPosition?.subId === episodeId;
+                // Sub-children for synopsis and script
+                const subChildren: ProjectTreeNode[] = [];
+
+                if (synopsis) {
+                    const synopsisId = `${episodeId}-synopsis`;
+                    const isSynopsisHighlighted = currentPosition?.subId === synopsisId;
+                    subChildren.push({
+                        key: synopsisId,
+                        title: (
+                            <Text style={{
+                                color: isSynopsisHighlighted ? '#ffffff' : '#ccc',
+                                fontWeight: isSynopsisHighlighted ? 600 : 400,
+                                padding: isSynopsisHighlighted ? '2px 6px' : '0',
+                                borderRadius: '4px',
+                                background: isSynopsisHighlighted ?
+                                    'linear-gradient(135deg, rgba(24, 144, 255, 0.3) 0%, rgba(64, 169, 255, 0.2) 100%)' :
+                                    'none',
+                                border: isSynopsisHighlighted ? '1px solid rgba(24, 144, 255, 0.5)' : 'none',
+                                transition: 'all 0.2s ease-in-out',
+                                display: 'inline-block'
+                            }}>
+                                📖 大纲: {synopsis.title}
+                            </Text>
+                        ),
+                        selectable: true,
+                        navigationTarget: `#${synopsisId}`,
+                    });
+                }
+
+                if (script) {
+                    const scriptId = `${episodeId}-script`;
+                    const isScriptHighlighted = currentPosition?.subId === scriptId;
+                    subChildren.push({
+                        key: scriptId,
+                        title: (
+                            <Text style={{
+                                color: isScriptHighlighted ? '#ffffff' : '#ccc',
+                                fontWeight: isScriptHighlighted ? 600 : 400,
+                                padding: isScriptHighlighted ? '2px 6px' : '0',
+                                borderRadius: '4px',
+                                background: isScriptHighlighted ?
+                                    'linear-gradient(135deg, rgba(24, 144, 255, 0.3) 0%, rgba(64, 169, 255, 0.2) 100%)' :
+                                    'none',
+                                border: isScriptHighlighted ? '1px solid rgba(24, 144, 255, 0.5)' : 'none',
+                                transition: 'all 0.2s ease-in-out',
+                                display: 'inline-block'
+                            }}>
+                                📝 剧本: {script.title || `第${num}集`}
+                            </Text>
+                        ),
+                        selectable: true,
+                        navigationTarget: `#${scriptId}`,
+                    });
+                }
 
                 return {
                     key: episodeId,
@@ -452,31 +546,34 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                                 fontWeight: isEpisodeHighlighted ? 600 : 400,
                                 textShadow: isEpisodeHighlighted ? '0 0 6px rgba(24, 144, 255, 0.6)' : 'none'
                             }}>
-                                第{episode.episodeNumber}集: {episode.title}
+                                第{num}集
                             </Text>
                         </Space>
                     ),
                     icon: <PlayCircleOutlined style={{
                         color: isEpisodeHighlighted ? '#1890ff' : '#666',
                         fontSize: '12px',
-                        filter: isEpisodeHighlighted ? 'drop-shadow(0 0 3px rgba(24, 144, 255, 0.6))' : 'none'
                     }} />,
-                    selectable: true,
-                    navigationTarget: `#${episodeId}`
+                    selectable: subChildren.length === 0,
+                    navigationTarget: subChildren.length === 0 ? `#${episodeId}` : undefined,
+                    children: subChildren.length > 0 ? subChildren : undefined,
                 };
             });
 
-            const episodeSynopsisSection: ProjectTreeNode = {
-                key: 'episode-synopsis-section',
+            const episodeContentHighlighted = shouldHighlightNode('#episode-content') ||
+                (currentPosition?.section === 'episode-content' && !currentPosition?.subId);
+
+            const episodeContentSection: ProjectTreeNode = {
+                key: 'episode-content-section',
                 title: (
                     <Space style={{
-                        padding: episodeSynopsisHighlighted ? '4px 8px' : '0',
+                        padding: episodeContentHighlighted ? '4px 8px' : '0',
                         borderRadius: '6px',
-                        background: episodeSynopsisHighlighted ?
+                        background: episodeContentHighlighted ?
                             'linear-gradient(135deg, rgba(24, 144, 255, 0.25) 0%, rgba(64, 169, 255, 0.15) 100%)' :
                             'none',
-                        border: episodeSynopsisHighlighted ? '1px solid rgba(24, 144, 255, 0.4)' : 'none',
-                        boxShadow: episodeSynopsisHighlighted ?
+                        border: episodeContentHighlighted ? '1px solid rgba(24, 144, 255, 0.4)' : 'none',
+                        boxShadow: episodeContentHighlighted ?
                             '0 0 20px rgba(24, 144, 255, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)' :
                             'none',
                         transition: 'all 0.2s ease-in-out',
@@ -484,45 +581,45 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                         alignItems: 'center'
                     }}>
                         <Text style={{
-                            color: episodeSynopsisHighlighted ? '#ffffff' : '#fff',
-                            fontWeight: episodeSynopsisHighlighted ? 700 : 500,
-                            textShadow: episodeSynopsisHighlighted ? '0 0 8px rgba(24, 144, 255, 0.8)' : 'none'
+                            color: episodeContentHighlighted ? '#ffffff' : '#fff',
+                            fontWeight: episodeContentHighlighted ? 700 : 500,
+                            textShadow: episodeContentHighlighted ? '0 0 8px rgba(24, 144, 255, 0.8)' : 'none'
                         }}>
-                            单集大纲
+                            分集内容
                         </Text>
                         <CheckCircleOutlined style={{
-                            color: episodeSynopsisHighlighted ? '#52c41a' : '#52c41a',
+                            color: episodeContentHighlighted ? '#52c41a' : '#52c41a',
                             fontSize: '12px',
                             marginLeft: '4px'
                         }} />
-                        {allEpisodes.length > 0 && (
+                        {episodeNumbers.length > 0 && (
                             <Tag
-                                color={episodeSynopsisHighlighted ? "blue" : "default"}
+                                color={episodeContentHighlighted ? "blue" : "default"}
                                 style={{
-                                    boxShadow: episodeSynopsisHighlighted ? '0 0 8px rgba(24, 144, 255, 0.4)' : 'none',
-                                    border: episodeSynopsisHighlighted ? '1px solid rgba(24, 144, 255, 0.6)' : undefined,
+                                    boxShadow: episodeContentHighlighted ? '0 0 8px rgba(24, 144, 255, 0.4)' : 'none',
+                                    border: episodeContentHighlighted ? '1px solid rgba(24, 144, 255, 0.6)' : undefined,
                                     marginLeft: '8px'
                                 }}
                             >
-                                {allEpisodes.length}集
+                                {episodeNumbers.length}集
                             </Tag>
                         )}
                     </Space>
                 ),
                 icon: <BookOutlined style={{
-                    color: episodeSynopsisHighlighted ? '#1890ff' : '#666',
-                    filter: episodeSynopsisHighlighted ? 'drop-shadow(0 0 4px rgba(24, 144, 255, 0.6))' : 'none'
+                    color: episodeContentHighlighted ? '#1890ff' : '#666',
+                    filter: episodeContentHighlighted ? 'drop-shadow(0 0 4px rgba(24, 144, 255, 0.6))' : 'none'
                 }} />,
                 selectable: true,
-                navigationTarget: '#episode-synopsis',
+                navigationTarget: '#episode-content',
                 children: episodeChildren.length > 0 ? episodeChildren : undefined
             };
 
-            sections.push(episodeSynopsisSection);
+            sections.push(episodeContentSection);
         }
 
         return sections;
-    }, [canonicalContext, initialModeLoading, isInitialMode, chosenIdea, jsondocChecks, shouldHighlightNode, currentPosition, allEpisodes]);
+    }, [canonicalContext, initialModeLoading, isInitialMode, chosenIdea, jsondocChecks, shouldHighlightNode, currentPosition, allEpisodes, allScripts]);
 
     // Handle tree node selection - scroll using scroll sync system
     const handleSelect = useCallback((selectedKeys: React.Key[], info: any) => {
@@ -532,9 +629,23 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
         if (node.navigationTarget) {
             // Parse navigation target to determine section and subId
             if (node.navigationTarget.startsWith('#episode-')) {
-                // Episode sub-item
-                const episodeId = node.navigationTarget.substring(1); // Remove '#'
-                scrollTo('episode-synopsis', episodeId);
+                const targetId = node.navigationTarget.substring(1); // Remove '#'
+                
+                // Check if it's a sub-item (synopsis or script)
+                if (targetId.includes('-synopsis') || targetId.includes('-script')) {
+                    // Extract episode number and type
+                    const match = targetId.match(/^episode-(\d+)-(synopsis|script)$/);
+                    if (match) {
+                        const episodeNumber = match[1];
+                        const type = match[2];
+                        
+                        // Scroll to the specific episode content with sub-type
+                        scrollTo('episode-content', `episode-${episodeNumber}-${type}`);
+                    }
+                } else {
+                    // Regular episode navigation
+                    scrollTo('episode-content', targetId);
+                }
             } else {
                 // Section-level navigation
                 const section = node.navigationTarget.substring(1); // Remove '#'
@@ -544,7 +655,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                     '剧本设定': '剧本设定',
                     'chronicles': 'chronicles',
                     'episode-planning': 'episode-planning',
-                    'episode-synopsis': 'episode-synopsis'
+                    'episode-content': 'episode-content'
                 };
 
                 const mappedSection = sectionMapping[section] || section;
@@ -583,7 +694,16 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
     useEffect(() => {
         if (treeData.length > 0 && expandedKeys.length === 0) {
             const allSectionKeys = treeData.map(node => node.key);
-            setExpandedKeys(allSectionKeys);
+            // Also expand all episode nodes
+            const episodeKeys: string[] = [];
+            treeData.forEach(node => {
+                if (node.children) {
+                    node.children.forEach(child => {
+                        episodeKeys.push(child.key);
+                    });
+                }
+            });
+            setExpandedKeys([...allSectionKeys, ...episodeKeys]);
         }
     }, [treeData, expandedKeys.length]);
 
