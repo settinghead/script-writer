@@ -1,9 +1,8 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Typography } from 'antd';
+import { Typography } from 'antd';
 import { IdeaWithTitle } from '../../../common/types';
 import { ReasoningIndicator, SectionWrapper, } from '../shared';
-import { JsondocDisplayWrapper } from '../../transform-jsondoc-framework/components/JsondocDisplayWrapper';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useLatestBrainstormIdeas } from '../../transform-jsondoc-framework/useLineageResolution';
 import { useChosenBrainstormIdea } from '../../hooks/useChosenBrainstormIdea';
