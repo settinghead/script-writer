@@ -175,7 +175,7 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
                                         <Panel
                                             header={
                                                 <Space>
-                                                    <span>大纲概要</span>
+                                                    <span>本集大纲</span>
                                                     <Tag color="orange">已收起</Tag>
                                                     <Text type="secondary" style={{ fontSize: '12px' }}>
                                                         (点击展开查看详情)
