@@ -1,10 +1,10 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { Input, Select, Button, Typography, Card, Space, Tag, InputNumber } from 'antd';
 import { PlusOutlined, DeleteOutlined, RightOutlined } from '@ant-design/icons';
+import TextareaAutosize from 'react-textarea-autosize';
 import { useYJSField } from '../contexts/YJSJsondocContext';
 import { YJSSlateArrayOfStringField } from './YJSSlateArrayField';
 
-const { TextArea } = Input;
 const { Text } = Typography;
 
 const DEFAULT_FONT_SIZE = 15;
@@ -44,12 +44,23 @@ export const YJSTextAreaField = React.memo(({ path, placeholder, fontSize = DEFA
     if (!isInitialized) return null;
 
     return (
-        <TextArea
+        <TextareaAutosize
             value={value || ''}
             onChange={handleChange}
             placeholder={placeholder}
-            autoSize={true}
-            style={{ fontSize: fontSize }}
+            minRows={1}
+            data-testid="textarea"
+            style={{
+                fontSize: fontSize,
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #434343',
+                borderRadius: '6px',
+                resize: 'none',
+                fontFamily: 'inherit',
+                backgroundColor: '#141414',
+                color: '#d9d9d9'
+            }}
         />
     );
 });
@@ -196,12 +207,24 @@ export const YJSEmotionArcsArray = React.memo(({ path, fontSize = DEFAULT_FONT_S
 
                     <div style={{ marginBottom: 12 }}>
                         <Text>描述：</Text>
-                        <TextArea
+                        <TextareaAutosize
                             value={item?.content || ''}
                             onChange={(e) => handleItemChange(index, 'content', e.target.value)}
                             placeholder="描述这个阶段的情感发展..."
-                            autoSize={{ minRows: 2, }}
-                            style={{ marginTop: 4, fontSize: fontSize }}
+                            minRows={2}
+                            data-testid="textarea"
+                            style={{
+                                fontSize: fontSize,
+                                width: '100%',
+                                padding: '8px',
+                                border: '1px solid #434343',
+                                borderRadius: '6px',
+                                resize: 'none',
+                                fontFamily: 'inherit',
+                                marginTop: 4,
+                                backgroundColor: '#141414',
+                                color: '#d9d9d9'
+                            }}
                         />
                     </div>
 
@@ -301,12 +324,24 @@ export const YJSRelationshipDevelopmentsArray = React.memo(({ path, fontSize = D
 
                     <div>
                         <Text>发展过程：</Text>
-                        <TextArea
+                        <TextareaAutosize
                             value={item?.content || ''}
                             onChange={(e) => handleItemChange(index, 'content', e.target.value)}
                             placeholder="描述关系如何发展..."
-                            autoSize={{ minRows: 2, }}
-                            style={{ marginTop: 4, fontSize: fontSize }}
+                            minRows={2}
+                            data-testid="textarea"
+                            style={{
+                                fontSize: fontSize,
+                                width: '100%',
+                                padding: '8px',
+                                border: '1px solid #434343',
+                                borderRadius: '6px',
+                                resize: 'none',
+                                fontFamily: 'inherit',
+                                marginTop: 4,
+                                backgroundColor: '#141414',
+                                color: '#d9d9d9'
+                            }}
                         />
                     </div>
                 </div>
@@ -449,12 +484,23 @@ export const YJSCharacterArray = React.memo(({ path, fontSize = DEFAULT_FONT_SIZ
                         </div>
                         <div>
                             <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>角色描述：</Text>
-                            <TextArea
+                            <TextareaAutosize
                                 value={character?.description || ''}
                                 onChange={(e) => handleItemChange(index, 'description', e.target.value)}
                                 placeholder="角色描述"
-                                autoSize={{ minRows: 2, }}
-                                style={{ fontSize: fontSize }}
+                                minRows={2}
+                                data-testid="textarea"
+                                style={{
+                                    fontSize: fontSize,
+                                    width: '100%',
+                                    padding: '8px',
+                                    border: '1px solid #434343',
+                                    borderRadius: '6px',
+                                    resize: 'none',
+                                    fontFamily: 'inherit',
+                                    backgroundColor: '#141414',
+                                    color: '#d9d9d9'
+                                }}
                             />
                         </div>
                         <div>
@@ -467,11 +513,23 @@ export const YJSCharacterArray = React.memo(({ path, fontSize = DEFAULT_FONT_SIZ
                         </div>
                         <div>
                             <Text strong style={{ fontSize: '14px', color: '#fff', display: 'block', marginBottom: '4px' }}>成长轨迹：</Text>
-                            <TextArea
+                            <TextareaAutosize
                                 value={character?.character_arc || ''}
                                 onChange={(e) => handleItemChange(index, 'character_arc', e.target.value)}
                                 placeholder="成长轨迹"
-                                autoSize={{ minRows: 2, }}
+                                minRows={2}
+                                data-testid="textarea"
+                                style={{
+                                    fontSize: fontSize,
+                                    width: '100%',
+                                    padding: '8px',
+                                    border: '1px solid #434343',
+                                    borderRadius: '6px',
+                                    resize: 'none',
+                                    fontFamily: 'inherit',
+                                    backgroundColor: '#141414',
+                                    color: '#d9d9d9'
+                                }}
                             />
                         </div>
                     </Space>
@@ -526,12 +584,23 @@ const YJSArrayFieldInline = React.memo(({ value, onChange, placeholder, fontSize
     }, [value]);
 
     return (
-        <TextArea
+        <TextareaAutosize
             value={textAreaValue}
             onChange={handleTextAreaChange}
             placeholder={placeholder}
-            autoSize={{ minRows: 2, }}
-            style={{ resize: 'vertical', fontSize: fontSize }}
+            minRows={2}
+            data-testid="textarea"
+            style={{
+                fontSize: fontSize,
+                width: '100%',
+                padding: '8px',
+                border: '1px solid #434343',
+                borderRadius: '6px',
+                resize: 'none',
+                fontFamily: 'inherit',
+                backgroundColor: '#141414',
+                color: '#d9d9d9'
+            }}
         />
     );
 });
@@ -657,12 +726,25 @@ export const YJSEpisodeGroupsArray = React.memo(({ path, fontSize = DEFAULT_FONT
 
                     <div style={{ marginBottom: 12 }}>
                         <Text>剧情描述：</Text>
-                        <Input.TextArea
+                        <TextareaAutosize
                             value={group?.plotDescription || ''}
                             onChange={(e) => handleItemChange(index, 'plotDescription', e.target.value)}
                             placeholder="描述该阶段的主要剧情发展..."
-                            style={{ marginTop: 4, fontSize: fontSize }}
-                            autoSize={{ minRows: 2, maxRows: 4 }}
+                            minRows={2}
+                            maxRows={4}
+                            data-testid="textarea"
+                            style={{
+                                fontSize: fontSize,
+                                width: '100%',
+                                padding: '8px',
+                                border: '1px solid #434343',
+                                borderRadius: '6px',
+                                resize: 'none',
+                                fontFamily: 'inherit',
+                                marginTop: 4,
+                                backgroundColor: '#141414',
+                                color: '#d9d9d9'
+                            }}
                         />
                     </div>
 

@@ -153,7 +153,7 @@ describe('YJS Field Components - Working Tests', () => {
             const textarea = screen.getByTestId('textarea');
             expect(textarea).toBeInTheDocument();
             expect(textarea).toHaveAttribute('placeholder', 'Enter description');
-            expect(textarea).toHaveAttribute('rows', '2'); // minRows from autoSize
+            // Note: react-textarea-autosize doesn't use standard rows attribute, it auto-sizes based on content
         });
 
         it('calls updateValue when textarea changes', async () => {
