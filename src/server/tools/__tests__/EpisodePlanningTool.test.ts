@@ -120,7 +120,7 @@ describe('EpisodePlanningTool', () => {
             expect(mockJsondocRepo.userHasProjectAccess).toHaveBeenCalledTimes(3);
 
             // Verify streaming transform was called with correct metadata
-            const calls = executeStreamingTransform.mock.calls;
+            const calls = vi.mocked(executeStreamingTransform).mock.calls;
             expect(calls).toHaveLength(1);
             expect(calls[0][0]).toMatchObject({
                 input,
@@ -171,7 +171,7 @@ describe('EpisodePlanningTool', () => {
             expect(result.finishReason).toBe('completed');
 
             // Should still call streaming transform with empty metadata
-            const calls = executeStreamingTransform.mock.calls;
+            const calls = vi.mocked(executeStreamingTransform).mock.calls;
             expect(calls).toHaveLength(1);
             expect(calls[0][0]).toMatchObject({
                 input,
@@ -229,7 +229,7 @@ describe('EpisodePlanningTool', () => {
             expect(result.finishReason).toBe('completed');
 
             // Should still proceed with empty metadata
-            const calls = executeStreamingTransform.mock.calls;
+            const calls = vi.mocked(executeStreamingTransform).mock.calls;
             expect(calls).toHaveLength(1);
             expect(calls[0][0]).toMatchObject({
                 input,
@@ -277,7 +277,7 @@ describe('EpisodePlanningTool', () => {
 
             await toolDef.execute(input, { toolCallId: 'test-tool-call' });
 
-            const calls = executeStreamingTransform.mock.calls;
+            const calls = vi.mocked(executeStreamingTransform).mock.calls;
             expect(calls).toHaveLength(1);
             expect(calls[0][0]).toMatchObject({
                 input,
