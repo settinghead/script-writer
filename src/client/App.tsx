@@ -4,8 +4,9 @@ import '@ant-design/v5-patch-for-react-19';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { Layout, Typography, ConfigProvider, Button, Drawer, Menu, Dropdown, Avatar, App as AntdApp } from 'antd';
+import { Layout, ConfigProvider, Button, Drawer, Menu, Dropdown, Avatar, App as AntdApp } from 'antd';
 import { MenuOutlined, UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons';
+import LogoSvg from './components/LogoSvg';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ProjectDataProvider } from './contexts/ProjectDataContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -25,7 +26,6 @@ import "./index.css";
 import "./styles/utilities.css";
 
 const { Header, Content } = Layout;
-const { Title } = Typography;
 
 // Create a client for TanStack Query
 const queryClient = new QueryClient({
@@ -148,14 +148,23 @@ const AppContent: React.FC = () => {
   return (
     <Layout style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       <Header style={{
-        padding: '0 20px',
+        padding: '0px 10px',
         flexShrink: 0,
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
+        height: "auto"
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Title level={3} style={{ color: 'white', margin: '5px 0' }}>觅光助创</Title>
+          <LogoSvg
+            style={{
+              height: '28px',
+              width: 'auto',
+              color: 'white',
+              margin: '10px 16px',
+              fill: 'currentColor'
+            }}
+          />
           <Breadcrumb style={{ margin: '0 30px' }} />
         </div>
 
