@@ -177,7 +177,7 @@ ${context}
 
 **你的回复的JSON格式要求：**
 {
-  "humanReadableMessage": "对用户友好的中文回复消息，尽量简洁"
+  "humanReadableMessage": "对用户友好的中文回复消息，尽量简洁，不要重复tool call返回的结果"
 }
 
 注意：
@@ -185,6 +185,7 @@ ${context}
 2 如果需要编辑多个步骤时，遵循依赖顺序：先编辑上游内容（如创意），然后编辑依赖的下游内容（如框架）
 3. 根据用户意图直接调用工具，不要进一步向用户征询或明确用户意图；用户希望你能自主完成任务，而不是询问用户意图
 4. 你不要创作，不要想点子；你是经理，主要职责是调度工具；将创造力、想点子的任务留给工具；你的任务是分析用户意图，并准确地给给工具发送命令
+5. humanReadableMessage不要包含任何工具调用的细节，而是用简单和模糊的语言告知用户你正在做什么，或者完成了什么。不要重复tool call返回的结果
 `;
 }
 
@@ -285,7 +286,7 @@ export function computeAvailableToolsFromCanonicalContext(
             case 'generate_chronicles':
                 addTool(() => createChroniclesToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
                 break;
-            case 'edit_chronicles':
+            case 'edit_时间顺序大纲':
                 addTool(() => createChroniclesEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
                 break;
             case 'generate_分集结构':
