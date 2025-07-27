@@ -356,7 +356,7 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
             display: 'inline-block'
           }}>
             <Text style={{ color: '#1890ff', fontSize: '14px', fontWeight: 500 }}>
-              已选择创意: {ideas[0]?.title || '觉醒吧，南京赛亚人！'}
+              已选择创意: {ideas[0]?.title}
             </Text>
           </div>
           <div style={{ marginTop: '8px' }}>
@@ -415,7 +415,7 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
                   <div className="text-center py-4 " style={{ padding: "12px 12px" }}>
                     <Text className="text-gray-400" >
                       {store.selectedJsondocAndPath
-                        ? `已选择创意 ${store.selectedJsondocAndPath.index + 1}，请使用下方的操作面板确认选择`
+                        ? `已选择创意 ${store.selectedJsondocAndPath.title}，请使用下方的操作面板确认选择`
                         : '点击选择一个创意想法继续开发'
                       }
                     </Text>

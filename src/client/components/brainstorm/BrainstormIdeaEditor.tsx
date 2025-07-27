@@ -150,7 +150,7 @@ export const BrainstormIdeaEditor: React.FC<{
                             lineHeight: DesignTokens.typography.lineHeight.normal,
                             opacity: isChosen ? 0.7 : 1,
                         }}>
-                            {body.length > 150 ? `${body.substring(0, 150)}...` : body}
+                            {body}
                         </Text>
                     </Stack>
 

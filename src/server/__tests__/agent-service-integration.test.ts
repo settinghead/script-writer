@@ -71,12 +71,12 @@ describe('AgentService Integration', () => {
 
         // Setup basic mock responses
         let jsondocIdCounter = 1;
-        mockJsondocRepo.createJsondoc.mockImplementation(() => ({
+        vi.mocked(mockJsondocRepo.createJsondoc).mockImplementation(() => ({
             id: `jsondoc-${jsondocIdCounter++}-${Date.now()}`
         }));
 
         let transformIdCounter = 1;
-        mockTransformRepo.createTransform.mockImplementation(() => ({
+        vi.mocked(mockTransformRepo.createTransform).mockImplementation(() => ({
             id: `transform-${transformIdCounter++}-${Date.now()}`
         }));
 

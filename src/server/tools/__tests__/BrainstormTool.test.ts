@@ -68,8 +68,8 @@ describe('BrainstormTool', () => {
 
     it('should handle different platform inputs', async () => {
         // Arrange
-        mockJsondocRepo.createJsondoc.mockResolvedValue({ id: 'new-jsondoc-2' });
-        mockTransformRepo.createTransform.mockResolvedValue({ id: 'new-transform-2' });
+        vi.mocked(mockJsondocRepo.createJsondoc).mockResolvedValue({ id: 'new-jsondoc-2' });
+        vi.mocked(mockTransformRepo.createTransform).mockResolvedValue({ id: 'new-transform-2' });
 
         // Setup different input data
         mockJsondocRepo.getJsondoc.mockImplementation(async (id: string) => {
@@ -120,10 +120,10 @@ describe('BrainstormTool', () => {
 
     it('should handle repository errors gracefully', async () => {
         // Arrange - Mock all repository methods to throw errors
-        mockJsondocRepo.getJsondoc.mockRejectedValue(new Error('Database error'));
-        mockJsondocRepo.createJsondoc.mockRejectedValue(new Error('Database error'));
-        mockTransformRepo.createTransform.mockRejectedValue(new Error('Database error'));
-        mockTransformRepo.addTransformInputs.mockRejectedValue(new Error('Database error'));
+        vi.mocked(mockJsondocRepo.getJsondoc).mockRejectedValue(new Error('Database error'));
+        vi.mocked(mockJsondocRepo.createJsondoc).mockRejectedValue(new Error('Database error'));
+        vi.mocked(mockTransformRepo.createTransform).mockRejectedValue(new Error('Database error'));
+        vi.mocked(mockTransformRepo.addTransformInputs).mockRejectedValue(new Error('Database error'));
 
         const input: IdeationInput = {
             brainstormInputJsondocId: 'test-brainstorm-input-1',
