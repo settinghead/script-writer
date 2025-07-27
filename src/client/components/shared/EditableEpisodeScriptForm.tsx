@@ -2,7 +2,7 @@ import React from 'react';
 import { Space, Typography } from 'antd';
 import { FileTextOutlined, ClockCircleOutlined, NumberOutlined } from '@ant-design/icons';
 import { ElectricJsondoc } from '../../../common/types';
-import { YJSTextField, YJSTextAreaField } from '../../transform-jsondoc-framework/components/YJSField';
+import { YJSTextField, YJSTextAreaField, YJSNumberField } from '../../transform-jsondoc-framework/components/YJSField';
 
 const { Text } = Typography;
 
@@ -42,8 +42,6 @@ const EditableEpisodeScriptForm: React.FC<EditableEpisodeScriptFormProps> = ({ j
                 <YJSTextAreaField
                     path="scriptContent"
                     placeholder="输入完整的剧本内容，包含场景、对话、动作指导"
-                    maxRows={20}
-                    minRows={10}
                 />
             </div>
 
@@ -55,10 +53,9 @@ const EditableEpisodeScriptForm: React.FC<EditableEpisodeScriptFormProps> = ({ j
                         预估时长（分钟）
                     </Text>
                 </div>
-                <YJSTextField
+                <YJSNumberField
                     path="estimatedDuration"
                     placeholder="预估时长"
-                    type="number"
                 />
             </div>
         </Space>
