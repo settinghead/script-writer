@@ -1,5 +1,4 @@
-import { JsondocRepository } from './JsondocRepository';
-import { TransformRepository } from './TransformRepository';
+import { TransformJsondocRepository } from './TransformJsondocRepository';
 import { TransformInstantiationRegistry } from '../services/TransformInstantiationRegistry';
 import {
   JsondocSchemaRegistry,
@@ -10,8 +9,8 @@ export class HumanTransformExecutor {
   private instantiationRegistry: TransformInstantiationRegistry;
 
   constructor(
-    private jsondocRepo: JsondocRepository,
-    private transformRepo: TransformRepository
+    private jsondocRepo: TransformJsondocRepository,
+    private transformRepo: TransformJsondocRepository,
   ) {
     this.instantiationRegistry = new TransformInstantiationRegistry();
   }
@@ -155,7 +154,7 @@ export class HumanTransformExecutor {
     }
 
     // Get current data and apply updates
-    const currentData = currentJsondoc.data; // Already parsed by JsondocRepository
+    const currentData = currentJsondoc.data; // Already parsed by TransformJsondocRepository
 
     // Use jsondoc data directly (no special handling needed)
 
@@ -226,7 +225,7 @@ export class HumanTransformExecutor {
       throw new Error(`No schema found for type: ${transformDef.sourceJsondocType}`);
     }
 
-    const sourceData = sourceJsondoc.data; // Already parsed by JsondocRepository
+    const sourceData = sourceJsondoc.data; // Already parsed by TransformJsondocRepository
     const sourceValidation = sourceSchema.safeParse(sourceData);
 
     if (!sourceValidation.success) {

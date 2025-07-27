@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import {
     EpisodePlanningInputSchema,
     EpisodePlanningInput,
@@ -36,7 +36,7 @@ interface EpisodePlanningToolResult {
  */
 async function extractSourceEpisodePlanningData(
     params: EpisodePlanningEditInput,
-    jsondocRepo: JsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     userId: string
 ): Promise<{
     originalEpisodePlanning: any;
@@ -86,8 +86,8 @@ async function extractSourceEpisodePlanningData(
  * Factory function that creates an episode planning edit tool definition using JSON patch
  */
 export function createEpisodePlanningEditToolDefinition(
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {
@@ -188,8 +188,8 @@ export function createEpisodePlanningEditToolDefinition(
  * Factory function that creates an episode planning tool definition
  */
 export function createEpisodePlanningToolDefinition(
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {

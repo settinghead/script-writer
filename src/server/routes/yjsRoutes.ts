@@ -3,8 +3,7 @@ import { createAuthMiddleware } from '../middleware/auth';
 import { db } from '../database/connection';
 import { AuthDatabase } from '../database/auth';
 import { sql } from 'kysely';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 
 const router = express.Router();
 
@@ -13,8 +12,8 @@ const authDB = new AuthDatabase(db);
 const authMiddleware = createAuthMiddleware(authDB);
 
 // Initialize repositories for patch approval detection
-const jsondocRepo = new JsondocRepository(db);
-const transformRepo = new TransformRepository(db);
+const jsondocRepo = new TransformJsondocRepository(db);
+const transformRepo = new TransformJsondocRepository(db);
 
 
 

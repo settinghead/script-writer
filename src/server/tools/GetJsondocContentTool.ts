@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { JSONPath } from 'jsonpath-plus';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
-import type { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import type { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 
 // Input schema for the getJsondocContent tool
 export const GetJsondocContentInputSchema = z.object({
@@ -27,7 +27,7 @@ export type GetJsondocContentResult = z.infer<typeof GetJsondocContentResultSche
  * Create the getJsondocContent tool definition for agent use
  */
 export function createGetJsondocContentToolDefinition(
-    jsondocRepo: JsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string,
     userId: string
 ): StreamingToolDefinition<GetJsondocContentInput, GetJsondocContentResult> {

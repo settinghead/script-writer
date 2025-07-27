@@ -6,16 +6,15 @@
  * Usage: ./run-ts src/server/scripts/test-streaming-patches.ts
  */
 
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { BrainstormEditInputSchema } from '../../common/schemas/transforms';
 import { executeStreamingTransform } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import { JsonPatchOperationsSchema } from '../../common/schemas/transforms';
 import { db } from '../database/connection';
 
 async function testStreamingPatches() {
-    const jsondocRepo = new JsondocRepository(db);
-    const transformRepo = new TransformRepository(db);
+    const jsondocRepo = new TransformJsondocRepository(db);
+    const transformRepo = new TransformJsondocRepository(db);
 
     // Test user and project
     const testUserId = 'test-user-1';

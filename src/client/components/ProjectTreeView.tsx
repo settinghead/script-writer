@@ -29,6 +29,7 @@ const compactTreeStyles = `
 
 .compact-tree .ant-tree-treenode {
     padding: 2px 0 !important;
+    line-height: normal !important;
 }
 
 .compact-tree .ant-tree-indent-unit {
@@ -57,7 +58,7 @@ const compactTreeStyles = `
 }
 
 .compact-tree .ant-tree-title {
-    font-size: 14px !important;
+    font-size: 16px !important;
 }
 `;
 
@@ -541,7 +542,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                             }} />
                             <Text style={{
                                 color: isEpisodeHighlighted ? '#ffffff' : '#ccc',
-                                fontSize: '14px',
+                                fontSize: '16px',
                                 fontWeight: isEpisodeHighlighted ? 600 : 400,
                                 textShadow: isEpisodeHighlighted ? '0 0 6px rgba(24, 144, 255, 0.6)' : 'none',
                                 whiteSpace: 'nowrap',

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createBrainstormEditToolDefinition } from '../BrainstormEditTool';
-import { createMockJsondocRepository, createMockTransformRepository } from '../../../__tests__/mocks/databaseMocks';
+import { createMockTransformJsondocRepository } from '../../../__tests__/mocks/databaseMocks';
 
 
 
@@ -12,8 +12,8 @@ describe('BrainstormEditTool (Unified Streaming Patch)', () => {
     let brainstormEditTool: any;
 
     beforeEach(() => {
-        mockTransformRepo = createMockTransformRepository();
-        mockJsondocRepo = createMockJsondocRepository();
+        mockTransformRepo = createMockTransformJsondocRepository();
+        mockJsondocRepo = createMockTransformJsondocRepository();
 
         brainstormEditTool = createBrainstormEditToolDefinition(
             mockTransformRepo,

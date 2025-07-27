@@ -1,7 +1,6 @@
 import { Kysely } from 'kysely';
 import { DB } from '../database/types';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import {
     buildLineageGraph,
     type LineageGraph
@@ -25,8 +24,8 @@ export interface ProjectCanonicalData {
 export class CanonicalJsondocService {
     constructor(
         private db: Kysely<DB>,
-        private jsondocRepo: JsondocRepository,
-        private transformRepo: TransformRepository
+        private jsondocRepo: TransformJsondocRepository,
+        private transformRepo: TransformJsondocRepository,
     ) { }
 
     /**

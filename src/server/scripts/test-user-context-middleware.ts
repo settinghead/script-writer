@@ -5,8 +5,7 @@
  * Shows how tools receive both agent interpretation and original user request
  */
 
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository.js';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository.js';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository.js';
 import { AgentService } from '../transform-jsondoc-framework/AgentService.js';
 import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessageRepository.js';
 
@@ -19,8 +18,8 @@ async function testUserContextMiddleware() {
         const { db } = await import('../database/connection.js');
 
         // Initialize repositories
-        const transformRepo = new TransformRepository(db);
-        const jsondocRepo = new JsondocRepository(db);
+        const transformRepo = new TransformJsondocRepository(db);
+        const jsondocRepo = new TransformJsondocRepository(db);
         const chatMessageRepo = new ChatMessageRepository(db);
 
         // Initialize agent service

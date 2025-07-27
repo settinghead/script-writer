@@ -2,10 +2,9 @@ import { BrainstormEditInput, BrainstormEditInputSchema, JsonPatchOperation, Jso
 import { TypedJsondoc } from '@/common/types';
 import { z } from 'zod';
 import { extractDataAtPath } from '../services/transform-instantiations/pathTransforms';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
 import { StreamingTransformConfig, executeStreamingTransform } from '../transform-jsondoc-framework/StreamingTransformExecutor';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
 
 /**
  * Extract patch content from ai_patch transform outputs for agent context
@@ -13,8 +12,8 @@ import { TransformRepository } from '../transform-jsondoc-framework/TransformRep
 
 async function extractPatchContentForAgent(
     transformId: string,
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository
 ): Promise<Array<{ path: string; operation: string; summary: string; newValue: any; }>> {
     try {
         // Get all output jsondocs from the ai_patch transform
@@ -114,7 +113,7 @@ export type BrainstormEditToolResult = z.infer<typeof BrainstormEditToolResultSc
 
 async function extractSourceIdeaData(
     params: BrainstormEditInput,
-    jsondocRepo: JsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     userId: string
 ): Promise<{
     originalIdea: { title: string; body: string; };
@@ -262,8 +261,8 @@ async function extractSourceIdeaData(
  */
 
 export function createBrainstormEditToolDefinition(
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {

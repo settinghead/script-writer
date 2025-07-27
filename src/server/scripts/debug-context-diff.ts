@@ -9,8 +9,7 @@
  *   ./run-ts src/server/scripts/debug-context-diff.ts "增加一个新角色，小明，是王千榕的好朋友"
  */
 
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository.js';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository.js';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository.js';
 import { StreamingTransformExecutor } from '../transform-jsondoc-framework/StreamingTransformExecutor.js';
 import { writeFileSync, existsSync, mkdirSync, readdirSync } from 'fs';
 import { join } from 'path';
@@ -94,8 +93,8 @@ async function generateFixture(): Promise<void> {
 
         console.log('🔧 Step 1: Setting up repositories...');
         const { db } = await import('../database/connection.js');
-        const jsondocRepo = new JsondocRepository(db);
-        const transformRepo = new TransformRepository(db);
+        const jsondocRepo = new TransformJsondocRepository(db);
+        const transformRepo = new TransformJsondocRepository(db);
         console.log('[Debug] Repositories initialized\n');
 
         console.log('📋 Step 2: Fetching original jsondoc data...');

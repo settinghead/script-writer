@@ -1,4 +1,4 @@
-import { JsondocRepository } from '../../transform-jsondoc-framework/JsondocRepository';
+import { TransformJsondocRepository } from '../../transform-jsondoc-framework/TransformJsondocRepository';
 import { JsondocReference } from '../../../common/schemas/common';
 
 /**
@@ -7,7 +7,7 @@ import { JsondocReference } from '../../../common/schemas/common';
  */
 export class JsondocProcessor {
     constructor(
-        private jsondocRepo: JsondocRepository,
+        private jsondocRepo: TransformJsondocRepository,
         private userId: string
     ) { }
 
@@ -76,6 +76,6 @@ export class JsondocProcessor {
 /**
  * Factory function to create a JsondocProcessor instance
  */
-export function createJsondocProcessor(jsondocRepo: JsondocRepository, userId: string): JsondocProcessor {
+export function createJsondocProcessor(jsondocRepo: TransformJsondocRepository, userId: string): JsondocProcessor {
     return new JsondocProcessor(jsondocRepo, userId);
 } 

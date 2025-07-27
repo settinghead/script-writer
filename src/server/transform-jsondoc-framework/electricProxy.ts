@@ -1,9 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { AuthMiddleware } from '../middleware/auth';
 import { AuthDatabase } from '../database/auth';
-import { JsondocRepository } from './JsondocRepository';
+import { TransformJsondocRepository } from './TransformJsondocRepository';
 
-export function createElectricProxyRoutes(authDB: AuthDatabase, jsondocRepo: JsondocRepository) {
+export function createElectricProxyRoutes(authDB: AuthDatabase, jsondocRepo: TransformJsondocRepository) {
     const router = Router();
     const authMiddleware = new AuthMiddleware(authDB);
 

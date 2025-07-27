@@ -1,8 +1,7 @@
 import { Express } from 'express';
 import { AuthDatabase } from '../database/auth';
 import { createAuthMiddleware } from '../middleware/auth';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
 import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessageRepository';
 import { ProjectService } from '../services/ProjectService';
@@ -24,8 +23,8 @@ export function createAPIRoutes(
     app: Express,
     authDB: AuthDatabase,
     authMiddleware: ReturnType<typeof createAuthMiddleware>,
-    jsondocRepo: JsondocRepository,
-    transformRepo: TransformRepository,
+    jsondocRepo: TransformJsondocRepository,
+    transformRepo: TransformJsondocRepository,
     projectRepo: ProjectRepository,
     chatMessageRepo: ChatMessageRepository,
     projectService: ProjectService,

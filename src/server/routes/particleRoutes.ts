@@ -99,8 +99,8 @@ router.get('/list', authMiddleware.authenticate, async (req, res) => {
 
         try {
             // Verify user has access to the project
-            const { JsondocRepository } = await import('../transform-jsondoc-framework/JsondocRepository.js');
-            const jsondocRepo = new JsondocRepository(db);
+            const { TransformJsondocRepository } = await import('../transform-jsondoc-framework/TransformJsondocRepository.js');
+            const jsondocRepo = new TransformJsondocRepository(db);
             const hasAccess = await jsondocRepo.userHasProjectAccess(user.id, projectId);
             if (!hasAccess) {
                 res.status(403).json({ error: 'Access denied to project' });
@@ -188,8 +188,8 @@ router.get('/search', authMiddleware.authenticate, async (req, res) => {
 
         try {
             // Verify user has access to the project
-            const { JsondocRepository } = await import('../transform-jsondoc-framework/JsondocRepository.js');
-            const jsondocRepo = new JsondocRepository(db);
+            const { TransformJsondocRepository } = await import('../transform-jsondoc-framework/TransformJsondocRepository.js');
+            const jsondocRepo = new TransformJsondocRepository(db);
             const hasAccess = await jsondocRepo.userHasProjectAccess(user.id, projectId);
             if (!hasAccess) {
                 res.status(403).json({ error: 'Access denied to project' });
@@ -293,8 +293,8 @@ router.get('/list', authMiddleware.authenticate, async (req, res) => {
         }
 
         // Check if user has access to project
-        const { JsondocRepository } = await import('../transform-jsondoc-framework/JsondocRepository.js');
-        const jsondocRepo = new JsondocRepository(db);
+        const { TransformJsondocRepository } = await import('../transform-jsondoc-framework/TransformJsondocRepository.js');
+        const jsondocRepo = new TransformJsondocRepository(db);
         const hasAccess = await jsondocRepo.userHasProjectAccess(user.id, projectId);
         if (!hasAccess) {
             res.status(403).json({ error: 'Access denied to project' });

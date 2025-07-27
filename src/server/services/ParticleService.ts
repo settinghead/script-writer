@@ -3,9 +3,9 @@ import { DB } from '../database/types';
 import { EmbeddingService } from './EmbeddingService';
 import { ParticleExtractor, ParticleData } from './ParticleExtractor';
 import { TypedJsondoc } from '../../common/jsondocs.js';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { CanonicalJsondocService } from './CanonicalJsondocService';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+
 
 export interface ParticleSearchResult {
     id: string;
@@ -42,8 +42,8 @@ export class ParticleService {
         private db: Kysely<DB>,
         private embeddingService: EmbeddingService,
         private particleExtractor: ParticleExtractor,
-        private jsondocRepo: JsondocRepository,
-        private transformRepo: TransformRepository
+        private jsondocRepo: TransformJsondocRepository,
+        private transformRepo: TransformJsondocRepository,
     ) {
         this.canonicalJsondocService = new CanonicalJsondocService(
             this.db,
@@ -292,7 +292,7 @@ export class ParticleService {
      */
     async getParticle(particleId: string, projectId: string, userId: string): Promise<ParticleSearchResult | null> {
         // Verify user has access to the project
-        const jsondocRepo = new JsondocRepository(this.db);
+        const jsondocRepo = new TransformJsondocRepository(this.db);
         const hasAccess = await jsondocRepo.userHasProjectAccess(userId, projectId);
         if (!hasAccess) {
             throw new Error('Access denied to project');

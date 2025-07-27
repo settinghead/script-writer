@@ -1,6 +1,6 @@
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
+
 import { Project } from '../../common/jsondocs';
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../database/connection';
@@ -11,15 +11,15 @@ import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessag
 export class ProjectService {
     private db: Kysely<DB>;
     private projectRepo: ProjectRepository;
-    private jsondocRepo: JsondocRepository;
-    private transformRepo: TransformRepository;
+    private jsondocRepo: TransformJsondocRepository;
+    private transformRepo: TransformJsondocRepository;
     private chatMessageRepo: ChatMessageRepository;
 
     constructor(database: Kysely<DB>) {
         this.db = database;
         this.projectRepo = new ProjectRepository(database);
-        this.jsondocRepo = new JsondocRepository(database);
-        this.transformRepo = new TransformRepository(database);
+        this.jsondocRepo = new TransformJsondocRepository(database);
+        this.transformRepo = new TransformJsondocRepository(database);
         this.chatMessageRepo = new ChatMessageRepository(database);
     }
 

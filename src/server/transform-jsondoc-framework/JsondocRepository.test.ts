@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { JsondocRepository } from './JsondocRepository';
+import { TransformJsondocRepository } from './TransformJsondocRepository';
 import { createMockKyselyDatabase } from '../../__tests__/mocks/databaseMocks';
 import { mockJsondocs } from '../../__tests__/fixtures/jsondocs';
 
-describe('JsondocRepository', () => {
-    let repository: JsondocRepository;
+describe('TransformJsondocRepository', () => {
+    let repository: TransformJsondocRepository;
     let mockDb: any;
 
     beforeEach(() => {
         mockDb = createMockKyselyDatabase();
-        repository = new JsondocRepository(mockDb);
+        repository = new TransformJsondocRepository(mockDb);
     });
 
     describe('getLatestBrainstormIdeas', () => {

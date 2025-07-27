@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { AuthMiddleware } from '../middleware/auth';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
 import { deduceProjectTitle } from '../../common/utils/projectTitleDeduction';
 import { CanonicalJsondocService } from '../services/CanonicalJsondocService';
@@ -13,8 +12,8 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
     const router = Router();
 
     // Initialize repositories
-    const jsondocRepo = new JsondocRepository(db);
-    const transformRepo = new TransformRepository(db);
+    const jsondocRepo = new TransformJsondocRepository(db);
+    const transformRepo = new TransformJsondocRepository(db);
     const projectRepo = new ProjectRepository(db);
     const canonicalService = new CanonicalJsondocService(db, jsondocRepo, transformRepo);
 

@@ -1,7 +1,7 @@
 // Use dynamic imports for YJS to fix ES module compatibility
 import { db } from '../database/connection';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
+
 
 type Database = typeof db;
 
@@ -37,8 +37,8 @@ export class YJSService {
 
     constructor(
         private db: Database,
-        private jsondocRepo: JsondocRepository,
-        private transformRepo: TransformRepository
+        private jsondocRepo: TransformJsondocRepository,
+        private transformRepo: TransformJsondocRepository,
     ) { }
 
     /**

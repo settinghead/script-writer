@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
 import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessageRepository';
 import { TemplateService } from '../services/templates/TemplateService';
@@ -17,9 +16,9 @@ import { StreamingExecutionMode } from '../transform-jsondoc-framework/Streaming
  * Admin routes for debugging and development
  */
 export function createAdminRoutes(
-    jsondocRepo: JsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     authMiddleware: any,
-    transformRepo: TransformRepository,
+    transformRepo: TransformJsondocRepository,
     projectRepo: ProjectRepository
 ) {
     const router = Router();

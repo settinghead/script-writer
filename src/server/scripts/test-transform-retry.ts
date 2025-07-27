@@ -1,13 +1,12 @@
 import { StreamingTransformExecutor } from '../transform-jsondoc-framework/StreamingTransformExecutor';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { OutlineSettingsInputSchema, OutlineSettingsOutputSchema } from '../../common/schemas/outlineSchemas';
 import { db } from '../database/connection';
 
 async function testTransformRetry() {
     console.log('🧪 Testing transform retry mechanism...');
-    const transformRepo = new TransformRepository(db);
-    const jsondocRepo = new JsondocRepository(db);
+    const transformRepo = new TransformJsondocRepository(db);
+    const jsondocRepo = new TransformJsondocRepository(db);
 
     const projectId = 'test-project-123';
     const userId = 'test-user-1';

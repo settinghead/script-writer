@@ -2455,7 +2455,7 @@ This principle ensures that complex applications maintain consistency between wh
 ### Repository Pattern
 **Data Access Layer**:
 ```typescript
-export class JsondocRepository {
+export class TransformJsondocRepository {
   constructor(private db: Database) {}
   
   async createJsondoc(data: CreateJsondocData): Promise<Jsondoc> {
@@ -2480,8 +2480,8 @@ export class JsondocRepository {
 ```typescript
 export class ProjectService {
   constructor(
-    private jsondocRepo: JsondocRepository,
-    private transformRepo: TransformRepository,
+    private jsondocRepo: TransformJsondocRepository,
+    private transformRepo: TransformJsondocRepository,
     private chatService: ChatService
   ) {}
   
@@ -2898,7 +2898,7 @@ This comprehensive testing framework ensures that Transform Jsondoc Framework ap
 - run-ts can only run typescript files. DO NOT run inline scripts. Always write down the script in TS file(s).
 
 ### Database Operations
-- Use `JsondocRepository` and `TransformRepository` for data access
+- Use `TransformJsondocRepository` and `TransformJsondocRepositoryata access
 - Run migrations with `npm run migrate`
 - Use `./run-ts src/server/scripts/migrate.ts` for migrations
 - Unique constraint `unique_human_transform_per_jsondoc_path` prevents concurrent editing race conditions
@@ -3120,8 +3120,8 @@ export type ContentOutput = z.infer<typeof ContentOutputSchema>;
 **2. Create Tool** (in `src/server/tools/`):
 ```typescript
 export function createContentTool(
-  transformRepo: TransformRepository,
-  jsondocRepo: JsondocRepository,
+  transformRepo: TransformJsondocRepository,
+  jsondocRepo: TransformJsondocRepository,
   projectId: string,
   userId: string,
   options: { enableCaching?: boolean } = {}
@@ -4162,8 +4162,8 @@ availableTools = [
  */
 export function computeAvailableToolsFromCanonicalContext(
     context: CanonicalJsondocContext,
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: CachingOptions
@@ -4204,8 +4204,8 @@ export function computeAvailableToolsFromCanonicalContext(
 export async function buildAgentConfiguration(
     request: GeneralAgentRequest,
     projectId: string,
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     userId: string
 ): Promise<AgentConfiguration> {
     // Compute canonical context for tool filtering

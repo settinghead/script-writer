@@ -1,9 +1,8 @@
 import { describe, it, expect, beforeEach, } from 'vitest';
 import { createBrainstormToolDefinition } from '../BrainstormGenerationTool';
-import { createMockJsondocRepository, createMockTransformRepository } from '../../../__tests__/mocks/databaseMocks';
+import { createMockTransformJsondocRepository } from '../../../__tests__/mocks/databaseMocks';
 import { TypedJsondoc } from '@/common/types';
 import { IdeationInput } from '@/common/transform_schemas';
-import { StreamingToolDefinition } from '@/server/transform-jsondoc-framework/StreamingAgentFramework';
 
 describe('BrainstormTool', () => {
     let mockTransformRepo: any;
@@ -11,8 +10,8 @@ describe('BrainstormTool', () => {
     let brainstormTool: ReturnType<typeof createBrainstormToolDefinition>;
 
     beforeEach(() => {
-        mockTransformRepo = createMockTransformRepository();
-        mockJsondocRepo = createMockJsondocRepository();
+        mockTransformRepo = createMockTransformJsondocRepository();
+        mockJsondocRepo = createMockTransformJsondocRepository();
 
         // Setup mock getJsondoc to return proper brainstorm input jsondoc
         mockJsondocRepo.getJsondoc.mockImplementation(async (id: string) => {

@@ -1,7 +1,6 @@
 import express from 'express';
 import { AuthMiddleware } from '../middleware/auth';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessageRepository';
 
 import {
@@ -15,8 +14,8 @@ import { TypedJsondoc } from '../../common/types';
  */
 async function deleteTransformRecursively(
     transformId: string,
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string,
     deletedTransformIds: string[] = [],
     deletedJsondocIds: string[] = []
@@ -70,8 +69,8 @@ async function deleteTransformRecursively(
 
 export function createTransformRoutes(
     authMiddleware: AuthMiddleware,
-    jsondocRepo: JsondocRepository,
-    transformRepo: TransformRepository
+    jsondocRepo: TransformJsondocRepository,
+    transformRepo: TransformJsondocRepository,
 ) {
     const router = express.Router();
 

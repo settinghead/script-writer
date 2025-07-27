@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createEpisodeSynopsisToolDefinition } from '../EpisodeSynopsisTool';
-import type { TransformRepository } from '../../transform-jsondoc-framework/TransformRepository';
-import type { JsondocRepository } from '../../transform-jsondoc-framework/JsondocRepository';
+import type { TransformJsondocRepository } from '../../transform-jsondoc-framework/TransformJsondocRepository';
 import { EpisodeSynopsisInputSchema } from '../../../common/schemas/outlineSchemas';
 
 // Mock the streaming transform executor
@@ -12,15 +11,15 @@ vi.mock('../../transform-jsondoc-framework/StreamingTransformExecutor', () => ({
 import { executeStreamingTransform } from '../../transform-jsondoc-framework/StreamingTransformExecutor';
 
 describe('EpisodeSynopsisTool', () => {
-    let mockTransformRepo: TransformRepository;
-    let mockJsondocRepo: JsondocRepository;
+    let mockTransformRepo: TransformJsondocRepository
+    let mockJsondocRepo: TransformJsondocRepository;
     const projectId = 'test-project-id';
     const userId = 'test-user-id';
 
     beforeEach(() => {
         vi.clearAllMocks();
 
-        mockTransformRepo = {} as TransformRepository;
+        mockTransformRepo = {} as TransformJsondocRepository
         mockJsondocRepo = {
             getJsondoc: vi.fn(),
             userHasProjectAccess: vi.fn()

@@ -1,14 +1,13 @@
 import express from 'express';
 import { AuthMiddleware } from '../middleware/auth';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { HumanTransformExecutor } from '../transform-jsondoc-framework/HumanTransformExecutor';
 
 
 export function createJsondocRoutes(
     authMiddleware: AuthMiddleware,
-    jsondocRepo: JsondocRepository,
-    transformRepo: TransformRepository
+    jsondocRepo: TransformJsondocRepository,
+    transformRepo: TransformJsondocRepository,
 ) {
     const router = express.Router();
     const schemaExecutor = new HumanTransformExecutor(jsondocRepo, transformRepo);

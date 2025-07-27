@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { StreamingTransformConfig, executeStreamingTransform } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 
 import {
@@ -27,7 +26,7 @@ interface BrainstormToolResult {
  */
 async function extractBrainstormParams(
     brainstormInputJsondocId: string,
-    jsondocRepo: JsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     userId: string
 ): Promise<{
     platform: string;
@@ -124,8 +123,8 @@ function transformToCollectionFormat(llmOutput: IdeationOutput, extractedParams:
  * Factory function that creates a brainstorm tool definition using the new streaming framework
  */
 export function createBrainstormToolDefinition(
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {

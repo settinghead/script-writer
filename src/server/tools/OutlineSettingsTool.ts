@@ -1,13 +1,12 @@
 import { z } from 'zod';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 /**
  * Extract patch content from ai_patch transform outputs for agent context
  */
-async function extractPatchContentForAgent(
+export async function extractPatchContentForAgent(
     transformId: string,
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository
 ): Promise<Array<{ path: string; operation: string; summary: string; newValue: any }>> {
     try {
         // Get all output jsondocs from the ai_patch transform
@@ -112,7 +111,7 @@ export type OutlineSettingsEditToolResult = z.infer<typeof OutlineSettingsEditTo
  */
 async function extractSourceOutlineSettingsData(
     params: OutlineSettingsEditInput,
-    jsondocRepo: JsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     userId: string,
     projectId: string
 ): Promise<{
@@ -130,7 +129,7 @@ async function extractSourceOutlineSettingsData(
     const transformOutputs = await jsondocRepo.getAllProjectTransformOutputsForLineage(projectId);
 
     // Use centralized canonical service to avoid duplicating computation
-    const transformRepo = new TransformRepository(db);
+    const transformRepo = new TransformJsondocRepository(db);
     const canonicalService = new CanonicalJsondocService(db, jsondocRepo, transformRepo);
     const { canonicalContext } = await canonicalService.getProjectCanonicalData(projectId);
 
@@ -191,8 +190,8 @@ async function extractSourceOutlineSettingsData(
  * Factory function that creates an 剧本设定 edit tool definition using JSON patch
  */
 export function createOutlineSettingsEditToolDefinition(
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {
@@ -352,8 +351,8 @@ export function createOutlineSettingsEditToolDefinition(
  * Factory function that creates an 剧本设定 generation tool definition
  */
 export function createOutlineSettingsToolDefinition(
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {

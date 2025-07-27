@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
 import { createEpisodeSynopsisToolDefinition } from '../tools/EpisodeSynopsisTool';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import db from '../database/connection';
 
 async function testIndividualEpisodeSynopsis() {
@@ -10,8 +9,8 @@ async function testIndividualEpisodeSynopsis() {
 
     try {
         // Use imported db connection
-        const jsondocRepo = new JsondocRepository(db);
-        const transformRepo = new TransformRepository(db);
+        const jsondocRepo = new TransformJsondocRepository(db);
+        const transformRepo = new TransformJsondocRepository(db);
 
         // Mock project and user
         const projectId = 'test-project-episode-synopsis';

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AgentService } from '../transform-jsondoc-framework/AgentService';
-import { createMockJsondocRepository, createMockTransformRepository } from '../../__tests__/mocks/databaseMocks';
+import { createMockTransformJsondocRepository } from '../../__tests__/mocks/databaseMocks';
 
 // Mock the lineage utilities since they require complex database state
 vi.mock('../../common/utils/lineageResolution', () => ({
@@ -43,8 +43,8 @@ describe('AgentService Integration', () => {
     const TEST_SEED = 12345;
 
     beforeEach(() => {
-        mockTransformRepo = createMockTransformRepository();
-        mockJsondocRepo = createMockJsondocRepository();
+        mockTransformRepo = createMockTransformJsondocRepository();
+        mockJsondocRepo = createMockTransformJsondocRepository();
 
         // Mock ChatMessageRepository
         mockChatMessageRepo = {

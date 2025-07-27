@@ -1,6 +1,7 @@
 import { z } from 'zod';
-import type { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
-import type { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import type {
+    TransformJsondocRepository
+} from '../transform-jsondoc-framework/TransformJsondocRepository';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
 import { executeStreamingTransform, type StreamingTransformConfig } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import {
@@ -22,8 +23,8 @@ type EpisodeSynopsisOutput = z.infer<typeof EpisodeSynopsisSchema>;
  * Generates detailed episode synopses for individual episodes with cumulative context
  */
 export function createEpisodeSynopsisToolDefinition(
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {

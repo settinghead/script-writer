@@ -2,8 +2,7 @@ import { z } from 'zod';
 import { TemplateService } from '../services/templates/TemplateService';
 import { LLMService } from './LLMService';
 import { CachedLLMService, getCachedLLMService } from './CachedLLMService';
-import { TransformRepository } from './TransformRepository';
-import { JsondocRepository } from './JsondocRepository';
+import { TransformJsondocRepository } from './TransformJsondocRepository';
 import { ChatMessageRepository } from './ChatMessageRepository';
 import { ParticleTemplateProcessor } from '../services/ParticleTemplateProcessor';
 import { applyPatch, deepClone, Operation } from 'fast-json-patch';
@@ -30,7 +29,7 @@ export interface StreamingTransformConfig<TInput, TOutput> {
  */
 export async function defaultPrepareTemplateVariables<TInput>(
     input: TInput,
-    jsondocRepo: JsondocRepository
+    jsondocRepo: TransformJsondocRepository
 ): Promise<{ params: any; jsondocs: any }> {
     // Extract all input parameters (excluding jsondocs array)
     const params = { ...input };
@@ -75,8 +74,8 @@ export interface StreamingTransformParams<TInput, TOutput> {
     input: TInput;
     projectId: string;
     userId: string;
-    transformRepo: TransformRepository;
-    jsondocRepo: JsondocRepository;
+    transformRepo: TransformJsondocRepository;
+    jsondocRepo: TransformJsondocRepository;
     outputJsondocType: TypedJsondoc['schema_type'];  // e.g., 'brainstorm_collection', 'outline'
     transformMetadata?: Record<string, any>;  // tool-specific metadata
     updateIntervalChunks?: number;  // How often to update jsondoc (default: 3)
@@ -862,9 +861,9 @@ export class StreamingTransformExecutor {
         errorMessage?: string,
         projectId?: string,
         userId?: string,
-        jsondocRepo?: JsondocRepository,
+        jsondocRepo?: TransformJsondocRepository,
         transformId?: string,
-        transformRepo?: TransformRepository,
+        transformRepo?: TransformJsondocRepository,
         dryRun?: boolean
     ): Promise<string | null> {
         if (dryRun || !projectId || !userId || !jsondocRepo || !transformRepo) {
@@ -1354,9 +1353,9 @@ export class StreamingTransformExecutor {
         retryCount: number,
         projectId?: string,
         userId?: string,
-        jsondocRepo?: JsondocRepository,
+        jsondocRepo?: TransformJsondocRepository,
         transformId?: string | null,
-        transformRepo?: TransformRepository,
+        transformRepo?: TransformJsondocRepository,
         dryRun?: boolean,
         chunkCount?: number
     ): Promise<any> {
@@ -1462,8 +1461,8 @@ export class StreamingTransformExecutor {
         templateName: string,
         projectId: string,
         transformId: string,
-        jsondocRepo: JsondocRepository,
-        transformRepo: TransformRepository,
+        jsondocRepo: TransformJsondocRepository,
+        transformRepo: TransformJsondocRepository,
         chunkCount: number
     ): Promise<void> {
         // console.log(`[upsertPatchJsondocs] Called with ${patches.length} patches at chunk ${chunkCount}`);

@@ -4,8 +4,7 @@
  * Test script to verify export functionality
  */
 
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
 import { db } from '../database/connection';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,8 +12,8 @@ import { v4 as uuidv4 } from 'uuid';
 async function testExportFunctionality() {
     console.log('🧪 Testing export functionality...');
 
-    const jsondocRepo = new JsondocRepository(db);
-    const transformRepo = new TransformRepository(db);
+    const jsondocRepo = new TransformJsondocRepository(db);
+    const transformRepo = new TransformJsondocRepository(db);
     const projectRepo = new ProjectRepository(db);
 
     // Create a test project

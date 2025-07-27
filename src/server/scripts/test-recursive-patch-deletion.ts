@@ -10,11 +10,10 @@ import { config } from 'dotenv';
 config();
 
 import { db } from '../database/connection';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 
-const jsondocRepo = new JsondocRepository(db);
-const transformRepo = new TransformRepository(db);
+const jsondocRepo = new TransformJsondocRepository(db);
+const transformRepo = new TransformJsondocRepository(db);
 
 const TEST_USER_ID = 'test-user-1';
 const TEST_PROJECT_ID = 'test-project-recursive-deletion';

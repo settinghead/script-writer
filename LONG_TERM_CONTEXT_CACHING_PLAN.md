@@ -18,7 +18,7 @@ No backward compatibility needed—replace existing storage/logic. Follow repo r
 
 - **EpisodeSynopsis.ts (src/server/services/templates/episodeSynopsis.ts)**: Restructure prompt template to put fixed content (jsondocs, instructions) first, variables (params) last for caching.
 - **ChatMessageRepository.ts (src/server/transform-jsondoc-framework/ChatMessageRepository.ts)**: Add methods for conversation grouping and reconstruction. New table `chat_conversations` (migration needed).
-- **TransformRepository.ts (src/server/transform-jsondoc-framework/TransformRepository.ts)**: Add `tool_call_id` field to transforms for linking to messages.
+- **TransformJsondocRepositoryc/server/transform-jsondoc-framework/TransformJsondocRepositoryool_call_id` field to transforms for linking to messages.
 - **AgentService.ts (src/server/transform-jsondoc-framework/AgentService.ts)**: Enhance `runGeneralAgent` to check for existing history and append for continuations. Use multi-message arrays for LLM calls.
 - **EpisodeSynopsisTool.ts (src/server/tools/EpisodeSynopsisTool.ts)**: Modify `execute` to reconstruct/append history if prior batches exist.
 - **Migrations (src/server/database/migrations/)**: New migration for `tool_call_id` in transforms and `chat_conversations` table.

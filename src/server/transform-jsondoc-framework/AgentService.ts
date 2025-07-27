@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { streamText, wrapLanguageModel } from 'ai';
-import { TransformRepository } from './TransformRepository';
-import { JsondocRepository } from './JsondocRepository';
+import { TransformJsondocRepository } from './TransformJsondocRepository';
 import { createAgentTool } from './StreamingAgentFramework';
 import { buildAgentConfiguration, buildPromptForRequestType } from '../services/AgentRequestBuilder';
 import { getLLMModel } from './LLMConfig';
@@ -22,8 +21,8 @@ export class AgentService {
     private chatMessageRepo?: any; // Injected later to avoid circular dependency
 
     constructor(
-        private transformRepo: TransformRepository,
-        private jsondocRepo: JsondocRepository,
+        private transformRepo: TransformJsondocRepository,
+        private jsondocRepo: TransformJsondocRepository,
     ) { }
 
     // Method to inject chat repository after initialization
@@ -95,7 +94,7 @@ export class AgentService {
      */
     private async buildMinimalContextForParticleSearch(
         projectId: string,
-        jsondocRepo: JsondocRepository
+        jsondocRepo: TransformJsondocRepository
     ): Promise<string> {
         const contextLines: string[] = [];
         contextLines.push('=== 项目状态概览 ===');

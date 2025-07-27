@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import {
     ChroniclesInputSchema,
     ChroniclesInput,
@@ -54,7 +53,7 @@ export type ChroniclesEditToolResult = z.infer<typeof ChroniclesEditToolResultSc
  */
 async function extractSourceChroniclesData(
     params: ChroniclesEditInput,
-    jsondocRepo: JsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     userId: string
 ): Promise<{
     originalChronicles: any;
@@ -104,8 +103,8 @@ async function extractSourceChroniclesData(
  * Factory function that creates a chronicles edit tool definition using JSON patch
  */
 export function createChroniclesEditToolDefinition(
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {
@@ -214,8 +213,8 @@ export function createChroniclesEditToolDefinition(
  * Factory function that creates a chronicles generation tool definition
  */
 export function createChroniclesToolDefinition(
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {

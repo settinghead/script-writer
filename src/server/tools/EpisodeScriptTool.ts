@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { executeStreamingTransform } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import { EpisodeScriptInputSchema, EpisodeScriptSchema, EpisodeScriptToolResultSchema } from '../../common/schemas/outlineSchemas';
 import { episodeScriptTemplate } from '../services/templates/episodeScript';
@@ -16,8 +16,8 @@ export type EpisodeScriptToolResult = z.infer<typeof EpisodeScriptToolResultSche
  * Based on episode synopsis and outline settings
  */
 export function createEpisodeScriptToolDefinition(
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {

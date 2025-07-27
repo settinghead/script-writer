@@ -1,6 +1,6 @@
 import { dump } from 'js-yaml';
 import { ZodSchema } from 'zod';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository.js';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository.js';
 import { SchemaDescriptionParser } from './SchemaDescriptionParser';
 import { JsondocReference } from '../../common/schemas/common';
 
@@ -12,7 +12,7 @@ export type CustomTemplateVariableFunction = (
 ) => Promise<Record<string, string>> | Record<string, string>;
 
 export interface TemplateExecutionContext {
-    jsondocRepo: JsondocRepository;
+    jsondocRepo: TransformJsondocRepository;
     projectId: string;
     userId: string;
     [key: string]: any;

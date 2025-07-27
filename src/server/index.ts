@@ -6,8 +6,7 @@ import { AuthDatabase } from './database/auth';
 import { createAuthMiddleware } from './middleware/auth';
 import { createAuthRoutes } from './routes/auth';
 import yjsRoutes from './routes/yjsRoutes';
-import { JsondocRepository } from './transform-jsondoc-framework/JsondocRepository.js';
-import { TransformRepository } from './transform-jsondoc-framework/TransformRepository.js';
+import { TransformJsondocRepository } from './transform-jsondoc-framework/TransformJsondocRepository.js';
 
 import { db } from './database/connection';
 
@@ -45,8 +44,8 @@ const authMiddleware = createAuthMiddleware(authDB);
 // Test users can be seeded manually with: npm run seed
 
 // Initialize repositories
-const jsondocRepo = new JsondocRepository(db);
-const transformRepo = new TransformRepository(db);
+const jsondocRepo = new TransformJsondocRepository(db);
+const transformRepo = new TransformJsondocRepository(db);
 const projectRepo = new ProjectRepository(db);
 
 

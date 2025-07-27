@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { CanonicalJsondocService } from './CanonicalJsondocService';
 import { type CanonicalJsondocContext } from '../../common/canonicalJsondocLogic';
 import { db } from '../database/connection';
@@ -35,13 +34,13 @@ export interface AgentConfiguration {
  */
 export async function buildContextForRequestType(
     projectId: string,
-    jsondocRepo: JsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     userId: string = 'system' // Default for system context building
 ): Promise<string> {
     console.log(`[ContextBuilder] Building context for request type: general`);
 
     // Use centralized canonical service to avoid duplicating computation
-    const transformRepo = new TransformRepository(db);
+    const transformRepo = new TransformJsondocRepository(db);
     const canonicalService = new CanonicalJsondocService(db, jsondocRepo, transformRepo);
     const { canonicalContext } = await canonicalService.getProjectCanonicalData(projectId);
 
@@ -203,8 +202,8 @@ ${context}
  */
 export function computeAvailableToolsFromCanonicalContext(
     context: CanonicalJsondocContext,
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string,
     userId: string,
     cachingOptions?: {
@@ -315,8 +314,8 @@ export function computeAvailableToolsFromCanonicalContext(
 export async function buildAgentConfiguration(
     request: GeneralAgentRequest,
     projectId: string,
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     userId: string,
     cachingOptions?: {
         enableCaching?: boolean;

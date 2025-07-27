@@ -27,8 +27,8 @@ Added `deleteTransformRecursively` function:
 ```typescript
 async function deleteTransformRecursively(
     transformId: string,
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     visitedTransforms: Set<string> = new Set()
 ): Promise<{ deletedTransformIds: string[], deletedJsondocIds: string[] }>
 ```

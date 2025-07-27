@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { db } from '../database/connection';
 
 async function checkJsondoc() {
     const projectRepo = new ProjectRepository(db);
-    const jsondocRepo = new JsondocRepository(db);
+    const jsondocRepo = new TransformJsondocRepository(db);
 
     const jsondocId = '88fd2ddf-22e7-4c61-882c-dd334d867fad';
 

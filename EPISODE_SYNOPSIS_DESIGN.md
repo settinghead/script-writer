@@ -267,8 +267,8 @@ if (jsondocChecks.hasEpisodeSynopsis) {
 ```typescript
 // src/server/tools/EpisodeSynopsisTool.ts
 export function createEpisodeSynopsisToolDefinition(
-  transformRepo: TransformRepository,
-  jsondocRepo: JsondocRepository,
+  transformRepo: TransformJsondocRepository,
+  jsondocRepo: TransformJsondocRepository,
   projectId: string,
   userId: string,
   cachingOptions?: CachingOptions

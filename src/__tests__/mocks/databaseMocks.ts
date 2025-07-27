@@ -22,7 +22,7 @@ export function createMockKyselyDatabase() {
 
 let mockIdCounter = 1;
 
-export function createMockJsondocRepository() {
+export function createMockTransformJsondocRepository() {
     return {
         getJsondoc: vi.fn(),
         createJsondoc: vi.fn().mockImplementation(async (projectIdOrData: any, type?: string, data?: any, version?: string, metadata?: any, streamingStatus?: string, originType?: string) => {
@@ -67,14 +67,7 @@ export function createMockJsondocRepository() {
         getAllProjectTransformInputsForLineage: vi.fn().mockResolvedValue([]),
         getAllProjectTransformOutputsForLineage: vi.fn().mockResolvedValue([]),
         userHasProjectAccess: vi.fn().mockResolvedValue(true),
-        rowToJsondoc: vi.fn()
-    };
-}
-
-let mockTransformIdCounter = 1;
-
-export function createMockTransformRepository() {
-    return {
+        rowToJsondoc: vi.fn(),
         createTransform: vi.fn().mockImplementation(async (projectId: string, type: string, version?: string, status?: string, executionContext?: any) => {
             const transformId = `mock-transform-${mockTransformIdCounter++}`;
             return {
@@ -99,4 +92,7 @@ export function createMockTransformRepository() {
         addLLMPrompts: vi.fn().mockResolvedValue({}),
         addLLMTransform: vi.fn().mockResolvedValue({}),
     };
-} 
+}
+
+let mockTransformIdCounter = 1;
+

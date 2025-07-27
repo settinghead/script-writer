@@ -1,7 +1,6 @@
 import express from 'express';
 import { AuthMiddleware } from '../middleware/auth';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import {
     computeCanonicalPatchContext,
     applyCanonicalPatches
@@ -13,8 +12,8 @@ import { TypedJsondoc } from '../../common/types';
  */
 async function findHumanTransformsUsingPatch(
     patchJsondocId: string,
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string
 ): Promise<any[]> {
     // Get all transform inputs for this project
@@ -44,8 +43,8 @@ async function findHumanTransformsUsingPatch(
  */
 async function findTransformsUsingAsInput(
     jsondocId: string,
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string
 ): Promise<any[]> {
     const allTransformInputs = await jsondocRepo.getAllProjectTransformInputsForLineage(projectId);
@@ -71,8 +70,8 @@ async function findTransformsUsingAsInput(
  */
 async function deleteHumanTransformTree(
     transformId: string,
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string,
     deletedTransformIds: string[] = [],
     deletedJsondocIds: string[] = []
@@ -128,8 +127,8 @@ async function deleteHumanTransformTree(
  */
 async function findParentAiPatchTransform(
     patchJsondocId: string,
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string
 ): Promise<any | null> {
     // Get all transform outputs for this project
@@ -158,8 +157,8 @@ async function findParentAiPatchTransform(
  */
 export async function rejectPatch(
     patchJsondocId: string,
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string
 ): Promise<{ deletedTransformIds: string[], deletedJsondocIds: string[] }> {
     const deletedTransformIds: string[] = [];
@@ -220,8 +219,8 @@ export async function rejectPatch(
  */
 export async function rejectPatchWithHumanEdits(
     patchJsondocId: string,
-    transformRepo: TransformRepository,
-    jsondocRepo: JsondocRepository,
+    transformRepo: TransformJsondocRepository,
+    jsondocRepo: TransformJsondocRepository,
     projectId: string
 ): Promise<{ deletedTransformIds: string[], deletedJsondocIds: string[] }> {
     let deletedTransformIds: string[] = [];
@@ -265,8 +264,8 @@ export async function rejectPatchWithHumanEdits(
 
 export function createPatchRoutes(
     authMiddleware: AuthMiddleware,
-    jsondocRepo: JsondocRepository,
-    transformRepo: TransformRepository
+    jsondocRepo: TransformJsondocRepository,
+    transformRepo: TransformJsondocRepository,
 ) {
     const router = express.Router();
 

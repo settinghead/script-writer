@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { JsondocProcessor, createJsondocProcessor } from '../JsondocProcessor';
-import type { JsondocRepository } from '../../../transform-jsondoc-framework/JsondocRepository';
+import type { TransformJsondocRepository } from '../../../transform-jsondoc-framework/TransformJsondocRepository';
 import type { JsondocReference } from '../../../../common/schemas/common';
 
 describe('JsondocProcessor', () => {
-    let mockJsondocRepo: JsondocRepository;
+    let mockJsondocRepo: TransformJsondocRepository;
     let processor: JsondocProcessor;
     const userId = 'test-user-id';
 

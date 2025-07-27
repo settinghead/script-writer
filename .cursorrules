@@ -86,7 +86,7 @@ src/
 ## Database & Performance
 
 ### 10. Database Operations
-- Use `JsondocRepository` and `TransformRepository` for data access
+- Use `TransformJsondocRepository` and `TransformJsondocRepositoryata access
 - **ALWAYS use project-based filtering** - jsondocs/transforms have project_id, not user_id
 - Validate project membership before any database operations
 - Use PostgreSQL + Electric SQL + Kysely architecture as documented in framework

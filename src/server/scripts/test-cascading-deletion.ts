@@ -6,8 +6,7 @@
  */
 
 import { db } from '../database/connection';
-import { JsondocRepository } from '../transform-jsondoc-framework/JsondocRepository';
-import { TransformRepository } from '../transform-jsondoc-framework/TransformRepository';
+import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { v4 as uuidv4 } from 'uuid';
 
 async function testCascadingDeletion() {
@@ -15,8 +14,8 @@ async function testCascadingDeletion() {
 
     try {
         // Initialize repositories
-        const jsondocRepo = new JsondocRepository(db);
-        const transformRepo = new TransformRepository(db);
+        const jsondocRepo = new TransformJsondocRepository(db);
+        const transformRepo = new TransformJsondocRepository(db);
 
         // Create test project
         const projectId = uuidv4();
