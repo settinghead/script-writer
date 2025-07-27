@@ -233,7 +233,30 @@ const JsondocNode: React.FC<{
                     }}>
                         <DatabaseOutlined style={{ color: typeColor }} />
                         <Text style={{ color: AppColors.text.white, fontWeight: 'bold', fontSize: '16px' }}>
-                            {jsondoc.schema_type}
+                            {(() => {
+                                try {
+                                    const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
+                                    
+                                    // For episode-based content, prioritize episode number
+                                    if (jsondoc.schema_type === '单集大纲' || jsondoc.schema_type === '单集剧本') {
+                                        const episodeNumber = data.episodeNumber || data.episode_number || '';
+                                        if (episodeNumber) {
+                                            return `第${episodeNumber}集`;
+                                        }
+                                    }
+                                    
+                                    // For other content, try to use title
+                                    const title = data.title || data.synopsis || '';
+                                    if (title) {
+                                        return title.length > 20 ? `${title.substring(0, 20)}...` : title;
+                                    }
+                                    
+                                    // Fallback to schema type
+                                    return jsondoc.schema_type;
+                                } catch (error) {
+                                    return jsondoc.schema_type;
+                                }
+                            })()}
                         </Text>
                         {isCanonical && (
                             <span style={{
@@ -264,7 +287,7 @@ const JsondocNode: React.FC<{
                         {jsondoc.schema_type}
                     </Text>
                     <br />
-                    <Text style={{ color: AppColors.text.tertiary, fontSize: '9px', fontStyle: 'italic' }}>
+                    <div style={{ color: AppColors.text.tertiary, fontSize: '9px', fontStyle: 'italic', whiteSpace: 'pre-wrap' }}>
                         {(() => {
                             try {
                                 const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
@@ -292,6 +315,24 @@ const JsondocNode: React.FC<{
                                     } else {
                                         preview = 'JSON修改提议';
                                     }
+                                } else if (jsondoc.schema_type === '单集大纲') {
+                                    const episodeNumber = data.episodeNumber || data.episode_number || '';
+                                    const title = data.title || data.synopsis || '';
+                                    if (episodeNumber) {
+                                        const truncatedTitle = title && title.length > 30 ? title.substring(0, 30) + '...' : title;
+                                        preview = `第${episodeNumber}集${truncatedTitle ? '\n' + truncatedTitle : ''}`;
+                                    } else {
+                                        preview = title.length > 25 ? `${title.substring(0, 25)}...` : title || '单集大纲';
+                                    }
+                                } else if (jsondoc.schema_type === '单集剧本') {
+                                    const episodeNumber = data.episodeNumber || data.episode_number || '';
+                                    const title = data.title || data.synopsis || '';
+                                    if (episodeNumber) {
+                                        const truncatedTitle = title && title.length > 30 ? title.substring(0, 30) + '...' : title;
+                                        preview = `第${episodeNumber}集${truncatedTitle ? '\n' + truncatedTitle : ''}`;
+                                    } else {
+                                        preview = title.length > 25 ? `${title.substring(0, 25)}...` : title || '单集剧本';
+                                    }
                                 } else {
                                     // Generic preview for other types
                                     const keys = Object.keys(data);
@@ -313,7 +354,7 @@ const JsondocNode: React.FC<{
                                 return '数据解析错误';
                             }
                         })()}
-                    </Text>
+                    </div>
                 </div>
             </Tooltip>
         </div>

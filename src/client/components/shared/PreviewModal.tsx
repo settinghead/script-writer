@@ -40,10 +40,11 @@ export const PreviewModal: React.FC<PreviewModalProps> = ({
                         fontSize: '14px',
                         lineHeight: '1.6',
                         fontFamily: 'Monaco, Menlo, "Ubuntu Mono", monospace',
-                        backgroundColor: '#f5f5f5',
+                        backgroundColor: '#1f1f1f',
+                        color: '#ffffff',
                         padding: '16px',
                         borderRadius: '6px',
-                        border: '1px solid #d9d9d9'
+                        border: '1px solid #434343'
                     }}>
                         {content}
                     </pre>
