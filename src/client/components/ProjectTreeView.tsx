@@ -471,6 +471,12 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                 const isEpisodeHighlighted = currentPosition?.section === 'episode-content' &&
                     currentPosition?.subId?.startsWith(episodeId);
 
+                // Get episode title from synopsis data
+                let episodeTitle = `第${num}集`;
+                if (synopsis && synopsis.title) {
+                    episodeTitle = `第${num}集: ${synopsis.title}`;
+                }
+
                 // Sub-children for synopsis and script
                 const subChildren: ProjectTreeNode[] = [];
 
@@ -492,7 +498,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                                 transition: 'all 0.2s ease-in-out',
                                 display: 'inline-block'
                             }}>
-                                📖 大纲: {synopsis.title}
+                                📖 大纲
                             </Text>
                         ),
                         selectable: true,
@@ -518,7 +524,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                                 transition: 'all 0.2s ease-in-out',
                                 display: 'inline-block'
                             }}>
-                                📝 剧本: {script.title || `第${num}集`}
+                                📝 剧本
                             </Text>
                         ),
                         selectable: true,
@@ -546,7 +552,7 @@ const ProjectTreeView: React.FC<ProjectTreeViewProps> = ({ width = 300 }) => {
                                 fontWeight: isEpisodeHighlighted ? 600 : 400,
                                 textShadow: isEpisodeHighlighted ? '0 0 6px rgba(24, 144, 255, 0.6)' : 'none'
                             }}>
-                                第{num}集
+                                {episodeTitle}
                             </Text>
                         </Space>
                     ),
