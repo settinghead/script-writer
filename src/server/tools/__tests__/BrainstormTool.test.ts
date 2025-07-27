@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createBrainstormToolDefinition } from '../BrainstormGenerationTool';
 import { createMockTransformJsondocRepository } from '../../../__tests__/mocks/databaseMocks';
 import { TypedJsondoc } from '@/common/types';
@@ -44,8 +44,8 @@ describe('BrainstormTool', () => {
 
     it('should generate brainstorm ideas using cached LLM responses', async () => {
         // Arrange
-        mockJsondocRepo.createJsondoc.mockResolvedValue({ id: 'new-jsondoc-1' });
-        mockTransformRepo.createTransform.mockResolvedValue({ id: 'new-transform-1' });
+        vi.mocked(mockJsondocRepo.createJsondoc).mockResolvedValue({ id: 'new-jsondoc-1' });
+        vi.mocked(mockTransformRepo.createTransform).mockResolvedValue({ id: 'new-transform-1' });
 
         const input: IdeationInput = {
             brainstormInputJsondocId: 'test-brainstorm-input-1',
