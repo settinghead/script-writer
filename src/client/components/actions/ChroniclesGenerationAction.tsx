@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Typography, Alert, message } from 'antd';
-import { HistoryOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';

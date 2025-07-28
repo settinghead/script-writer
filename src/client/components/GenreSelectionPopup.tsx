@@ -17,7 +17,7 @@ import {
     Tag,
     Alert
 } from 'antd';
-import { RightOutlined, LeftOutlined, CloseOutlined, HomeOutlined } from '@ant-design/icons';
+import { RightOutlined, HomeOutlined } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 

@@ -1,8 +1,7 @@
 import React from 'react';
-import { Card, Button, Typography, Space, Flex } from 'antd';
+import { Card, Button, Typography, Flex } from 'antd';
 import { ButtonProps } from 'antd/es/button';
 import { CardProps } from 'antd/es/card';
-import { SpaceProps } from 'antd/es/space';
 import { FlexProps } from 'antd/es/flex';
 import { AppColors } from '@/common/theme/colors';
 import { DesignTokens, StyleUtils } from '@/common/theme/designSystem';

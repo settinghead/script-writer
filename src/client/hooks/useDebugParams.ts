@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { debugParamsStorage, type DebugParams } from '../services/debugParamsStorage';
+import { debugParamsStorage, type } from '../services/debugParamsStorage';
 import { useDebounce } from './useDebounce';
 
 interface UseDebugParamsOptions {

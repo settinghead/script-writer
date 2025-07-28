@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Input, Slider, Card, List, Tag, Typography, Space, Spin, Alert, Button, Divider, Tabs, Popconfirm, message } from 'antd';
-import { SearchOutlined, FileTextOutlined, ReloadOutlined, UnorderedListOutlined, DeleteOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Input, Slider, Card, List, Tag, Typography, Space, Spin, Alert, Button, Tabs, Popconfirm, message } from 'antd';
+import { SearchOutlined, FileTextOutlined, ReloadOutlined, UnorderedListOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useParticleSearch, useParticleList } from '../../hooks/useParticleSearch';
 import { useDebounce } from '../../hooks/useDebounce';
 

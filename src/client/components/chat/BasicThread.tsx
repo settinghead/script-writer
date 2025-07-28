@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { List, Empty, Spin, Typography, Tag, Avatar, Card, Space, Tooltip } from 'antd';
-import { UserOutlined, MessageOutlined, EditOutlined, PlayCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, SendOutlined, ArrowDownOutlined } from '@ant-design/icons';
+import { List, Empty, Spin, Typography, Tag, Avatar, Card, Tooltip } from 'antd';
+import { UserOutlined, MessageOutlined, EditOutlined, PlayCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined} from '@ant-design/icons';
 import { Cpu } from 'iconoir-react';
 import { useChatMessages } from '../../hooks/useChatMessages';
 import { useProjectChatRuntime } from '../../hooks/useProjectChatRuntime';

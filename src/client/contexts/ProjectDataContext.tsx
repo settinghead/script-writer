@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo, useState, useCallback, useRef, useEffect } from 'react';
 import { useShape } from '@electric-sql/react';
-import { useMutation, useQueryClient, UseMutationResult } from '@tanstack/react-query';
+import { useMutation, useQueryClient} from '@tanstack/react-query';
 import { createElectricConfig, isElectricDebugLoggingEnabled } from '../../common/config/electric';
 import { apiService } from '../services/apiService';
 import {

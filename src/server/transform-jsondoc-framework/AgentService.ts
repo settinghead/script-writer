@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { streamText, wrapLanguageModel } from 'ai';
 import { TransformJsondocRepository } from './TransformJsondocRepository';
 import { createAgentTool } from './StreamingAgentFramework';
-import { buildAgentConfiguration, buildPromptForRequestType } from '../services/AgentRequestBuilder';
+import { buildAgentConfiguration} from '../services/AgentRequestBuilder';
 import { getLLMModel } from './LLMConfig';
 import { createUserContextMiddleware } from '../middleware/UserContextMiddleware';
 import { getParticleSystem } from './particles/ParticleSystemInitializer';

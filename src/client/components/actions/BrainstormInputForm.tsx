@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState} from 'react';
 import { Button, Typography, message, Space } from 'antd';
-import { BulbOutlined, ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Card, Button } from 'antd';
+import { Button } from 'antd';
 import { CloseOutlined } from '@ant-design/icons';
 import RawGraphVisualization from '../RawGraphVisualization';
 import RawChatMessages from '../RawChatMessages';

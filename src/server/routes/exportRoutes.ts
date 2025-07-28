@@ -3,9 +3,7 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { AuthMiddleware } from '../middleware/auth';
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
-import { deduceProjectTitle } from '../../common/utils/projectTitleDeduction';
 import { CanonicalJsondocService } from '../services/CanonicalJsondocService';
-import { extractCanonicalJsondocIds } from '../../common/canonicalJsondocLogic';
 import { db } from '../database/connection';
 
 export const createExportRoutes = (authMiddleware: AuthMiddleware) => {

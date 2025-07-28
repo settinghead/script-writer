@@ -25,7 +25,9 @@
     "seed": "./run-ts src/server/scripts/seed.ts",
     "nuke": "docker compose down -v && docker compose up -d && sleep 10 && npm run migrate && npm run seed",
     "test:schema": "./run-ts src/server/scripts/test-schema-system.ts",
-    "test:brainstorm": "./run-ts src/server/scripts/test-brainstorm-frontend.ts"
+    "test:brainstorm": "./run-ts src/server/scripts/test-brainstorm-frontend.ts",
+    "remove-unused-imports": "./run-ts src/server/scripts/remove-unused-imports.ts",
+    "remove-unused-imports:fix": "./run-ts src/server/scripts/remove-unused-imports.ts --fix"
   },
   "repository": {
     "type": "git",

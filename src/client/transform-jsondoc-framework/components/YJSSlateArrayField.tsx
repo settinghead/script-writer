@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Descendant, Editor, Node, NodeEntry, Element as SlateElement, Transforms, createEditor } from 'slate';
+import { Node, NodeEntry, Element as SlateElement, Transforms, createEditor } from 'slate';
 import { withHistory } from 'slate-history';
 import { Editable, RenderElementProps, Slate, withReact } from 'slate-react';
 import { useYJSField } from '../contexts/YJSJsondocContext';

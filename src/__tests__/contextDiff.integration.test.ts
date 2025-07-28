@@ -1,11 +1,10 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { createPatch } from 'rfc6902';
 import {
     applyContextDiffToJSON,
     applyContextDiffAndGeneratePatches
-} from '../common/contextDiff';
+} from '@/common/contextDiff';
 
 describe('LLM-Tolerant Diff System Integration Tests', () => {
     let originalJson: string;

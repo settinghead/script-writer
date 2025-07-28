@@ -4,7 +4,7 @@ import '@ant-design/v5-patch-for-react-19';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { Layout, ConfigProvider, Button, Drawer, Menu, Dropdown, Avatar, App as AntdApp } from 'antd';
+import { Layout, Button, Drawer, Menu, Dropdown, Avatar, App as AntdApp } from 'antd';
 import { MenuOutlined, UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons';
 import LogoSvg from './components/LogoSvg';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -18,7 +18,6 @@ import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
 
 // Import design system and styled theme
-import { antdTheme } from '@/common/theme/designSystem';
 import { ThemeProvider } from './styled-system';
 
 // Import CSS for styling

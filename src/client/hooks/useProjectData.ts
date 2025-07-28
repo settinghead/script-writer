@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { apiService } from '../services/apiService';
-import { useProjectStore, type Stage, type EpisodeData, type StageEpisodeState } from '../stores/projectStore';
+import { useProjectStore } from '../stores/projectStore';
 
 // Define query keys for caching
 export const projectKeys = {

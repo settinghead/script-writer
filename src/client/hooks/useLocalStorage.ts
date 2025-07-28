@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState} from 'react';
 
 /**
  * Custom hook to manage state in localStorage

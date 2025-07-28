@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import type { ElectricJsondoc } from '@/common/transform-jsondoc-types';
 

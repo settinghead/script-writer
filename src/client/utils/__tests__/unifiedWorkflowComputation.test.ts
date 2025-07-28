@@ -4,7 +4,6 @@ import {
     computeUnifiedWorkflowState
 } from '../actionComputation';
 import { ProjectDataContextType, TypedJsondoc } from '../../../common/types';
-import { LineageGraph } from '../../../common/transform-jsondoc-framework/lineageResolution';
 
 // Mock the lineage-based computation
 vi.mock('../lineageBasedActionComputation', () => ({

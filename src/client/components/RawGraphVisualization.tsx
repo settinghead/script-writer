@@ -5,10 +5,10 @@ import { DatabaseOutlined, UserOutlined, RobotOutlined, CloseOutlined, DeleteOut
 import SchemaTypeIcon from './shared/SchemaTypeIcon';
 import dagre from 'dagre';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { AppColors, ColorUtils } from '../../common/theme/colors';
+import { AppColors, ColorUtils } from '@/common/theme/colors';
 import 'reactflow/dist/style.css';
 import { ElectricJsondoc } from '@/common/transform-jsondoc-types';
-import { extractCanonicalJsondocIds } from '../../common/canonicalJsondocLogic';
+import { extractCanonicalJsondocIds } from '@/common/canonicalJsondocLogic';
 
 const { Text } = Typography;
 

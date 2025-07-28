@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layout, Button, Space, Typography, Result } from 'antd';
-import { HomeOutlined, ProjectOutlined } from '@ant-design/icons';
+import { HomeOutlined} from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 const { Content } = Layout;

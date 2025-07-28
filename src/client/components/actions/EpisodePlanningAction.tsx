@@ -5,7 +5,7 @@ import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
 import { AIButton } from '../shared';
-import { MIN_EPISODES, MAX_EPISODES, DEFAULT_EPISODES } from '../../../common/config/constants';
+import { MIN_EPISODES, MAX_EPISODES, DEFAULT_EPISODES } from '@/common/config/constants';
 
 const { Title, Text } = Typography;
 

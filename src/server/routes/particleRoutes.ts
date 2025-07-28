@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router} from 'express';
 import { createAuthMiddleware } from '../middleware/auth';
 import { AuthDatabase } from '../database/auth';
 import { getParticleSystem } from '../transform-jsondoc-framework/particles/ParticleSystemInitializer';

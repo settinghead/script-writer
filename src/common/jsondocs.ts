@@ -2,8 +2,7 @@
 // TODO: Gradually migrate all server imports to use ../../common/types directly
 
 export * from './types';
-import { JsondocSchemaRegistry } from './schemas/jsondocs';
-import type { TypedJsondoc } from './types';
+import type {} from './types';
 
 
 

@@ -2,7 +2,6 @@ import React, { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Typography, Space } from 'antd';
 import { useProjectData } from '../../contexts/ProjectDataContext';
-import { useYJSField } from '../../transform-jsondoc-framework/contexts/YJSJsondocContext';
 import { YJSTextField, YJSTextAreaField } from '../../transform-jsondoc-framework/components/YJSField';
 import { SectionWrapper, JsondocDisplayWrapper } from '../shared';
 

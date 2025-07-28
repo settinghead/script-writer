@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isLeafNode, canBecomeEditable, computeUnifiedWorkflowState } from '../actionComputation';
+import { isLeafNode, canBecomeEditable} from '../actionComputation';
 import { computeActionsFromLineage } from '../lineageBasedActionComputation';
 import type { LineageGraph } from '../../../common/transform-jsondoc-framework/lineageResolution';
 import { TypedJsondoc } from '../../../common/types';

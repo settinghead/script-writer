@@ -7,7 +7,6 @@ import {
     computeCanonicalPatchContext,
     applyCanonicalPatches
 } from '../../common/canonicalJsondocLogic';
-import { TypedJsondoc } from '../../common/types';
 
 /**
  * Recursively delete a transform and all its descendants

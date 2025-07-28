@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Button, Typography, Input, Tag, Space, InputNumber } from 'antd';
-import { BulbOutlined, RightOutlined } from '@ant-design/icons';
+import { Typography, Input, Tag, Space, InputNumber } from 'antd';
+import { RightOutlined } from '@ant-design/icons';
 import GenreSelectionPopup from './GenreSelectionPopup';
 import PlatformSelection from './PlatformSelection';
 import { MAX_GENRE_SELECTIONS } from './GenreSelectionPopup';

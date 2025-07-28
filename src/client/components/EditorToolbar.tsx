@@ -1,7 +1,7 @@
 import React from 'react';
 import { Button, Tooltip } from 'antd';
 import { BoldOutlined, ItalicOutlined, UnderlineOutlined } from '@ant-design/icons';
-import { Editor, Text, Transforms } from 'slate';
+import { Editor} from 'slate';
 
 interface EditorToolbarProps {
     editor: any; // TODO: Add proper Slate editor type

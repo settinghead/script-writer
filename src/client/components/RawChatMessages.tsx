@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Card, Typography, Space, Tag, Divider, Empty, Select, Alert } from 'antd';
 import { useShape } from '@electric-sql/react';
-import { createElectricConfig } from '../../common/config/electric';
+import { createElectricConfig } from '@/common/config/electric';
 import type { ElectricRawChatMessage } from '@/common/transform-jsondoc-types';
 
 const { Text, Paragraph } = Typography;

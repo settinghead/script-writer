@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { OutlineSettingsInputSchema, OutlineSettingsOutputSchema, ChroniclesInputSchema, ChroniclesOutputSchema, EpisodePlanningInputSchema, EpisodePlanningOutputSchema } from './outlineSchemas';
-import { BrainstormToolInputSchema } from './jsondocs';
 import { BaseToolInputSchema } from './common';
 
 // Base transform definition

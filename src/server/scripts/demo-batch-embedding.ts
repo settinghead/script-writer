@@ -13,7 +13,6 @@
 
 import { EmbeddingService } from '../transform-jsondoc-framework/EmbeddingService.js';
 import { ParticleExtractor } from '../transform-jsondoc-framework/particles/ParticleExtractor.js';
-import { TypedJsondoc } from '../../common/jsondocs.js';
 
 async function demonstrateBatchEmbedding() {
     console.log('🚀 Batch Embedding Optimization Demo');

@@ -58,7 +58,6 @@ export async function extractPatchContentForAgent(
         return [];
     }
 }
-import { defaultPrepareTemplateVariables } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import {
     OutlineSettingsInputSchema,
     OutlineSettingsInput,

@@ -6,8 +6,6 @@
  * This script tests the extractValueFromDiffBlock function with failing inputs
  */
 
-import { readFileSync } from 'fs';
-import { join } from 'path';
 
 async function main() {
     try {

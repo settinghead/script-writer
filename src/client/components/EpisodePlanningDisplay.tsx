@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
-import { Card, Typography, Space, Spin, Alert } from 'antd';
-import { EpisodePlanningOutput } from '../../common/schemas/outlineSchemas';
+import { Typography, Spin, Alert } from 'antd';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useLineageResolution } from '../transform-jsondoc-framework/useLineageResolution';
 import { SectionWrapper, JsondocDisplayWrapper } from './shared';

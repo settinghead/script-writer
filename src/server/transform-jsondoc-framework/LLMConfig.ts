@@ -1,4 +1,4 @@
-import { EmbeddingModel, LanguageModelV1 } from 'ai';
+import { LanguageModelV1 } from 'ai';
 
 export interface LLMCredentials {
     apiKey: string;
