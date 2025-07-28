@@ -270,22 +270,22 @@ function createConversationContext(
 
 ## Implementation Phases
 
-### Phase 1: Database & Core Infrastructure
-- [ ] Create migration for new database schema
-- [ ] Drop old tables (chat_messages_raw, chat_messages_display, chat_conversations)
-- [ ] Create new conversations and conversation_messages tables
-- [ ] Update transforms table with conversation tracking
-- [ ] Create ConversationManager with core functions
-- [ ] Implement content hash calculation for caching
-- [ ] Create wrapped streamText/streamObject functions
+### Phase 1: Database & Core Infrastructure (Complete Legacy Removal)
+- [ ] **DESTRUCTIVE**: Drop all old tables immediately (chat_messages_raw, chat_messages_display, chat_conversations) - NO BACKWARD COMPATIBILITY
+- [ ] Create migration for new database schema with conversations and conversation_messages tables
+- [ ] Update transforms table with conversation tracking columns
+- [ ] Implement functional ConversationManager module (NO CLASSES)
+- [ ] Create pure functions for content hash calculation
+- [ ] Build functional streaming wrappers using closures for context binding
+- [ ] Remove all file-based caching infrastructure
 
-### Phase 2: Refactor Existing Code
-- [ ] Update AgentService to use conversation-aware streaming
-- [ ] Refactor ChatService to create conversations
-- [ ] Update all tool implementations to use new paradigm
-- [ ] Modify StreamingTransformExecutor for conversation tracking
-- [ ] Update transform creation to link with conversations
-- [ ] Remove old ChatMessageRepository
+### Phase 2: Refactor Existing Code (Functional Rewrite)
+- [ ] **COMPLETE REWRITE**: Replace AgentService class with functional conversation-aware streaming
+- [ ] **COMPLETE REWRITE**: Replace ChatService class with functional conversation creators
+- [ ] **COMPLETE REWRITE**: Update all tool implementations to use functional conversation paradigm
+- [ ] Modify StreamingTransformExecutor to use functional conversation tracking
+- [ ] Update transform creation functions to link with conversations
+- [ ] **DELETE**: Remove ChatMessageRepository class entirely - no replacement needed
 
 ### Phase 3: UI Updates
 - [ ] Update AssistantChatSidebar - replace "clear" with "new conversation"
@@ -326,9 +326,11 @@ function createConversationContext(
 - `src/client/components/RawChatMessages.tsx` - Complete rewrite
 - `src/server/routes/chatRoutes.ts` - New conversation endpoints
 
-### Deleted Files
-- `src/server/transform-jsondoc-framework/ChatMessageRepository.ts`
-- `src/server/transform-jsondoc-framework/CachedLLMService.ts`
+### Deleted Files (Complete Legacy Removal)
+- `src/server/transform-jsondoc-framework/ChatMessageRepository.ts` - Replaced by functional conversation management
+- `src/server/transform-jsondoc-framework/CachedLLMService.ts` - Replaced by DB-based caching functions
+- `src/server/transform-jsondoc-framework/StreamCache.ts` - File-based caching completely removed
+- All existing database tables: `chat_messages_raw`, `chat_messages_display`, `chat_conversations` - No migration, dropped entirely
 
 ## Example Usage
 
@@ -362,14 +364,15 @@ const toolResult = await toolContext.streamObject({
 
 ## Success Criteria
 
-1. All LLM interactions go through conversation-aware functions
+1. All LLM interactions go through conversation-aware **functions** (no classes)
 2. Complete message history with parameters is stored
 3. Transforms are properly linked to conversations and trigger messages
 4. Context caching reduces costs by 40%+ for repeated prefixes
 5. UI shows clear conversation management and filtering
 6. System supports future conversation branching
 7. All tests pass with new architecture
-8. No legacy code remains
+8. **ZERO legacy code remains** - complete removal of old chat system
+9. **Functional paradigm enforced** - no classes, pure functions with closures and TypeScript types
 
 ## Notes
 
