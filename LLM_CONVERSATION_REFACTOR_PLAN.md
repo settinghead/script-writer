@@ -15,6 +15,12 @@ This document outlines a comprehensive refactoring of the LLM conversation syste
 7. **UI Enhancement**: Better conversation visualization with filtering and search capabilities
 8. **Future-Proof Design**: Support for conversation branching and advanced features
 
+## Design Principles
+
+1. **No Backward Compatibility**: This refactoring removes all legacy code without backward compatibility. Old tables, classes, and patterns will be completely deleted and replaced. No migration layers or deprecated code paths will be maintained.
+
+2. **Functional + Closure + TypeScript Patterns**: The implementation strongly favors functional programming patterns with closures and comprehensive TypeScript typing. No classes should be used - prefer functions, interfaces, and closures for state management and behavior encapsulation.
+
 ## Architecture Design
 
 ### Core Concepts
