@@ -21,6 +21,8 @@ This document outlines a comprehensive refactoring of the LLM conversation syste
 
 2. **Functional + Closure + TypeScript Patterns**: The implementation strongly favors functional programming patterns with closures and comprehensive TypeScript typing. No classes should be used - prefer functions, interfaces, and closures for state management and behavior encapsulation.
 
+3. **Continuous Build Integrity**: Every phase must maintain a passing `npm run build`. By completion, all tests must pass with `npm test -- --run`. No broken builds are acceptable during the refactoring process.
+
 ## Architecture Design
 
 ### Core Concepts
@@ -278,6 +280,7 @@ function createConversationContext(
 - [ ] Create pure functions for content hash calculation
 - [ ] Build functional streaming wrappers using closures for context binding
 - [ ] Remove all file-based caching infrastructure
+- [ ] **BUILD CHECK**: Ensure `npm run build` passes after each step
 
 ### Phase 2: Refactor Existing Code (Functional Rewrite)
 - [ ] **COMPLETE REWRITE**: Replace AgentService class with functional conversation-aware streaming
@@ -286,6 +289,7 @@ function createConversationContext(
 - [ ] Modify StreamingTransformExecutor to use functional conversation tracking
 - [ ] Update transform creation functions to link with conversations
 - [ ] **DELETE**: Remove ChatMessageRepository class entirely - no replacement needed
+- [ ] **BUILD CHECK**: Ensure `npm run build` passes after each major rewrite
 
 ### Phase 3: UI Updates
 - [ ] Update AssistantChatSidebar - replace "clear" with "new conversation"
@@ -294,6 +298,7 @@ function createConversationContext(
 - [ ] Display conversation metadata
 - [ ] Show cache hit indicators
 - [ ] Add conversation status indicators
+- [ ] **BUILD CHECK**: Ensure `npm run build` passes after UI changes
 
 ### Phase 4: Context Caching Integration
 - [ ] Implement content hash calculation algorithm
@@ -301,6 +306,7 @@ function createConversationContext(
 - [ ] Update streaming wrappers to detect cached tokens
 - [ ] Add metrics for cache effectiveness
 - [ ] Test with Alibaba Cloud Context Cache
+- [ ] **BUILD CHECK**: Ensure `npm run build` passes with caching integration
 
 ### Phase 5: Testing & Migration
 - [ ] Write comprehensive tests for conversation management
@@ -308,6 +314,8 @@ function createConversationContext(
 - [ ] Verify transform associations
 - [ ] Test conversation reconstruction
 - [ ] Performance testing with caching
+- [ ] **BUILD CHECK**: Ensure `npm run build` passes
+- [ ] **TEST CHECK**: Ensure `npm test -- --run` passes completely
 
 ## Key Files to Modify
 
@@ -370,9 +378,10 @@ const toolResult = await toolContext.streamObject({
 4. Context caching reduces costs by 40%+ for repeated prefixes
 5. UI shows clear conversation management and filtering
 6. System supports future conversation branching
-7. All tests pass with new architecture
-8. **ZERO legacy code remains** - complete removal of old chat system
-9. **Functional paradigm enforced** - no classes, pure functions with closures and TypeScript types
+7. **`npm run build` passes at every phase** - no broken builds throughout refactoring
+8. **`npm test -- --run` passes completely** - all tests working with new architecture
+9. **ZERO legacy code remains** - complete removal of old chat system
+10. **Functional paradigm enforced** - no classes, pure functions with closures and TypeScript types
 
 ## Notes
 
@@ -585,6 +594,7 @@ interface ToolCallMessage extends ConversationMessage {
 - [ ] Build retry mechanism with exponential backoff
 - [ ] Add dry-run mode support
 - [ ] Implement message versioning for streaming
+- [ ] **BUILD CHECK**: Ensure `npm run build` passes after infrastructure changes
 
 ### Phase 2.5: Migration from File Cache to DB Cache
 - [ ] Create cache migration utilities
@@ -592,6 +602,7 @@ interface ToolCallMessage extends ConversationMessage {
 - [ ] Add cache metrics tracking
 - [ ] Migrate existing file caches to DB
 - [ ] Remove StreamCache dependency
+- [ ] **BUILD CHECK**: Ensure `npm run build` passes after cache migration
 
 ### Phase 3.5: Enhanced Error Handling
 - [ ] Implement error classification system
@@ -599,6 +610,8 @@ interface ToolCallMessage extends ConversationMessage {
 - [ ] Add retry UI indicators
 - [ ] Build error recovery flows
 - [ ] Add conversation failure recovery
+- [ ] **BUILD CHECK**: Ensure `npm run build` passes with error handling
+- [ ] **TEST CHECK**: Ensure error handling tests pass with `npm test -- --run`
 
 ## Performance Considerations
 
