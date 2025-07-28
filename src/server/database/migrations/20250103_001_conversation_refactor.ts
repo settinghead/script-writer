@@ -2,9 +2,91 @@ import type { Kysely } from 'kysely';
 import { sql } from 'kysely';
 
 export async function up(db: Kysely<any>): Promise<void> {
-    console.log('[Migration] Conversation refactor - creating indexes only (tables already exist)...');
+    console.log('[Migration] Conversation refactor - creating tables and indexes...');
 
-    // Create indexes for performance (the main missing piece)
+    // Create conversations table
+    console.log('[Migration] Creating conversations table...');
+    await db.schema
+        .createTable('conversations')
+        .ifNotExists()
+        .addColumn('id', 'uuid', (col) => col.primaryKey().defaultTo(sql`gen_random_uuid()`))
+        .addColumn('project_id', 'text', (col) => col.notNull().references('projects.id').onDelete('cascade'))
+        .addColumn('type', 'text', (col) => col.notNull().check(sql`type IN ('agent', 'tool')`))
+        .addColumn('status', 'text', (col) => col.notNull().defaultTo('active').check(sql`status IN ('active', 'completed', 'failed')`))
+        .addColumn('metadata', 'jsonb', (col) => col.defaultTo('{}'))
+        .addColumn('created_at', 'timestamp', (col) => col.defaultTo(sql`NOW()`))
+        .addColumn('updated_at', 'timestamp', (col) => col.defaultTo(sql`NOW()`))
+        .execute();
+    console.log('[Migration] ✅ Created conversations table');
+
+    // Create conversation_messages table
+    console.log('[Migration] Creating conversation_messages table...');
+    await db.schema
+        .createTable('conversation_messages')
+        .ifNotExists()
+        .addColumn('id', 'uuid', (col) => col.primaryKey().defaultTo(sql`gen_random_uuid()`))
+        .addColumn('conversation_id', 'uuid', (col) => col.notNull().references('conversations.id').onDelete('cascade'))
+        .addColumn('role', 'text', (col) => col.notNull().check(sql`role IN ('system', 'user', 'assistant', 'tool')`))
+        .addColumn('content', 'text', (col) => col.notNull())
+        // Tool-specific fields
+        .addColumn('tool_name', 'text')
+        .addColumn('tool_call_id', 'text')
+        .addColumn('tool_parameters', 'jsonb')
+        .addColumn('tool_result', 'jsonb')
+        // LLM parameters
+        .addColumn('model_name', 'text')
+        .addColumn('temperature', 'numeric')
+        .addColumn('top_p', 'numeric')
+        .addColumn('max_tokens', 'integer')
+        .addColumn('seed', 'integer')
+        // Caching support
+        .addColumn('content_hash', 'text')
+        .addColumn('cache_hit', 'boolean', (col) => col.defaultTo(false))
+        .addColumn('cached_tokens', 'integer', (col) => col.defaultTo(0))
+        // Status tracking
+        .addColumn('status', 'text', (col) => col.defaultTo('completed').check(sql`status IN ('streaming', 'completed', 'failed')`))
+        .addColumn('error_message', 'text')
+        // Metadata
+        .addColumn('metadata', 'jsonb', (col) => col.defaultTo('{}'))
+        .addColumn('created_at', 'timestamp', (col) => col.defaultTo(sql`NOW()`))
+        .addColumn('updated_at', 'timestamp', (col) => col.defaultTo(sql`NOW()`))
+        .execute();
+    console.log('[Migration] ✅ Created conversation_messages table');
+
+    // Add conversation tracking columns to transforms table
+    console.log('[Migration] Adding conversation tracking columns to transforms table...');
+    try {
+        await db.schema
+            .alterTable('transforms')
+            .addColumn('conversation_id', 'uuid', (col) => col.references('conversations.id'))
+            .execute();
+        console.log('[Migration] ✅ Added conversation_id column to transforms');
+    } catch (error: any) {
+        if (error.code === '42701') { // column already exists
+            console.log('[Migration] ✅ conversation_id column already exists in transforms');
+        } else {
+            console.error('[Migration] ❌ Failed to add conversation_id column:', error.message);
+            throw error;
+        }
+    }
+
+    try {
+        await db.schema
+            .alterTable('transforms')
+            .addColumn('trigger_message_id', 'uuid', (col) => col.references('conversation_messages.id'))
+            .execute();
+        console.log('[Migration] ✅ Added trigger_message_id column to transforms');
+    } catch (error: any) {
+        if (error.code === '42701') { // column already exists
+            console.log('[Migration] ✅ trigger_message_id column already exists in transforms');
+        } else {
+            console.error('[Migration] ❌ Failed to add trigger_message_id column:', error.message);
+            throw error;
+        }
+    }
+
+    // Create indexes for performance
+    console.log('[Migration] Creating performance indexes...');
     const indexes = [
         // Conversations indexes
         { name: 'idx_conversations_project_id', table: 'conversations', column: 'project_id' },
