@@ -828,7 +828,6 @@ export function ParticleMentions({ projectId, value, onChange }: Props) {
 **API Endpoints**:
 - `GET /api/particles/search` - Embedding-based semantic search for agents
 - `GET /api/particles/search-mention` - String-based fast search for @mentions
-- `GET /api/admin/particle-agent/health` - System health monitoring
 - `POST /api/admin/particle-agent/test` - Agent testing with custom queries
 
 **Health Monitoring**:
@@ -2966,7 +2965,6 @@ export class ParticleExtractor {
 **API Endpoints**:
 - `GET /api/particles/search` - Embedding-based semantic search for agents
 - `GET /api/particles/search-mention` - String-based fast search for @mentions
-- `GET /api/admin/particle-agent/health` - System health and performance monitoring
 
 ### Debug Facility & Tool Registry
 
