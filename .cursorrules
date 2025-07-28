@@ -142,6 +142,46 @@ src/
 - **For inspecting the actual content of jsondocs or particles**, use the inspect-content.ts script: `./run-ts src/server/scripts/inspect-content.ts <project-id> <type> <comma_separated_ids>` where type is either "jsondoc" or "particle"
 - **For understanding the field structure of canonical jsondocs in a project**, use the canonical-content-viewer.ts script: `./run-ts src/server/scripts/canonical-content-viewer.ts [project-id]`
 - The canonical content viewer shows what jsondocs are currently "active" in the UI and displays their field paths in JSONPath format ($.field, $.array[*]) - useful for debugging edit patches, understanding available content structure, and providing LLM context about project state
+
+### 16.1. LLM Conversation Debugging Tools
+Based on the LLM Conversation Refactor implementation, use these specialized conversation debugging tools:
+
+- **For listing all conversations in a project**: `./run-ts src/server/scripts/list-project-conversations.ts <project-id> [--type agent|tool] [--limit N]`
+  - Shows conversation summaries with message counts, tools used, and timing information
+  - Groups by agent vs tool conversations with aggregate statistics
+
+- **For finding conversation by transform ID**: `./run-ts src/server/scripts/get-conversation-by-transform.ts <transform-id> [--verbose]`
+  - Traces transform back to its generating conversation
+  - Shows complete conversation history and trigger message identification
+
+- **For analyzing recent agent conversations**: `./run-ts src/server/scripts/get-recent-agent-conversations.ts <project-id> [--limit N] [--days N] [--verbose]`
+  - Provides detailed statistics including tool success rates and cache effectiveness
+  - Shows aggregate metrics for performance monitoring
+
+- **For viewing complete conversation content**: `./run-ts src/server/scripts/get-conversation-content.ts <conversation-id> [--verbose] [--include-failed] [--format json]`
+  - Displays full message content with tool parameters and LLM settings
+  - Supports JSON export for programmatic processing
+
+- **For searching conversations**: `./run-ts src/server/scripts/search-conversations.ts [--project <id>] [--text <search>] [--tool <name>] [--status <status>] [--has-errors] [--cache-hits-only] [--days N] [--limit N]`
+  - Flexible search across conversations using multiple criteria
+  - Useful for error investigation and pattern analysis
+
+**Common Debugging Workflows:**
+```bash
+# Project health overview
+./run-ts src/server/scripts/list-project-conversations.ts <project-id>
+
+# Transform debugging
+./run-ts src/server/scripts/get-conversation-by-transform.ts <transform-id> --verbose
+
+# Error investigation
+./run-ts src/server/scripts/search-conversations.ts --project <project-id> --has-errors
+
+# Performance analysis
+./run-ts src/server/scripts/get-recent-agent-conversations.ts <project-id> --verbose
+```
+
+### 16.2. Pipeline Debugging
 - **For complex debugging issues, create reusable pipeline scripts** that can be chained together using Unix pipes
 - Pipeline scripts should communicate via JSON over stdin/stdout with clear delimiters like `=== PROJECT_DATA_JSON_START ===` and `=== PROJECT_DATA_JSON_END ===`
 - **ALWAYS add `process.exit(0)` in the finally block** of debugging scripts to prevent them from hanging
