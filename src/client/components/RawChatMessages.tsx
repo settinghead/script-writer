@@ -289,7 +289,8 @@ const RawChatMessages: React.FC<RawChatMessagesProps> = ({ projectId }) => {
                                 <Text strong>元数据: </Text>
                                 <pre style={{
                                     fontSize: '12px',
-                                    backgroundColor: '#f5f5f5',
+                                    backgroundColor: AppColors.background.secondary,
+                                    color: AppColors.text.primary,
                                     padding: '8px',
                                     borderRadius: '4px',
                                     maxHeight: '100px',
@@ -318,8 +319,8 @@ const RawChatMessages: React.FC<RawChatMessagesProps> = ({ projectId }) => {
                                 size="small"
                                 style={{
                                     borderLeft: `4px solid ${message.role === 'system' ? '#722ed1' :
-                                            message.role === 'user' ? '#1890ff' :
-                                                message.role === 'assistant' ? '#52c41a' : '#fa8c16'
+                                        message.role === 'user' ? '#1890ff' :
+                                            message.role === 'assistant' ? '#52c41a' : '#fa8c16'
                                         }`
                                 }}
                             >
@@ -357,10 +358,11 @@ const RawChatMessages: React.FC<RawChatMessagesProps> = ({ projectId }) => {
                                     <Paragraph
                                         style={{
                                             marginTop: 4,
-                                            backgroundColor: '#fafafa',
+                                            backgroundColor: AppColors.background.secondary,
                                             padding: '8px',
                                             borderRadius: '4px',
-                                            marginBottom: 8
+                                            marginBottom: 8,
+                                            color: AppColors.text.primary
                                         }}
                                     >
                                         <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
@@ -389,7 +391,8 @@ const RawChatMessages: React.FC<RawChatMessagesProps> = ({ projectId }) => {
                                         <Text strong>工具参数:</Text>
                                         <pre style={{
                                             fontSize: '12px',
-                                            backgroundColor: '#f0f2f5',
+                                            backgroundColor: AppColors.background.secondary,
+                                            color: AppColors.text.primary,
                                             padding: '8px',
                                             borderRadius: '4px',
                                             marginTop: '4px',
@@ -407,7 +410,8 @@ const RawChatMessages: React.FC<RawChatMessagesProps> = ({ projectId }) => {
                                         <Text strong>工具结果:</Text>
                                         <pre style={{
                                             fontSize: '12px',
-                                            backgroundColor: '#f6ffed',
+                                            backgroundColor: AppColors.background.tertiary,
+                                            color: AppColors.text.primary,
                                             padding: '8px',
                                             borderRadius: '4px',
                                             marginTop: '4px',
@@ -425,7 +429,8 @@ const RawChatMessages: React.FC<RawChatMessagesProps> = ({ projectId }) => {
                                         <Text strong>元数据:</Text>
                                         <pre style={{
                                             fontSize: '12px',
-                                            backgroundColor: '#f5f5f5',
+                                            backgroundColor: AppColors.background.secondary,
+                                            color: AppColors.text.primary,
                                             padding: '8px',
                                             borderRadius: '4px',
                                             marginTop: '4px',
