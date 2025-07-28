@@ -335,9 +335,17 @@ export class StreamingTransformExecutor {
                     if (partialData && typeof partialData === 'object' && 'type' in partialData) {
                         // New format with rawText and patches
                         streamingInfo = partialData;
-                        actualData = partialData.data || partialData.object || partialData as TOutput;
-                        isEagerPatch = partialData.type === 'eager-patch-result';
-                        isFinalPatch = partialData.type === 'result';
+
+                        // Check for patches array in the streaming data
+                        if (partialData.type === 'eagerPatches' || partialData.type === 'finalPatches') {
+                            actualData = partialData.patches as TOutput;
+                            isEagerPatch = partialData.type === 'eagerPatches';
+                            isFinalPatch = partialData.type === 'finalPatches';
+                        } else {
+                            actualData = partialData.data || partialData.object || partialData as TOutput;
+                            isEagerPatch = partialData.type === 'eager-patch-result';
+                            isFinalPatch = partialData.type === 'result';
+                        }
                     } else {
                         // Standard format - object itself
                         actualData = partialData as TOutput;
