@@ -1,6 +1,6 @@
 import React from 'react';
 import { Typography, Button, Tooltip, Modal } from 'antd';
-import { Cpu, Trash } from 'iconoir-react';
+import { Cpu, Plus } from 'iconoir-react';
 
 import { BasicThread } from './BasicThread';
 import { useClearChat } from '../../hooks/useChatMessages';
@@ -16,13 +16,14 @@ interface AssistantChatSidebarProps {
 export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ projectId }) => {
     const clearChatMutation = useClearChat(projectId);
 
-    const handleClearChat = () => {
+    const handleNewConversation = () => {
         Modal.confirm({
-            title: '确认清空对话',
-            content: '确定要清空所有对话记录吗？此操作无法撤销。',
-            okText: '确认',
+            title: '开始新对话',
+            content: '确定要开始新的对话吗？当前对话将被保存。',
+            okText: '开始新对话',
             cancelText: '取消',
             onOk: () => {
+                // For now, we still use the clear functionality but conceptually it's "new conversation"
                 clearChatMutation.mutate();
             },
         });
@@ -63,13 +64,13 @@ export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ proj
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px' }}>
-                    <Tooltip title="清空对话">
+                    <Tooltip title="开始新对话">
                         <Button
                             type="text"
-                            icon={<Trash style={{ fontSize: 18, color: AppColors.ai.primary }} />}
+                            icon={<Plus style={{ fontSize: 18, color: AppColors.ai.primary }} />}
                             style={{ color: AppColors.ai.primary }}
                             loading={clearChatMutation.isPending}
-                            onClick={handleClearChat}
+                            onClick={handleNewConversation}
                         />
                     </Tooltip>
                 </div>

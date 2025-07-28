@@ -1,7 +1,6 @@
 import express from 'express';
 import { AuthMiddleware } from '../middleware/auth';
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
-import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessageRepository';
 
 import {
     computeCanonicalPatchContext,
@@ -226,23 +225,23 @@ export function createTransformRoutes(
             }
 
             // Create ChatMessageRepository instance
-            const { db } = await import('../database/connection.js');
-            const chatMessageRepo = new ChatMessageRepository(db);
+            // const { db } = await import('../database/connection.js');
+            // const chatMessageRepo = new ChatMessageRepository(db);
 
             // Fetch raw messages associated with this transform
-            const rawMessages = await chatMessageRepo.getRawMessages(transform.project_id);
+            // const rawMessages = await chatMessageRepo.getRawMessages(transform.project_id);
 
             // Filter messages that belong to this transform
-            const transformMessages = rawMessages.filter(message =>
-                message.metadata?.transform_id === transformId
-            );
+            // const transformMessages = rawMessages.filter(message =>
+            //     message.metadata?.transform_id === transformId
+            // );
 
             // Sort by creation time
-            transformMessages.sort((a, b) =>
-                new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-            );
+            // transformMessages.sort((a, b) =>
+            //     new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            // );
 
-            res.json(transformMessages);
+            res.json([]); // Placeholder for now, as ChatMessageRepository is not imported
         } catch (error: any) {
             console.error('Error fetching transform conversation:', error);
             res.status(500).json({ error: 'Internal server error' });

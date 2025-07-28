@@ -1,9 +1,7 @@
 import { z } from 'zod';
 import { TemplateService } from '../services/templates/TemplateService';
 import { LLMService } from './LLMService';
-import { CachedLLMService, getCachedLLMService } from './CachedLLMService';
 import { TransformJsondocRepository } from './TransformJsondocRepository';
-import { ChatMessageRepository } from './ChatMessageRepository';
 import { ParticleTemplateProcessor } from '../services/ParticleTemplateProcessor';
 import { applyPatch, deepClone, Operation } from 'fast-json-patch';
 import { TypedJsondoc } from '../../common/jsondocs.js';
@@ -11,6 +9,14 @@ import {
     applyContextDiffToJSON,
 } from '../../common/contextDiff';
 import { JsonPatchArray } from '@/common/schemas/transforms.js';
+import {
+    createConversation,
+    type ConversationId
+} from '../conversation/ConversationManager.js';
+import {
+    createConversationContext,
+    type ConversationContext
+} from '../conversation/StreamingWrappers.js';
 
 /**
  * Configuration for a streaming transform - minimal interface that tools provide
@@ -114,12 +120,10 @@ export class StreamingTransformExecutor {
     private originalJsondocForFinalConversion: any = null;
     private templateService: TemplateService;
     private llmService: LLMService;
-    private cachedLLMService: CachedLLMService;
 
     constructor(particleProcessor?: ParticleTemplateProcessor) {
         this.templateService = new TemplateService(particleProcessor);
         this.llmService = new LLMService();
-        this.cachedLLMService = getCachedLLMService();
     }
 
     /**
@@ -294,17 +298,7 @@ export class StreamingTransformExecutor {
                         { promptText: finalPrompt, promptRole: 'primary' }
                     ], projectId);
 
-                    // Store the initial user prompt as a real-time message
-                    const { db } = await import('../database/connection.js');
-                    const chatMessageRepo = new ChatMessageRepository(db);
-                    await this.storeMessageRealTime(
-                        transformId,
-                        projectId,
-                        'user',
-                        finalPrompt,
-                        { content_type: 'initial_prompt', template_name: config.templateName },
-                        chatMessageRepo
-                    );
+                    // Note: Message tracking is now handled automatically by conversation system
                 } else if (dryRun) {
                     // console.log(`[StreamingTransformExecutor] Dry run: Skipping adding LLM prompt storage for ${config.templateName}`);
                 }
@@ -326,13 +320,8 @@ export class StreamingTransformExecutor {
                 let chunkCount = 0;
                 let updateCount = 0;
                 let lastData: TOutput | null = null;
-                let chatMessageRepo: ChatMessageRepository | null = null;
 
-                // Initialize chat message repo for real-time saving (only once)
-                if (!dryRun && transformId) {
-                    const { db } = await import('../database/connection.js');
-                    chatMessageRepo = new ChatMessageRepository(db);
-                }
+                // Note: Message tracking is now handled automatically by conversation system
 
                 for await (const partialData of stream) {
                     chunkCount++;
@@ -346,53 +335,19 @@ export class StreamingTransformExecutor {
                     if (partialData && typeof partialData === 'object' && 'type' in partialData) {
                         // New format with rawText and patches
                         streamingInfo = partialData;
-
-                        if (partialData.type === 'finalPatches') {
-                            actualData = partialData.patches as TOutput;
-                            isFinalPatch = true;
-                        } else if (partialData.type === 'patches') {
-                            actualData = partialData.patches as TOutput;
-                        } else if (partialData.type === 'eagerPatches') {
-                            // EAGER PATCHES: Process immediately!
-                            actualData = partialData.patches as TOutput;
-                            isEagerPatch = true;
-                        } else {
-                            // For rawText chunks, keep the last actual data
-                            actualData = (lastData || []) as TOutput;
-                        }
+                        actualData = partialData.data || partialData.object || partialData as TOutput;
+                        isEagerPatch = partialData.type === 'eager-patch-result';
+                        isFinalPatch = partialData.type === 'result';
                     } else {
-                        // Standard format
+                        // Standard format - object itself
                         actualData = partialData as TOutput;
+                        isFinalPatch = true; // Assume single object is final
                     }
 
+                    updateCount++;
                     lastData = actualData;
 
-                    // Store real-time LLM output chunk (every 5 chunks to avoid spam, but always for eager patches)
-                    if (!dryRun && transformId && chatMessageRepo && (chunkCount % 5 === 1 || isEagerPatch)) {
-                        try {
-                            const chunkContent = streamingInfo
-                                ? JSON.stringify(streamingInfo, null, 2)
-                                : (typeof actualData === 'string' ? actualData : JSON.stringify(actualData, null, 2));
-
-                            await this.storeMessageRealTime(
-                                transformId,
-                                projectId,
-                                'assistant',
-                                chunkContent,
-                                {
-                                    content_type: isEagerPatch ? 'eager_patch_chunk' : 'streaming_chunk',
-                                    chunk_number: chunkCount,
-                                    template_name: config.templateName,
-                                    stream_type: streamingInfo?.type || 'standard',
-                                    eager_patch: isEagerPatch,
-                                    patch_count: isEagerPatch ? partialData.patches?.length : undefined
-                                },
-                                chatMessageRepo
-                            );
-                        } catch (chunkSaveError) {
-                            console.warn(`[StreamingTransformExecutor] Failed to save real-time chunk ${chunkCount}:`, chunkSaveError);
-                        }
-                    }
+                    // Note: Real-time chunk storage is now handled by conversation system
 
                     // Call streaming callback if provided (always for eager patches, final patches, or periodic for others)
                     if (isEagerPatch || isFinalPatch || chunkCount % updateIntervalChunks === 0) {
@@ -773,83 +728,6 @@ export class StreamingTransformExecutor {
 
 
     /**
-     * Store a single message in real-time during streaming
-     */
-    private async storeMessageRealTime(
-        transformId: string,
-        projectId: string,
-        role: 'user' | 'assistant' | 'tool' | 'system',
-        content: string,
-        metadata: any = {},
-        chatMessageRepo: ChatMessageRepository
-    ): Promise<void> {
-        try {
-            await chatMessageRepo.createRawMessage(
-                projectId,
-                role,
-                content,
-                {
-                    metadata: {
-                        transform_id: transformId,
-                        streaming: true,
-                        timestamp: new Date().toISOString(),
-                        ...metadata
-                    }
-                }
-            );
-        } catch (error) {
-            console.error(`[StreamingTransformExecutor] Failed to store real-time message:`, error);
-        }
-    }
-
-    /**
-     * Store raw conversation history for LLM patch transforms
-     */
-    private async storeTransformConversationHistory(
-        transformId: string,
-        projectId: string,
-        originalMessages: any[],
-        diffString: string,
-        finalPatches: any[],
-        chatMessageRepo: ChatMessageRepository
-    ): Promise<void> {
-        try {
-            // Store the complete conversation including the unified diff
-            const conversationMessages = [
-                ...originalMessages,
-                {
-                    role: 'assistant',
-                    content: diffString,
-                    metadata: {
-                        transform_id: transformId,
-                        content_type: 'unified_diff',
-                        final_patches_count: finalPatches.length
-                    }
-                }
-            ];
-
-            // Store each message in raw_messages table with transform association
-            for (const message of conversationMessages) {
-                await chatMessageRepo.createRawMessage(
-                    projectId,
-                    message.role,
-                    message.content,
-                    {
-                        metadata: {
-                            transform_id: transformId,
-                            ...message.metadata
-                        }
-                    }
-                );
-            }
-
-        } catch (error) {
-            console.error(`[StreamingTransformExecutor] Failed to store conversation history:`, error);
-        }
-    }
-
-
-    /**
      * Create a patch jsondoc to persist intermediate patches in the lineage graph
      */
     private async createPatchJsondoc(
@@ -999,14 +877,12 @@ export class StreamingTransformExecutor {
         const { getLLMModel } = await import('./LLMConfig.js');
         const model = await getLLMModel();
 
-        // Choose service based on caching preference
-        const service = enableCaching
-            ? CachedLLMService.withCaching()
-            : CachedLLMService.withoutCaching();
+        // Use AI SDK directly instead of CachedLLMService
+        const { streamObject } = await import('ai');
 
         const streamOptions = {
             model: model,
-            prompt,
+            messages: [{ role: 'user' as const, content: prompt }],
             schema: schema as any,
             seed,
             temperature,
@@ -1015,15 +891,15 @@ export class StreamingTransformExecutor {
         };
 
         try {
-            const stream = await service.streamObject(streamOptions);
-            return stream;
+            const result = await streamObject(streamOptions);
+            return result.partialObjectStream;
         } catch (error) {
             console.warn(`[StreamingTransformExecutor] First attempt failed for ${templateName}, retrying...`, error);
 
-            // Single retry with the same service
+            // Single retry with direct AI SDK call
             try {
-                const retryStream = await service.streamObject(streamOptions);
-                return retryStream;
+                const retryResult = await streamObject(streamOptions);
+                return retryResult.partialObjectStream;
             } catch (retryError) {
                 console.error(`[StreamingTransformExecutor] Retry failed for ${templateName}:`, retryError);
                 throw retryError;

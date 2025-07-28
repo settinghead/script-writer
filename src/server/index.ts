@@ -13,7 +13,6 @@ import { db } from './database/connection';
 import { ProjectService } from './services/ProjectService.js';
 import { ProjectRepository } from './transform-jsondoc-framework/ProjectRepository.js';
 import { AgentService } from './transform-jsondoc-framework/AgentService.js';
-import { ChatMessageRepository } from './transform-jsondoc-framework/ChatMessageRepository.js';
 import { ChatService } from './transform-jsondoc-framework/ChatService.js';
 
 
@@ -54,11 +53,9 @@ const projectService = new ProjectService(db);
 const agentService = new AgentService(transformRepo, jsondocRepo);
 
 // Initialize chat services
-const chatMessageRepo = new ChatMessageRepository(db);
-const chatService = new ChatService(chatMessageRepo, agentService);
+const chatService = new ChatService(null, agentService, jsondocRepo); // chatRepo is deprecated but required for compatibility
 
-// Inject dependencies to avoid circular dependency issues
-agentService.setChatMessageRepository(chatMessageRepo);
+// Note: AgentService now uses conversation system directly, no need for ChatMessageRepository injection
 
 // Initialize particle system asynchronously
 let particleSystemInitialized = false;
@@ -104,7 +101,6 @@ createAPIRoutes(
   jsondocRepo,
   transformRepo,
   projectRepo,
-  chatMessageRepo,
   projectService,
   agentService,
   chatService

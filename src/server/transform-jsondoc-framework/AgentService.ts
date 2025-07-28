@@ -1,11 +1,19 @@
 import { z } from 'zod';
-import { streamText, wrapLanguageModel } from 'ai';
+import { wrapLanguageModel } from 'ai';
 import { TransformJsondocRepository } from './TransformJsondocRepository';
 import { createAgentTool } from './StreamingAgentFramework';
 import { buildAgentConfiguration } from '../services/AgentRequestBuilder';
 import { getLLMModel } from './LLMConfig';
 import { createUserContextMiddleware } from '../middleware/UserContextMiddleware';
 import { getParticleSystem } from './particles/ParticleSystemInitializer';
+import {
+    createConversation,
+    getConversationMessages
+} from '../conversation/ConversationManager.js';
+import {
+    createConversationContext,
+    type ConversationStreamTextResult
+} from '../conversation/StreamingWrappers.js';
 
 // Schema for general agent requests
 export const GeneralAgentRequestSchema = z.object({
@@ -18,17 +26,10 @@ export const GeneralAgentRequestSchema = z.object({
 export type GeneralAgentRequest = z.infer<typeof GeneralAgentRequestSchema>;
 
 export class AgentService {
-    private chatMessageRepo?: any; // Injected later to avoid circular dependency
-
     constructor(
         private transformRepo: TransformJsondocRepository,
         private jsondocRepo: TransformJsondocRepository,
     ) { }
-
-    // Method to inject chat repository after initialization
-    public setChatMessageRepository(chatMessageRepo: any) {
-        this.chatMessageRepo = chatMessageRepo;
-    }
 
     // Helper function to generate computation state indicators
     private generateComputationIndicator(phase: string, content?: string): string {
@@ -176,21 +177,8 @@ export class AgentService {
         console.log(`[AgentService] Starting agent execution with ID: ${executionId}`);
 
         try {
-            // Handle chat messages based on options
-            if (options.createChatMessages && this.chatMessageRepo) {
-                // Create user message event (only if not called from ChatService)
-                await this.chatMessageRepo.createUserMessage(projectId, request.userRequest);
-
-                // Create computation message for internal processing
-                const computationMessage = await this.chatMessageRepo.createComputationMessage(
-                    projectId,
-                    this.generateComputationIndicator('thinking')
-                );
-                computationMessageId = computationMessage.id;
-
-                // Note: Response message will be created when we have actual content
-                responseMessageId = undefined;
-            }
+            // Note: Message tracking is now handled automatically by the conversation system
+            // through StreamingWrappers - no need for manual message creation
 
             // 1. Check for conversation continuation
 
@@ -260,38 +248,6 @@ export class AgentService {
 
             const toolDefinitions = agentConfig.tools;
 
-            // Update computation message to show analysis phase
-            if (computationMessageId && this.chatMessageRepo) {
-                await this.chatMessageRepo.updateComputationMessage(
-                    computationMessageId,
-                    this.generateComputationIndicator('analyzing', request.userRequest)
-                );
-            }
-
-            // 4. Save user request as raw message
-            if (this.chatMessageRepo) {
-                await this.chatMessageRepo.createRawMessage(
-                    projectId,
-                    'user',
-                    request.userRequest,
-                    { metadata: { source: 'streaming_agent', executionId } }
-                );
-
-                // Save the complete system prompt sent to the LLM
-                await this.chatMessageRepo.createRawMessage(
-                    projectId,
-                    'system',
-                    completePrompt,
-                    {
-                        metadata: {
-                            source: 'streaming_agent',
-                            executionId,
-                            useParticleSearch: useParticleSearchApproach,
-                        }
-                    }
-                );
-            }
-
             // 2. Run the streaming agent directly
             console.log('--- Starting Streaming Agent ---');
 
@@ -330,16 +286,31 @@ export class AgentService {
             console.log('[AgentService] Using enhanced model with user context middleware');
             console.log('[AgentService] Original user request length:', request.userRequest.length);
 
-            const result = await streamText({
-                model: enhancedModel, // Use enhanced model instead of base model
+            // Create a new conversation for this agent session
+            const conversationId = await createConversation(projectId, 'agent', {
+                userId,
+                executionId,
+                userRequest: request.userRequest,
+                contextType: request.contextType
+            });
+
+            // Get existing messages for the conversation context
+            const existingMessages = await getConversationMessages(conversationId);
+
+            // Get conversation context with bound streaming functions
+            const conversationContext = createConversationContext(conversationId, projectId, existingMessages);
+
+            // Call streamText through the conversation context
+            const result = await conversationContext.streamText({
+                messages: [
+                    { role: 'user', content: completePrompt }
+                ],
                 tools: tools,
-                maxSteps: 25, // Allow more steps for complex editing workflows
-                prompt: completePrompt,
-                // Pass AI SDK options directly
-                ...(seed && { seed }),
-                ...(temperature && { temperature }),
-                ...(topP && { topP }),
-                ...(maxTokens && { maxTokens })
+                maxTokens: maxTokens,
+                temperature: temperature,
+                topP: topP,
+                seed: seed,
+                model: enhancedModel
             });
 
             console.log('\n\n--- Agent Stream & Final Output ---');
@@ -348,128 +319,40 @@ export class AgentService {
             let toolCallCount = 0;
             let toolResultCount = 0;
 
+            // Process the streaming results - message tracking is handled automatically by conversation system
             for await (const delta of result.fullStream) {
                 switch (delta.type) {
                     case 'text-delta':
                         process.stdout.write(delta.textDelta);
                         accumulatedResponse += delta.textDelta;
                         finalResponse += delta.textDelta;
-
-                        // Create response message on first content if not already created
-                        if (!responseMessageId && options.createChatMessages && this.chatMessageRepo && accumulatedResponse.trim()) {
-                            const responseMessage = await this.chatMessageRepo.createResponseMessage(projectId, accumulatedResponse);
-                            responseMessageId = responseMessage.id;
-                        }
-
-                        // Try to parse JSON and update response message in real-time
-                        if (responseMessageId && this.chatMessageRepo) {
-                            const parseResult = await this.tryParseAgentJSON(accumulatedResponse);
-                            if (parseResult.parsed && parseResult.humanReadableMessage) {
-                                // Successfully parsed JSON, update with human readable message
-                                await this.chatMessageRepo.updateResponseMessage(
-                                    responseMessageId,
-                                    parseResult.humanReadableMessage,
-                                    'streaming'
-                                );
-                            } else {
-                                // JSON not complete yet, show accumulated text
-                                await this.chatMessageRepo.updateResponseMessage(
-                                    responseMessageId,
-                                    accumulatedResponse,
-                                    'streaming'
-                                );
-                            }
-                        }
                         break;
 
                     case 'tool-call':
                         console.log(`\n[Agent Action] Starting tool call to '${delta.toolName}' with ID '${delta.toolCallId}'`);
                         currentToolCall = delta;
                         toolCallCount++;
-
-                        // Update computation message to show processing phase
-                        if (computationMessageId && this.chatMessageRepo) {
-                            await this.chatMessageRepo.updateComputationMessage(
-                                computationMessageId,
-                                this.generateComputationIndicator('processing', delta.toolName)
-                            );
-                        }
-
-                        // Save tool call as raw message
-                        if (this.chatMessageRepo && projectId) {
-                            await this.chatMessageRepo.createRawMessage(
-                                projectId,
-                                'tool',
-                                `Tool call: ${delta.toolName}`,
-                                {
-                                    toolName: delta.toolName,
-                                    toolParameters: delta.args,
-                                    metadata: {
-                                        toolCallId: delta.toolCallId,
-                                        source: 'streaming_agent',
-                                        executionId
-                                    }
-                                }
-                            );
-                        }
                         break;
 
                     case 'tool-result':
                         console.log(`\n[Agent Action] Received result for tool call '${delta.toolCallId}'`);
                         toolResultCount++;
-
-                        // Update computation message to show generation phase
-                        if (computationMessageId && this.chatMessageRepo) {
-                            await this.chatMessageRepo.updateComputationMessage(
-                                computationMessageId,
-                                this.generateComputationIndicator('generating', currentToolCall?.toolName)
-                            );
-                        }
-
-                        // Save tool result as raw message
-                        if (this.chatMessageRepo && projectId && currentToolCall) {
-                            await this.chatMessageRepo.createRawMessage(
-                                projectId,
-                                'tool',
-                                `Tool result: ${currentToolCall.toolName}`,
-                                {
-                                    toolName: currentToolCall.toolName,
-                                    toolParameters: currentToolCall.args,
-                                    toolResult: delta.result,
-                                    metadata: {
-                                        toolCallId: delta.toolCallId,
-                                        source: 'streaming_agent',
-                                        executionId
-                                    }
-                                }
-                            );
-
-
-                        }
                         break;
 
                     case 'step-finish':
                         console.log(`\n[Agent Step] Step completed with reason: ${delta.finishReason}`);
-                        // These are completion events for agent reasoning/tool-calling steps
-                        // They're informational and don't require specific handling
                         break;
 
                     case 'step-start':
                         console.log(`\n[Agent Step] Step started`);
-                        // These are start events for agent reasoning/tool-calling steps
-                        // They're informational and don't require specific handling
                         break;
 
                     case 'error':
                         console.log(`\n[Agent Error] Error occurred:`, (delta as any).error?.message || 'Unknown error');
-                        // Error events during agent processing
-                        // The error will be handled by the outer try-catch
                         break;
 
                     case 'finish':
                         console.log(`\n[Agent Finish] Agent completed with reason: ${delta.finishReason}`);
-                        // Final completion event for the entire agent execution
-                        // This is informational as the result is handled elsewhere
                         break;
 
                     default:
@@ -478,68 +361,6 @@ export class AgentService {
                 }
             }
             console.log('\n-----------------------------------');
-
-            // Final processing of the response
-            if (options.createChatMessages && this.chatMessageRepo) {
-                // Create response message if it wasn't created during streaming (e.g., tool-only responses)
-                if (!responseMessageId) {
-                    const defaultMessage = toolCallCount > 0 ? '我已完成您的请求。' : '收到您的请求，正在处理中...';
-                    const responseMessage = await this.chatMessageRepo.createResponseMessage(projectId, defaultMessage);
-                    responseMessageId = responseMessage.id;
-                }
-
-                if (responseMessageId) {
-                    // Try both accumulatedResponse and finalResponse
-                    let finalParseResult = await this.tryParseAgentJSON(accumulatedResponse);
-                    if (!finalParseResult.parsed && finalResponse !== accumulatedResponse) {
-                        finalParseResult = await this.tryParseAgentJSON(finalResponse);
-                    }
-
-                    if (finalParseResult.parsed && finalParseResult.humanReadableMessage) {
-                        // Successfully parsed JSON, use human readable message
-                        await this.chatMessageRepo.updateResponseMessage(
-                            responseMessageId,
-                            finalParseResult.humanReadableMessage,
-                            'completed'
-                        );
-
-                        // Add a small delay and force another update to ensure it's persisted
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                        await this.chatMessageRepo.updateResponseMessage(
-                            responseMessageId,
-                            finalParseResult.humanReadableMessage,
-                            'completed'
-                        );
-                    } else {
-                        // JSON parsing failed, use accumulated text as fallback
-                        const fallbackMessage = accumulatedResponse || finalResponse || (toolCallCount > 0 ? '我已完成您的请求。' : '收到您的请求。');
-                        await this.chatMessageRepo.updateResponseMessage(
-                            responseMessageId,
-                            fallbackMessage,
-                            'completed'
-                        );
-                    }
-                }
-            }
-
-            // Complete computation message
-            if (computationMessageId && this.chatMessageRepo) {
-                await this.chatMessageRepo.updateComputationMessage(
-                    computationMessageId,
-                    this.generateComputationIndicator('completing'),
-                    'completed'
-                );
-            }
-
-            // Save final assistant response as raw message
-            if (this.chatMessageRepo && projectId && finalResponse.trim()) {
-                await this.chatMessageRepo.createRawMessage(
-                    projectId,
-                    'assistant',
-                    finalResponse.trim(),
-                    { metadata: { source: 'streaming_agent', executionId } }
-                );
-            }
 
             const finishReason = await result.finishReason;
 
@@ -557,39 +378,7 @@ export class AgentService {
 
             // Generate user-friendly error message based on error type
             const userFriendlyMessage = this.generateUserFriendlyErrorMessage(error);
-
-            // Update messages with error state
-            if (computationMessageId && this.chatMessageRepo) {
-                await this.chatMessageRepo.updateComputationMessage(
-                    computationMessageId,
-                    this.generateComputationIndicator('error'),
-                    'failed'
-                );
-            }
-
-            if (options.createChatMessages && this.chatMessageRepo) {
-                // Create response message if it wasn't created yet
-                if (!responseMessageId) {
-                    const responseMessage = await this.chatMessageRepo.createResponseMessage(projectId, userFriendlyMessage);
-                    responseMessageId = responseMessage.id;
-                } else {
-                    await this.chatMessageRepo.updateResponseMessage(
-                        responseMessageId,
-                        userFriendlyMessage,
-                        'failed'
-                    );
-                }
-            }
-
-            // Save error as raw message
-            if (this.chatMessageRepo && projectId) {
-                await this.chatMessageRepo.createRawMessage(
-                    projectId,
-                    'assistant',
-                    `Error: ${error instanceof Error ? error.message : String(error)}`,
-                    { metadata: { source: 'streaming_agent', error: true, executionId } }
-                );
-            }
+            console.log(`[AgentService] User-friendly error: ${userFriendlyMessage}`);
 
             throw error;
         }

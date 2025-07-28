@@ -7,7 +7,9 @@
 
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository.js';
 import { AgentService } from '../transform-jsondoc-framework/AgentService.js';
-import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessageRepository.js';
+import { createUserContextMiddleware } from '../middleware/UserContextMiddleware.js';
+import { wrapLanguageModel } from 'ai';
+import { getLLMModel } from '../transform-jsondoc-framework/LLMConfig.js';
 
 async function testUserContextMiddleware() {
     console.log('🧪 Testing User Context Middleware');
@@ -20,11 +22,12 @@ async function testUserContextMiddleware() {
         // Initialize repositories
         const transformRepo = new TransformJsondocRepository(db);
         const jsondocRepo = new TransformJsondocRepository(db);
-        const chatMessageRepo = new ChatMessageRepository(db);
+        // const chatMessageRepo = new ChatMessageRepository(db); // Removed as per edit hint
 
-        // Initialize agent service
+        // Initialize services
         const agentService = new AgentService(transformRepo, jsondocRepo);
-        agentService.setChatMessageRepository(chatMessageRepo);
+
+        // Note: AgentService now uses conversation system directly - no need to set ChatMessageRepository
 
         // Test data
         const projectId = 'test-project-123';

@@ -4,7 +4,6 @@ import { TransformJsondocRepository } from '../transform-jsondoc-framework/Trans
 
 import type { Kysely } from 'kysely';
 import type { DB } from '../database/types';
-import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessageRepository';
 import { Project } from '../../common/transform-jsondoc-types';
 
 export class ProjectService {
@@ -12,14 +11,12 @@ export class ProjectService {
     private projectRepo: ProjectRepository;
     private jsondocRepo: TransformJsondocRepository;
     private transformRepo: TransformJsondocRepository;
-    private chatMessageRepo: ChatMessageRepository;
 
     constructor(database: Kysely<DB>) {
         this.db = database;
         this.projectRepo = new ProjectRepository(database);
         this.jsondocRepo = new TransformJsondocRepository(database);
         this.transformRepo = new TransformJsondocRepository(database);
-        this.chatMessageRepo = new ChatMessageRepository(database);
     }
 
     // Create a new project
@@ -241,16 +238,20 @@ export class ProjectService {
                 .execute();
             console.log(`[ProjectService] Deleted jsondocs for project ${projectId}`);
 
-            // 7. Delete all chat messages for this project
+            // 7. Delete all conversations and messages for this project
             await this.db
-                .deleteFrom('chat_messages_display')
-                .where('project_id', '=', projectId)
+                .deleteFrom('conversation_messages')
+                .where('conversation_id', 'in', (qb) =>
+                    qb.selectFrom('conversations')
+                        .select('id')
+                        .where('project_id', '=', projectId)
+                )
                 .execute();
             await this.db
-                .deleteFrom('chat_messages_raw')
+                .deleteFrom('conversations')
                 .where('project_id', '=', projectId)
                 .execute();
-            console.log(`[ProjectService] Deleted chat messages for project ${projectId}`);
+            console.log(`[ProjectService] Deleted conversations and messages for project ${projectId}`);
 
             // 8. Delete project membership
             await this.db
