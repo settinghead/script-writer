@@ -54,7 +54,7 @@ async function analyzeAgentConversation(conversationId: string): Promise<AgentCo
     const toolCalls = messages.filter(msg => msg.tool_name);
     const successfulToolCalls = toolCalls.filter(msg => msg.status === 'completed');
     const failedToolCalls = toolCalls.filter(msg => msg.status === 'failed');
-    const toolsUsed = [...new Set(toolCalls.map(msg => msg.tool_name).filter(Boolean))];
+    const toolsUsed = [...new Set(toolCalls.map(msg => msg.tool_name).filter((name): name is string => Boolean(name)))];
 
     const userMessages = messages.filter(msg => msg.role === 'user');
     const assistantMessages = messages.filter(msg => msg.role === 'assistant');
@@ -321,6 +321,6 @@ async function main() {
     }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
     main();
 } 

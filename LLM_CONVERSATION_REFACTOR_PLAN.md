@@ -631,6 +631,163 @@ interface ToolCallMessage extends ConversationMessage {
 
 ---
 
+## 🛠️ **Node.js Conversation Debugging Tools**
+
+Based on the conversation system implementation, the following Node.js debugging tools have been created to provide comprehensive conversation introspection and analysis capabilities:
+
+### **Available Tools**
+
+#### 1. **List Project Conversations** (`list-project-conversations.ts`)
+Lists all conversations for a project with summary information including message counts, tools used, and timing information.
+
+**Usage:**
+```bash
+./run-ts src/server/scripts/list-project-conversations.ts <project-id>
+./run-ts src/server/scripts/list-project-conversations.ts <project-id> --type agent
+./run-ts src/server/scripts/list-project-conversations.ts <project-id> --type tool
+./run-ts src/server/scripts/list-project-conversations.ts <project-id> --limit 20
+```
+
+**Features:**
+- Conversation summary with message counts and duration
+- Tools used in each conversation
+- First/last message previews
+- Grouped display by conversation type (agent vs tool)
+- Aggregate statistics (total conversations, average messages, tool usage)
+
+#### 2. **Get Conversation by Transform** (`get-conversation-by-transform.ts`)
+Finds the conversation that generated a specific transform and displays the full conversation history with detailed message information.
+
+**Usage:**
+```bash
+./run-ts src/server/scripts/get-conversation-by-transform.ts <transform-id>
+./run-ts src/server/scripts/get-conversation-by-transform.ts <transform-id> --verbose
+```
+
+**Features:**
+- Transform information and status
+- Complete conversation history
+- Trigger message identification
+- Tool call parameters and results
+- LLM parameters and caching information
+- Conversation statistics and timing
+
+#### 3. **Get Recent Agent Conversations** (`get-recent-agent-conversations.ts`)
+Retrieves recent agent conversations for a project with detailed statistics and analysis including tools used, success rates, and timing information.
+
+**Usage:**
+```bash
+./run-ts src/server/scripts/get-recent-agent-conversations.ts <project-id>
+./run-ts src/server/scripts/get-recent-agent-conversations.ts <project-id> --limit 10
+./run-ts src/server/scripts/get-recent-agent-conversations.ts <project-id> --days 7
+./run-ts src/server/scripts/get-recent-agent-conversations.ts <project-id> --verbose
+```
+
+**Features:**
+- Detailed conversation analysis with tool success rates
+- Cache hit statistics and token usage
+- Error message tracking and reporting
+- Aggregate statistics (success rates, tool usage, timing)
+- Most used tools analysis
+- Performance metrics (duration, cache effectiveness)
+
+#### 4. **Get Conversation Content** (`get-conversation-content.ts`)
+Displays the full content of a specific conversation including all messages, tool calls, parameters, and detailed information.
+
+**Usage:**
+```bash
+./run-ts src/server/scripts/get-conversation-content.ts <conversation-id>
+./run-ts src/server/scripts/get-conversation-content.ts <conversation-id> --verbose
+./run-ts src/server/scripts/get-conversation-content.ts <conversation-id> --include-failed
+./run-ts src/server/scripts/get-conversation-content.ts <conversation-id> --format json
+```
+
+**Features:**
+- Complete message content with line numbers
+- Tool parameters and results (summary and verbose modes)
+- LLM parameters and model information
+- Caching information (content hash, cache hits, cached tokens)
+- Related transforms and trigger message identification
+- JSON export option for programmatic processing
+
+#### 5. **Search Conversations** (`search-conversations.ts`)
+Search conversations across projects using various criteria including content text, tool names, status, date ranges, and more.
+
+**Usage:**
+```bash
+./run-ts src/server/scripts/search-conversations.ts --project <project-id> --text "error"
+./run-ts src/server/scripts/search-conversations.ts --project <project-id> --tool brainstorm_generation
+./run-ts src/server/scripts/search-conversations.ts --project <project-id> --status failed
+./run-ts src/server/scripts/search-conversations.ts --project <project-id> --days 7 --type agent
+./run-ts src/server/scripts/search-conversations.ts --text "user message" --limit 50
+```
+
+**Search Criteria:**
+- **Project filtering** (`--project <project-id>`)
+- **Text search** (`--text <search-text>`) - Search message content
+- **Tool filtering** (`--tool <tool-name>`) - Find conversations using specific tools
+- **Status filtering** (`--status <status>`) - Filter by conversation status
+- **Type filtering** (`--type <agent|tool>`) - Filter by conversation type
+- **Date range** (`--days <N>`) - Search within last N days
+- **Role filtering** (`--role <role>`) - Filter by message role
+- **Error filtering** (`--has-errors`) - Only conversations with errors
+- **Cache filtering** (`--cache-hits-only`) - Only messages with cache hits
+- **Result limiting** (`--limit <N>`) - Limit number of results
+
+### **Tool Usage Examples**
+
+**Project Overview:**
+```bash
+# Get overview of all conversations in a project
+./run-ts src/server/scripts/list-project-conversations.ts 56f8e1fe-9185-4cbe-bbc5-2e3a9782084c
+
+# Focus on recent agent conversations with detailed statistics
+./run-ts src/server/scripts/get-recent-agent-conversations.ts 56f8e1fe-9185-4cbe-bbc5-2e3a9782084c --verbose
+```
+
+**Transform Debugging:**
+```bash
+# Find conversation that generated a specific transform
+./run-ts src/server/scripts/get-conversation-by-transform.ts transform-abc123 --verbose
+
+# View complete conversation content
+./run-ts src/server/scripts/get-conversation-content.ts conversation-def456 --verbose
+```
+
+**Error Investigation:**
+```bash
+# Find conversations with errors
+./run-ts src/server/scripts/search-conversations.ts --project <project-id> --has-errors
+
+# Search for specific error patterns
+./run-ts src/server/scripts/search-conversations.ts --text "LLM returned invalid diff response" --limit 50
+```
+
+**Performance Analysis:**
+```bash
+# Find conversations with cache hits
+./run-ts src/server/scripts/search-conversations.ts --cache-hits-only --days 7
+
+# Analyze tool usage patterns
+./run-ts src/server/scripts/search-conversations.ts --tool brainstorm_generation --days 30
+```
+
+### **Integration with Development Workflow**
+
+These tools are designed to integrate seamlessly with the development workflow:
+
+1. **Debugging Transform Issues**: Use `get-conversation-by-transform.ts` to trace how transforms were generated
+2. **Performance Monitoring**: Use `get-recent-agent-conversations.ts` to monitor tool success rates and cache effectiveness  
+3. **Error Investigation**: Use `search-conversations.ts` with error filters to quickly identify problematic patterns
+4. **Project Health Monitoring**: Use `list-project-conversations.ts` to get project-level conversation statistics
+
+All tools follow the established script patterns with:
+- Proper error handling and graceful exits
+- Rich console output with emojis and formatting
+- Flexible command-line options
+- JSON export capabilities where appropriate
+- Comprehensive help documentation
+
 ## 🎉 **REFACTORING COMPLETION STATUS: 100% COMPLETE** 
 
 ### **Implementation Summary**
