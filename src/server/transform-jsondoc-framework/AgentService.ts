@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { streamText, wrapLanguageModel } from 'ai';
 import { TransformJsondocRepository } from './TransformJsondocRepository';
 import { createAgentTool } from './StreamingAgentFramework';
-import { buildAgentConfiguration} from '../services/AgentRequestBuilder';
+import { buildAgentConfiguration } from '../services/AgentRequestBuilder';
 import { getLLMModel } from './LLMConfig';
 import { createUserContextMiddleware } from '../middleware/UserContextMiddleware';
 import { getParticleSystem } from './particles/ParticleSystemInitializer';
@@ -88,91 +88,6 @@ export class AgentService {
         }
     }
 
-    /**
-     * Build minimal context that provides only workflow state overview for particle-based search
-     * This is used when particle search tools are available to reduce context size
-     */
-    private async buildMinimalContextForParticleSearch(
-        projectId: string,
-        jsondocRepo: TransformJsondocRepository
-    ): Promise<string> {
-        const contextLines: string[] = [];
-        contextLines.push('=== 项目状态概览 ===');
-
-        try {
-            // Get basic project state without loading full content
-            const allJsondocs = await jsondocRepo.getProjectJsondocs(projectId);
-
-            const hasInput = allJsondocs.some((j: any) => j.schema_type === 'user_input');
-            const hasBrainstorm = allJsondocs.some((j: any) => j.schema_type === '灵感创意');
-            const hasOutline = allJsondocs.some((j: any) => j.schema_type === '剧本设定');
-            const hasChronicles = allJsondocs.some((j: any) => j.schema_type === 'chronicles');
-            const hasEpisodePlanning = allJsondocs.some((j: any) => j.schema_type === '分集结构');
-            const episodeSynopses = allJsondocs.filter((j: any) => j.schema_type === '单集大纲');
-
-            if (hasInput) contextLines.push('✓ 用户输入已创建');
-            if (hasBrainstorm) contextLines.push('✓ 故事创意已生成');
-            if (hasOutline) contextLines.push('✓ 剧本设定已生成');
-            if (hasChronicles) contextLines.push('✓ 时间顺序大纲已生成');
-            if (hasEpisodePlanning) contextLines.push('✓ 分集结构已生成');
-            if (episodeSynopses.length > 0) {
-                contextLines.push(`✓ 已生成 ${episodeSynopses.length} 个分集大纲`);
-            }
-
-            if (contextLines.length === 1) {
-                contextLines.push('项目尚未开始，可以从创建故事创意开始');
-            }
-
-        } catch (error) {
-            console.warn('[AgentService] Failed to load project state for minimal context:', error);
-            contextLines.push('无法加载项目状态，请使用查询工具获取信息');
-        }
-
-        contextLines.push('');
-        contextLines.push('使用 query 工具搜索具体内容，使用 getJsondocContent 工具查看完整文档。');
-
-        return contextLines.join('\n');
-    }
-
-    /**
-     * Enhanced prompt with query guidance for particle-based search
-     */
-    private buildQueryGuidedPrompt(userRequest: string, minimalContext: string): string {
-        return `你是一个专业的短剧剧本创作和编辑助手。你拥有智能查询工具来按需获取项目信息。
-
-**用户请求：** "${userRequest}"
-
-${minimalContext}
-
-**你的工作流程：**
-
-1. **分析用户请求** - 理解用户的真实意图和需要什么信息
-2. **智能信息收集** - 使用 query 工具搜索相关信息
-   - 例如：query("角色设定") 来查找人物信息
-   - 例如：query("故事背景") 来了解设定信息
-   - 例如：query("剧集结构") 来查看分集安排
-3. **深入内容获取** - 使用 getJsondocContent 工具获取完整文档
-4. **决策和执行** - 基于收集的信息选择合适的工具执行任务
-
-**查询策略指导：**
-- 对于编辑任务：先查询相关的现有内容
-- 对于生成任务：查询所需的上游依赖信息
-- 对于问答任务：查询用户询问的具体内容
-- 可以进行多次查询来全面了解情况
-
-**重要原则：**
-- 根据查询结果中的 similarity 分数判断信息相关性
-- similarity > 0.7: 高度相关，可直接使用
-- similarity 0.4-0.7: 中等相关，需要进一步确认
-- similarity < 0.4: 低相关，可能需要重新查询
-
-**可用工具说明：**
-- query: 语义搜索项目中的相关信息
-- getJsondocContent: 获取指定文档的完整内容
-- 其他创作工具会根据项目状态自动提供
-
-开始分析用户请求，进行必要的信息查询，然后执行相应的工具。`;
-    }
 
     /**
      * Generate user-friendly error messages based on error type and content
@@ -234,108 +149,6 @@ ${minimalContext}
     }
 
     /**
-     * Check if request is a continuation and reconstruct conversation history
-     */
-    private async checkForContinuation(
-        request: GeneralAgentRequest,
-        projectId: string
-    ): Promise<{ isContinuation: boolean; conversationHistory: Array<{ role: string; content: string }> }> {
-        // Check if this is a continuation request (contains keywords like "continue", "next", or specific episode ranges)
-        const userRequest = request.userRequest.toLowerCase();
-        const isContinuation = userRequest.includes('continue') ||
-            userRequest.includes('next') ||
-            userRequest.includes('接下来') ||
-            userRequest.includes('继续') ||
-            /第\s*\d+\s*-\s*\d+\s*集/.test(userRequest); // Pattern like "第7-12集"
-
-        if (!isContinuation || !this.chatMessageRepo) {
-            return { isContinuation: false, conversationHistory: [] };
-        }
-
-        // For episode synopsis generation, try to reconstruct history
-        const toolName = 'generate_单集大纲';
-        const hasExisting = await this.chatMessageRepo.hasExistingConversation(projectId, toolName);
-
-        if (!hasExisting) {
-            return { isContinuation: false, conversationHistory: [] };
-        }
-
-        // Reconstruct conversation history with continuation parameters
-        const continuationParams = {
-            userRequest: request.userRequest,
-            contextType: request.contextType,
-            contextData: request.contextData
-        };
-
-        const conversationHistory = await this.chatMessageRepo.reconstructHistoryForAction(
-            projectId,
-            toolName,
-            continuationParams
-        );
-
-        return { isContinuation: true, conversationHistory };
-    }
-
-    /**
-     * Build multi-message prompt from conversation history
-     */
-    private buildMultiMessagePrompt(conversationHistory: Array<{ role: string; content: string }>): string {
-        // Convert conversation history to a single prompt that preserves the conversation structure
-        // This maintains compatibility with the existing streamText interface while enabling caching
-
-        console.log(`[AgentService] Building continuation prompt from ${conversationHistory.length} previous messages`);
-
-        const conversationText = conversationHistory.map((msg, index) => {
-            const roleLabel = msg.role === 'user' ? '用户' :
-                msg.role === 'assistant' ? '助手' :
-                    msg.role === 'system' ? '系统' : '未知';
-
-            // For system messages, add a marker to indicate it was the previous system prompt
-            const prefix = msg.role === 'system' ? '[之前的系统提示]' : `[${roleLabel}]`;
-
-            // Truncate very long messages for logging
-            const contentPreview = msg.content.length > 200 ?
-                msg.content.substring(0, 200) + '...' : msg.content;
-            console.log(`[AgentService] Conversation history ${index + 1}: ${prefix} (${msg.content.length} chars): ${contentPreview}`);
-
-            return `${prefix}: ${msg.content}`;
-        }).join('\n\n');
-
-        const continuationPrompt = `以下是之前的对话历史，请基于此上下文继续处理用户的新请求：
-
-${conversationText}
-
-请根据上述对话历史和最新的用户请求，继续执行相应的工具调用。`;
-
-        console.log(`[AgentService] Final continuation prompt length: ${continuationPrompt.length} characters`);
-
-        return continuationPrompt;
-    }
-
-    /**
-     * Save conversation history after successful tool execution
-     */
-    private async saveConversationHistory(
-        projectId: string,
-        toolName: string,
-        toolCallId: string,
-        systemPromptSentToLLM: string,
-        toolResult: any,
-        assistantResponse: string
-    ): Promise<void> {
-        if (!this.chatMessageRepo) return;
-
-        // Save the complete conversation that was sent to/from the LLM
-        // This represents the actual conversation format: system prompt -> assistant response
-        const messages = [
-            { role: 'system', content: systemPromptSentToLLM }, // The complete system prompt sent to LLM
-            { role: 'assistant', content: assistantResponse }   // The assistant's response
-        ];
-
-        await this.chatMessageRepo.saveConversation(projectId, toolName, toolCallId, messages);
-    }
-
-    /**
      * General agent method that can handle various types of requests including brainstorm editing
      */
     public async runGeneralAgent(
@@ -380,7 +193,6 @@ ${conversationText}
             }
 
             // 1. Check for conversation continuation
-            const { isContinuation, conversationHistory } = await this.checkForContinuation(request, projectId);
 
             // 2. Check if particle search is available for optimized context approach
             let useParticleSearchApproach = false;
@@ -399,15 +211,9 @@ ${conversationText}
             let agentConfig;
             let completePrompt;
 
-            if (useParticleSearchApproach && !isContinuation) {
+            if (useParticleSearchApproach) {
                 // Use minimal context + particle search approach
                 console.log('[AgentService] Using particle-search optimized approach');
-
-                // Build minimal context
-                const minimalContext = await this.buildMinimalContextForParticleSearch(projectId, this.jsondocRepo);
-
-                // Build query-guided prompt
-                completePrompt = this.buildQueryGuidedPrompt(request.userRequest, minimalContext);
 
                 // Build agent configuration with minimal context
                 agentConfig = await buildAgentConfiguration(
@@ -425,7 +231,9 @@ ${conversationText}
                     }
                 );
 
-                console.log(`[AgentService] Minimal context size: ${minimalContext.length} characters (vs traditional approach)`);
+                // Set the complete prompt for particle search approach
+                completePrompt = agentConfig.prompt;
+
             } else {
                 // Use traditional full context approach
                 console.log('[AgentService] Using traditional full-context approach');
@@ -447,17 +255,10 @@ ${conversationText}
                 );
 
                 // Use conversation history for continuation or regular prompt
-                completePrompt = isContinuation && conversationHistory.length > 0
-                    ? this.buildMultiMessagePrompt(conversationHistory)
-                    : agentConfig.prompt;
+                completePrompt = agentConfig.prompt;
             }
 
             const toolDefinitions = agentConfig.tools;
-
-            console.log(`[AgentService] ${isContinuation ? 'Continuation' : 'New'} request detected`);
-            if (isContinuation) {
-                console.log(`[AgentService] Using conversation history with ${conversationHistory.length} messages`);
-            }
 
             // Update computation message to show analysis phase
             if (computationMessageId && this.chatMessageRepo) {
@@ -485,9 +286,7 @@ ${conversationText}
                         metadata: {
                             source: 'streaming_agent',
                             executionId,
-                            promptType: isContinuation ? 'continuation_prompt' : 'initial_prompt',
                             useParticleSearch: useParticleSearchApproach,
-                            conversationHistoryLength: conversationHistory.length
                         }
                     }
                 );
@@ -645,17 +444,7 @@ ${conversationText}
                                 }
                             );
 
-                            // Save conversation history for episode synopsis tool
-                            if (currentToolCall.toolName === 'generate_单集大纲') {
-                                await this.saveConversationHistory(
-                                    projectId,
-                                    currentToolCall.toolName,
-                                    delta.toolCallId,
-                                    completePrompt, // The complete system prompt that was sent to the LLM
-                                    delta.result,
-                                    accumulatedResponse || 'Tool executed successfully'
-                                );
-                            }
+
                         }
                         break;
 
@@ -806,54 +595,5 @@ ${conversationText}
         }
     }
 
-    /**
-     * Health check for particle-based search capabilities
-     */
-    public async checkParticleSearchHealth(): Promise<{
-        particleSystemAvailable: boolean;
-        unifiedSearchAvailable: boolean;
-        searchModes: {
-            stringSearchAvailable: boolean;
-            embeddingSearchAvailable: boolean;
-        };
-        particleCount: number;
-    }> {
-        try {
-            const particleSystem = getParticleSystem();
-            if (!particleSystem) {
-                return {
-                    particleSystemAvailable: false,
-                    unifiedSearchAvailable: false,
-                    searchModes: {
-                        stringSearchAvailable: false,
-                        embeddingSearchAvailable: false
-                    },
-                    particleCount: 0
-                };
-            }
 
-            const healthCheck = await particleSystem.unifiedSearch.healthCheck();
-
-            return {
-                particleSystemAvailable: true,
-                unifiedSearchAvailable: true,
-                searchModes: {
-                    stringSearchAvailable: healthCheck.stringSearchAvailable,
-                    embeddingSearchAvailable: healthCheck.embeddingSearchAvailable
-                },
-                particleCount: healthCheck.particleCount
-            };
-        } catch (error) {
-            console.error('[AgentService] Particle search health check failed:', error);
-            return {
-                particleSystemAvailable: false,
-                unifiedSearchAvailable: false,
-                searchModes: {
-                    stringSearchAvailable: false,
-                    embeddingSearchAvailable: false
-                },
-                particleCount: 0
-            };
-        }
-    }
 } 

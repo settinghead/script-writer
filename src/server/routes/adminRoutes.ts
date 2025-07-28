@@ -1131,26 +1131,6 @@ export function createAdminRoutes(
         }
     });
 
-    // Debug health check for particle-based agent
-    router.get('/particle-agent/health', async (req: Request, res: Response) => {
-        try {
-            const { AgentService } = await import('../transform-jsondoc-framework/AgentService.js');
-            const agentService = new AgentService(transformRepo, jsondocRepo);
-            const health = await agentService.checkParticleSearchHealth();
-            res.json({
-                status: 'ok',
-                timestamp: new Date().toISOString(),
-                health
-            });
-        } catch (error) {
-            console.error('[AdminRoutes] Particle agent health check failed:', error);
-            res.status(500).json({
-                status: 'error',
-                timestamp: new Date().toISOString(),
-                error: error instanceof Error ? error.message : 'Unknown error'
-            });
-        }
-    });
 
     // Debug test for particle-based agent
     router.post('/particle-agent/test', authMiddleware.authenticate, async (req: Request, res: Response) => {

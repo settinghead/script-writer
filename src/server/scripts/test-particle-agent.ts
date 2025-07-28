@@ -18,25 +18,7 @@ async function testParticleAgent() {
         const jsondocRepo = new TransformJsondocRepository(db);
         const agentService = new AgentService(transformRepo, jsondocRepo);
 
-        // Test 1: Health Check
-        console.log('1️⃣ Testing health check...');
-        const health = await agentService.checkParticleSearchHealth();
-        console.log('Health Status:', JSON.stringify(health, null, 2));
 
-        if (health.particleSystemAvailable) {
-            console.log('✅ Particle system is available');
-        } else {
-            console.log('❌ Particle system is not available');
-        }
-
-        if (health.unifiedSearchAvailable) {
-            console.log('✅ Unified search is available');
-        } else {
-            console.log('❌ Unified search is not available');
-        }
-
-        console.log(`📊 Particle count: ${health.particleCount}`);
-        console.log('');
 
         // Test 2: Particle System Check
         console.log('2️⃣ Testing particle system initialization...');

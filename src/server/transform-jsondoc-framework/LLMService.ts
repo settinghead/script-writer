@@ -73,48 +73,6 @@ export class LLMService {
         return this.reasoningModelCache.get(actualModelName);
     }
 
-    /**
-     * Generate text with automatic reasoning detection
-     */
-    async generateText(
-        prompt: string,
-        modelName?: string
-    ): Promise<ReasoningResult> {
-        const modelInfo = this.getModelInfo(modelName);
-
-        if (modelInfo.supportsReasoning) {
-            const reasoningModel = await this.getReasoningModel(modelName);
-            const result = await generateText({
-                model: reasoningModel,
-                messages: [{ role: 'user', content: prompt }]
-            });
-
-            return {
-                reasoning: (result as any).reasoning,
-                text: result.text,
-                usage: result.usage ? {
-                    promptTokens: result.usage.promptTokens,
-                    completionTokens: result.usage.completionTokens,
-                    totalTokens: result.usage.totalTokens
-                } : undefined
-            };
-        } else {
-            const standardModel = await getLLMModel({ modelName: modelName });
-            const result = await generateText({
-                model: standardModel,
-                messages: [{ role: 'user', content: prompt }]
-            });
-
-            return {
-                text: result.text,
-                usage: result.usage ? {
-                    promptTokens: result.usage.promptTokens,
-                    completionTokens: result.usage.completionTokens,
-                    totalTokens: result.usage.totalTokens
-                } : undefined
-            };
-        }
-    }
 
     /**
      * Stream text with automatic reasoning detection and event callbacks
