@@ -37,7 +37,7 @@ async function getFullConversationContent(
         return null;
     }
 
-    const messages = await getConversationMessages(conversationId, options.includeFailed);
+    const messages = await getConversationMessages(conversationId);
 
     // Get related transforms
     const relatedTransforms = await db
@@ -51,7 +51,7 @@ async function getFullConversationContent(
 }
 
 function formatMessageContent(message: ConversationMessage, index: number, options: ConversationContentOptions): void {
-    const timestamp = message.created_at.toISOString();
+    const timestamp = message.created_at;
     const roleEmoji = {
         'system': '⚙️',
         'user': '👤',
@@ -162,11 +162,10 @@ function displayConversationOverview(
     console.log(`🆔 ID: ${conversation.id}`);
     console.log(`📂 Project: ${conversation.project_id}`);
     console.log(`🔧 Type: ${conversation.type}`);
-    console.log(`📊 Status: ${conversation.status}`);
-    console.log(`📅 Created: ${conversation.created_at.toISOString()}`);
-    console.log(`🔄 Updated: ${conversation.updated_at.toISOString()}`);
+    console.log(`📅 Created: ${conversation.created_at}`);
+    console.log(`🔄 Updated: ${conversation.updated_at}`);
 
-    const duration = Math.round((conversation.updated_at.getTime() - conversation.created_at.getTime()) / 1000);
+    const duration = Math.round((new Date(conversation.updated_at).getTime() - new Date(conversation.created_at).getTime()) / 1000);
     console.log(`⏱️  Duration: ${duration} seconds`);
 
     if (Object.keys(conversation.metadata).length > 0) {
@@ -241,7 +240,7 @@ function outputAsJson(
                 return acc;
             }, {} as Record<string, number>),
             toolsUsed: [...new Set(messages.map(msg => msg.tool_name).filter(Boolean))],
-            duration: Math.round((conversation.updated_at.getTime() - conversation.created_at.getTime()) / 1000)
+            duration: Math.round((new Date(conversation.updated_at).getTime() - new Date(conversation.created_at).getTime()) / 1000)
         }
     };
 

@@ -84,7 +84,7 @@ async function searchConversations(criteria: SearchCriteria): Promise<SearchResu
 
     for (const conversation of conversations) {
         try {
-            const messages = await getConversationMessages(conversation.id, true);
+            const messages = await getConversationMessages(conversation.id);
             const matchedMessages: SearchResult['matchedMessages'] = [];
 
             // Check each message against criteria
@@ -128,7 +128,7 @@ async function searchConversations(criteria: SearchCriteria): Promise<SearchResu
                         role: message.role,
                         content: message.content.substring(0, 200),
                         tool_name: message.tool_name || undefined,
-                        created_at: message.created_at,
+                        created_at: new Date(message.created_at),
                         match_reason: matchReasons.join(', ')
                     });
                 }

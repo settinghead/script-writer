@@ -51,7 +51,7 @@ async function getTransformConversation(transformId: string): Promise<{
     }
 
     // Get all messages in the conversation
-    const messages = await getConversationMessages(transform.conversation_id, true);
+    const messages = await getConversationMessages(transform.conversation_id);
 
     // Get trigger message if available
     let triggerMessage: ConversationMessage | undefined;
@@ -63,7 +63,7 @@ async function getTransformConversation(transformId: string): Promise<{
 }
 
 function formatMessage(message: ConversationMessage, index: number, isVerbose: boolean = false): void {
-    const timestamp = message.created_at.toISOString();
+    const timestamp = message.created_at;
     const roleEmoji = {
         'system': '🤖',
         'user': '👤',
@@ -231,7 +231,7 @@ async function main() {
             const firstMessage = messages[0];
             const lastMessage = messages[messages.length - 1];
             const duration = Math.round(
-                (lastMessage.created_at.getTime() - firstMessage.created_at.getTime()) / 1000
+                (new Date(lastMessage.created_at).getTime() - new Date(firstMessage.created_at).getTime()) / 1000
             );
             console.log(`Duration: ${duration} seconds`);
         }

@@ -48,7 +48,7 @@ async function analyzeAgentConversation(conversationId: string): Promise<AgentCo
         throw new Error(`Conversation ${conversationId} not found`);
     }
 
-    const messages = await getConversationMessages(conversationId, true);
+    const messages = await getConversationMessages(conversationId);
 
     // Analyze messages
     const toolCalls = messages.filter(msg => msg.tool_name);
