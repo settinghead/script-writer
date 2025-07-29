@@ -1,18 +1,20 @@
+import { z } from 'zod';
+import { AgentService } from './AgentService.js';
+import type { TransformJsondocRepository } from './TransformJsondocRepository.js';
 import {
     createConversation,
     getConversationsByProject,
     getConversationMessages,
-    userHasConversationAccess,
+    createMessageWithDisplay,
     getCurrentConversation,
     setCurrentConversation,
     createAndSetCurrentConversation,
-    createMessageWithDisplay
+    userHasConversationAccess
 } from '../conversation/ConversationManager.js';
-import {
-    createConversationContext
-} from '../conversation/StreamingWrappers.js';
-import { AgentService } from './AgentService';
-import { TransformJsondocRepository } from './TransformJsondocRepository';
+import { supportsIntent } from '../../common/schemas/intentSchemas.js';
+import { createIntentShortcutService } from '../services/IntentShortcutService.js';
+import { CanonicalJsondocService } from '../services/CanonicalJsondocService.js';
+import { db } from '../database/connection.js';
 
 export interface SendMessageRequest {
     content: string;
@@ -57,15 +59,43 @@ export async function sendUserMessage(
         // 2. Set this as the current conversation for the project
         await setCurrentConversation(projectId, conversationId);
 
-        // 3. Let AgentService handle the agent processing using the existing conversation
-        await agentService.runGeneralAgent(projectId, userId, {
-            userRequest: request.content,
-            projectId: projectId,
-            contextType: 'general'
-        }, {
-            createChatMessages: false, // We're managing conversations directly now
-            conversationId: conversationId // Pass the conversation ID to agent service
-        });
+        // 3. Check for intent shortcuts
+        if (request.metadata?.intent && supportsIntent(request.metadata.intent)) {
+            console.log(`[ChatService] Intent shortcut detected: ${request.metadata.intent}`);
+
+            // Create intent shortcut service
+            const transformRepo = jsondocRepo; // Using same instance for transforms
+            const canonicalService = new CanonicalJsondocService(db, jsondocRepo, transformRepo);
+            const intentShortcutService = createIntentShortcutService({
+                canonicalService,
+                jsondocRepo,
+                transformRepo
+            });
+
+            // Handle intent via shortcut
+            await intentShortcutService.handleIntent({
+                intent: request.metadata.intent,
+                metadata: request.metadata,
+                content: request.content,
+                conversationId,
+                projectId,
+                userId
+            });
+
+            console.log(`[ChatService] Intent shortcut completed: ${request.metadata.intent}`);
+        } else {
+            console.log(`[ChatService] Using standard LLM path`);
+
+            // 4. Let AgentService handle the agent processing using the existing conversation
+            await agentService.runGeneralAgent(projectId, userId, {
+                userRequest: request.content,
+                projectId: projectId,
+                contextType: 'general'
+            }, {
+                createChatMessages: false, // We're managing conversations directly now
+                conversationId: conversationId // Pass the conversation ID to agent service
+            });
+        }
 
     } catch (error) {
         console.error('Error processing user message:', error);

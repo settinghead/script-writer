@@ -30,18 +30,19 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
 
         setIsGenerating(true);
         try {
-            // Get or create conversation ID (following the pattern used in other generation methods)
+            // Get or create conversation ID
             const conversationId = await (apiService as any).getOrCreateConversation(projectId);
 
-            // Send chat message to trigger generation with correct API signature
+            // Send chat message with intent field to trigger shortcut
             await apiService.sendChatMessage(
                 projectId,
                 conversationId,
                 `生成第${targetEpisode.episodeNumber}集剧本`,
                 {
-                    action: 'generate_单集剧本',
+                    intent: 'generate_episode_script',
                     episodeNumber: targetEpisode.episodeNumber,
-                    episodeSynopsisJsondocId: targetEpisode.synopsisId
+                    episodeSynopsisJsondocId: targetEpisode.synopsisId,
+                    userRequirements: '' // Could be populated from user input if needed
                 }
             );
 

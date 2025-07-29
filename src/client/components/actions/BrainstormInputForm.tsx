@@ -59,16 +59,19 @@ const BrainstormInputForm: React.FC<BrainstormInputFormPropsUnion> = (props) => 
 
             setIsStarting(true);
 
-            // Use apiService to send chat message
-            const userRequest = `基于jsondoc ID ${canonicalBrainstormInput.id} 的头脑风暴参数，生成${currentData.numberOfIdeas || 3}个创意想法。平台：${currentData.platform}，类型：${currentData.genre}${currentData.other_requirements ? `，其他要求：${currentData.other_requirements}` : ''}`;
+            // Use intent-based shortcut for brainstorm generation
+            const userRequest = `基于创意参数生成${currentData.numberOfIdeas || 3}个故事想法`;
 
             // Get or create conversation for the message
             const { conversationId } = await apiService.getCurrentConversation(projectId);
             const finalConversationId = conversationId || (await apiService.createNewConversation(projectId)).conversationId;
 
             await apiService.sendChatMessage(projectId, finalConversationId, userRequest, {
-                action: 'start_brainstorm',
-                jsondocId: canonicalBrainstormInput.id
+                intent: 'generate_brainstorm',
+                numberOfIdeas: currentData.numberOfIdeas || 3,
+                platform: currentData.platform,
+                genre: currentData.genre,
+                userRequirements: currentData.other_requirements || ''
             });
 
             message.success('头脑风暴已开始！请查看聊天面板了解进度。');
