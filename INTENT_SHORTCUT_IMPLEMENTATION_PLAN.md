@@ -51,25 +51,25 @@ Initial support for all `generate_` prefixed tools:
 ## Implementation Phases
 
 ### Phase 1: Core Infrastructure
-- [ ] Create `IntentShortcutService` class
+- [ ] Create `createIntentShortcutService` factory function
 - [ ] Add intent detection in `ChatService.sendUserMessage`
-- [ ] Implement base intent handler interface
+- [ ] Implement functional intent handler interface
 - [ ] Create parameter resolution utilities
 - [ ] Add conversation message generation helpers
 - [ ] Write unit tests for core components
 
 ### Phase 2: Intent Handlers
-- [ ] Implement `BrainstormGenerationIntent` handler
-- [ ] Implement `OutlineSettingsIntent` handler
-- [ ] Implement `ChroniclesIntent` handler
-- [ ] Implement `EpisodePlanningIntent` handler
-- [ ] Implement `EpisodeSynopsisIntent` handler
-- [ ] Implement `EpisodeScriptIntent` handler
+- [ ] Implement `createBrainstormGenerationIntent` handler factory
+- [ ] Implement `createOutlineSettingsIntent` handler factory
+- [ ] Implement `createChroniclesIntent` handler factory
+- [ ] Implement `createEpisodePlanningIntent` handler factory
+- [ ] Implement `createEpisodeSynopsisIntent` handler factory
+- [ ] Implement `createEpisodeScriptIntent` handler factory
 - [ ] Write integration tests for each handler
 
 ### Phase 3: Parameter Resolution
-- [ ] Create `CanonicalJsondocResolver` utility
-- [ ] Implement schema_type based lookup
+- [ ] Create `createCanonicalJsondocResolver` factory function
+- [ ] Implement schema_type based lookup with closures
 - [ ] Add support for additional filtering criteria
 - [ ] Handle edge cases (missing jsondocs, multiple candidates)
 - [ ] Write comprehensive tests for resolution logic
@@ -170,21 +170,27 @@ export type IntentHandlerParams = z.infer<typeof IntentHandlerParamsSchema>;
 
 ### 4. Usage Pattern
 ```typescript
-// In intent handler
-class EpisodeScriptIntentHandler implements IntentHandler {
-    async resolveParameters(context: IntentContext): Promise<IntentHandlerParams> {
+// In intent handler factory
+function createEpisodeScriptIntent(dependencies: IntentHandlerDependencies) {
+    const resolveParameters = async (context: IntentContext): Promise<IntentHandlerParams> => {
         // Validate context first
         const validatedContext = IntentContextSchema.parse(context);
         
-        // Resolve parameters...
+        // Resolve parameters using closure over dependencies
+        const { canonicalService } = dependencies;
         const params = {
-            jsondocs: await this.findRequiredJsondocs(validatedContext.projectId),
+            jsondocs: await findRequiredJsondocs(validatedContext.projectId, canonicalService),
             episodeNumber: validatedContext.metadata.episodeNumber
         };
         
         // Validate output before returning
         return IntentHandlerParamsSchema.parse(params);
-    }
+    };
+    
+    return createIntentHandler('episode_script', 'generate_单集剧本', {
+        ...dependencies,
+        resolveParameters
+    });
 }
 ```
 
@@ -193,8 +199,14 @@ class EpisodeScriptIntentHandler implements IntentHandler {
 ### 1. Intent Detection (ChatService modification)
 ```typescript
 // In sendUserMessage function
-if (request.metadata?.intent && IntentShortcutService.supportsIntent(request.metadata.intent)) {
+if (request.metadata?.intent && supportsIntent(request.metadata.intent)) {
     // Shortcut path
+    const intentShortcutService = createIntentShortcutService({
+        canonicalService,
+        jsondocRepo,
+        transformRepo
+    });
+    
     await intentShortcutService.handleIntent({
         intent: request.metadata.intent,
         metadata: request.metadata,
@@ -211,19 +223,37 @@ if (request.metadata?.intent && IntentShortcutService.supportsIntent(request.met
 
 ### 2. Intent Handler Interface
 ```typescript
-interface IntentHandler {
-    intentType: string;
-    
+// Functional intent handler factory
+type IntentHandlerDependencies = {
+    canonicalService: CanonicalJsondocService;
+    jsondocRepo: TransformJsondocRepository;
+    transformRepo: TransformJsondocRepository;
+};
+
+function createIntentHandler(
+    intentType: string,
+    toolName: string,
+    dependencies: IntentHandlerDependencies
+) {
     // Resolve parameters from metadata and canonical jsondocs
-    resolveParameters(context: IntentContext): Promise<any>;
+    const resolveParameters = async (context: IntentContext): Promise<any> => {
+        // Implementation using closure over dependencies
+        const { canonicalService, jsondocRepo } = dependencies;
+        // ... parameter resolution logic
+    };
     
-    // Get the tool name to execute
-    getToolName(): string;
+    const getToolName = () => toolName;
     
-    // Generate assistant messages
-    getAssistantMessages(): {
-        thinking: string;
-        completion: string;
+    const getAssistantMessages = () => ({
+        thinking: `🔄 正在为您处理${intentType}...`,
+        completion: `✅ ${intentType}已完成！`
+    });
+    
+    return {
+        intentType,
+        resolveParameters,
+        getToolName,
+        getAssistantMessages
     };
 }
 ```

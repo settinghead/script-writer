@@ -76,6 +76,36 @@
   ```
 - **Benefits**: Single source of truth, automatic type sync, runtime safety, better error messages, composable schemas
 
+### 6.2. Functional Programming Patterns
+- **ALWAYS prefer functional patterns over classes** - use functions with closures instead of class-based architecture
+- **Use factory functions** to create objects with encapsulated state and behavior
+- **Leverage closures** for private state and method encapsulation
+- **Compose functions** rather than using inheritance hierarchies
+- **Example pattern**:
+  ```typescript
+  // Prefer this functional approach
+  function createIntentHandler(intentType: string, dependencies: Dependencies) {
+    const resolveParameters = async (context: IntentContext) => {
+      // Implementation using closure over dependencies
+    };
+    
+    const getToolName = () => intentType;
+    
+    return {
+      intentType,
+      resolveParameters,
+      getToolName
+    };
+  }
+  
+  // Instead of class-based approach
+  class IntentHandler {
+    constructor(private intentType: string, private dependencies: Dependencies) {}
+    // ... methods
+  }
+  ```
+- **Benefits**: Better testability, simpler composition, clearer data flow, easier reasoning about state
+
 ### 7. File Structure
 ```
 src/
