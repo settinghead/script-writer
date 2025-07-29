@@ -51,6 +51,31 @@
 - Properly type all streaming services and API responses
 - Frontend-only types go in `src/client/types/`, backend-only types go in `src/server/types/`
 
+### 6.1. Zod-First Typing Strategy
+- **ALWAYS define data structures using Zod schemas first** - do not create TypeScript interfaces/types manually
+- **Infer TypeScript types from Zod schemas** using `z.infer<typeof Schema>` - this ensures runtime validation matches compile-time types
+- **Use Zod enums for constants** instead of TypeScript enums or const assertions - provides both runtime validation and type safety
+- **Place all Zod schemas in appropriate schema directories** - `src/common/schemas/` for shared, `src/server/schemas/` for backend-only
+- **Validate at boundaries** - use `.parse()` or `.safeParse()` at API endpoints, tool inputs/outputs, and external data sources
+- **Example pattern**:
+  ```typescript
+  // Define schema first
+  const UserInputSchema = z.object({
+    name: z.string().min(1),
+    role: z.enum(['user', 'admin', 'guest']),
+    metadata: z.record(z.any()).optional()
+  });
+  
+  // Infer type from schema
+  type UserInput = z.infer<typeof UserInputSchema>;
+  
+  // Use in functions with validation
+  function processUserInput(rawData: unknown): UserInput {
+    return UserInputSchema.parse(rawData); // Throws if invalid
+  }
+  ```
+- **Benefits**: Single source of truth, automatic type sync, runtime safety, better error messages, composable schemas
+
 ### 7. File Structure
 ```
 src/
@@ -191,9 +216,10 @@ Based on the LLM Conversation Refactor implementation, use these specialized con
 ## Data Validation
 
 ### 17. Input Validation
+- **Follow the Zod-first typing strategy** as defined in section 6.1
 - Validate all input data at API boundaries using Zod schemas
-- Use TypeScript for compile-time type checking
-- Include runtime validation for external data
+- Use TypeScript for compile-time type checking (types inferred from Zod)
+- Include runtime validation for external data using `.parse()` or `.safeParse()`
 - Test edge cases and error conditions
 - Follow schema patterns documented in framework
 
