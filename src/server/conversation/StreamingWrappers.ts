@@ -91,7 +91,7 @@ async function getDefaultModel(): Promise<LanguageModelV1> {
 }
 
 // Check for cache hit by looking up existing messages with same content hash
-async function checkCacheHit(contentHash: string, projectId: string): Promise<{ hit: boolean; cachedTokens: number }> {
+async function checkCacheHit(contentHash: string, projectId: string): Promise<{ hit: boolean; cachedTokens: number; cachedContent?: string }> {
     try {
         const { db } = await import('../database/connection.js');
 
@@ -99,7 +99,7 @@ async function checkCacheHit(contentHash: string, projectId: string): Promise<{ 
         const cachedMessage = await db
             .selectFrom('conversation_messages')
             .innerJoin('conversations', 'conversations.id', 'conversation_messages.conversation_id')
-            .select(['conversation_messages.cached_tokens', 'conversation_messages.cache_hit'])
+            .select(['conversation_messages.cached_tokens', 'conversation_messages.cache_hit', 'conversation_messages.content'])
             .where('conversations.project_id', '=', projectId)
             .where('conversation_messages.content_hash', '=', contentHash)
             .where('conversation_messages.role', '=', 'assistant') // Only check assistant responses
@@ -107,11 +107,13 @@ async function checkCacheHit(contentHash: string, projectId: string): Promise<{ 
             .orderBy('conversation_messages.created_at', 'desc')
             .executeTakeFirst();
 
-        if (cachedMessage) {
+        if (cachedMessage && cachedMessage.content) {
             console.log(`[Cache] Cache HIT found for hash ${contentHash.substring(0, 8)}... with ${cachedMessage.cached_tokens || 0} tokens`);
+            console.log(`[Cache] Cached content length: ${cachedMessage.content.length} chars`);
             return {
                 hit: true,
-                cachedTokens: Number(cachedMessage.cached_tokens) || 0
+                cachedTokens: Number(cachedMessage.cached_tokens) || 0,
+                cachedContent: cachedMessage.content
             };
         }
 
@@ -201,7 +203,7 @@ export function createConversationContext(
         const cacheKey = generateCacheKey(projectId, contentHash);
 
         // Check for cache hit
-        const { hit: cacheHit, cachedTokens } = await checkCacheHit(contentHash, projectId);
+        const { hit: cacheHit, cachedTokens, cachedContent } = await checkCacheHit(contentHash, projectId);
 
         // Create assistant message placeholder for streaming with display message
         const { rawMessageId: assistantMessageId } = await createMessageWithDisplay(
@@ -221,10 +223,42 @@ export function createConversationContext(
             }
         );
 
-        // Stream with AI SDK
-        const model = params.model || await getDefaultModel();
-
         try {
+            // Handle cache hit: return cached content immediately
+            if (cacheHit && cachedContent) {
+                console.log(`[StreamingWrappers] Using cached response for conversation ${conversationId}`);
+
+                // Update message with cached content
+                await updateMessageWithDisplay(assistantMessageId, {
+                    content: cachedContent,
+                    status: 'completed' as any
+                });
+
+                // Create a stream that yields the cached content
+                const textStream = async function* () {
+                    yield cachedContent;
+                };
+
+                return {
+                    textStream: textStream(),
+                    text: Promise.resolve(cachedContent),
+                    usage: Promise.resolve({
+                        completionTokens: cachedTokens,
+                        promptTokens: 0,
+                        totalTokens: cachedTokens
+                    }),
+                    finishReason: Promise.resolve('stop'),
+                    fullStream: textStream(),
+                    cacheHit,
+                    cachedTokens,
+                    conversationId,
+                    messageId: assistantMessageId
+                };
+            }
+
+            // No cache hit: proceed with LLM API call
+            const model = params.model || await getDefaultModel();
+
             // Add context cache headers
             const enhancedParams = addContextCacheHeaders({
                 model,
@@ -237,16 +271,30 @@ export function createConversationContext(
                 tools: params.tools
             }, contentHash, cacheHit);
 
+            console.log('[StreamingWrappers] Calling LLM API with enhanced params:', JSON.stringify({
+                modelId: enhancedParams.model?.modelId,
+                messagesCount: enhancedParams.messages?.length,
+                system: enhancedParams.system?.substring(0, 100) + '...',
+                temperature: enhancedParams.temperature,
+                maxTokens: enhancedParams.maxTokens,
+                toolsCount: enhancedParams.tools ? Object.keys(enhancedParams.tools).length : 0
+            }, null, 2));
+
             const result = await streamText(enhancedParams);
+            console.log('[StreamingWrappers] LLM API call completed, starting to process stream...');
 
             // Track streaming updates
             let accumulatedContent = '';
+            let chunkCount = 0;
             const originalTextStream = result.textStream;
             const enhancedTextStream = new ReadableStream({
                 async start(controller) {
                     try {
+                        console.log('[StreamingWrappers] Starting to iterate over text stream...');
                         for await (const chunk of originalTextStream) {
+                            chunkCount++;
                             accumulatedContent += chunk;
+                            console.log(`[StreamingWrappers] Chunk ${chunkCount}: "${chunk}" (accumulated: ${accumulatedContent.length} chars)`);
 
                             // Update message in database with accumulated content and display message
                             await updateMessageWithDisplay(assistantMessageId, {
@@ -256,6 +304,8 @@ export function createConversationContext(
 
                             controller.enqueue(chunk);
                         }
+
+                        console.log(`[StreamingWrappers] Stream completed. Total chunks: ${chunkCount}, final content: "${accumulatedContent}"`);
 
                         // Mark as completed when streaming ends
                         await updateMessageWithDisplay(assistantMessageId, {
