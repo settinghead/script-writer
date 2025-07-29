@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Card, Typography, Space, Tag, Divider, Empty, Select, Alert, Button, Checkbox, Badge } from 'antd';
+import { Card, Typography, Space, Tag, Divider, Empty, Select, Alert, Button, Checkbox, Badge, Collapse } from 'antd';
 import { AppColors } from '@/common/theme/colors';
 
 const { Text, Paragraph, Title } = Typography;
@@ -188,265 +188,306 @@ const RawChatMessages: React.FC<RawChatMessagesProps> = ({ projectId }) => {
     }
 
     return (
-        <Card
-            title="对话历史"
-            style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
-            bodyStyle={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-        >
-            {/* Conversation Selection */}
-            <Space direction="vertical" style={{ marginBottom: 16, width: '100%' }}>
-                <div>
-                    <Text strong>选择对话:</Text>
-                    <Select
-                        style={{ width: '100%', marginTop: 8 }}
-                        placeholder="选择一个对话"
-                        value={selectedConversationId}
-                        onChange={setSelectedConversationId}
-                        showSearch
-                        optionFilterProp="children"
-                    >
-                        {conversations.map(conv => (
-                            <Option key={conv.id} value={conv.id}>
-                                <Space>
-                                    <Badge status={getStatusColor(conv.status)} />
-                                    <Tag color={conv.type === 'agent' ? 'blue' : 'green'}>
-                                        {conv.type === 'agent' ? '智能体' : '工具'}
-                                    </Tag>
-                                    <Text>{formatTimestamp(conv.created_at)}</Text>
-                                    {conv.metadata?.userRequest && (
-                                        <Text type="secondary" ellipsis style={{ maxWidth: 200 }}>
-                                            {conv.metadata.userRequest.substring(0, 50)}...
-                                        </Text>
-                                    )}
-                                </Space>
-                            </Option>
-                        ))}
-                    </Select>
-                </div>
-
-                {/* Message Type Filters */}
-                <div>
-                    <Text strong>消息类型过滤:</Text>
-                    <div style={{ marginTop: 8 }}>
-                        <Space wrap>
-                            <Checkbox
-                                checked={filterSystem}
-                                onChange={(e) => setFilterSystem(e.target.checked)}
-                            >
-                                <Tag color="purple">系统消息</Tag>
-                            </Checkbox>
-                            <Checkbox
-                                checked={filterUser}
-                                onChange={(e) => setFilterUser(e.target.checked)}
-                            >
-                                <Tag color="blue">用户消息</Tag>
-                            </Checkbox>
-                            <Checkbox
-                                checked={filterAssistant}
-                                onChange={(e) => setFilterAssistant(e.target.checked)}
-                            >
-                                <Tag color="green">助手回复</Tag>
-                            </Checkbox>
-                            <Checkbox
-                                checked={filterTool}
-                                onChange={(e) => setFilterTool(e.target.checked)}
-                            >
-                                <Tag color="orange">工具调用</Tag>
-                            </Checkbox>
-                        </Space>
-                    </div>
-                </div>
-            </Space>
-
-            <Divider />
-
-            {/* Conversation Metadata */}
-            {selectedConversation && (
-                <Card size="small" style={{ marginBottom: 16 }}>
-                    <Title level={5}>对话信息</Title>
-                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Card
+                title="对话历史"
+                style={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden'
+                }}
+                bodyStyle={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    padding: '16px',
+                    overflow: 'hidden'
+                }}
+            >
+                {/* Conversation Selection - Fixed height section */}
+                <div style={{ flexShrink: 0, marginBottom: 16 }}>
+                    <Space direction="vertical" style={{ width: '100%' }}>
                         <div>
-                            <Text strong>类型: </Text>
-                            <Tag color={selectedConversation.type === 'agent' ? 'blue' : 'green'}>
-                                {selectedConversation.type === 'agent' ? '智能体对话' : '工具调用'}
-                            </Tag>
-                            <Text strong>状态: </Text>
-                            <Badge status={getStatusColor(selectedConversation.status)} text={
-                                selectedConversation.status === 'active' ? '进行中' :
-                                    selectedConversation.status === 'completed' ? '已完成' : '失败'
-                            } />
-                        </div>
-                        <div>
-                            <Text strong>创建时间: </Text>
-                            <Text>{formatTimestamp(selectedConversation.created_at)}</Text>
-                        </div>
-                        <div>
-                            <Text strong>更新时间: </Text>
-                            <Text>{formatTimestamp(selectedConversation.updated_at)}</Text>
-                        </div>
-                        {selectedConversation.metadata && Object.keys(selectedConversation.metadata).length > 0 && (
-                            <div>
-                                <Text strong>元数据: </Text>
-                                <pre style={{
-                                    fontSize: '12px',
-                                    backgroundColor: AppColors.background.secondary,
-                                    color: AppColors.text.primary,
-                                    padding: '8px',
-                                    borderRadius: '4px',
-                                    maxHeight: '100px',
-                                    overflow: 'auto'
-                                }}>
-                                    {formatJson(selectedConversation.metadata)}
-                                </pre>
-                            </div>
-                        )}
-                    </Space>
-                </Card>
-            )}
-
-            {/* Messages List */}
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-                {filteredMessages.length === 0 ? (
-                    <Empty
-                        description={selectedConversationId ? "没有符合过滤条件的消息" : "请选择一个对话"}
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    />
-                ) : (
-                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                        {filteredMessages.map((message, index) => (
-                            <Card
-                                key={message.id}
-                                size="small"
-                                style={{
-                                    borderLeft: `4px solid ${message.role === 'system' ? '#722ed1' :
-                                        message.role === 'user' ? '#1890ff' :
-                                            message.role === 'assistant' ? '#52c41a' : '#fa8c16'
-                                        }`
-                                }}
+                            <Text strong>选择对话:</Text>
+                            <Select
+                                style={{ width: '100%', marginTop: 8 }}
+                                placeholder="选择一个对话"
+                                value={selectedConversationId}
+                                onChange={setSelectedConversationId}
+                                showSearch
+                                optionFilterProp="children"
                             >
-                                <div style={{ marginBottom: 8 }}>
-                                    <Space wrap>
-                                        <Tag color={getRoleColor(message.role)}>
-                                            {message.role === 'system' ? '系统' :
-                                                message.role === 'user' ? '用户' :
-                                                    message.role === 'assistant' ? '助手' : '工具'}
-                                        </Tag>
-                                        <Badge status={getStatusColor(message.status)} text={
-                                            message.status === 'streaming' ? '流式传输中' :
-                                                message.status === 'completed' ? '已完成' : '失败'
-                                        } />
-                                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                                            {formatTimestamp(message.created_at)}
-                                        </Text>
-                                        {message.cache_hit && (
-                                            <Tag color="gold">
-                                                缓存命中 ({message.cached_tokens || 0} tokens)
+                                {conversations.map(conv => (
+                                    <Option key={conv.id} value={conv.id}>
+                                        <Space>
+                                            <Badge status={getStatusColor(conv.status)} />
+                                            <Tag color={conv.type === 'agent' ? 'blue' : 'green'}>
+                                                {conv.type === 'agent' ? '智能体' : '工具'}
                                             </Tag>
-                                        )}
-                                        {message.model_name && (
-                                            <Tag color="cyan">{message.model_name}</Tag>
-                                        )}
-                                        {message.temperature !== undefined && (
-                                            <Tag>温度: {message.temperature}</Tag>
-                                        )}
-                                    </Space>
-                                </div>
+                                            <Text>{formatTimestamp(conv.created_at)}</Text>
+                                            {conv.metadata?.userRequest && (
+                                                <Text type="secondary" ellipsis style={{ maxWidth: 200 }}>
+                                                    {conv.metadata.userRequest.substring(0, 50)}...
+                                                </Text>
+                                            )}
+                                        </Space>
+                                    </Option>
+                                ))}
+                            </Select>
+                        </div>
 
-                                {/* Message Content */}
-                                <div style={{ marginBottom: 8 }}>
-                                    <Text strong>内容:</Text>
-                                    <Paragraph
-                                        style={{
-                                            marginTop: 4,
-                                            backgroundColor: AppColors.background.secondary,
-                                            padding: '8px',
-                                            borderRadius: '4px',
-                                            marginBottom: 8,
-                                            color: AppColors.text.primary
-                                        }}
+                        {/* Message Type Filters */}
+                        <div>
+                            <Text strong>消息类型过滤:</Text>
+                            <div style={{ marginTop: 8 }}>
+                                <Space wrap>
+                                    <Checkbox
+                                        checked={filterSystem}
+                                        onChange={(e) => setFilterSystem(e.target.checked)}
                                     >
-                                        <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
-                                            {message.content}
-                                        </pre>
-                                    </Paragraph>
-                                </div>
-
-                                {/* Tool Information */}
-                                {message.tool_name && (
-                                    <div style={{ marginBottom: 8 }}>
-                                        <Text strong>工具: </Text>
-                                        <Tag color="orange">{message.tool_name}</Tag>
-                                        {message.tool_call_id && (
-                                            <>
-                                                <Text strong> 调用ID: </Text>
-                                                <Text code style={{ fontSize: '12px' }}>{message.tool_call_id}</Text>
-                                            </>
-                                        )}
-                                    </div>
-                                )}
-
-                                {/* Tool Parameters */}
-                                {message.tool_parameters && Object.keys(message.tool_parameters).length > 0 && (
-                                    <div style={{ marginBottom: 8 }}>
-                                        <Text strong>工具参数:</Text>
-                                        <pre style={{
-                                            fontSize: '12px',
-                                            backgroundColor: AppColors.background.secondary,
-                                            color: AppColors.text.primary,
-                                            padding: '8px',
-                                            borderRadius: '4px',
-                                            marginTop: '4px',
-                                            maxHeight: '200px',
-                                            overflow: 'auto'
-                                        }}>
-                                            {formatJson(message.tool_parameters)}
-                                        </pre>
-                                    </div>
-                                )}
-
-                                {/* Tool Result */}
-                                {message.tool_result && Object.keys(message.tool_result).length > 0 && (
-                                    <div style={{ marginBottom: 8 }}>
-                                        <Text strong>工具结果:</Text>
-                                        <pre style={{
-                                            fontSize: '12px',
-                                            backgroundColor: AppColors.background.tertiary,
-                                            color: AppColors.text.primary,
-                                            padding: '8px',
-                                            borderRadius: '4px',
-                                            marginTop: '4px',
-                                            maxHeight: '200px',
-                                            overflow: 'auto'
-                                        }}>
-                                            {formatJson(message.tool_result)}
-                                        </pre>
-                                    </div>
-                                )}
-
-                                {/* Metadata */}
-                                {message.metadata && Object.keys(message.metadata).length > 0 && (
-                                    <div>
-                                        <Text strong>元数据:</Text>
-                                        <pre style={{
-                                            fontSize: '12px',
-                                            backgroundColor: AppColors.background.secondary,
-                                            color: AppColors.text.primary,
-                                            padding: '8px',
-                                            borderRadius: '4px',
-                                            marginTop: '4px',
-                                            maxHeight: '100px',
-                                            overflow: 'auto'
-                                        }}>
-                                            {formatJson(message.metadata)}
-                                        </pre>
-                                    </div>
-                                )}
-                            </Card>
-                        ))}
+                                        <Tag color="purple">系统消息</Tag>
+                                    </Checkbox>
+                                    <Checkbox
+                                        checked={filterUser}
+                                        onChange={(e) => setFilterUser(e.target.checked)}
+                                    >
+                                        <Tag color="blue">用户消息</Tag>
+                                    </Checkbox>
+                                    <Checkbox
+                                        checked={filterAssistant}
+                                        onChange={(e) => setFilterAssistant(e.target.checked)}
+                                    >
+                                        <Tag color="green">助手回复</Tag>
+                                    </Checkbox>
+                                    <Checkbox
+                                        checked={filterTool}
+                                        onChange={(e) => setFilterTool(e.target.checked)}
+                                    >
+                                        <Tag color="orange">工具调用</Tag>
+                                    </Checkbox>
+                                </Space>
+                            </div>
+                        </div>
                     </Space>
+                </div>
+
+                <Divider style={{ margin: '16px 0', flexShrink: 0 }} />
+
+                {/* Conversation Metadata - Collapsible section */}
+                {selectedConversation && (
+                    <div style={{ flexShrink: 0, marginBottom: 16 }}>
+                        <Collapse
+                            size="small"
+                            ghost
+                            items={[
+                                {
+                                    key: 'conversation-info',
+                                    label: (
+                                        <Space>
+                                            <Text strong>对话信息</Text>
+                                            <Tag color={selectedConversation.type === 'agent' ? 'blue' : 'green'}>
+                                                {selectedConversation.type === 'agent' ? '智能体' : '工具'}
+                                            </Tag>
+                                            <Badge status={getStatusColor(selectedConversation.status)} />
+                                        </Space>
+                                    ),
+                                    children: (
+                                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                            <div>
+                                                <Text strong>类型: </Text>
+                                                <Tag color={selectedConversation.type === 'agent' ? 'blue' : 'green'}>
+                                                    {selectedConversation.type === 'agent' ? '智能体对话' : '工具调用'}
+                                                </Tag>
+                                                <Text strong>状态: </Text>
+                                                <Badge status={getStatusColor(selectedConversation.status)} text={
+                                                    selectedConversation.status === 'active' ? '进行中' :
+                                                        selectedConversation.status === 'completed' ? '已完成' : '失败'
+                                                } />
+                                            </div>
+                                            <div>
+                                                <Text strong>创建时间: </Text>
+                                                <Text>{formatTimestamp(selectedConversation.created_at)}</Text>
+                                            </div>
+                                            <div>
+                                                <Text strong>更新时间: </Text>
+                                                <Text>{formatTimestamp(selectedConversation.updated_at)}</Text>
+                                            </div>
+                                            {selectedConversation.metadata && Object.keys(selectedConversation.metadata).length > 0 && (
+                                                <div>
+                                                    <Text strong>元数据: </Text>
+                                                    <pre style={{
+                                                        fontSize: '12px',
+                                                        backgroundColor: AppColors.background.secondary,
+                                                        color: AppColors.text.primary,
+                                                        padding: '8px',
+                                                        borderRadius: '4px',
+                                                        maxHeight: '100px',
+                                                        overflow: 'auto'
+                                                    }}>
+                                                        {formatJson(selectedConversation.metadata)}
+                                                    </pre>
+                                                </div>
+                                            )}
+                                        </Space>
+                                    )
+                                }
+                            ]}
+                        />
+                    </div>
                 )}
-            </div>
-        </Card>
+
+                {/* Messages List - Scrollable section */}
+                <div
+                    style={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        minHeight: 0, // Important for flex child to be scrollable
+                        paddingRight: '4px' // Space for scrollbar
+                    }}
+                >
+                    {filteredMessages.length === 0 ? (
+                        <Empty
+                            description={selectedConversationId ? "没有符合过滤条件的消息" : "请选择一个对话"}
+                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        />
+                    ) : (
+                        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                            {filteredMessages.map((message, index) => (
+                                <Card
+                                    key={message.id}
+                                    size="small"
+                                    style={{
+                                        borderLeft: `4px solid ${message.role === 'system' ? '#722ed1' :
+                                            message.role === 'user' ? '#1890ff' :
+                                                message.role === 'assistant' ? '#52c41a' : '#fa8c16'
+                                            }`
+                                    }}
+                                >
+                                    <div style={{ marginBottom: 8 }}>
+                                        <Space wrap>
+                                            <Tag color={getRoleColor(message.role)}>
+                                                {message.role === 'system' ? '系统' :
+                                                    message.role === 'user' ? '用户' :
+                                                        message.role === 'assistant' ? '助手' : '工具'}
+                                            </Tag>
+                                            <Badge status={getStatusColor(message.status)} text={
+                                                message.status === 'streaming' ? '流式传输中' :
+                                                    message.status === 'completed' ? '已完成' : '失败'
+                                            } />
+                                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                                                {formatTimestamp(message.created_at)}
+                                            </Text>
+                                            {message.cache_hit && (
+                                                <Tag color="gold">
+                                                    缓存命中 ({message.cached_tokens || 0} tokens)
+                                                </Tag>
+                                            )}
+                                            {message.model_name && (
+                                                <Tag color="cyan">{message.model_name}</Tag>
+                                            )}
+                                            {message.temperature !== undefined && (
+                                                <Tag>温度: {message.temperature}</Tag>
+                                            )}
+                                        </Space>
+                                    </div>
+
+                                    {/* Message Content */}
+                                    <div style={{ marginBottom: 8 }}>
+                                        <Text strong>内容:</Text>
+                                        <Paragraph
+                                            style={{
+                                                marginTop: 4,
+                                                backgroundColor: AppColors.background.secondary,
+                                                padding: '8px',
+                                                borderRadius: '4px',
+                                                marginBottom: 8,
+                                                color: AppColors.text.primary
+                                            }}
+                                        >
+                                            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
+                                                {message.content}
+                                            </pre>
+                                        </Paragraph>
+                                    </div>
+
+                                    {/* Tool Information */}
+                                    {message.tool_name && (
+                                        <div style={{ marginBottom: 8 }}>
+                                            <Text strong>工具: </Text>
+                                            <Tag color="orange">{message.tool_name}</Tag>
+                                            {message.tool_call_id && (
+                                                <>
+                                                    <Text strong> 调用ID: </Text>
+                                                    <Text code style={{ fontSize: '12px' }}>{message.tool_call_id}</Text>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Tool Parameters */}
+                                    {message.tool_parameters && Object.keys(message.tool_parameters).length > 0 && (
+                                        <div style={{ marginBottom: 8 }}>
+                                            <Text strong>工具参数:</Text>
+                                            <pre style={{
+                                                fontSize: '12px',
+                                                backgroundColor: AppColors.background.secondary,
+                                                color: AppColors.text.primary,
+                                                padding: '8px',
+                                                borderRadius: '4px',
+                                                marginTop: '4px',
+                                                maxHeight: '200px',
+                                                overflow: 'auto'
+                                            }}>
+                                                {formatJson(message.tool_parameters)}
+                                            </pre>
+                                        </div>
+                                    )}
+
+                                    {/* Tool Result */}
+                                    {message.tool_result && Object.keys(message.tool_result).length > 0 && (
+                                        <div style={{ marginBottom: 8 }}>
+                                            <Text strong>工具结果:</Text>
+                                            <pre style={{
+                                                fontSize: '12px',
+                                                backgroundColor: AppColors.background.tertiary,
+                                                color: AppColors.text.primary,
+                                                padding: '8px',
+                                                borderRadius: '4px',
+                                                marginTop: '4px',
+                                                maxHeight: '200px',
+                                                overflow: 'auto'
+                                            }}>
+                                                {formatJson(message.tool_result)}
+                                            </pre>
+                                        </div>
+                                    )}
+
+                                    {/* Metadata */}
+                                    {message.metadata && Object.keys(message.metadata).length > 0 && (
+                                        <div>
+                                            <Text strong>元数据:</Text>
+                                            <pre style={{
+                                                fontSize: '12px',
+                                                backgroundColor: AppColors.background.secondary,
+                                                color: AppColors.text.primary,
+                                                padding: '8px',
+                                                borderRadius: '4px',
+                                                marginTop: '4px',
+                                                maxHeight: '100px',
+                                                overflow: 'auto'
+                                            }}>
+                                                {formatJson(message.metadata)}
+                                            </pre>
+                                        </div>
+                                    )}
+                                </Card>
+                            ))}
+                        </Space>
+                    )}
+                </div>
+            </Card>
+        </div>
     );
 };
 
