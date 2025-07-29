@@ -42,28 +42,36 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ projectId, children 
     // Get Electric config
     const electricConfig = useMemo(() => createElectricConfig(), []);
 
-    // Conversation-specific where clause
-    const conversationWhereClause = useMemo(() =>
-        currentConversationId ? `conversation_id = '${currentConversationId}'` : 'conversation_id IS NULL',
-        [currentConversationId]
-    );
-
-    // Display messages subscription
-    const chatMessagesConfig = useMemo(() => ({
-        ...electricConfig,
-        params: {
-            table: 'conversation_messages_display',
-            where: conversationWhereClause,
-        },
-        backoffOptions: {
-            initialDelay: 200,
-            maxDelay: 5000,
-            multiplier: 2.0,
-            maxRetries: 3
+    // Display messages subscription - only subscribe when we have a conversation ID
+    const chatMessagesConfig = useMemo(() => {
+        if (!currentConversationId) {
+            return null; // Don't subscribe if no conversation ID
         }
-    }), [electricConfig, conversationWhereClause]);
 
-    const { data: chatMessages, isLoading: messagesLoading, error } = useShape<ChatMessageDisplay>(chatMessagesConfig);
+        return {
+            ...electricConfig,
+            params: {
+                table: 'conversation_messages_display',
+                where: `conversation_id = '${currentConversationId}'`,
+            },
+            backoffOptions: {
+                initialDelay: 200,
+                maxDelay: 5000,
+                multiplier: 2.0,
+                maxRetries: 3
+            }
+        };
+    }, [electricConfig, currentConversationId]);
+
+    const { data: chatMessages, isLoading: messagesLoading, error } = useShape<ChatMessageDisplay>(
+        chatMessagesConfig || {
+            ...electricConfig,
+            params: {
+                table: 'conversation_messages_display',
+                where: 'FALSE' // No results when no conversation ID
+            }
+        }
+    );
 
     // Load current conversation on mount
     useEffect(() => {
@@ -71,6 +79,7 @@ export const ChatProvider: React.FC<ChatProviderProps> = ({ projectId, children 
             try {
                 setLoadingConversation(true);
                 const { conversationId } = await apiService.getCurrentConversation(projectId);
+
                 setCurrentConversationId(conversationId);
             } catch (error) {
                 console.error('Failed to load current conversation:', error);
