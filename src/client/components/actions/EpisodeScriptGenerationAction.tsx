@@ -30,8 +30,13 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
 
         setIsGenerating(true);
         try {
-            // Send chat message to trigger generation (following existing pattern)
-            await apiService.sendChatMessage(projectId,
+            // Get or create conversation ID (following the pattern used in other generation methods)
+            const conversationId = await (apiService as any).getOrCreateConversation(projectId);
+
+            // Send chat message to trigger generation with correct API signature
+            await apiService.sendChatMessage(
+                projectId,
+                conversationId,
                 `生成第${targetEpisode.episodeNumber}集剧本`,
                 {
                     action: 'generate_单集剧本',

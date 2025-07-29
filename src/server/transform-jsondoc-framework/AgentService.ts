@@ -8,7 +8,8 @@ import { createUserContextMiddleware } from '../middleware/UserContextMiddleware
 import { getParticleSystem } from './particles/ParticleSystemInitializer';
 import {
     createConversation,
-    getConversationMessages
+    getConversationMessages,
+    createMessageWithDisplay
 } from '../conversation/ConversationManager.js';
 import {
     createConversationContext,
@@ -333,11 +334,43 @@ export class AgentService {
                         console.log(`\n[Agent Action] Starting tool call to '${delta.toolName}' with ID '${delta.toolCallId}'`);
                         currentToolCall = delta;
                         toolCallCount++;
+
+                        // Log tool call as conversation message
+                        try {
+                            await createMessageWithDisplay(conversationId, 'tool', JSON.stringify({
+                                toolCall: delta.toolName,
+                                toolCallId: delta.toolCallId,
+                                args: delta.args
+                            }), {
+                                toolName: delta.toolName,
+                                toolCallId: delta.toolCallId,
+                                toolParameters: delta.args,
+                                status: 'streaming'
+                            });
+                            console.log(`[Agent Action] Logged tool call message for '${delta.toolName}'`);
+                        } catch (error) {
+                            console.error(`[Agent Action] Failed to log tool call message:`, error);
+                        }
                         break;
 
                     case 'tool-result':
                         console.log(`\n[Agent Action] Received result for tool call '${delta.toolCallId}'`);
                         toolResultCount++;
+
+                        // Update tool call message with result
+                        try {
+                            await createMessageWithDisplay(conversationId, 'tool', JSON.stringify({
+                                toolCallId: delta.toolCallId,
+                                result: delta.result
+                            }), {
+                                toolCallId: delta.toolCallId,
+                                toolResult: delta.result,
+                                status: 'completed'
+                            });
+                            console.log(`[Agent Action] Logged tool result message for '${delta.toolCallId}'`);
+                        } catch (error) {
+                            console.error(`[Agent Action] Failed to log tool result message:`, error);
+                        }
                         break;
 
                     case 'step-finish':
