@@ -8,6 +8,8 @@ import type {
 } from 'ai';
 import { z } from 'zod';
 import {
+    createMessageWithDisplay,
+    updateMessageWithDisplay,
     addMessage,
     updateMessage,
     type ConversationMessage,
@@ -201,8 +203,8 @@ export function createConversationContext(
         // Check for cache hit
         const { hit: cacheHit, cachedTokens } = await checkCacheHit(contentHash, projectId);
 
-        // Create assistant message placeholder for streaming
-        const assistantMessageId = await addMessage(
+        // Create assistant message placeholder for streaming with display message
+        const { rawMessageId: assistantMessageId } = await createMessageWithDisplay(
             conversationId,
             'assistant' as any,
             '', // Empty content initially
@@ -246,8 +248,8 @@ export function createConversationContext(
                         for await (const chunk of originalTextStream) {
                             accumulatedContent += chunk;
 
-                            // Update message in database with accumulated content
-                            await updateMessage(assistantMessageId, {
+                            // Update message in database with accumulated content and display message
+                            await updateMessageWithDisplay(assistantMessageId, {
                                 content: accumulatedContent,
                                 status: 'streaming' as any
                             });
@@ -256,7 +258,7 @@ export function createConversationContext(
                         }
 
                         // Mark as completed when streaming ends
-                        await updateMessage(assistantMessageId, {
+                        await updateMessageWithDisplay(assistantMessageId, {
                             content: accumulatedContent,
                             status: 'completed' as any
                         });
@@ -305,7 +307,7 @@ export function createConversationContext(
         } catch (error) {
             console.error('[StreamingWrappers] Error in streamText:', error);
 
-            await updateMessage(assistantMessageId, {
+            await updateMessageWithDisplay(assistantMessageId, {
                 status: 'failed' as any,
                 errorMessage: error instanceof Error ? error.message : 'Unknown error'
             });
@@ -340,8 +342,8 @@ export function createConversationContext(
         // Check for cache hit
         const { hit: cacheHit, cachedTokens } = await checkCacheHit(contentHash, projectId);
 
-        // Create assistant message placeholder for streaming
-        const assistantMessageId = await addMessage(
+        // Create assistant message placeholder for streaming with display message
+        const { rawMessageId: assistantMessageId } = await createMessageWithDisplay(
             conversationId,
             'assistant' as any,
             '', // Empty content initially
@@ -386,8 +388,8 @@ export function createConversationContext(
                             const contentStr = JSON.stringify(partialObject, null, 2);
                             accumulatedContent = contentStr;
 
-                            // Update message in database with accumulated content
-                            await updateMessage(assistantMessageId, {
+                            // Update message in database with accumulated content and display message
+                            await updateMessageWithDisplay(assistantMessageId, {
                                 content: accumulatedContent,
                                 status: 'streaming' as any
                             });
@@ -396,7 +398,7 @@ export function createConversationContext(
                         }
 
                         // Mark as completed when streaming ends
-                        await updateMessage(assistantMessageId, {
+                        await updateMessageWithDisplay(assistantMessageId, {
                             content: accumulatedContent,
                             status: 'completed' as any
                         });
@@ -444,7 +446,7 @@ export function createConversationContext(
         } catch (error) {
             console.error('[StreamingWrappers] Error in streamObject:', error);
 
-            await updateMessage(assistantMessageId, {
+            await updateMessageWithDisplay(assistantMessageId, {
                 status: 'failed' as any,
                 errorMessage: error instanceof Error ? error.message : 'Unknown error'
             });

@@ -113,6 +113,23 @@ export interface ConversationMessages {
   updated_at: Generated<Timestamp>;
 }
 
+export interface ConversationMessagesDisplay {
+  id: Generated<string>;
+  conversation_id: string;
+  raw_message_id: string;
+  role: string; // 'user' | 'assistant'
+  content: string;
+  display_type: Generated<string>; // 'message' | 'thinking' | 'progress'
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface ProjectCurrentConversations {
+  project_id: string;
+  conversation_id: string;
+  updated_at: Generated<Timestamp>;
+}
+
 export interface HumanTransforms {
   action_type: string;
   change_description: string | null;
@@ -247,6 +264,8 @@ export interface DB {
   auth_providers: AuthProviders;
   conversations: Conversations;
   conversation_messages: ConversationMessages;
+  conversation_messages_display: ConversationMessagesDisplay;
+  project_current_conversations: ProjectCurrentConversations;
   embedding_cache: EmbeddingCache;
   human_transforms: HumanTransforms;
   llm_prompts: LlmPrompts;

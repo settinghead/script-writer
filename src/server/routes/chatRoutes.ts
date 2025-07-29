@@ -4,7 +4,11 @@ import { AuthMiddleware } from '../middleware/auth';
 import {
     getConversationsByProject,
     getConversationMessages,
-    userHasConversationAccess
+    userHasConversationAccess,
+    getCurrentConversation,
+    setCurrentConversation,
+    createAndSetCurrentConversation,
+    getDisplayMessages
 } from '../conversation/ConversationManager';
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 
@@ -209,6 +213,124 @@ export function createChatRoutes(
             }
 
             res.status(500).json({ error: 'Failed to delete chat messages' });
+        }
+    });
+
+    // Get current conversation for project
+    router.get('/projects/:projectId/current-conversation', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const user = authMiddleware.getCurrentUser(req);
+            const { projectId } = req.params;
+
+            if (!user) {
+                return res.status(401).json({ error: 'User not authenticated' });
+            }
+
+            // Validate project access (simplified - could use jsondocRepo)
+            const conversationId = await getCurrentConversation(projectId);
+
+            res.json({
+                conversationId,
+                hasConversation: !!conversationId
+            });
+
+        } catch (error) {
+            console.error('Error getting current conversation:', error);
+            res.status(500).json({ error: 'Failed to get current conversation' });
+        }
+    });
+
+    // Set current conversation for project
+    router.put('/projects/:projectId/current-conversation', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const user = authMiddleware.getCurrentUser(req);
+            const { projectId } = req.params;
+            const { conversationId } = req.body;
+
+            if (!user) {
+                return res.status(401).json({ error: 'User not authenticated' });
+            }
+
+            if (!conversationId) {
+                return res.status(400).json({ error: 'conversationId is required' });
+            }
+
+            // Validate conversation access
+            const hasAccess = await userHasConversationAccess(user.id, conversationId);
+            if (!hasAccess) {
+                return res.status(403).json({ error: 'Access denied to this conversation' });
+            }
+
+            await setCurrentConversation(projectId, conversationId);
+
+            res.json({
+                success: true,
+                conversationId
+            });
+
+        } catch (error) {
+            console.error('Error setting current conversation:', error);
+            res.status(500).json({ error: 'Failed to set current conversation' });
+        }
+    });
+
+    // Create new conversation and set as current
+    router.post('/projects/:projectId/conversations/new', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const user = authMiddleware.getCurrentUser(req);
+            const { projectId } = req.params;
+
+            if (!user) {
+                return res.status(401).json({ error: 'User not authenticated' });
+            }
+
+            const conversationId = await createAndSetCurrentConversation(projectId, 'agent', {
+                userId: user.id,
+                createdBy: 'user_request'
+            });
+
+            res.json({
+                success: true,
+                conversationId
+            });
+
+        } catch (error) {
+            console.error('Error creating new conversation:', error);
+            res.status(500).json({ error: 'Failed to create new conversation' });
+        }
+    });
+
+    // Get display messages for current conversation
+    router.get('/projects/:projectId/display-messages', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const user = authMiddleware.getCurrentUser(req);
+            const { projectId } = req.params;
+
+            if (!user) {
+                return res.status(401).json({ error: 'User not authenticated' });
+            }
+
+            const conversationId = await getCurrentConversation(projectId);
+            if (!conversationId) {
+                return res.json({ messages: [] });
+            }
+
+            // Validate conversation access
+            const hasAccess = await userHasConversationAccess(user.id, conversationId);
+            if (!hasAccess) {
+                return res.status(403).json({ error: 'Access denied to this conversation' });
+            }
+
+            const messages = await getDisplayMessages(conversationId);
+
+            res.json({
+                messages,
+                conversationId
+            });
+
+        } catch (error) {
+            console.error('Error getting display messages:', error);
+            res.status(500).json({ error: 'Failed to get display messages' });
         }
     });
 

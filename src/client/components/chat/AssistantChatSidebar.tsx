@@ -4,6 +4,7 @@ import { Cpu, Plus } from 'iconoir-react';
 
 import { BasicThread } from './BasicThread';
 import { useClearChat } from '../../hooks/useChatMessages';
+import { useChatContext } from '../../contexts/ChatContext';
 import { AppColors } from '../../../common/theme/colors';
 import './chat.css';
 
@@ -15,6 +16,7 @@ interface AssistantChatSidebarProps {
 
 export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ projectId }) => {
     const clearChatMutation = useClearChat(projectId);
+    const { createNewConversation, currentConversationId } = useChatContext();
 
     const handleNewConversation = () => {
         Modal.confirm({
@@ -22,9 +24,14 @@ export const AssistantChatSidebar: React.FC<AssistantChatSidebarProps> = ({ proj
             content: '确定要开始新的对话吗？当前对话将被保存。',
             okText: '开始新对话',
             cancelText: '取消',
-            onOk: () => {
-                // For now, we still use the clear functionality but conceptually it's "new conversation"
-                clearChatMutation.mutate();
+            onOk: async () => {
+                try {
+                    await createNewConversation();
+                } catch (error) {
+                    console.error('Failed to create new conversation:', error);
+                    // Fallback to clear chat
+                    clearChatMutation.mutate();
+                }
             },
         });
     };

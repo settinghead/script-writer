@@ -214,7 +214,7 @@ class ApiService {
         }
     }
 
-    async sendChatMessage(projectId: string, content: string, metadata: any = {}): Promise<any> {
+    async sendChatMessage(projectId: string, conversationId: string, content: string, metadata: any = {}): Promise<any> {
         const response = await fetch(`${this.baseUrl}/chat/${projectId}/messages`, {
             method: 'POST',
             headers: {
@@ -224,7 +224,8 @@ class ApiService {
             credentials: 'include',
             body: JSON.stringify({
                 content,
-                metadata
+                metadata,
+                conversationId
             })
         });
 
@@ -251,10 +252,71 @@ class ApiService {
         return response.json();
     }
 
+    // Conversation management methods
+    async getCurrentConversation(projectId: string): Promise<{ conversationId: string | null; hasConversation: boolean }> {
+        const response = await fetch(`${this.baseUrl}/chat/projects/${projectId}/current-conversation`, {
+            headers: {
+                'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+            },
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to get current conversation: ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    async createNewConversation(projectId: string): Promise<{ conversationId: string }> {
+        const response = await fetch(`${this.baseUrl}/chat/projects/${projectId}/conversations/new`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+            },
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to create new conversation: ${response.status}`);
+        }
+
+        return response.json();
+    }
+
+    async setCurrentConversation(projectId: string, conversationId: string): Promise<void> {
+        const response = await fetch(`${this.baseUrl}/chat/projects/${projectId}/current-conversation`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+            },
+            credentials: 'include',
+            body: JSON.stringify({ conversationId })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to set current conversation: ${response.status}`);
+        }
+    }
+
+    // Helper method to get or create conversation for sending messages
+    private async getOrCreateConversation(projectId: string): Promise<string> {
+        const { conversationId, hasConversation } = await this.getCurrentConversation(projectId);
+
+        if (hasConversation && conversationId) {
+            return conversationId;
+        }
+
+        const { conversationId: newConversationId } = await this.createNewConversation(projectId);
+        return newConversationId;
+    }
+
     async generateOutlineFromIdea(projectId: string, ideaJsondocId: string, title: string, requirements: string = ''): Promise<any> {
         const content = `请基于创意生成剧本设定。源创意ID: ${ideaJsondocId}，标题: ${title}，要求: ${requirements || '无特殊要求'}`;
+        const conversationId = await this.getOrCreateConversation(projectId);
 
-        return this.sendChatMessage(projectId, content, {
+        return this.sendChatMessage(projectId, conversationId, content, {
             sourceJsondocId: ideaJsondocId,
             action: 'outline_generation',
             title,
@@ -264,8 +326,9 @@ class ApiService {
 
     async generateChroniclesFromOutline(projectId: string, outlineJsondocId: string): Promise<any> {
         const content = `请基于剧本设定生成时间顺序大纲。源剧本设定ID: ${outlineJsondocId}`;
+        const conversationId = await this.getOrCreateConversation(projectId);
 
-        return this.sendChatMessage(projectId, content, {
+        return this.sendChatMessage(projectId, conversationId, content, {
             sourceJsondocId: outlineJsondocId,
             action: 'chronicles_generation'
         });
@@ -273,8 +336,9 @@ class ApiService {
 
     async generateEpisodePlanningFromChronicles(projectId: string, chroniclesJsondocId: string, numberOfEpisodes: number): Promise<any> {
         const content = `请基于时间顺序大纲生成分集结构。源时间顺序大纲ID: ${chroniclesJsondocId}，总集数: ${numberOfEpisodes}`;
+        const conversationId = await this.getOrCreateConversation(projectId);
 
-        return this.sendChatMessage(projectId, content, {
+        return this.sendChatMessage(projectId, conversationId, content, {
             sourceJsondocId: chroniclesJsondocId,
             action: '分集结构_generation',
             numberOfEpisodes
@@ -283,8 +347,9 @@ class ApiService {
 
     async generateEpisodesFromChronicles(projectId: string, chroniclesJsondocId: string): Promise<any> {
         const content = `请基于时间顺序大纲生成剧本。源时间顺序大纲ID: ${chroniclesJsondocId}`;
+        const conversationId = await this.getOrCreateConversation(projectId);
 
-        return this.sendChatMessage(projectId, content, {
+        return this.sendChatMessage(projectId, conversationId, content, {
             sourceJsondocId: chroniclesJsondocId,
             action: 'episode_generation'
         });

@@ -2,7 +2,11 @@ import {
     createConversation,
     getConversationsByProject,
     getConversationMessages,
-    userHasConversationAccess
+    userHasConversationAccess,
+    getCurrentConversation,
+    setCurrentConversation,
+    createAndSetCurrentConversation,
+    createMessageWithDisplay
 } from '../conversation/ConversationManager.js';
 import {
     createConversationContext
@@ -18,11 +22,12 @@ export interface SendMessageRequest {
 // Functional conversation creators - replacing the ChatService class
 
 /**
- * Send a user message and start a new agent conversation
+ * Send a user message to a specific conversation and trigger agent processing
  */
 export async function sendUserMessage(
     projectId: string,
     userId: string,
+    conversationId: string,
     request: SendMessageRequest,
     dependencies: {
         agentService: AgentService;
@@ -37,14 +42,29 @@ export async function sendUserMessage(
         throw new Error('User does not have access to this project');
     }
 
+    // Validate conversation access
+    const hasConversationAccess = await userHasConversationAccess(userId, conversationId);
+    if (!hasConversationAccess) {
+        throw new Error('User does not have access to this conversation');
+    }
+
     try {
-        // Let AgentService handle the conversation creation and processing
+        // 1. Add user message to the conversation
+        await createMessageWithDisplay(conversationId, 'user', request.content, {
+            metadata: request.metadata
+        });
+
+        // 2. Set this as the current conversation for the project
+        await setCurrentConversation(projectId, conversationId);
+
+        // 3. Let AgentService handle the agent processing using the existing conversation
         await agentService.runGeneralAgent(projectId, userId, {
             userRequest: request.content,
             projectId: projectId,
             contextType: 'general'
         }, {
-            createChatMessages: false // We're managing conversations directly now
+            createChatMessages: false, // We're managing conversations directly now
+            conversationId: conversationId // Pass the conversation ID to agent service
         });
 
     } catch (error) {
@@ -167,7 +187,13 @@ export class ChatService {
             throw new Error('ChatService not properly initialized with jsondocRepo');
         }
 
-        return sendUserMessage(projectId, userId, request, {
+        // Get or create current conversation for the project
+        let conversationId = await getCurrentConversation(projectId);
+        if (!conversationId) {
+            conversationId = await createAndSetCurrentConversation(projectId, 'agent');
+        }
+
+        return sendUserMessage(projectId, userId, conversationId, request, {
             agentService: this.agentService,
             jsondocRepo: this.jsondocRepo
         });

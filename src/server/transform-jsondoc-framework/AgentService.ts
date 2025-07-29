@@ -160,6 +160,7 @@ export class AgentService {
             createChatMessages?: boolean;
             existingThinkingMessageId?: string;
             existingThinkingStartTime?: string;
+            conversationId?: string; // Add conversationId parameter
             // Caching options for reproducible testing
             enableCaching?: boolean;
             seed?: number;
@@ -286,8 +287,8 @@ export class AgentService {
             console.log('[AgentService] Using enhanced model with user context middleware');
             console.log('[AgentService] Original user request length:', request.userRequest.length);
 
-            // Create a new conversation for this agent session
-            const conversationId = await createConversation(projectId, 'agent', {
+            // Use provided conversation or create a new one for this agent session
+            const conversationId = options.conversationId || await createConversation(projectId, 'agent', {
                 userId,
                 executionId,
                 userRequest: request.userRequest,
