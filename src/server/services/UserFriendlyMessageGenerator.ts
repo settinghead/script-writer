@@ -3,6 +3,8 @@
  * for IP protection and better user experience
  */
 
+import { match, P } from 'ts-pattern';
+
 export interface MessageOptions {
     toolName?: string;
     toolCallId?: string;
@@ -118,88 +120,72 @@ export function generateUserFriendlyContent(
 ): DisplayMessage {
     const { toolName, status, errorMessage } = options;
 
-    // User messages: show as-is (users see what they typed)
-    if (role === 'user') {
-        return {
-            content,
-            displayType: 'message'
-        };
-    }
-
-    // System messages: hide completely (return empty - should not be displayed)
-    if (role === 'system') {
-        return {
-            content: '',
-            displayType: 'message'
-        };
-    }
-
-    // Handle errors first
-    if (status === 'failed' || errorMessage) {
-        return {
+    return match({ role, status, hasError: !!(status === 'failed' || errorMessage), toolName, hasContent: !!content.trim() })
+        // Handle errors first - highest priority
+        .with({ hasError: true }, () => ({
             content: getRandomMessage(ERROR_MESSAGES),
-            displayType: 'message'
-        };
-    }
+            displayType: 'message' as const
+        }))
 
-    // Tool messages: convert to progress indicators
-    if (role === 'tool' || toolName) {
-        if (status === 'streaming') {
-            return {
-                content: getToolProgressMessage(toolName),
-                displayType: 'progress'
-            };
-        } else if (status === 'completed') {
-            return {
-                content: getRandomMessage(COMPLETION_MESSAGES),
-                displayType: 'message'
-            };
-        } else {
-            return {
-                content: getToolProgressMessage(toolName),
-                displayType: 'progress'
-            };
-        }
-    }
+        // User messages: show as-is (users see what they typed)
+        .with({ role: 'user' }, () => ({
+            content,
+            displayType: 'message' as const
+        }))
 
-    // Assistant messages: handle based on status and content
-    if (role === 'assistant') {
-        // If streaming, show progress
-        if (status === 'streaming') {
-            // If content is empty, show thinking
-            if (!content.trim()) {
-                return {
-                    content: getRandomMessage(THINKING_MESSAGES),
-                    displayType: 'thinking'
-                };
-            } else {
-                return {
-                    content: getRandomMessage(STREAMING_MESSAGES),
-                    displayType: 'progress'
-                };
-            }
-        }
+        // System messages: hide completely (return empty - should not be displayed)
+        .with({ role: 'system' }, () => ({
+            content: '',
+            displayType: 'message' as const
+        }))
 
-        // If completed, show the actual content (cleaned up)
-        if (status === 'completed') {
-            return {
-                content: cleanupAssistantContent(content),
-                displayType: 'message'
-            };
-        }
+        // Tool messages with streaming status
+        .with({ role: 'tool', status: 'streaming' }, ({ toolName }) => ({
+            content: getToolProgressMessage(toolName),
+            displayType: 'progress' as const
+        }))
 
-        // Default: show cleaned content
-        return {
+        // Tool messages with completed status
+        .with({ role: 'tool', status: 'completed' }, () => ({
+            content: getRandomMessage(COMPLETION_MESSAGES),
+            displayType: 'message' as const
+        }))
+
+        // Tool messages (default case or when toolName is present)
+        .with(P.union({ role: 'tool' }, { toolName: P.string }), ({ toolName }) => ({
+            content: getToolProgressMessage(toolName),
+            displayType: 'progress' as const
+        }))
+
+        // Assistant streaming with empty content - show thinking
+        .with({ role: 'assistant', status: 'streaming', hasContent: false }, () => ({
+            content: getRandomMessage(THINKING_MESSAGES),
+            displayType: 'thinking' as const
+        }))
+
+        // Assistant streaming with content - show progress
+        .with({ role: 'assistant', status: 'streaming', hasContent: true }, () => ({
+            content: getRandomMessage(STREAMING_MESSAGES),
+            displayType: 'progress' as const
+        }))
+
+        // Assistant completed - show cleaned content
+        .with({ role: 'assistant', status: 'completed' }, () => ({
             content: cleanupAssistantContent(content),
-            displayType: 'message'
-        };
-    }
+            displayType: 'message' as const
+        }))
 
-    // Fallback: return content as-is
-    return {
-        content,
-        displayType: 'message'
-    };
+        // Assistant default - show cleaned content
+        .with({ role: 'assistant' }, () => ({
+            content: cleanupAssistantContent(content),
+            displayType: 'message' as const
+        }))
+
+        // Fallback: return content as-is
+        .otherwise(() => ({
+            content,
+            displayType: 'message' as const
+        }));
 }
 
 /**
@@ -223,22 +209,14 @@ function getToolProgressMessage(toolName?: string): string {
 function getToolCategory(toolName: string): keyof typeof TOOL_MESSAGES {
     const name = toolName.toLowerCase();
 
-    if (name.includes('brainstorm') && name.includes('edit')) {
-        return 'brainstorm_edit';
-    } else if (name.includes('brainstorm')) {
-        return 'brainstorm_generation';
-    } else if (name.includes('outline')) {
-        return 'outline_generation';
-    } else if (name.includes('chronicles') || name.includes('timeline')) {
-        return 'chronicles_generation';
-    } else if (name.includes('episode') && name.includes('planning')) {
-        return 'episode_planning';
-    } else if (name.includes('episode')) {
-        return 'episode_generation';
-    }
-
-    // Return a default category
-    return 'brainstorm_generation';
+    return match(name)
+        .when((n) => n.includes('brainstorm') && n.includes('edit'), () => 'brainstorm_edit' as const)
+        .when((n) => n.includes('brainstorm'), () => 'brainstorm_generation' as const)
+        .when((n) => n.includes('outline'), () => 'outline_generation' as const)
+        .when((n) => n.includes('chronicles') || n.includes('timeline'), () => 'chronicles_generation' as const)
+        .when((n) => n.includes('episode') && n.includes('planning'), () => 'episode_planning' as const)
+        .when((n) => n.includes('episode'), () => 'episode_generation' as const)
+        .otherwise(() => 'brainstorm_generation' as const);
 }
 
 /**
@@ -282,48 +260,48 @@ export function updateStreamingDisplayMessage(
     options: MessageOptions = {}
 ): DisplayMessage {
     const { toolName } = options;
+    const hasNewContent = !!(newContent && newContent.trim());
 
-    if (status === 'failed') {
-        return {
+    return match({ status, toolName, hasNewContent })
+        // Handle failures first
+        .with({ status: 'failed' }, () => ({
             content: getRandomMessage(ERROR_MESSAGES),
-            displayType: 'message'
-        };
-    }
+            displayType: 'message' as const
+        }))
 
-    if (status === 'completed') {
-        // If we have actual content, show it cleaned up
-        if (newContent && newContent.trim()) {
-            return {
-                content: cleanupAssistantContent(newContent),
-                displayType: 'message'
-            };
-        } else {
-            return {
-                content: getRandomMessage(COMPLETION_MESSAGES),
-                displayType: 'message'
-            };
-        }
-    }
+        // Completed with actual content - show cleaned up
+        .with({ status: 'completed', hasNewContent: true }, () => ({
+            content: cleanupAssistantContent(newContent),
+            displayType: 'message' as const
+        }))
 
-    // Still streaming
-    if (toolName) {
-        return {
+        // Completed without content - show completion message
+        .with({ status: 'completed', hasNewContent: false }, () => ({
+            content: getRandomMessage(COMPLETION_MESSAGES),
+            displayType: 'message' as const
+        }))
+
+        // Still streaming with tool name
+        .with({ status: 'streaming', toolName: P.string }, ({ toolName }) => ({
             content: getToolProgressMessage(toolName),
-            displayType: 'progress'
-        };
-    }
+            displayType: 'progress' as const
+        }))
 
-    // If we have some content, show streaming message
-    if (newContent && newContent.trim()) {
-        return {
+        // Still streaming with new content but no tool name
+        .with({ status: 'streaming', hasNewContent: true }, () => ({
             content: getRandomMessage(STREAMING_MESSAGES),
-            displayType: 'progress'
-        };
-    }
+            displayType: 'progress' as const
+        }))
 
-    // No content yet, show thinking
-    return {
-        content: getRandomMessage(THINKING_MESSAGES),
-        displayType: 'thinking'
-    };
+        // Still streaming with no content - show thinking
+        .with({ status: 'streaming', hasNewContent: false }, () => ({
+            content: getRandomMessage(THINKING_MESSAGES),
+            displayType: 'thinking' as const
+        }))
+
+        // Fallback - shouldn't happen but provide safe default
+        .otherwise(() => ({
+            content: getRandomMessage(THINKING_MESSAGES),
+            displayType: 'thinking' as const
+        }));
 }

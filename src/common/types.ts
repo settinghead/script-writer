@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { UseMutationResult } from '@tanstack/react-query';
+import { match, P } from 'ts-pattern';
 import type { CanonicalJsondocContext } from './canonicalJsondocLogic';
 import type { LineageGraph } from './transform-jsondoc-framework/lineageResolution.js';
 
@@ -254,16 +255,66 @@ export type TypedJsondoc =
     | JsondocWithData<'json_patch', 'v1', JsonPatchV1>
 
 
-// Helper function to get text content from any jsondoc type
+// Helper function to get text content from any jsondoc type with exhaustive pattern matching
 export function getJsondocTextContent(jsondoc: TypedJsondoc): string {
-    if (jsondoc.schema_type === '灵感创意') {
-        return jsondoc.data.idea_text; // ✅ Correctly typed!
-    }
+    return match(jsondoc)
+        // Brainstorm related types
+        .with({ schema_type: '灵感创意' }, (doc) => doc.data.idea_text)
+        .with({ schema_type: 'brainstorm_collection' }, (doc) =>
+            doc.data.ideas?.map(idea => idea.title || idea.body || '').join(', ') || ''
+        )
+        .with({ schema_type: 'brainstorm_input_params' }, (doc) =>
+            `${doc.data.platform} - ${doc.data.requirements}`
+        )
+        .with({ schema_type: 'brainstorm_input' }, (doc) =>
+            `${doc.data.platform} - ${doc.data.requirements}`
+        )
 
+        // Outline related types
+        .with({ schema_type: '剧本设定' }, (doc) => doc.data.setting || '')
+        .with({ schema_type: 'outline_title' }, (doc) => doc.data.title || '')
+        .with({ schema_type: 'outline_genre' }, (doc) => doc.data.genre || '')
+        .with({ schema_type: 'outline_selling_points' }, (doc) => doc.data.selling_points || '')
+        .with({ schema_type: 'outline_synopsis' }, (doc) => doc.data.synopsis || '')
+        .with({ schema_type: 'outline_characters' }, (doc) =>
+            doc.data.characters?.map(char => char.name).join(', ') || ''
+        )
 
-    // Fallback for unknown types
-    const data = jsondoc.data as any;
-    return data.idea_text || data.text || data.content || JSON.stringify(data, null, 2);
+        // Story development types
+        .with({ schema_type: 'chronicles' }, (doc) =>
+            doc.data.chronicles?.map(chronicle => chronicle.title || chronicle.body).join(' ') || ''
+        )
+
+        // Episode types
+        .with({ schema_type: '分集结构' }, (doc) =>
+            doc.data.episodeGroups?.map(group => group.groupTitle || group.plotDescription).join(', ') || ''
+        )
+        .with({ schema_type: '分集结构_input' }, (doc) =>
+            `Episodes: ${doc.data.numberOfEpisodes || 'unknown'}`
+        )
+        .with({ schema_type: '单集大纲' }, (doc) =>
+            doc.data.episodes?.map(ep => ep.title || ep.mainPlot).join(' ') || ''
+        )
+        .with({ schema_type: '单集大纲_input' }, (doc) =>
+            `Episodes ${doc.data.episodes?.join(', ') || 'unknown'}`
+        )
+        .with({ schema_type: '单集剧本' }, (doc) =>
+            doc.data.scriptContent || doc.data.title || ''
+        )
+        .with({ schema_type: '单集剧本_input' }, (doc) =>
+            `Script for episode ${doc.data.episodeNumber || 'unknown'}`
+        )
+
+        // User and patch types
+        .with({ schema_type: 'user_input' }, (doc) =>
+            doc.data.text || JSON.stringify(doc.data, null, 2)
+        )
+        .with({ schema_type: 'json_patch' }, (doc) =>
+            `Patch: ${doc.data.patches?.length || 0} operations`
+        )
+
+        // Exhaustive check - TypeScript will error if we miss any TypedJsondoc cases
+        .exhaustive();
 }
 
 // Workflow context for carrying parameters between stages

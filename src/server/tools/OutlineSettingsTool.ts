@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { match } from 'ts-pattern';
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 /**
  * Extract patch content from ai_patch transform outputs for agent context
@@ -26,20 +27,11 @@ export async function extractPatchContentForAgent(
                         const pathParts = patch.path.replace(/^\//, '').split('/');
                         const fieldName = pathParts[pathParts.length - 1];
 
-                        let summary = '';
-                        switch (patch.op) {
-                            case 'replace':
-                                summary = `Update ${fieldName}`;
-                                break;
-                            case 'add':
-                                summary = `Add ${fieldName}`;
-                                break;
-                            case 'remove':
-                                summary = `Remove ${fieldName}`;
-                                break;
-                            default:
-                                summary = `${patch.op} ${fieldName}`;
-                        }
+                        const summary = match(patch.op)
+                            .with('replace', () => `Update ${fieldName}`)
+                            .with('add', () => `Add ${fieldName}`)
+                            .with('remove', () => `Remove ${fieldName}`)
+                            .otherwise((op) => `${op} ${fieldName}`);
 
                         patchContent.push({
                             path: patch.path,

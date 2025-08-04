@@ -57,81 +57,76 @@ export const AppColors = {
 };
 
 // Utility functions for common color operations
+import { match, P } from 'ts-pattern';
+
 export const ColorUtils = {
     // Get appropriate color for transform/jsondoc type
     getTransformColor: (type: 'human' | 'llm' | 'ai_patch' | 'human_patch_approval') => {
-        switch (type) {
-            case 'human':
-            case 'human_patch_approval':
-                return AppColors.human.primary;
-            case 'llm':
-            case 'ai_patch':
-                return AppColors.ai.primary;
-            default:
-                return AppColors.text.muted;
-        }
+        return match(type)
+            .with(P.union('human', 'human_patch_approval'), () => AppColors.human.primary)
+            .with(P.union('llm', 'ai_patch'), () => AppColors.ai.primary)
+            .exhaustive();
     },
 
     // Get appropriate color for jsondoc based on origin
     getJsondocColor: (type: string, originType?: string) => {
-        // Input params get purple color
-        if (type === 'brainstorm_input_params' || type === 'brainstorm_input_params' || type === 'outline_input' || type.includes('input')) {
-            return AppColors.ai.tertiary;
-        }
+        return match({ type, originType })
+            // Input params get purple color (highest priority)
+            .when(({ type }) =>
+                type === 'brainstorm_input_params' ||
+                type === 'outline_input' ||
+                type.includes('input'),
+                () => AppColors.ai.tertiary
+            )
 
-        // Color based on origin type
-        if (originType === 'human') {
-            return AppColors.human.primary;
-        } else if (originType === 'llm') {
-            return AppColors.ai.primary;
-        }
+            // Color based on origin type
+            .with({ originType: 'human' }, () => AppColors.human.primary)
+            .with({ originType: 'llm' }, () => AppColors.ai.primary)
 
-        // Fallback colors for specific types
-        switch (type) {
-            case 'user_input': return AppColors.human.primary;
-            case '灵感创意': return AppColors.ai.primary;
-            case 'outline_response': return AppColors.ai.primary;
-            case 'chronicles': return AppColors.ai.primary;
-            case 'json_patch': return AppColors.status.warning; // Orange for patch jsondocs
-            default: return AppColors.text.muted;
-        }
+            // Specific type-based colors
+            .with({ type: 'user_input' }, () => AppColors.human.primary)
+            .with({ type: '灵感创意' }, () => AppColors.ai.primary)
+            .with({ type: 'outline_response' }, () => AppColors.ai.primary)
+            .with({ type: 'chronicles' }, () => AppColors.ai.primary)
+            .with({ type: 'json_patch' }, () => AppColors.status.warning) // Orange for patch jsondocs
+
+            // Default fallback
+            .otherwise(() => AppColors.text.muted);
     },
 
     // Get appropriate icon name for jsondoc schema type
     getSchemaTypeIcon: (type: string): string => {
-        switch (type) {
-            case '灵感创意': return 'BulbOutlined';
-            case 'brainstorm_collection': return 'BulbOutlined';
-            case 'brainstorm_input_params': return 'UserOutlined';
-            case '剧本设定': return 'FileTextOutlined';
-            case 'chronicles': return 'HistoryOutlined';
-            case '分集结构': return 'VideoCameraOutlined';
-            case '单集大纲': return 'PlayCircleOutlined';
-            case '单集剧本': return 'FileTextOutlined';
-            case 'json_patch': return 'EditOutlined';
-            case 'outline_input': return 'UserOutlined';
-            case 'outline_response': return 'FileTextOutlined';
-            case 'user_input': return 'UserOutlined';
-            default: return 'DatabaseOutlined';
-        }
+        return match(type)
+            .with('灵感创意', () => 'BulbOutlined')
+            .with('brainstorm_collection', () => 'BulbOutlined')
+            .with('brainstorm_input_params', () => 'UserOutlined')
+            .with('剧本设定', () => 'FileTextOutlined')
+            .with('chronicles', () => 'HistoryOutlined')
+            .with('分集结构', () => 'VideoCameraOutlined')
+            .with('单集大纲', () => 'PlayCircleOutlined')
+            .with('单集剧本', () => 'FileTextOutlined')
+            .with('json_patch', () => 'EditOutlined')
+            .with('outline_input', () => 'UserOutlined')
+            .with('outline_response', () => 'FileTextOutlined')
+            .with('user_input', () => 'UserOutlined')
+            .otherwise(() => 'DatabaseOutlined');
     },
 
     // Get human-readable display name for schema type
     getSchemaTypeDisplayName: (type: string): string => {
-        switch (type) {
-            case '灵感创意': return '灵感创意';
-            case 'brainstorm_collection': return '创意集合';
-            case 'brainstorm_input_params': return '头脑风暴参数';
-            case '剧本设定': return '剧本设定';
-            case 'chronicles': return '故事编年史';
-            case '分集结构': return '分集结构';
-            case '单集大纲': return '单集大纲';
-            case '单集剧本': return '单集剧本';
-            case 'json_patch': return '修改提议';
-            case 'outline_input': return '大纲输入';
-            case 'outline_response': return '大纲响应';
-            case 'user_input': return '用户输入';
-            default: return type;
-        }
+        return match(type)
+            .with('灵感创意', () => '灵感创意')
+            .with('brainstorm_collection', () => '创意集合')
+            .with('brainstorm_input_params', () => '头脑风暴参数')
+            .with('剧本设定', () => '剧本设定')
+            .with('chronicles', () => '故事编年史')
+            .with('分集结构', () => '分集结构')
+            .with('单集大纲', () => '单集大纲')
+            .with('单集剧本', () => '单集剧本')
+            .with('json_patch', () => '修改提议')
+            .with('outline_input', () => '大纲输入')
+            .with('outline_response', () => '大纲响应')
+            .with('user_input', () => '用户输入')
+            .otherwise(() => type);
     }
 }; 
