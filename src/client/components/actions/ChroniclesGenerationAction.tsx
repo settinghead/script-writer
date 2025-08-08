@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Typography, Alert, message } from 'antd';
+import TextareaAutosize from 'react-textarea-autosize';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
@@ -13,6 +14,7 @@ type ChroniclesGenerationActionProps = BaseActionProps | ActionComponentProps;
 const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (props) => {
     const { projectId, onSuccess, onError } = props;
     const [isGenerating, setIsGenerating] = useState(false);
+    const [additionalInstructions, setAdditionalInstructions] = useState('');
 
     // Get 剧本设定 from props (new way) or null (old way)
     const latestOutlineSettings = 'jsondocs' in props ? props.jsondocs.outlineSettings : null;
@@ -26,7 +28,11 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
 
         setIsGenerating(true);
         try {
-            await apiService.generateChroniclesFromOutline(projectId, latestOutlineSettings.id);
+            await apiService.generateChroniclesFromOutline(
+                projectId,
+                latestOutlineSettings.id,
+                additionalInstructions
+            );
 
             message.success('时间顺序大纲生成已启动');
             onSuccess?.();
@@ -38,7 +44,7 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
         } finally {
             setIsGenerating(false);
         }
-    }, [latestOutlineSettings, projectId, onSuccess, onError]);
+    }, [latestOutlineSettings, projectId, onSuccess, onError, additionalInstructions]);
 
     // Show error if no 剧本设定 found
     if (!latestOutlineSettings) {
@@ -67,10 +73,30 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
     }, [latestOutlineSettings]);
 
     return (
-
-
-
-        <div style={{ textAlign: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center' }}>
+            <TextareaAutosize
+                placeholder="补充说明（可选）"
+                value={additionalInstructions}
+                onChange={(e) => setAdditionalInstructions(e.target.value)}
+                minRows={1}
+                maxRows={6}
+                onKeyDown={(e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                        e.preventDefault();
+                        handleGenerateChronicles();
+                    }
+                }}
+                style={{
+                    width: '420px',
+                    resize: 'none',
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    background: '#1f1f1f',
+                    color: '#fff',
+                    border: '1px solid #303030',
+                    lineHeight: 1.5,
+                }}
+            />
             <AIButton
                 type="primary"
                 size="large"

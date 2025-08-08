@@ -324,13 +324,14 @@ class ApiService {
         });
     }
 
-    async generateChroniclesFromOutline(projectId: string, outlineJsondocId: string): Promise<any> {
-        const content = `请基于剧本设定生成时间顺序大纲。源剧本设定ID: ${outlineJsondocId}`;
+    async generateChroniclesFromOutline(projectId: string, outlineJsondocId: string, requirements: string = ''): Promise<any> {
+        const content = `请基于剧本设定生成时间顺序大纲。源剧本设定ID: ${outlineJsondocId}，要求: ${requirements || '无特殊要求'}`;
         const conversationId = await this.getOrCreateConversation(projectId);
 
         return this.sendChatMessage(projectId, conversationId, content, {
             sourceJsondocId: outlineJsondocId,
-            action: 'chronicles_generation'
+            action: 'chronicles_generation',
+            requirements
         });
     }
 

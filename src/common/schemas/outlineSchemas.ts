@@ -61,7 +61,8 @@ export const ChroniclesStageSchema = z.object({
 // Chronicles Schemas
 export const ChroniclesInputSchema = BaseToolInputSchema.extend({
     totalEpisodes: z.number().min(MIN_EPISODES).max(MAX_EPISODES).describe('总集数'),
-    requirements: z.string().optional()
+    // Make requirements required so UI-provided instructions are always passed through
+    requirements: z.string().describe('时间顺序大纲生成要求')
 });
 
 export const ChroniclesOutputSchema = z.object({
