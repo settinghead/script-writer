@@ -110,7 +110,7 @@ export async function getLLMModel({
     const actualBaseUrl = baseUrl || defaultBaseUrl;
     const actualProvider = provider || defaultProvider;
 
-    if (actualProvider === 'openai' || actualProvider === 'qwen') {
+    if (actualProvider === 'openai') {
         const { createOpenAI } = await import('@ai-sdk/openai');
         const openai = createOpenAI({
             apiKey: actualApiKey,
@@ -118,14 +118,14 @@ export async function getLLMModel({
         });
         return openai(actualModelName);
     }
-    //  else if (actualProvider === 'qwen') {
-    //     const { createQwen } = await import('qwen-ai-provider');
-    //     const qwen = createQwen({
-    //         apiKey: actualApiKey,
-    //         baseURL: actualBaseUrl,
-    //     });
-    //     return qwen(actualModelName);
-    // } 
+    else if (actualProvider === 'qwen') {
+        const { createQwen } = await import('qwen-ai-provider');
+        const qwen = createQwen({
+            apiKey: actualApiKey,
+            baseURL: actualBaseUrl,
+        });
+        return qwen(actualModelName);
+    }
     else if (actualProvider === 'deepseek') {
         const { createDeepSeek } = await import('@ai-sdk/deepseek');
         const deepseek = createDeepSeek({
@@ -150,13 +150,20 @@ export function getEmbeddingModel({
     const actualBaseUrl = baseUrl || defaultBaseUrl;
     const actualProvider = provider || defaultProvider;
 
-    if (actualProvider === 'openai' || actualProvider === 'qwen') {
+    if (actualProvider === 'openai') {
         const { createOpenAI } = require('@ai-sdk/openai');
         const openai = createOpenAI({
             apiKey: actualApiKey,
             baseURL: actualBaseUrl,
         });
         return openai.embedding(actualModelName);
+    } else if (actualProvider === 'qwen') {
+        const { createQwen } = require('qwen-ai-provider');
+        const qwen = createQwen({
+            apiKey: actualApiKey,
+            baseURL: actualBaseUrl,
+        });
+        return qwen.textEmbeddingModel(actualModelName);
     }
     else if (actualProvider === 'deepseek') {
         const { createDeepSeek } = require('@ai-sdk/deepseek');
