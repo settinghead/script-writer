@@ -116,7 +116,6 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
 
             <div style={{
                 background: '#2a2a2a',
-                border: '2px solid #1890ff',
                 borderRadius: '8px',
                 padding: '16px',
                 marginBottom: '16px',
@@ -165,7 +164,7 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
             >
                 {isCreatingTransform ? '确认中...' : (
                     <>
-                        开始编辑<br />"{selectedIdeaTitle}" <RightOutlined />
+                        选中并编辑<br />"{selectedIdeaTitle}" <RightOutlined />
                     </>
                 )}
             </HumanButton>

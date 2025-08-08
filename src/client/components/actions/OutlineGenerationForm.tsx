@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Typography, Input, message, Button} from 'antd';
+import { Typography, Input, message, Button } from 'antd';
+import TextareaAutosize from 'react-textarea-autosize';
 import { RightOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
@@ -8,7 +9,6 @@ import { AIButton } from '../shared';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
 
 interface OutlineFormValues {
     title: string;
@@ -22,6 +22,7 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
     const { projectId, onSuccess, onError } = props;
     const [isGenerating, setIsGenerating] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [additionalInstructions, setAdditionalInstructions] = useState('');
     const projectData = useProjectData();
 
     // Use pre-computed canonical context from project data
@@ -142,7 +143,7 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
     }
 
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center' }}>
             {/* Go back button - only show if this is the original idea (not derived) */}
             {isOriginalIdea && (
                 <Button
@@ -158,10 +159,35 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
                 </Button>
             )}
 
+            {/* Additional instructions input (autosized textarea) */}
+            <TextareaAutosize
+                placeholder="补充说明（可选）"
+                value={additionalInstructions}
+                onChange={(e) => setAdditionalInstructions(e.target.value)}
+                minRows={1}
+                maxRows={6}
+                onKeyDown={(e) => {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                        e.preventDefault();
+                        handleGenerateOutline({ title: ideaData?.title || '', requirements: additionalInstructions });
+                    }
+                }}
+                style={{
+                    width: '420px',
+                    resize: 'none',
+                    padding: '8px 12px',
+                    borderRadius: 6,
+                    background: '#1f1f1f',
+                    color: '#fff',
+                    border: '1px solid #303030',
+                    lineHeight: 1.5,
+                }}
+            />
+
             {/* Generate button */}
             <AIButton
                 type="primary"
-                onClick={() => handleGenerateOutline({ title: ideaData?.title || '', requirements: '' })}
+                onClick={() => handleGenerateOutline({ title: ideaData?.title || '', requirements: additionalInstructions })}
                 loading={isGenerating}
                 disabled={isGenerating || isDeleting}
                 style={{
