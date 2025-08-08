@@ -320,21 +320,76 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
             const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
             let content = '';
 
+            // 基本信息
             if (data.title) content += `**标题**: ${data.title}\n\n`;
             if (data.genre) content += `**类型**: ${data.genre}\n\n`;
-            if (data.target_platform) content += `**目标平台**: ${data.target_platform}\n\n`;
-            if (data.target_episodes) content += `**目标集数**: ${data.target_episodes}\n\n`;
 
-            if (data.core_themes && Array.isArray(data.core_themes)) {
-                content += `**核心主题**: ${data.core_themes.join(', ')}\n\n`;
+            // 目标受众（符合最新的 OutlineSettingsOutputSchema）
+            if (data.target_audience) {
+                const ta = data.target_audience;
+                if (ta.demographic) content += `**目标受众**: ${ta.demographic}\n\n`;
+                if (Array.isArray(ta.core_themes) && ta.core_themes.length > 0) {
+                    content += `**核心主题**: ${ta.core_themes.join(', ')}\n\n`;
+                }
             }
 
-            if (data.selling_points && Array.isArray(data.selling_points)) {
-                content += `**卖点**: ${data.selling_points.join(', ')}\n\n`;
+            // 卖点与爽点
+            if (Array.isArray(data.selling_points) && data.selling_points.length > 0) {
+                content += `**卖点**:\n`;
+                data.selling_points.forEach((p: string, idx: number) => {
+                    content += `${idx + 1}. ${p}\n`;
+                });
+                content += '\n';
             }
 
-            if (data.satisfaction_points && Array.isArray(data.satisfaction_points)) {
-                content += `**爽点**: ${data.satisfaction_points.join(', ')}\n\n`;
+            if (Array.isArray(data.satisfaction_points) && data.satisfaction_points.length > 0) {
+                content += `**爽点**:\n`;
+                data.satisfaction_points.forEach((p: string, idx: number) => {
+                    content += `${idx + 1}. ${p}\n`;
+                });
+                content += '\n';
+            }
+
+            // 故事设定
+            if (data.setting) {
+                const s = data.setting;
+                if (s.core_setting_summary) content += `**世界观/核心设定**: ${s.core_setting_summary}\n\n`;
+                if (Array.isArray(s.key_scenes) && s.key_scenes.length > 0) {
+                    content += `**关键场景**:\n`;
+                    s.key_scenes.forEach((scene: string, idx: number) => {
+                        content += `${idx + 1}. ${scene}\n`;
+                    });
+                    content += '\n';
+                }
+            }
+
+            // 角色设定
+            if (Array.isArray(data.characters) && data.characters.length > 0) {
+                content += `**角色设定**:\n`;
+                data.characters.forEach((char: any) => {
+                    const traits = Array.isArray(char.personality_traits)
+                        ? char.personality_traits.join('、')
+                        : undefined;
+                    content += `- **${char.name || '未命名角色'}**${char.type ? ` (${char.type})` : ''}`;
+                    if (char.age || char.gender || char.occupation) {
+                        const meta = [char.age, char.gender, char.occupation].filter(Boolean).join(' / ');
+                        if (meta) content += ` - ${meta}`;
+                    }
+                    content += '\n';
+                    if (char.description) content += `  描述: ${char.description}\n`;
+                    if (traits) content += `  性格: ${traits}\n`;
+                    if (char.character_arc) content += `  成长线: ${char.character_arc}\n`;
+                    if (char.relationships && typeof char.relationships === 'object') {
+                        const entries = Object.entries(char.relationships as Record<string, string>);
+                        if (entries.length > 0) {
+                            content += `  关系:\n`;
+                            entries.forEach(([other, rel]) => {
+                                content += `    - ${other}: ${rel}\n`;
+                            });
+                        }
+                    }
+                });
+                content += '\n';
             }
 
             return content;
