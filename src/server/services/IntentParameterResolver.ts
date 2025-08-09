@@ -177,12 +177,17 @@ export function createIntentParameterResolver(dependencies: ParameterResolverDep
 
         const synopsis = synopses[0];
 
+        // Also include canonical 剧本设定 as context for characters/world
+        const outlineSettingsList = await findCanonicalJsondocsByType(context.projectId, '剧本设定');
+        const outlineSettings = outlineSettingsList[0];
+
         return {
             episodeNumber: context.metadata.episodeNumber || 1,
             episodeSynopsisJsondocId: synopsis.id,
             userRequirements: context.metadata.userRequirements || '',
             jsondocs: [
-                createJsondocReference(synopsis.id, '单集大纲', synopsis.schema_type)
+                createJsondocReference(synopsis.id, '单集大纲', synopsis.schema_type),
+                ...(outlineSettings ? [createJsondocReference(outlineSettings.id, '剧本设定', outlineSettings.schema_type)] : [])
             ]
         };
     };
