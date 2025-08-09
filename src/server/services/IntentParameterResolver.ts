@@ -169,15 +169,21 @@ export function createIntentParameterResolver(dependencies: ParameterResolverDep
     };
 
     const resolveEpisodeScriptParameters = async (context: IntentContext): Promise<any> => {
-        // Find episode synopsis for script generation
-        const episodeSynopsis = await findCanonicalJsondocsByType(context.projectId, 'episode_synopsis');
-        if (episodeSynopsis.length === 0) {
+        // Find 单集大纲 (episode synopsis) for script generation
+        const synopses = await findCanonicalJsondocsByType(context.projectId, '单集大纲');
+        if (synopses.length === 0) {
             throw new Error('No episode synopsis found for script generation');
         }
 
+        const synopsis = synopses[0];
+
         return {
             episodeNumber: context.metadata.episodeNumber || 1,
-            jsondocs: [episodeSynopsis[0].id]
+            episodeSynopsisJsondocId: synopsis.id,
+            userRequirements: context.metadata.userRequirements || '',
+            jsondocs: [
+                createJsondocReference(synopsis.id, '单集大纲', synopsis.schema_type)
+            ]
         };
     };
 
