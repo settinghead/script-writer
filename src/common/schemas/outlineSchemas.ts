@@ -135,7 +135,8 @@ export const EpisodeSynopsisSchema = z.object({
 export const EpisodeSynopsisInputSchema = BaseToolInputSchema.extend({
     episodeStart: z.number().describe('开始集数'),
     episodeEnd: z.number().describe('结束集数'),
-    groupTitle: z.string().describe('当前生成组的标题（用于上下文）')
+    groupTitle: z.string().describe('当前生成组的标题（用于上下文）'),
+    requirements: z.string().describe('单集大纲生成要求')
 });
 
 // Updated tool result schema for individual episode

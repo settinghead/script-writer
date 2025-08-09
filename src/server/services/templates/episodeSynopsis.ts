@@ -62,6 +62,7 @@ export const episodeSynopsisTemplate: LLMTemplate = {
 ## 任务
 
 基于分集结构和前集大纲，为指定集数生成详细的单集大纲。该集约2分钟，必须具有强烈的戏剧张力和平台优化的钩子设计。
+如果输入参数中包含“requirements”，请优先满足其中的用户补充说明。
 
 ### 重要：确保剧情连贯性
 - 与前面已生成的集数保持剧情连贯
@@ -69,7 +70,7 @@ export const episodeSynopsisTemplate: LLMTemplate = {
 - 为后续集数埋下伏笔
 - 在整体故事弧线中找准当前集的定位
 
-## 生成参数
+## 生成参数（包含用户补充要求）
 %%params%%`,
   outputFormat: 'json',
   variables: ['jsondocs', 'params']
