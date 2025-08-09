@@ -335,14 +335,15 @@ class ApiService {
         });
     }
 
-    async generateEpisodePlanningFromChronicles(projectId: string, chroniclesJsondocId: string, numberOfEpisodes: number): Promise<any> {
-        const content = `请基于时间顺序大纲生成分集结构。源时间顺序大纲ID: ${chroniclesJsondocId}，总集数: ${numberOfEpisodes}`;
+    async generateEpisodePlanningFromChronicles(projectId: string, chroniclesJsondocId: string, numberOfEpisodes: number, requirements: string = ''): Promise<any> {
+        const content = `请基于时间顺序大纲生成分集结构。源时间顺序大纲ID: ${chroniclesJsondocId}，总集数: ${numberOfEpisodes}，要求: ${requirements || '无特殊要求'}`;
         const conversationId = await this.getOrCreateConversation(projectId);
 
         return this.sendChatMessage(projectId, conversationId, content, {
             sourceJsondocId: chroniclesJsondocId,
             action: '分集结构_generation',
-            numberOfEpisodes
+            numberOfEpisodes,
+            requirements
         });
     }
 

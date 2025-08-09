@@ -405,25 +405,42 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
             const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
             let content = '';
 
-            if (data.title) content += `**标题**: ${data.title}\n\n`;
+            // 新版编年史：stages 数组
+            if (Array.isArray(data.stages) && data.stages.length > 0) {
+                data.stages.forEach((stage: any, index: number) => {
+                    const title = stage.title || `阶段 ${index + 1}`;
+                    content += `### ${title}\n`;
+                    if (stage.stageSynopsis) content += `**阶段概述**: ${stage.stageSynopsis}\n`;
+                    if (stage.event) content += `**核心事件**: ${stage.event}\n`;
 
-            if (data.synopsis_stages && Array.isArray(data.synopsis_stages)) {
-                content += `**故事梗概**:\n`;
-                data.synopsis_stages.forEach((stage: string, index: number) => {
-                    content += `${index + 1}. ${stage}\n`;
+                    if (Array.isArray(stage.emotionArcs) && stage.emotionArcs.length > 0) {
+                        content += `**情感发展**:\n`;
+                        stage.emotionArcs.forEach((arc: any, i: number) => {
+                            const chars = Array.isArray(arc.characters) ? arc.characters.join(', ') : '';
+                            content += `${i + 1}. ${chars ? `${chars}: ` : ''}${arc.content}\n`;
+                        });
+                    }
+
+                    if (Array.isArray(stage.relationshipDevelopments) && stage.relationshipDevelopments.length > 0) {
+                        content += `**关系发展**:\n`;
+                        stage.relationshipDevelopments.forEach((rel: any, i: number) => {
+                            const chars = Array.isArray(rel.characters) ? rel.characters.join(', ') : '';
+                            content += `${i + 1}. ${chars ? `${chars}: ` : ''}${rel.content}\n`;
+                        });
+                    }
+
+                    if (Array.isArray(stage.insights) && stage.insights.length > 0) {
+                        content += `**洞察**:\n`;
+                        stage.insights.forEach((ins: string, i: number) => {
+                            content += `${i + 1}. ${ins}\n`;
+                        });
+                    }
+
+                    content += '\n';
                 });
-                content += '\n';
             }
 
-            if (data.characters && Array.isArray(data.characters)) {
-                content += `**角色设定**:\n`;
-                data.characters.forEach((char: any) => {
-                    content += `- **${char.name}** (${char.type}): ${char.description}\n`;
-                });
-                content += '\n';
-            }
-
-            return content;
+            return content || '无内容';
         } catch (error) {
             return '内容解析错误';
         }
