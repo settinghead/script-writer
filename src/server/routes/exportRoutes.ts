@@ -453,23 +453,55 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
             const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
             let content = '';
 
-            if (data.title) content += `**标题**: ${data.title}\n\n`;
-            if (data.total_episodes) content += `**总集数**: ${data.total_episodes}\n\n`;
+            // New schema fields
+            if (data.totalEpisodes) content += `**总集数**: ${data.totalEpisodes}\n\n`;
+            if (data.overallStrategy) content += `**整体策略**: ${data.overallStrategy}\n\n`;
 
-            if (data.episodes && Array.isArray(data.episodes)) {
+            if (Array.isArray(data.episodeGroups)) {
+                data.episodeGroups.forEach((group: any, idx: number) => {
+                    const header = group.groupTitle ? `${group.groupTitle}` : `阶段 ${idx + 1}`;
+                    const range = group.episodes ? `（${group.episodes}）` : '';
+                    content += `### ${header}${range}\n`;
+                    if (group.plotDescription) content += `**剧情描述**: ${group.plotDescription}\n`;
+
+                    if (Array.isArray(group.keyEvents) && group.keyEvents.length > 0) {
+                        content += `**关键事件**:\n`;
+                        group.keyEvents.forEach((e: string, i: number) => {
+                            content += `${i + 1}. ${e}\n`;
+                        });
+                    }
+
+                    if (Array.isArray(group.hooks) && group.hooks.length > 0) {
+                        content += `**悬念钩子**:\n`;
+                        group.hooks.forEach((h: string, i: number) => {
+                            content += `${i + 1}. ${h}\n`;
+                        });
+                    }
+
+                    if (Array.isArray(group.emotionalBeats) && group.emotionalBeats.length > 0) {
+                        content += `**情感节拍**:\n`;
+                        group.emotionalBeats.forEach((b: string, i: number) => {
+                            content += `${i + 1}. ${b}\n`;
+                        });
+                    }
+
+                    content += '\n';
+                });
+            } else if (Array.isArray(data.episodes)) {
+                // Backward-compatibility with older shape
                 content += `**分集规划**:\n`;
                 data.episodes.forEach((episode: any, index: number) => {
                     content += `### 第${index + 1}集\n`;
                     if (episode.title) content += `**标题**: ${episode.title}\n`;
                     if (episode.summary) content += `**概要**: ${episode.summary}\n`;
-                    if (episode.key_scenes && Array.isArray(episode.key_scenes)) {
+                    if (Array.isArray(episode.key_scenes)) {
                         content += `**关键场景**: ${episode.key_scenes.join(', ')}\n`;
                     }
                     content += '\n';
                 });
             }
 
-            return content;
+            return content || '无内容';
         } catch (error) {
             return '内容解析错误';
         }

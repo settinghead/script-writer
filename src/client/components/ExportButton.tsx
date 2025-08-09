@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from 'antd';
 import { ExportOutlined } from '@ant-design/icons';
 import { ExportModal } from './ExportModal';
+import { useSearchParams } from 'react-router-dom';
 
 interface ExportButtonProps {
     projectId: string;
@@ -13,6 +14,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
     isMobile = false
 }) => {
     const [showExportModal, setShowExportModal] = useState(false);
+    const [searchParams] = useSearchParams();
 
     const handleExportClick = () => {
         setShowExportModal(true);
@@ -21,6 +23,13 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
     const handleCloseModal = () => {
         setShowExportModal(false);
     };
+
+    // Auto-open from URL (?export=1)
+    useEffect(() => {
+        if (searchParams.get('export') === '1') {
+            setShowExportModal(true);
+        }
+    }, [searchParams]);
 
     // Don't render anything if no projectId
     if (!projectId) {
