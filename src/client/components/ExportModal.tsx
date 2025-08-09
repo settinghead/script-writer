@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Modal, Checkbox, Radio, Input, Button, Space, Divider, message, Spin, Card, Row, Col } from 'antd';
 import { DownloadOutlined, EyeOutlined, FileTextOutlined, VideoCameraOutlined } from '@ant-design/icons';
 import {
@@ -6,6 +6,8 @@ import {
     exportService
 } from '../services/exportService';
 import { PreviewModal } from './shared/PreviewModal';
+import { useLocalStorage } from '../hooks/useLocalStorage';
+import { useSearchParams } from 'react-router-dom';
 
 interface ExportModalProps {
     visible: boolean;
@@ -27,6 +29,46 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     const [previewVisible, setPreviewVisible] = useState(false);
     const [previewContent, setPreviewContent] = useState('');
     const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+    const [initializedFromStorage, setInitializedFromStorage] = useState(false);
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    type PersistState = {
+        selectedItems: string[];
+        format: 'markdown' | 'docx';
+        filename: string;
+        lastUpdated: number;
+    };
+
+    const storageKey = `export-modal-state-${projectId}`;
+    const [persisted, setPersisted] = useLocalStorage<PersistState>(storageKey, {
+        selectedItems: [],
+        format: 'docx',
+        filename: '',
+        lastUpdated: 0
+    });
+
+    // Sync modal state to URL (open + format + selected count)
+    const syncUrl = useCallback((opts?: { open?: boolean }) => {
+        const params = new URLSearchParams(searchParams);
+        if (opts?.open !== undefined ? opts.open : visible) {
+            params.set('export', '1');
+            params.set('export-format', format);
+            if (selectedItems.length > 0) params.set('export-count', String(selectedItems.length)); else params.delete('export-count');
+        } else {
+            params.delete('export');
+            params.delete('export-format');
+            params.delete('export-count');
+        }
+        setSearchParams(params);
+    }, [searchParams, setSearchParams, visible, format, selectedItems.length]);
+
+    // Open from URL if ?export=1 is present
+    useEffect(() => {
+        const shouldOpen = searchParams.get('export') === '1';
+        if (shouldOpen && !visible) {
+            // parent controls visibility; we just keep URL in sync here
+        }
+    }, [searchParams, visible]);
 
     // Separate regular items from episode groups
     const regularItems = exportableItems.filter(item => item.type !== 'episode_group');
@@ -39,20 +81,58 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         }
     }, [visible, projectId]);
 
-    // Initialize selected items and filename when exportable items are loaded
+    // Initialize from localStorage (preferred), otherwise defaults
     useEffect(() => {
-        if (exportableItems.length > 0) {
-            const defaultSelected = exportableItems
-                .filter(item => item.defaultSelected)
-                .map(item => item.id);
-            setSelectedItems(defaultSelected);
+        if (exportableItems.length === 0) return;
 
-            // Generate a simple filename since we don't have access to lineage graph anymore
+        const idSet = new Set(exportableItems.map(i => i.id));
+        const persistedSelected = (persisted?.selectedItems || []).filter(id => idSet.has(id));
+
+        const initialSelected = persistedSelected.length > 0
+            ? persistedSelected
+            : exportableItems.filter(item => item.defaultSelected).map(item => item.id);
+        setSelectedItems(initialSelected);
+
+        const desiredFormat = persisted?.format || format;
+        if (desiredFormat !== format) setFormat(desiredFormat);
+
+        const ts = new Date().toISOString().slice(0, 10);
+        const ext = (persisted?.format || desiredFormat) === 'markdown' ? 'md' : 'docx';
+        const initialFilename = persisted?.filename && persisted.filename.trim().length > 0
+            ? persisted.filename
+            : `项目导出_${ts}.${ext}`;
+        setFilename(initialFilename);
+
+        setInitializedFromStorage(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [exportableItems]);
+
+    // Fallback: if storage not yet initialized, set a sensible default filename on format change
+    useEffect(() => {
+        if (!initializedFromStorage && exportableItems.length > 0) {
             const timestamp = new Date().toISOString().slice(0, 10);
             const extension = format === 'markdown' ? 'md' : 'docx';
-            setFilename(`项目导出_${timestamp}.${extension}`);
+            setFilename(prev => prev && prev.length > 0 ? prev : `项目导出_${timestamp}.${extension}`);
         }
-    }, [exportableItems, format]);
+    }, [exportableItems, format, initializedFromStorage]);
+
+    // Persist whenever user changes options while modal is open
+    useEffect(() => {
+        if (!visible) return;
+        setPersisted({
+            selectedItems,
+            format,
+            filename,
+            lastUpdated: Date.now()
+        });
+        syncUrl();
+    }, [visible, selectedItems, format, filename, setPersisted]);
+
+    // Keep URL in sync when visibility changes
+    useEffect(() => {
+        syncUrl();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [visible]);
 
     const fetchExportableItems = async () => {
         setIsLoading(true);
