@@ -339,34 +339,51 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                                                         size="small"
                                                         style={{
                                                             cursor: 'pointer',
-                                                            border: selectedItems.includes(item.id) ? '2px solid #1890ff' : '1px solid #d9d9d9',
-                                                            backgroundColor: selectedItems.includes(item.id) ? '#ffffff' : '#ffffff'
+                                                            border: selectedItems.includes(item.id) ? '1px solid #434343' : '1px solid #303030',
+                                                            backgroundColor: '#141414',
+                                                            color: '#fff'
                                                         }}
                                                         onClick={() => handleItemChange(item.id, !selectedItems.includes(item.id))}
                                                         hoverable
                                                     >
-                                                        <div style={{ textAlign: 'center' }}>
+                                                        <div>
                                                             <div style={{ fontWeight: 'bold', marginBottom: 8 }}>
+                                                                {item.name}
+                                                            </div>
+                                                            <Space direction="vertical" size="small">
                                                                 <Checkbox
                                                                     checked={selectedItems.includes(item.id)}
                                                                     onChange={(e) => {
                                                                         e.stopPropagation();
                                                                         handleItemChange(item.id, e.target.checked);
                                                                     }}
+                                                                    style={{ color: '#fff' }}
                                                                 >
-                                                                    {item.name}
+                                                                    整集（大纲+剧本）
                                                                 </Checkbox>
-                                                            </div>
-                                                            <Space direction="vertical" size="small">
                                                                 {item.hasSynopsis && (
-                                                                    <div style={{ fontSize: '12px', color: '#52c41a' }}>
+                                                                    <Checkbox
+                                                                        checked={selectedItems.includes(`${item.id}-synopsis`)}
+                                                                        onChange={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleItemChange(`${item.id}-synopsis`, e.target.checked);
+                                                                        }}
+                                                                        style={{ color: '#fff' }}
+                                                                    >
                                                                         <FileTextOutlined /> 大纲
-                                                                    </div>
+                                                                    </Checkbox>
                                                                 )}
                                                                 {item.hasScript && (
-                                                                    <div style={{ fontSize: '12px', color: '#1890ff' }}>
+                                                                    <Checkbox
+                                                                        checked={selectedItems.includes(`${item.id}-script`)}
+                                                                        onChange={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleItemChange(`${item.id}-script`, e.target.checked);
+                                                                        }}
+                                                                        style={{ color: '#fff' }}
+                                                                    >
                                                                         <VideoCameraOutlined /> 剧本
-                                                                    </div>
+                                                                    </Checkbox>
                                                                 )}
                                                                 {!item.hasSynopsis && !item.hasScript && (
                                                                     <div style={{ fontSize: '12px', color: '#999' }}>

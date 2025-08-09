@@ -25,7 +25,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         id: string;
         name: string;
         content: any;
-        type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '剧本设定' | 'chronicles' | '分集结构' | 'episode_group';
+        type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '剧本设定' | 'chronicles' | '分集结构' | 'episode_group' | '单集大纲' | '单集剧本';
         defaultSelected: boolean;
         // For episode groups
         episodeNumber?: number;
@@ -216,13 +216,35 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                     name: `第${episodeNumber}集`,
                     content: group, // Contains both synopsis and script
                     type: 'episode_group',
-                    defaultSelected: true,
+                    defaultSelected: false,
                     episodeNumber,
                     hasSynopsis,
                     hasScript,
                     synopsisContent: group.synopsis,
                     scriptContent: group.script
                 });
+
+                if (hasSynopsis && group.synopsis) {
+                    items.push({
+                        id: `episode-group-${episodeNumber}-synopsis`,
+                        name: `第${episodeNumber}集 · 大纲`,
+                        content: group.synopsis,
+                        type: '单集大纲',
+                        defaultSelected: true,
+                        episodeNumber,
+                    });
+                }
+
+                if (hasScript && group.script) {
+                    items.push({
+                        id: `episode-group-${episodeNumber}-script`,
+                        name: `第${episodeNumber}集 · 剧本`,
+                        content: group.script,
+                        type: '单集剧本',
+                        defaultSelected: true,
+                        episodeNumber,
+                    });
+                }
             }
         });
 
@@ -249,6 +271,10 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                     return formatEpisodePlanning(item.content);
                 case 'episode_group':
                     return formatEpisodeGroup(item.content);
+                case '单集大纲':
+                    return formatEpisodeSynopsis(item.content);
+                case '单集剧本':
+                    return formatEpisodeScript(item.content);
                 default:
                     return '无法识别的内容类型';
             }
