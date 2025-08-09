@@ -47,20 +47,18 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         lastUpdated: 0
     });
 
-    // Sync modal state to URL (open + format + selected count)
+    // Sync modal state to URL (open + format)
     const syncUrl = useCallback((opts?: { open?: boolean }) => {
         const params = new URLSearchParams(searchParams);
         if (opts?.open !== undefined ? opts.open : visible) {
             params.set('export', '1');
             params.set('export-format', format);
-            if (selectedItems.length > 0) params.set('export-count', String(selectedItems.length)); else params.delete('export-count');
         } else {
             params.delete('export');
             params.delete('export-format');
-            params.delete('export-count');
         }
         setSearchParams(params);
-    }, [searchParams, setSearchParams, visible, format, selectedItems.length]);
+    }, [searchParams, setSearchParams, visible, format]);
 
     // Open from URL if ?export=1 is present
     useEffect(() => {
