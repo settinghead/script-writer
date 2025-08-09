@@ -562,23 +562,32 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
 
             if (data.episodeNumber) content += `**集数**: 第${data.episodeNumber}集\n\n`;
             if (data.title) content += `**标题**: ${data.title}\n\n`;
-            if (data.summary) content += `**概要**: ${data.summary}\n\n`;
 
-            if (data.key_scenes && Array.isArray(data.key_scenes)) {
+            // New schema fields (EpisodeSynopsisSchema)
+            if (data.openingHook) content += `**开场钩子**: ${data.openingHook}\n\n`;
+            if (data.mainPlot) content += `**主要剧情**: ${data.mainPlot}\n\n`;
+            if (data.emotionalClimax) content += `**情感高潮**: ${data.emotionalClimax}\n\n`;
+            if (data.cliffhanger) content += `**结尾悬念**: ${data.cliffhanger}\n\n`;
+            if (Array.isArray(data.suspenseElements) && data.suspenseElements.length > 0) {
+                content += `**悬念元素**:\n`;
+                data.suspenseElements.forEach((s: string, i: number) => {
+                    content += `${i + 1}. ${s}\n`;
+                });
+                content += '\n';
+            }
+            if (data.estimatedDuration) content += `**预估时长**: ${data.estimatedDuration}秒\n\n`;
+
+            // Backward compatibility with older schema fields
+            if (data.summary) content += `**概要**: ${data.summary}\n\n`;
+            if (Array.isArray(data.key_scenes)) {
                 content += `**关键场景**:\n`;
                 data.key_scenes.forEach((scene: string, index: number) => {
                     content += `${index + 1}. ${scene}\n`;
                 });
                 content += '\n';
             }
-
-            if (data.character_development) {
-                content += `**角色发展**: ${data.character_development}\n\n`;
-            }
-
-            if (data.emotional_arc) {
-                content += `**情感线**: ${data.emotional_arc}\n\n`;
-            }
+            if (data.character_development) content += `**角色发展**: ${data.character_development}\n\n`;
+            if (data.emotional_arc) content += `**情感线**: ${data.emotional_arc}\n\n`;
 
             return content;
         } catch (error) {
