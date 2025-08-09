@@ -154,10 +154,11 @@ export type EpisodeSynopsisToolResult = z.infer<typeof EpisodeSynopsisToolResult
 export const EpisodeScriptSchema = z.object({
     episodeNumber: z.number(),
     title: z.string(),
-    scriptContent: z.string().describe('完整剧本内容 - 包含场景、对话、动作指导'),
+    // Make fields tolerant to imperfect LLM responses; Tool will fill defaults
+    scriptContent: z.string().optional().describe('完整剧本内容 - 包含场景、对话、动作指导'),
     wordCount: z.number().optional(),
-    estimatedDuration: z.number().describe('预估时长(分钟)'),
-    episodeSynopsisJsondocId: z.string().describe('对应的分集大纲ID')
+    estimatedDuration: z.number().optional().describe('预估时长(分钟)'),
+    episodeSynopsisJsondocId: z.string().optional().describe('对应的分集大纲ID')
 });
 
 export const EpisodeScriptInputSchema = BaseToolInputSchema.extend({

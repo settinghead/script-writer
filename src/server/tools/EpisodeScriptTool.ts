@@ -59,12 +59,17 @@ export function createEpisodeScriptToolDefinition(
 
             // Transform LLM output to final format
             const transformLLMOutput = (llmOutput: EpisodeScriptV1, input: EpisodeScriptInput): EpisodeScriptV1 => {
+                const safeScript = llmOutput.scriptContent ?? '';
+                const safeDuration = llmOutput.estimatedDuration ?? 2;
+                const safeSynopsisId = input.episodeSynopsisJsondocId ?? llmOutput.episodeSynopsisJsondocId ?? '';
+
                 return {
                     ...llmOutput,
+                    scriptContent: safeScript,
                     episodeNumber: input.episodeNumber,
-                    episodeSynopsisJsondocId: input.episodeSynopsisJsondocId,
-                    wordCount: llmOutput.scriptContent?.length || 0,
-                    estimatedDuration: llmOutput.estimatedDuration || 2
+                    episodeSynopsisJsondocId: safeSynopsisId,
+                    wordCount: llmOutput.wordCount ?? safeScript.length,
+                    estimatedDuration: safeDuration
                 };
             };
 
