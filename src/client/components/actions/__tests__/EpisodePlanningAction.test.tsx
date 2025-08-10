@@ -42,6 +42,12 @@ vi.mock('antd', () => {
 
     return {
         Form,
+        Row: ({ children, ...props }: any) => (
+            <div data-testid="row" {...props}>{children}</div>
+        ),
+        Col: ({ children, ...props }: any) => (
+            <div data-testid="col" {...props}>{children}</div>
+        ),
         InputNumber: ({ value, onChange, ...props }: any) => (
             <input
                 type="number"

@@ -36,12 +36,20 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
 
         setIsGenerating(true);
         try {
-            await apiService.generateEpisodePlanningFromChronicles(
-                projectId,
-                latestChronicles.id,
-                numberOfEpisodes,
-                additionalInstructions
-            );
+            if (additionalInstructions.trim().length > 0) {
+                await apiService.generateEpisodePlanningFromChronicles(
+                    projectId,
+                    latestChronicles.id,
+                    numberOfEpisodes,
+                    additionalInstructions
+                );
+            } else {
+                await apiService.generateEpisodePlanningFromChronicles(
+                    projectId,
+                    latestChronicles.id,
+                    numberOfEpisodes
+                );
+            }
 
             message.success('分集结构生成已启动');
             onSuccess?.();

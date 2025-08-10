@@ -92,8 +92,8 @@ export const EpisodeGroupSchema = z.object({
 // Episode Planning Schemas
 export const EpisodePlanningInputSchema = BaseToolInputSchema.extend({
     numberOfEpisodes: z.number().min(MIN_EPISODES).max(MAX_EPISODES).describe('要规划的总集数'),
-    // Make requirements required so UI-provided instructions are always sent
-    requirements: z.string().describe('分集结构生成要求')
+    // Make requirements optional to allow streamlined defaults; UI may omit it
+    requirements: z.string().optional().describe('分集结构生成要求')
 });
 
 export const EpisodePlanningOutputSchema = z.object({
@@ -136,7 +136,7 @@ export const EpisodeSynopsisInputSchema = BaseToolInputSchema.extend({
     episodeStart: z.number().describe('开始集数'),
     episodeEnd: z.number().describe('结束集数'),
     groupTitle: z.string().describe('当前生成组的标题（用于上下文）'),
-    requirements: z.string().describe('单集大纲生成要求')
+    requirements: z.string().optional().describe('单集大纲生成要求')
 });
 
 // Updated tool result schema for individual episode
