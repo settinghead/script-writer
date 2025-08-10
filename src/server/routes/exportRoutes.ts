@@ -604,7 +604,16 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
 
             if (data.episodeNumber) content += `**集数**: 第${data.episodeNumber}集\n\n`;
             if (data.title) content += `**标题**: ${data.title}\n\n`;
+            if (data.estimatedDuration) content += `**预估时长**: ${data.estimatedDuration}分钟\n\n`;
 
+            // New schema: scriptContent is a full text block
+            if (typeof data.scriptContent === 'string' && data.scriptContent.trim().length > 0) {
+                content += `**剧本正文**:\n\n`;
+                content += `${data.scriptContent}\n`;
+                return content;
+            }
+
+            // Backward compatibility: older structured scenes format
             if (data.scenes && Array.isArray(data.scenes)) {
                 content += `**场景**:\n\n`;
                 data.scenes.forEach((scene: any, index: number) => {
