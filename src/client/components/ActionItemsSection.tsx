@@ -1,5 +1,5 @@
 import React, { useMemo, useRef } from 'react';
-import { Card, Typography, Spin} from 'antd';
+import { Card, Typography, Spin } from 'antd';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { useActionItemsStore } from '../stores/actionItemsStore';
 import { computeUnifiedWorkflowState } from '../utils/actionComputation';
@@ -134,8 +134,15 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                     ))}
                 </div>
             ) : (
-                <div style={{ display: "flex", flexWrap: "wrap", width: "100%", justifyContent: "center", padding: '24px', color: '#666' }}>
-                    <Text type="secondary">生成中(完成后可编辑)...</Text>
+                <div style={{ display: "flex", flexWrap: "wrap", width: "100%", justifyContent: "center", padding: '24px', color: '#666', gap: 8 }}>
+                    {hasActiveTransforms ? (
+                        <>
+                            <Spin size="small" />
+                            <Text type="secondary">生成中(完成后可编辑)...</Text>
+                        </>
+                    ) : (
+                        <Text type="secondary">已生成，暂无可执行操作</Text>
+                    )}
                 </div>
             )}
         </div>
