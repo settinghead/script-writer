@@ -133,7 +133,7 @@ export const episodeScriptTemplate: LLMTemplate = {
     - 必须含有至少一次标注的回忆/插叙/闪回段落（例如：回忆-咖啡馆/插叙-旧码头/闪回-案发夜）。
     - 在首个场景的前20秒内明确时间与地点锚点；在前60秒内给出三角关系锚点。
   - wordCount: 字数统计（目标700-900，过短需自动补足细节，过长压缩说明性台词）
-- estimatedDuration: 预估时长（分钟）
+- estimatedDuration: 预估时长（秒）
 - episodeSynopsisJsondocId: 对应的分集大纲ID
 
 ### 重要：确保剧情连贯性

@@ -169,24 +169,68 @@ export function createIntentParameterResolver(dependencies: ParameterResolverDep
     };
 
     const resolveEpisodeScriptParameters = async (context: IntentContext): Promise<any> => {
-        // Find 单集大纲 (episode synopsis) for script generation
-        const synopses = await findCanonicalJsondocsByType(context.projectId, '单集大纲');
-        if (synopses.length === 0) {
-            throw new Error('No episode synopsis found for script generation');
+        // Prefer explicit target passed from UI
+        const targetSynopsisId: string | undefined = (context.metadata as any)?.episodeSynopsisJsondocId;
+        const targetEpisodeNumber: number | undefined = (context.metadata as any)?.episodeNumber;
+
+        let synopsis: ElectricJsondoc | null = null;
+
+        if (targetSynopsisId) {
+            // Fetch exact jsondoc by ID and validate type
+            const byId = await jsondocRepo.getJsondoc(targetSynopsisId);
+            if (!byId) {
+                throw new Error(`Episode synopsis not found by ID: ${targetSynopsisId}`);
+            }
+            if (byId.schema_type !== '单集大纲') {
+                throw new Error(`Jsondoc ${targetSynopsisId} is not 单集大纲 (got ${byId.schema_type})`);
+            }
+            synopsis = byId as ElectricJsondoc;
+        } else {
+            // Fall back to canonical list search
+            const synopses = await findCanonicalJsondocsByType(context.projectId, '单集大纲');
+            if (synopses.length === 0) {
+                throw new Error('No episode synopsis found for script generation');
+            }
+
+            // If an episode number is provided, pick matching one
+            if (typeof targetEpisodeNumber === 'number') {
+                synopsis = synopses.find(s => {
+                    try {
+                        const data = typeof (s as any).data === 'string' ? JSON.parse((s as any).data) : (s as any).data;
+                        return Number(data?.episodeNumber) === targetEpisodeNumber;
+                    } catch {
+                        return false;
+                    }
+                }) || null;
+            }
+
+            // Otherwise use the most recent synopsis (first in canonical list)
+            if (!synopsis) synopsis = synopses[synopses.length - 1] || synopses[0];
         }
 
-        const synopsis = synopses[0];
+        // Derive episode number from synopsis when not explicitly provided
+        let synopsisEpisodeNumber: number | undefined;
+        try {
+            const data = typeof (synopsis as any).data === 'string' ? JSON.parse((synopsis as any).data) : (synopsis as any).data;
+            synopsisEpisodeNumber = typeof data?.episodeNumber === 'number' ? data.episodeNumber : undefined;
+        } catch {
+            synopsisEpisodeNumber = undefined;
+        }
 
         // Also include canonical 剧本设定 as context for characters/world
         const outlineSettingsList = await findCanonicalJsondocsByType(context.projectId, '剧本设定');
         const outlineSettings = outlineSettingsList[0];
 
         return {
-            episodeNumber: context.metadata.episodeNumber || 1,
-            episodeSynopsisJsondocId: synopsis.id,
-            userRequirements: context.metadata.userRequirements || '',
+            episodeNumber: (typeof targetEpisodeNumber === 'number')
+                ? targetEpisodeNumber
+                : (typeof synopsisEpisodeNumber === 'number')
+                    ? synopsisEpisodeNumber
+                    : (() => { throw new Error('Episode number is required and could not be inferred from synopsis'); })(),
+            episodeSynopsisJsondocId: synopsis!.id,
+            userRequirements: (context.metadata as any)?.userRequirements || '',
             jsondocs: [
-                createJsondocReference(synopsis.id, '单集大纲', synopsis.schema_type),
+                createJsondocReference(synopsis!.id, '单集大纲', synopsis!.schema_type),
                 ...(outlineSettings ? [createJsondocReference(outlineSettings.id, '剧本设定', outlineSettings.schema_type)] : [])
             ]
         };
