@@ -69,7 +69,12 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     }, [searchParams, visible]);
 
     // Separate regular items from episode groups
-    const regularItems = exportableItems.filter(item => item.type !== 'episode_group');
+    // Exclude per-episode items (单集大纲/单集剧本) from the regular list; they are controlled within episode cards
+    const regularItems = exportableItems.filter((item) => {
+        // TypeScript narrow: treat type as string for comparison to include new values from server
+        const t = item.type as string;
+        return t !== 'episode_group' && t !== '单集大纲' && t !== '单集剧本';
+    });
     const episodeGroups = exportableItems.filter(item => item.type === 'episode_group');
 
     // Fetch exportable items when modal opens
