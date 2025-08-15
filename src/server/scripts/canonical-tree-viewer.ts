@@ -198,7 +198,7 @@ async function getMostRecentProject(): Promise<string | null> {
         const result = await db
             .selectFrom('projects')
             .select('id')
-            .orderBy('updated_at', 'desc')
+            .orderBy('created_at', 'desc')
             .limit(1)
             .executeTakeFirst();
 

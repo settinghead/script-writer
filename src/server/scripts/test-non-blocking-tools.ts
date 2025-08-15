@@ -29,8 +29,7 @@ async function testNonBlockingTools() {
                 description: 'Test project for non-blocking tool execution',
                 project_type: 'script',
                 status: 'active',
-                created_at: new Date(),
-                updated_at: new Date()
+                created_at: new Date()
             })
             .execute();
 

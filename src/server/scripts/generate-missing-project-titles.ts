@@ -34,7 +34,7 @@ async function main() {
       console.log(`Deduced title for project ${p.id}: "${title}" (current: "${p.title}")`);
 
       if (title && title.trim().length > 0 && title !== p.title) {
-        await db.updateTable('projects').set({ title: title, updated_at: new Date() } as any).where('id', '=', p.id).execute();
+        await db.updateTable('projects').set({ title: title } as any).where('id', '=', p.id).execute();
         console.log(`✅ Updated title for project ${p.id}: "${title}"`);
       } else {
         console.log(`⏭️  No update needed for project ${p.id}`);

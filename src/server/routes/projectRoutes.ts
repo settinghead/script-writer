@@ -146,7 +146,7 @@ export function createProjectRoutes(
             // Persist
             await (projectService as any)['db']
                 .updateTable('projects')
-                .set({ title, project_title_manual_override: true, updated_at: new Date() })
+                .set({ title, project_title_manual_override: true })
                 .where('id', '=', projectId)
                 .execute();
 

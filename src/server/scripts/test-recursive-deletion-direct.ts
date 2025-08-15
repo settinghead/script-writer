@@ -112,8 +112,7 @@ async function main() {
                 title: 'Test Recursive Deletion Direct',
                 description: 'Testing recursive deletion directly',
                 status: 'active',
-                created_at: new Date(),
-                updated_at: new Date()
+                created_at: new Date()
             })
             .onConflict((oc) => oc.column('id').doNothing())
             .execute();

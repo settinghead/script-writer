@@ -167,7 +167,6 @@ export interface Projects {
   project_type: Generated<string | null>;
   status: Generated<string | null>;
   title: string;
-  updated_at: Generated<Timestamp>;
 }
 
 export interface ProjectsUsers {

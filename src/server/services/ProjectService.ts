@@ -37,6 +37,8 @@ export class ProjectService {
 
         const projectsWithSummary = await Promise.all(
             projects.map(async (project) => {
+                // Get computed last updated time for this project
+                const lastUpdated = await this.projectRepo.getProjectLastUpdated(project.id);
                 try {
                     // Get project statistics
                     const jsondocs = await this.jsondocRepo.getProjectJsondocs(project.id, 50);
@@ -120,7 +122,7 @@ export class ProjectService {
                         platform,
                         genre,
                         createdAt: project.created_at,
-                        updatedAt: project.updated_at,
+                        updatedAt: lastUpdated.toISOString(),
                         jsondocCounts
                     };
                 } catch (error) {
@@ -135,7 +137,7 @@ export class ProjectService {
                         platform: '',
                         genre: '',
                         createdAt: project.created_at,
-                        updatedAt: project.updated_at,
+                        updatedAt: lastUpdated.toISOString(),
                         jsondocCounts: {
                             ideations: 0,
                             outlines: 0,
@@ -306,8 +308,7 @@ export class ProjectService {
                     id: projectId,
                     title: title || `Test Project ${Date.now()}`,
                     description: 'Integration test project',
-                    created_at: new Date(),
-                    updated_at: new Date()
+                    created_at: new Date()
                 })
                 .execute();
 

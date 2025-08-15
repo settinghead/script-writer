@@ -116,7 +116,6 @@ export interface Project {
     project_type: string;
     status: string;
     created_at: string;
-    updated_at: string;
 }
 
 // Extended project interface for UI display with additional computed fields

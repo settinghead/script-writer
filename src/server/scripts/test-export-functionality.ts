@@ -27,8 +27,7 @@ async function testExportFunctionality() {
                 id: testProjectId,
                 title: 'Export Test Project',
                 description: 'Test project for export functionality',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                created_at: new Date().toISOString()
             })
             .execute();
 
