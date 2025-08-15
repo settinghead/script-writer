@@ -155,15 +155,27 @@ const AppContent: React.FC = () => {
         height: "auto"
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <LogoSvg
+          <div
+            onClick={() => navigate('/')}
             style={{
-              height: '28px',
-              width: 'auto',
-              color: 'white',
-              margin: '10px 16px',
-              fill: 'currentColor'
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              transition: 'opacity 0.2s ease'
             }}
-          />
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            <LogoSvg
+              style={{
+                height: '28px',
+                width: 'auto',
+                color: 'white',
+                margin: '10px 16px',
+                fill: 'currentColor'
+              }}
+            />
+          </div>
           <Breadcrumb style={{ margin: '0 30px' }} />
         </div>
 
