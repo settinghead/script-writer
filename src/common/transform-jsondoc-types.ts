@@ -109,6 +109,10 @@ export interface User {
 export interface Project {
     id: string;
     name: string;
+    // Human-readable project title (nullable). When null and not manually overridden, the system may auto-fill
+    title?: string | null;
+    // Whether the title has been manually overridden by user
+    project_title_manual_override?: boolean;
     description?: string;
     project_type: string;
     status: string;
