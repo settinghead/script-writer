@@ -19,6 +19,8 @@ export class ProjectRepository {
         const projectData = {
             id,
             name,
+            title: null,
+            project_title_manual_override: false,
             description: description || null,
             project_type: projectType,
             status: 'active',
@@ -48,6 +50,8 @@ export class ProjectRepository {
         return {
             id,
             name,
+            title: null,
+            project_title_manual_override: false,
             description,
             project_type: projectType,
             status: 'active',
@@ -71,6 +75,8 @@ export class ProjectRepository {
         return {
             id: row.id,
             name: row.name,
+            title: (row as any).title ?? null,
+            project_title_manual_override: Boolean((row as any).project_title_manual_override ?? false),
             description: row.description || undefined,
             project_type: row.project_type || 'default',
             status: (row.status as 'active' | 'archived' | 'deleted') || 'active',
@@ -84,7 +90,7 @@ export class ProjectRepository {
         let query = this.db
             .selectFrom('projects as p')
             .innerJoin('projects_users as pu', 'p.id', 'pu.project_id')
-            .select(['p.id', 'p.name', 'p.description', 'p.project_type', 'p.status', 'p.created_at', 'p.updated_at'])
+            .selectAll('p')
             .where('pu.user_id', '=', userId)
             .where('p.status', '=', 'active')
             .orderBy('p.updated_at', 'desc');
@@ -96,8 +102,10 @@ export class ProjectRepository {
         const rows = await query.execute();
 
         return rows.map(row => ({
-            id: row.id,
+            id: String(row.id),
             name: row.name,
+            title: (row as any).title ?? null,
+            project_title_manual_override: Boolean((row as any).project_title_manual_override ?? false),
             description: row.description || undefined,
             project_type: row.project_type || 'default',
             status: (row.status as 'active' | 'archived' | 'deleted') || 'active',

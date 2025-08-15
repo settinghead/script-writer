@@ -97,6 +97,8 @@ export class ProjectService {
                     return {
                         id: project.id,
                         name: project.name,
+                        title: (project as any).title ?? null,
+                        project_title_manual_override: Boolean((project as any).project_title_manual_override ?? false),
                         description: project.description || previewContent,
                         currentPhase,
                         status,
@@ -111,6 +113,8 @@ export class ProjectService {
                     return {
                         id: project.id,
                         name: project.name,
+                        title: (project as any).title ?? null,
+                        project_title_manual_override: Boolean((project as any).project_title_manual_override ?? false),
                         description: project.description || '',
                         currentPhase: 'brainstorming',
                         status: 'active',
