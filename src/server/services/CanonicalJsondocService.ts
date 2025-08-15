@@ -116,4 +116,51 @@ export class CanonicalJsondocService {
         const canonicalIds = await this.getCanonicalJsondocIds(projectId);
         return canonicalIds.has(jsondocId);
     }
+
+    /**
+     * Maybe supply an auto-generated project title if not manually overridden.
+     */
+    async maybeSupplyProjectTitle(projectId: string): Promise<void> {
+        try {
+            // Check project override flag first
+            const projectRow: any = await this.db
+                .selectFrom('projects')
+                .selectAll()
+                .where('id', '=', projectId)
+                .executeTakeFirst();
+
+            if (!projectRow) return;
+            if (projectRow.project_title_manual_override) return;
+
+            // Load lineage-dependent data
+            const [jsondocs, transforms, humanTransforms, transformInputs, transformOutputs] = await Promise.all([
+                this.jsondocRepo.getAllProjectJsondocsForLineage(projectId),
+                this.jsondocRepo.getAllProjectTransformsForLineage(projectId),
+                this.jsondocRepo.getAllProjectHumanTransformsForLineage(projectId),
+                this.jsondocRepo.getAllProjectTransformInputsForLineage(projectId),
+                this.jsondocRepo.getAllProjectTransformOutputsForLineage(projectId)
+            ]);
+
+            const lineageGraph = buildLineageGraph(
+                jsondocs,
+                transforms,
+                humanTransforms,
+                transformInputs,
+                transformOutputs
+            );
+
+            const { deduceProjectTitle } = await import('../../common/utils/projectTitleDeduction.js');
+            const title = deduceProjectTitle(lineageGraph as any, jsondocs as any);
+
+            if (title && title.trim().length > 0 && title !== projectRow.title) {
+                await this.db
+                    .updateTable('projects')
+                    .set({ title, updated_at: new Date() } as any)
+                    .where('id', '=', projectId)
+                    .execute();
+            }
+        } catch (error) {
+            console.error('[CanonicalJsondocService] maybeSupplyProjectTitle failed:', error);
+        }
+    }
 } 
