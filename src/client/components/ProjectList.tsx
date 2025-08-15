@@ -167,7 +167,7 @@ const ProjectsList: React.FC = () => {
             case 'scripts':
                 return '剧本阶段';
             default:
-                return '未知阶段';
+                return '头脑风暴'; // Default to brainstorming instead of unknown
         }
     };
 
@@ -275,12 +275,27 @@ const ProjectsList: React.FC = () => {
                             <Card
                                 hoverable
                                 style={{
-                                    minHeight: '220px',
+                                    minHeight: '240px',
                                     height: 'auto',
                                     display: 'flex',
                                     flexDirection: 'column',
                                     flex: 1,
-                                    cursor: 'pointer'
+                                    cursor: 'pointer',
+                                    background: 'linear-gradient(135deg, #1f1f23 0%, #2a2a2e 100%)',
+                                    border: '1px solid #3a3a3e',
+                                    borderRadius: '12px',
+                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 8px 25px rgba(0, 0, 0, 0.25)';
+                                    e.currentTarget.style.borderColor = '#4a4a4e';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                                    e.currentTarget.style.borderColor = '#3a3a3e';
                                 }}
                                 onClick={() => handleViewProject(project)}
                             >
@@ -292,10 +307,11 @@ const ProjectsList: React.FC = () => {
                                 }}>
                                     <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <Text strong style={{
-                                            fontSize: '16px',
+                                            fontSize: '20px',
                                             color: '#fff',
-                                            lineHeight: '1.4',
-                                            flex: 1
+                                            lineHeight: '1.3',
+                                            flex: 1,
+                                            fontWeight: 600
                                         }}>
                                             {formatTitle(project.title)}
                                         </Text>

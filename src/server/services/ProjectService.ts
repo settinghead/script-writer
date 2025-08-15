@@ -1,6 +1,6 @@
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
-
+import { CanonicalJsondocService } from './CanonicalJsondocService';
 
 import type { Kysely } from 'kysely';
 import type { DB } from '../database/types';
@@ -11,12 +11,14 @@ export class ProjectService {
     private projectRepo: ProjectRepository;
     private jsondocRepo: TransformJsondocRepository;
     private transformRepo: TransformJsondocRepository;
+    private canonicalService: CanonicalJsondocService;
 
     constructor(database: Kysely<DB>) {
         this.db = database;
         this.projectRepo = new ProjectRepository(database);
         this.jsondocRepo = new TransformJsondocRepository(database);
         this.transformRepo = new TransformJsondocRepository(database);
+        this.canonicalService = new CanonicalJsondocService(database, this.jsondocRepo, this.jsondocRepo);
     }
 
     // Create a new project
@@ -40,29 +42,43 @@ export class ProjectService {
                     const jsondocs = await this.jsondocRepo.getProjectJsondocs(project.id, 50);
                     const transforms = await this.transformRepo.getProjectTransforms(project.id, 10);
 
-                    // Count different types of jsondocs
-                    const jsondocCounts = {
-                        ideations: jsondocs.filter(a => a.schema_type === 'brainstorm_collection').length,
-                        剧本设定: jsondocs.filter(a => a.schema_type === '剧本设定').length,
-                        chronicles: jsondocs.filter(a => a.schema_type === 'chronicles').length,
-                    };
-
-                    // Determine project status and current phase
-                    const latestTransform = transforms[0]; // Most recent
-                    let status = 'active';
+                    // Get canonical jsondocs to determine current phase properly
                     let currentPhase = 'brainstorming';
+                    let canonicalContext = null;
 
-                    if (latestTransform) {
-                        status = latestTransform.status === 'failed' ? 'failed' : 'active';
+                    try {
+                        const canonicalData = await this.canonicalService.getProjectCanonicalData(project.id);
+                        canonicalContext = canonicalData.canonicalContext;
 
-                        // Determine phase based on latest jsondocs
-                        if (jsondocCounts.chronicles > 0) {
-                            currentPhase = 'chronicles';
-                        } else if (jsondocCounts.剧本设定 > 0) {
-                            currentPhase = '剧本设定';
-                        } else {
+                        // Determine phase based on canonical jsondocs (most advanced stage)
+                        if (canonicalContext.canonicalEpisodeScriptsList && canonicalContext.canonicalEpisodeScriptsList.length > 0) {
+                            currentPhase = 'scripts';
+                        } else if (canonicalContext.canonicalEpisodeSynopsisList && canonicalContext.canonicalEpisodeSynopsisList.length > 0) {
+                            currentPhase = 'episodes';
+                        } else if (canonicalContext.canonicalChronicles) {
+                            currentPhase = 'outline';
+                        } else if (canonicalContext.canonicalBrainstormIdea) {
                             currentPhase = 'brainstorming';
                         }
+                    } catch (error) {
+                        console.warn(`Failed to get canonical data for project ${project.id}:`, error);
+                        // Fallback to old logic
+                        currentPhase = 'brainstorming';
+                    }
+
+                    // Count different types of jsondocs for display
+                    const jsondocCounts = {
+                        ideations: jsondocs.filter(a => a.schema_type === 'brainstorm_collection').length,
+                        outlines: jsondocs.filter(a => a.schema_type === 'chronicles').length,
+                        episodes: jsondocs.filter(a => a.schema_type === '单集大纲').length,
+                        scripts: jsondocs.filter(a => a.schema_type === '单集剧本').length,
+                    };
+
+                    // Determine project status
+                    const latestTransform = transforms[0]; // Most recent
+                    let status = 'active';
+                    if (latestTransform) {
+                        status = latestTransform.status === 'failed' ? 'failed' : 'active';
                     }
 
                     // Get some sample content for preview
@@ -122,8 +138,9 @@ export class ProjectService {
                         updatedAt: project.updated_at,
                         jsondocCounts: {
                             ideations: 0,
-                            剧本设定: 0,
-                            chronicles: 0,
+                            outlines: 0,
+                            episodes: 0,
+                            scripts: 0,
                         }
                     };
                 }

@@ -153,7 +153,7 @@ const HomePage: React.FC = () => {
             case 'scripts':
                 return '剧本阶段';
             default:
-                return '未知阶段';
+                return '头脑风暴'; // Default to brainstorming instead of unknown
         }
     };
 
@@ -395,15 +395,38 @@ const HomePage: React.FC = () => {
                             <Card
                                 hoverable
                                 style={{
-                                    minHeight: '280px',
+                                    minHeight: '300px',
                                     height: 'auto',
-                                    cursor: 'pointer'
+                                    cursor: 'pointer',
+                                    background: 'linear-gradient(135deg, #1f1f23 0%, #2a2a2e 100%)',
+                                    border: '1px solid #3a3a3e',
+                                    borderRadius: '12px',
+                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    overflow: 'hidden'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-3px)';
+                                    e.currentTarget.style.boxShadow = '0 12px 30px rgba(0, 0, 0, 0.3)';
+                                    e.currentTarget.style.borderColor = '#4a4a4e';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                                    e.currentTarget.style.borderColor = '#3a3a3e';
                                 }}
                                 onClick={() => handleViewProject(project)}
                             >
                                 <div style={{ marginBottom: '12px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                                        <Title level={4} style={{ margin: 0, color: '#fff', flex: 1 }}>
+                                        <Title level={3} style={{
+                                            margin: 0,
+                                            color: '#fff',
+                                            flex: 1,
+                                            fontSize: '22px',
+                                            fontWeight: 600,
+                                            lineHeight: '1.3'
+                                        }}>
                                             {formatTitle(project.title)}
                                         </Title>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
