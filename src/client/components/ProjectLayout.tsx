@@ -14,6 +14,7 @@ import { DebugMenu, DebugPanels } from './debug';
 import { ProjectCreationForm } from './ProjectCreationForm';
 import { UnifiedDisplayRenderer } from './UnifiedDisplayRenderer';
 import { ExportButton } from './ExportButton';
+import { ProjectSettingsModal } from './ProjectSettingsModal';
 import { computeUnifiedWorkflowState } from '../utils/actionComputation';
 import { PatchReviewModal } from './PatchReviewModal';
 
@@ -439,6 +440,8 @@ const ProjectHeader: React.FC<{
                 projectId={projectId}
                 isMobile={isMobile}
             />
+            {/* Project settings modal is controlled via URL param (?projectSettings=1) */}
+            <ProjectSettingsModal projectId={projectId} />
         </div>
     );
 };
