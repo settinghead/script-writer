@@ -198,6 +198,14 @@ const HomePage: React.FC = () => {
         }
     };
 
+    // Wrap project titles with Chinese book brackets 《》 if not already wrapped
+    const formatTitle = (title: string) => {
+        if (!title) return title;
+        const trimmed = title.trim();
+        const alreadyWrapped = trimmed.startsWith('《') && trimmed.endsWith('》');
+        return alreadyWrapped ? trimmed : `《${trimmed}》`;
+    };
+
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('zh-CN', {
             month: 'short',
@@ -396,7 +404,7 @@ const HomePage: React.FC = () => {
                                 <div style={{ marginBottom: '12px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                                         <Title level={4} style={{ margin: 0, color: '#fff', flex: 1 }}>
-                                            {project.title}
+                                            {formatTitle(project.title)}
                                         </Title>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                             <Tooltip title={getStatusText(project.status)}>

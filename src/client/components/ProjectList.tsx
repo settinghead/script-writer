@@ -197,6 +197,14 @@ const ProjectsList: React.FC = () => {
         }
     };
 
+    // Ensure titles appear as Chinese book titles wrapped with 《》 without double wrapping
+    const formatTitle = (title: string) => {
+        if (!title) return title;
+        const trimmed = title.trim();
+        const alreadyWrapped = trimmed.startsWith('《') && trimmed.endsWith('》');
+        return alreadyWrapped ? trimmed : `《${trimmed}》`;
+    };
+
     if (loading) {
         return (
             <div style={{
@@ -289,7 +297,7 @@ const ProjectsList: React.FC = () => {
                                             lineHeight: '1.4',
                                             flex: 1
                                         }}>
-                                            {project.title}
+                                            {formatTitle(project.title)}
                                         </Text>
                                         <Popconfirm
                                             title="删除项目"
