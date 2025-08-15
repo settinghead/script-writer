@@ -22,11 +22,11 @@ export class ProjectService {
     // Create a new project
     async createProject(
         userId: string,
-        name: string,
+        title: string,
         description?: string,
         projectType: string = 'script'
     ): Promise<Project> {
-        return await this.projectRepo.createProject(name, userId, description, projectType);
+        return await this.projectRepo.createProject(title, userId, description, projectType);
     }
 
     // Get projects for a user with summary information
@@ -96,8 +96,7 @@ export class ProjectService {
 
                     return {
                         id: project.id,
-                        name: project.name,
-                        title: (project as any).title ?? null,
+                        title: (project as any).title,
                         project_title_manual_override: Boolean((project as any).project_title_manual_override ?? false),
                         description: project.description || previewContent,
                         currentPhase,
@@ -112,8 +111,7 @@ export class ProjectService {
                     console.error(`Error getting project summary for ${project.id}:`, error);
                     return {
                         id: project.id,
-                        name: project.name,
-                        title: (project as any).title ?? null,
+                        title: (project as any).title,
                         project_title_manual_override: Boolean((project as any).project_title_manual_override ?? false),
                         description: project.description || '',
                         currentPhase: 'brainstorming',
@@ -151,7 +149,7 @@ export class ProjectService {
     async updateProject(
         projectId: string,
         userId: string,
-        updates: Partial<Pick<Project, 'name' | 'description' | 'status'>>
+        updates: Partial<Pick<Project, 'title' | 'description' | 'status'>>
     ): Promise<void> {
         // Check if user has access
         const hasAccess = await this.projectRepo.userHasAccess(projectId, userId);
@@ -289,7 +287,7 @@ export class ProjectService {
                 .insertInto('projects')
                 .values({
                     id: projectId,
-                    name: title || `Test Project ${Date.now()}`,
+                    title: title || `Test Project ${Date.now()}`,
                     description: 'Integration test project',
                     created_at: new Date(),
                     updated_at: new Date()

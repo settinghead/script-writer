@@ -163,9 +163,10 @@ export interface Projects {
   created_at: Generated<Timestamp>;
   description: string | null;
   id: string;
-  name: string;
+  project_title_manual_override: Generated<boolean>;
   project_type: Generated<string | null>;
   status: Generated<string | null>;
+  title: string;
   updated_at: Generated<Timestamp>;
 }
 

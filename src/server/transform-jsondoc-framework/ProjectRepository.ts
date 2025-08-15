@@ -8,7 +8,7 @@ export class ProjectRepository {
 
     // Create a new project
     async createProject(
-        name: string,
+        title: string,
         ownerId: string,
         description?: string,
         projectType: string = 'script'
@@ -18,8 +18,7 @@ export class ProjectRepository {
 
         const projectData = {
             id,
-            name,
-            title: null,
+            title,
             project_title_manual_override: false,
             description: description || null,
             project_type: projectType,
@@ -49,8 +48,7 @@ export class ProjectRepository {
 
         return {
             id,
-            name,
-            title: null,
+            title,
             project_title_manual_override: false,
             description,
             project_type: projectType,
@@ -74,8 +72,7 @@ export class ProjectRepository {
 
         return {
             id: row.id,
-            name: row.name,
-            title: (row as any).title ?? null,
+            title: (row as any).title,
             project_title_manual_override: Boolean((row as any).project_title_manual_override ?? false),
             description: row.description || undefined,
             project_type: row.project_type || 'default',
@@ -103,8 +100,7 @@ export class ProjectRepository {
 
         return rows.map(row => ({
             id: String(row.id),
-            name: row.name,
-            title: (row as any).title ?? null,
+            title: (row as any).title,
             project_title_manual_override: Boolean((row as any).project_title_manual_override ?? false),
             description: row.description || undefined,
             project_type: row.project_type || 'default',

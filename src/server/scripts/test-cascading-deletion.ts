@@ -24,7 +24,7 @@ async function testCascadingDeletion() {
         await db.insertInto('projects')
             .values({
                 id: projectId,
-                name: 'Cascading Deletion Test Project',
+                title: 'Cascading Deletion Test Project',
                 description: 'Test project for cascading deletion',
                 project_type: 'script',
                 status: 'active',

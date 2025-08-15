@@ -108,9 +108,8 @@ export interface User {
 
 export interface Project {
     id: string;
-    name: string;
-    // Human-readable project title (nullable). When null and not manually overridden, the system may auto-fill
-    title?: string | null;
+    // Human-readable project title - now required and the primary display name
+    title: string;
     // Whether the title has been manually overridden by user
     project_title_manual_override?: boolean;
     description?: string;
@@ -118,6 +117,26 @@ export interface Project {
     status: string;
     created_at: string;
     updated_at: string;
+}
+
+// Extended project interface for UI display with additional computed fields
+export interface ProjectSummary {
+    id: string;
+    title: string;
+    project_title_manual_override: boolean;
+    description: string;
+    currentPhase: 'brainstorming' | 'outline' | 'episodes' | 'scripts';
+    status: 'active' | 'completed' | 'failed';
+    platform?: string;
+    genre?: string;
+    createdAt: string;
+    updatedAt: string;
+    jsondocCounts: {
+        ideations: number;
+        outlines: number;
+        episodes: number;
+        scripts: number;
+    };
 }
 
 export interface ProjectUser {

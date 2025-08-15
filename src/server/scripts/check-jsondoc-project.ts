@@ -40,7 +40,7 @@ async function checkJsondoc() {
 
         console.log('✅ Project found:', {
             id: project.id,
-            name: project.name,
+            title: project.title,
             description: project.description
         });
 

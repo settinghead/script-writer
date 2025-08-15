@@ -28,26 +28,9 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { useQueryClient, useMutation } from '@tanstack/react-query';
+import { ProjectSummary } from '../../common/transform-jsondoc-types';
 
 const { Title, Text, Paragraph } = Typography;
-
-interface ProjectSummary {
-    id: string;
-    name: string;
-    description: string;
-    currentPhase: 'brainstorming' | 'outline' | 'episodes' | 'scripts';
-    status: 'active' | 'completed' | 'failed';
-    platform?: string;
-    genre?: string;
-    createdAt: string;
-    updatedAt: string;
-    jsondocCounts: {
-        ideations: number;
-        outlines: number;
-        episodes: number;
-        scripts: number;
-    };
-}
 
 const ProjectsList: React.FC = () => {
     const navigate = useNavigate();
@@ -104,7 +87,7 @@ const ProjectsList: React.FC = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    name: `新项目 - ${new Date().toLocaleString('zh-CN')}`,
+                    title: `新项目 - ${new Date().toLocaleString('zh-CN')}`,
                     description: '通过头脑风暴创建的项目'
                 })
             });
@@ -306,7 +289,7 @@ const ProjectsList: React.FC = () => {
                                             lineHeight: '1.4',
                                             flex: 1
                                         }}>
-                                            {project.name}
+                                            {project.title}
                                         </Text>
                                         <Popconfirm
                                             title="删除项目"

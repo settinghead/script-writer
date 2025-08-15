@@ -36,13 +36,13 @@ export function createProjectRoutes(
                 return res.status(401).json({ error: "User not authenticated" });
             }
 
-            const { name, description } = req.body;
+            const { title, description } = req.body;
 
-            if (!name) {
-                return res.status(400).json({ error: "Project name is required" });
+            if (!title) {
+                return res.status(400).json({ error: "Project title is required" });
             }
 
-            const project = await projectService.createProject(user.id, name, description);
+            const project = await projectService.createProject(user.id, title, description);
             res.status(201).json(project);
         } catch (error: any) {
             console.error('Error creating project:', error);

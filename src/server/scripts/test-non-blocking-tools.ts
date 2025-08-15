@@ -25,7 +25,7 @@ async function testNonBlockingTools() {
         await db.insertInto('projects')
             .values({
                 id: projectId,
-                name: 'Non-Blocking Tools Test Project',
+                title: 'Non-Blocking Tools Test Project',
                 description: 'Test project for non-blocking tool execution',
                 project_type: 'script',
                 status: 'active',

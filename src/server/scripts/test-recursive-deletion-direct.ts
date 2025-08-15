@@ -109,7 +109,7 @@ async function main() {
             .insertInto('projects')
             .values({
                 id: TEST_PROJECT_ID,
-                name: 'Test Recursive Deletion Direct',
+                title: 'Test Recursive Deletion Direct',
                 description: 'Testing recursive deletion directly',
                 status: 'active',
                 created_at: new Date(),
