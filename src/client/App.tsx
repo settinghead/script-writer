@@ -16,6 +16,7 @@ import ProjectLayout from './components/ProjectLayout';
 import ProjectAccessGuard from './components/ProjectAccessGuard';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
+import HealthCheck from './components/HealthCheck';
 
 // Import design system and styled theme
 import { ThemeProvider } from './styled-system';
@@ -287,15 +288,17 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AntdApp>
-          <Router>
-            <AuthProvider>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/*" element={<AppContent />} />
-              </Routes>
-            </AuthProvider>
-          </Router>
-          <StagewiseToolbar />
+          <HealthCheck>
+            <Router>
+              <AuthProvider>
+                <Routes>
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/*" element={<AppContent />} />
+                </Routes>
+              </AuthProvider>
+            </Router>
+            <StagewiseToolbar />
+          </HealthCheck>
         </AntdApp>
       </ThemeProvider>
       <ReactQueryDevtools initialIsOpen={false} />
