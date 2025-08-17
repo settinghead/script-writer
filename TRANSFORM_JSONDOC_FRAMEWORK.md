@@ -76,6 +76,35 @@ const humanTransform = {
 };
 ```
 
+#### Human Transforms in Practice (UI/Trigger Patterns)
+
+Human transforms model user‑initiated edits. The core invariants are framework‑level and UI‑agnostic:
+
+- AI outputs are immutable. Editing creates a new jsondoc via a Human Transform.
+- The relationship is tracked: source jsondoc → Human Transform → derived `user_input` jsondoc.
+- Editing can target the whole document (`derivationPath: "$"`) or a specific sub‑path (e.g., `$.items[0]`).
+- All operations are validated (Zod) and recorded with complete lineage.
+
+Applications can implement any trigger pattern. Common patterns include (non‑exhaustive):
+
+- Click‑to‑edit on read‑only views (entire card/section or explicit edit affordance)
+- Explicit “Edit” or “Create editable copy” buttons in toolbars/action bars
+- Context menus on specific fields or nested sections (path‑level editing)
+- Programmatic/API‑driven edits (e.g., batch operations, integrations)
+- Collaborative editors (e.g., CRDT/YJS sessions) that, upon commit, produce a human transform output
+
+Canonical HTTP API pattern (reference implementation):
+
+- Endpoint: `POST /api/jsondocs/:id/human-transform` (authenticated; project‑scoped authorization)
+- Body: `{ transformName: string; derivationPath: string; fieldUpdates?: Record<string, unknown> }`
+- Result: `{ transform, derivedJsondoc }`
+
+Notes:
+
+- `transformName` is application‑defined and mapped in a transform registry (source/target types, path pattern, instantiation function).
+- The endpoint name and routing are part of the reference implementation; other applications may expose equivalent RPCs or internal service calls.
+- The framework’s responsibility is to enforce the jsondoc → transform → jsondoc paradigm, path‑scoped derivations, schema validation, and project‑scoped access control, independent of UI choices.
+
 ### **Machine Transforms: When AI Processes Content**
 
 **What they are**: Machine transforms occur when AI models, algorithms, or automated processes generate new content from existing jsondocs.

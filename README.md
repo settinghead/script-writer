@@ -815,6 +815,34 @@ interface EpisodeScript {
 
 The combined episode planning and script generation system represents a sophisticated approach to Chinese short drama production, providing complete content creation from initial planning through final scripts, all optimized for platforms like 抖音, 快手, and 小红书.
 
+#### Editing Episode Scripts (Click‑to‑Edit via Human Transform)
+
+The app uses a universal click‑to‑edit pattern across all stages. AI‑generated jsondocs are read‑only. When the user clicks a read‑only surface, the app creates a Human Transform that produces a new editable jsondoc (`origin_type: user_input`), leaving the original intact.
+
+- Endpoint: `POST /api/jsondocs/:id/human-transform` (authenticated; project membership required)
+- Request body:
+  - `transformName`: transform identifier
+  - `derivationPath`: JSONPath within the source jsondoc (use `$` for whole‑document editing)
+  - `fieldUpdates`: optional initial field values
+- Response: `{ transform, derivedJsondoc }`
+
+For episode scripts specifically:
+
+- Transform: `edit_单集剧本` (source: `单集剧本` → target: `单集剧本`, whole‑document editing)
+- Typical request:
+  - `transformName: "edit_单集剧本"`
+  - `derivationPath: "$"`
+  - `fieldUpdates: {}`
+- UI pattern: components use `JsondocDisplayWrapper` with `schemaType="单集剧本"` and `enableClickToEdit=true`. Clicking invokes the endpoint above; on success, the editor switches to the returned `derivedJsondoc` and enables YJS collaboration.
+
+This click‑to‑edit mechanism applies consistently to previous stages as well. Common transforms include:
+
+- `edit_分集结构` (Episode Planning, whole‑document)
+- `user_edit_单集大纲` (Episode Synopsis, whole‑document)
+- Field/path‑level edits where available (using an appropriate `derivationPath` such as `$.stages[0]`)
+
+See also the API Reference section for the Human Transform endpoint and examples.
+
 ## Technical Architecture
 
 ### Framework Foundation
