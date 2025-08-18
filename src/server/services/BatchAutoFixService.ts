@@ -6,7 +6,6 @@ interface AutoFixItem {
     jsondocId: string;
     schemaType: '灵感创意' | '剧本设定' | 'chronicles' | '分集结构';
     editRequirements: string;
-    affectedContext?: Array<{ jsondocId: string; schemaType: string; reason: string }>;
 }
 
 export class BatchAutoFixService {
@@ -47,8 +46,7 @@ export class BatchAutoFixService {
                 }
                 await tool.execute({
                     jsondocId: item.jsondocId,
-                    editRequirements: item.editRequirements,
-                    affectedContext: item.affectedContext || []
+                    editRequirements: item.editRequirements
                 } as any, { toolCallId: `auto-fix-${Date.now()}` } as any);
                 processed += 1;
                 emitter.emit('message', { type: 'progress', processed, total: items.length, lastJsondocId: item.jsondocId });

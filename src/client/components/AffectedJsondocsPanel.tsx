@@ -56,12 +56,7 @@ export const AffectedJsondocsPanel: React.FC<AffectedJsondocsPanelProps> = ({ pr
                     items: affected.map(a => ({
                         jsondocId: a.jsondocId,
                         schemaType: a.schemaType,
-                        editRequirements: '自动修正：使内容与上游变更保持一致',
-                        affectedContext: a.sourceChanges?.map(sc => ({
-                            jsondocId: sc.jsondocId,
-                            schemaType: a.schemaType,
-                            reason: a.reason
-                        })) || []
+                        editRequirements: '自动修正：使内容与上游变更保持一致'
                     }))
                 })
             });

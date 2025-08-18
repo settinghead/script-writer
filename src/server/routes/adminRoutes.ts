@@ -479,6 +479,8 @@ export function createAdminRoutes(
                             }
                         }
                     } catch { }
+                    // Attach computed affected context onto config so tool logic can read it
+                    (config as any)._computedAffectedContext = ap.affectedContext;
                     return {
                         params: {
                             editRequirements: (ap.editRequirements || '') + extra

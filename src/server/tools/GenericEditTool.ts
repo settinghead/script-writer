@@ -17,17 +17,7 @@ import { buildAffectedContextText, computeSchemaGuidance } from './shared/contex
 export const GenericEditInputSchema = z.object({
     jsondocId: z.string().describe('要编辑的jsondoc ID'),
     editRequirements: z.string().describe('编辑要求的详细描述'),
-    affectedContext: z.array(z.object({
-        jsondocId: z.string(),
-        schemaType: z.string(),
-        reason: z.string(),
-        diffs: z.array(z.object({
-            path: z.string(),
-            before: z.any().optional(),
-            after: z.any().optional(),
-            fieldType: z.string().optional()
-        })).optional()
-    })).optional().describe('受影响的下游jsondocs'),
+    // No affectedContext in the external contract; backend computes it when needed
     // Provide source/context jsondocs for lineage linking and prompt assembly
     jsondocs: z.array(z.object({
         jsondocId: z.string(),
@@ -114,7 +104,8 @@ export function createGenericEditToolDefinition(
 
             // Build tool input with explicit jsondocs array so the executor records transform_inputs
             const toolInput: GenericEditInput = {
-                ...params,
+                jsondocId: params.jsondocId,
+                editRequirements: params.editRequirements,
                 jsondocs: [
                     {
                         jsondocId: params.jsondocId,
@@ -135,7 +126,9 @@ export function createGenericEditToolDefinition(
                         : sourceJsondoc.data;
 
                     const schemaGuidance = computeSchemaGuidance(zodSchema as unknown as z.ZodSchema<any>);
-                    const additionalContextText = buildAffectedContextText(input.affectedContext as any);
+                    // affectedContext is computed server-side and attached onto config when available
+                    const computedAffected = (config as any)._computedAffectedContext as any[] | undefined;
+                    const additionalContextText = buildAffectedContextText(computedAffected);
 
                     return {
                         jsondocs: { [schemaType]: jsondocData },
@@ -162,8 +155,7 @@ export function createGenericEditToolDefinition(
                     toolName: `edit_${schemaType}`,
                     source_jsondoc_id: params.jsondocId,
                     edit_requirements: params.editRequirements,
-                    method: 'json_patch',
-                    affected_context: params.affectedContext
+                    method: 'json_patch'
                 },
                 enableCaching: cachingOptions?.enableCaching,
                 seed: cachingOptions?.seed,
