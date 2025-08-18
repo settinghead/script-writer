@@ -970,7 +970,6 @@ export function generateSchemaSpecificInstructions(schemaType: string): string[]
 - [x] Parallel patch generation for multiple jsondocs
 - [ ] Progress tracking via SSE/WebSocket
 - [x] Batch approval endpoint
-- [ ] Rollback capability
 
 **Flow:**
 1. Receive list of affected jsondoc IDs
@@ -1006,17 +1005,17 @@ export function generateSchemaSpecificInstructions(schemaType: string): string[]
 - [x] Create registry for schema → tool mapping
 
 ### Phase 3: UI Integration (Week 2)
-- [ ] Create `AffectedJsondocsPanel.tsx` component
-- [ ] Integrate with `ActionItemsSection.tsx`
-- [ ] Add debounced stale detection on edits
-- [ ] Implement "自动修正" button and loading states
-- [ ] Add Chinese translations for UI elements
+- [x] Create `AffectedJsondocsPanel.tsx` component
+- [x] Integrate with `ActionItemsSection.tsx`
+- [x] Add debounced stale detection on edits (500ms)
+- [x] Implement "自动修正" button and loading states
+- [x] Add Chinese translations for UI elements
 
 ### Phase 4: Batch Processing (Week 2-3)
-- [ ] Create `BatchAutoFixService.ts`
-- [ ] Implement parallel patch generation
-- [ ] Add progress tracking system
-- [ ] Create batch approval endpoint
+- [x] Create `BatchAutoFixService.ts`
+- [x] Implement parallel patch generation
+- [x] Add progress tracking system (SSE)
+- [x] Create batch approval endpoint
 - [ ] Add patch preview UI component
 
 ### Phase 5: Testing & Polish (Week 3)
@@ -1047,7 +1046,6 @@ export function generateSchemaSpecificInstructions(schemaType: string): string[]
 1. **Efficiency**: Parallel processing reduces total wait time
 2. **Context**: User sees all changes before approval
 3. **Atomicity**: Can approve/reject as a coherent set
-4. **Undo**: Easier to rollback batch operations
 
 ## Risk Mitigation
 
@@ -1223,14 +1221,12 @@ export function generateSchemaSpecificInstructions(schemaType: string): string[]
    - ✅ 99% success rate for patch generation
    - ✅ Graceful error recovery
    - ✅ No data loss on failures
-   - ✅ Rollback capability for patches
    - ✅ Audit trail maintained
 
 3. **Usability**
    - ✅ User understands affected content
    - ✅ Clear action buttons
    - ✅ Intuitive approval flow
-   - ✅ Undo available for 5 minutes
    - ✅ Help tooltips provided
 
 4. **Compatibility**
@@ -1298,30 +1294,3 @@ For another developer/AI to implement this feature, ensure:
 - [ ] User testing completed
 - [ ] Deployed to staging environment
 - [ ] Monitoring configured
-- [ ] Rollback plan documented
-
-## Questions for Clarification
-
-Before implementation, confirm:
-
-1. **Stale Detection Depth**: Confirmed direct children only ✅
-2. **Schema Registry Source**: Should schemas come from `src/common/schemas/`?
-3. **Batch Size Limit**: Maximum jsondocs for auto-fix (10? 20? 50?)
-4. **Cache Strategy**: Use existing conversation cache or separate?
-5. **Progress Updates**: SSE or WebSocket for real-time updates?
-6. **Approval Timeout**: How long to keep patches before expiry?
-7. **Conflict Resolution**: How to handle concurrent edits?
-8. **Feature Flag**: Should this be behind a feature flag initially?
-
-## Final Notes
-
-This implementation represents a significant enhancement to the editing capabilities of the system. The key innovation is making AI-generated content universally editable while maintaining immutability through the transform system. The affected jsondoc detection ensures consistency across the content graph, while batch auto-fix provides efficiency for propagating changes.
-
-Success depends on:
-- Careful implementation of the lineage traversal
-- Robust error handling in patch generation
-- Clear UI communication of affected content
-- Performance optimization for large projects
-- Comprehensive testing of edge cases
-
-The modular design allows for incremental implementation and testing, reducing risk and allowing for early feedback.

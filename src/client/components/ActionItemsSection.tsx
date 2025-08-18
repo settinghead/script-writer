@@ -28,7 +28,7 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
     const [affected, setAffected] = React.useState<AffectedJsondoc[]>([]);
     React.useEffect(() => {
         let cancelled = false;
-        (async () => {
+        const handle = setTimeout(async () => {
             try {
                 if (!Array.isArray(projectData.jsondocs) || projectData.lineageGraph === 'pending') {
                     if (!cancelled) setAffected([]);
@@ -51,8 +51,8 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
             } catch {
                 if (!cancelled) setAffected([]);
             }
-        })();
-        return () => { cancelled = true; };
+        }, 500); // debounce 500ms
+        return () => { cancelled = true; clearTimeout(handle); };
     }, [projectData.localUpdates, projectData.jsondocs, projectData.lineageGraph]);
 
     // Stable computation with minimal dependencies
