@@ -278,9 +278,9 @@ const RELATION_CONFIG: Record<string, UpstreamRelation[]> = {
     ],
     'chronicles': [
         {
-            upstreamType: '剧本设定', fields: [
-                { path: '$.synopsis', fieldType: 'string' },
-                { path: '$.characters', fieldType: 'array' }
+            upstreamType: '灵感创意', fields: [
+                { path: '$.title', fieldType: 'string' },
+                { path: '$.body', fieldType: 'string' }
             ]
         }
     ],
@@ -343,7 +343,7 @@ async function computeAffectedContextForEditGeneric(
 
         for (const relation of relations) {
             // Find nearest ancestor of the desired upstream type (not just direct parent)
-            const parent = findNearestAncestorBySchemaType(targetJsondocId, relation.upstreamType, lineageGraph as any);
+            const parent = await findNearestAncestorBySchemaType(targetJsondocId, relation.upstreamType, lineageGraph, jsondocs, transforms, transformInputs, transformOutputs);
 
             // Determine canonical upstream
             let canonicalUpstream: any | undefined;
@@ -390,10 +390,14 @@ async function computeAffectedContextForEditGeneric(
  * Find the nearest ancestor jsondoc (walking through human/llm transforms) that matches a schema type.
  * Uses lineageGraph.nodes which contain jsondoc nodes with sourceTransform and transform nodes with sourceJsondocs.
  */
-function findNearestAncestorBySchemaType(
+async function findNearestAncestorBySchemaType(
     startJsondocId: string,
     desiredSchemaType: string,
-    lineageGraph: any
+    lineageGraph: any,
+    jsondocs: any[],
+    transforms: any[],
+    transformInputs: any[],
+    transformOutputs: any[]
 ) {
     try {
         const visited = new Set<string>();
