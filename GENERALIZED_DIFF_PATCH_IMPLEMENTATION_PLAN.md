@@ -999,11 +999,11 @@ export function generateSchemaSpecificInstructions(schemaType: string): string[]
 - [x] Test new editing rules don't break existing features
 
 ### Phase 2: Generic Diff Tool (Week 1-2)
-- [ ] Create `GenericEditTool.ts` with schema introspection
-- [ ] Implement dynamic template generation
-- [ ] Add schema-specific edit instructions
-- [ ] Test with all existing jsondoc types
-- [ ] Create registry for schema → tool mapping
+- [x] Create `GenericEditTool.ts` with schema introspection
+- [x] Implement dynamic template generation
+- [x] Add schema-specific edit instructions
+- [x] Test with all existing jsondoc types (basic unit test added; expand later)
+- [x] Create registry for schema → tool mapping
 
 ### Phase 3: UI Integration (Week 2)
 - [ ] Create `AffectedJsondocsPanel.tsx` component

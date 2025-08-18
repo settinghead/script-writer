@@ -9,6 +9,7 @@ import { createChroniclesToolDefinition, createChroniclesEditToolDefinition } fr
 import { createEpisodePlanningToolDefinition, createEpisodePlanningEditToolDefinition } from '../tools/EpisodePlanningTool';
 import { createEpisodeSynopsisToolDefinition } from '../tools/EpisodeSynopsisTool';
 import { createEpisodeScriptToolDefinition } from '../tools/EpisodeScriptTool';
+import { createAllGenericEditTools } from '../tools/GenericEditTool';
 import { createQueryToolDefinition } from '../tools/QueryTool';
 import { createGetJsondocContentToolDefinition } from '../tools/GetJsondocContentTool';
 import { generateCanonicalContentStructure } from '../utils/canonicalContentStructure';
@@ -349,6 +350,16 @@ export async function buildAgentConfiguration(
         projectId,
         userId,
         cachingOptions
+    );
+    // Add generic edit tools to ensure universal editability for supported schemas
+    tools.push(
+        ...createAllGenericEditTools(
+            projectId,
+            userId,
+            jsondocRepo,
+            transformRepo,
+            cachingOptions
+        )
     );
     console.log(`[AgentConfigBuilder] Built ${tools.length} filtered tools based on canonical context`);
     console.log(`[AgentConfigBuilder] Available tools: ${tools.map(t => t.name).join(', ')}`);
