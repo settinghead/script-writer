@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { Card, Typography, Button, Spin, message } from 'antd';
+import JsondocDiffModal from '../../components/shared/JsondocDiffModal';
 import { EditOutlined, LoadingOutlined } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { YJSJsondocProvider } from '../contexts/YJSJsondocContext';
@@ -52,6 +53,8 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
 
     const projectData = useProjectData();
     const [isCreatingTransform, setIsCreatingTransform] = useState(false);
+    const [diffOpen, setDiffOpen] = useState(false);
+    const [beforeAfter, setBeforeAfter] = useState<{ before?: string; after?: string }>({});
 
     // Use universal component state system
     const componentState = useMemo(() => {
@@ -200,12 +203,73 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                             </Text>
                         </div>
                     </div>
+                    {/* 修改总结 button top-right when editable summary exists */}
+                    {jsondoc?.id && (
+                        <Button
+                            type="primary"
+                            onClick={async () => {
+                                try {
+                                    // Prefer lineage graph locally to resolve immediate parent
+                                    const graph = projectData.lineageGraph && projectData.lineageGraph !== 'pending' && projectData.lineageGraph !== 'error' ? projectData.lineageGraph as any : null;
+                                    const all = Array.isArray(projectData.jsondocs) ? projectData.jsondocs as any[] : [];
+                                    let beforeId: string | undefined;
+                                    if (graph && graph.nodes && graph.nodes.get) {
+                                        const node = graph.nodes.get(jsondoc.id);
+                                        if (node && node.type === 'jsondoc' && node.sourceTransform && node.sourceTransform !== 'none') {
+                                            const candidates = node.sourceTransform.sourceJsondocs || [];
+                                            // Prefer parent with same schema type
+                                            const match = candidates.find((n: any) => {
+                                                const j = all.find(a => a.id === n.jsondocId);
+                                                return j && j.schema_type === jsondoc.schema_type;
+                                            });
+                                            const first = candidates[0];
+                                            const chosen = match || first;
+                                            if (chosen) {
+                                                beforeId = chosen.jsondocId;
+                                            }
+                                        }
+                                    }
+                                    // Fallback: call server helper (may miss due to path mismatch)
+                                    if (!beforeId) {
+                                        const resp = await fetch(`/api/jsondocs/${jsondoc.id}/human-transform?path=$`, {
+                                            headers: { 'Authorization': 'Bearer debug-auth-token-script-writer-dev' },
+                                            credentials: 'include'
+                                        });
+                                        if (resp.ok) {
+                                            const ht = await resp.json();
+                                            beforeId = ht?.source_jsondoc_id;
+                                        }
+                                    }
+                                    if (beforeId) {
+                                        setBeforeAfter({ before: beforeId, after: jsondoc.id });
+                                        setDiffOpen(true);
+                                    } else {
+                                        message.info('未找到上一版本用于对比');
+                                    }
+                                } catch (e) {
+                                    message.error('加载对比失败');
+                                }
+                            }}
+                        >
+                            修改总结
+                        </Button>
+                    )}
                 </div>
 
                 {/* Editable Content */}
                 <YJSJsondocProvider jsondocId={jsondoc.id}>
                     <EditableComponent />
                 </YJSJsondocProvider>
+                {/* Diff modal (requires two jsondoc IDs) */}
+                {diffOpen && beforeAfter.before && beforeAfter.after && (
+                    <JsondocDiffModal
+                        open={diffOpen}
+                        onClose={() => setDiffOpen(false)}
+                        beforeJsondocId={beforeAfter.before}
+                        afterJsondocId={beforeAfter.after}
+                        title={`${title} · 修改总结`}
+                    />
+                )}
             </Card>
         );
     } else {

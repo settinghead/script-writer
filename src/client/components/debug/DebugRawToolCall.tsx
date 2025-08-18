@@ -6,7 +6,7 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { useDebugParams } from '../../hooks/useDebugParams';
 import { extractCanonicalJsondocIds } from '../../../common/canonicalJsondocLogic';
 import { applyPatch, deepClone } from 'fast-json-patch';
-import * as Diff from 'diff';
+import DiffView from '../shared/DiffView';
 import type {
     ElectricJsondoc,
     ElectricTransform,
@@ -19,64 +19,7 @@ const { Title, Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
-// Diff view component - same as PatchReviewModal
-const DiffView: React.FC<{ oldValue: string; newValue: string }> = ({ oldValue, newValue }) => {
-    const diff = Diff.diffWords(oldValue || '', newValue || '');
-
-    return (
-        <pre style={{
-            background: '#1a1a1a',
-            border: '1px solid #434343',
-            borderRadius: '4px',
-            padding: '8px',
-            marginTop: '4px',
-            overflowY: 'auto',
-            fontFamily: 'monospace',
-            fontSize: '14px',
-            lineHeight: '1.4',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            maxHeight: '600px'
-        }}>
-            {diff.map((part, index) => {
-                if (part.removed) {
-                    return (
-                        <span
-                            key={index}
-                            style={{
-                                backgroundColor: '#4a1a1a',
-                                color: '#ff7875',
-                                textDecoration: 'line-through',
-                                padding: '2px 0'
-                            }}
-                        >
-                            {part.value}
-                        </span>
-                    );
-                } else if (part.added) {
-                    return (
-                        <span
-                            key={index}
-                            style={{
-                                backgroundColor: '#1a4a1a',
-                                color: '#95f985',
-                                padding: '2px 0'
-                            }}
-                        >
-                            {part.value}
-                        </span>
-                    );
-                } else {
-                    return (
-                        <span key={index} style={{ color: '#d9d9d9' }}>
-                            {part.value}
-                        </span>
-                    );
-                }
-            })}
-        </pre>
-    );
-};
+// Use shared DiffView
 
 interface RawAgentContextProps {
     projectId: string;
