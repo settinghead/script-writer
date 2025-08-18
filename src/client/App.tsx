@@ -15,7 +15,6 @@ import ProjectsList from './components/ProjectList';
 import ProjectLayout from './components/ProjectLayout';
 import ProjectAccessGuard from './components/ProjectAccessGuard';
 import Breadcrumb from './components/Breadcrumb';
-import StagewiseToolbar from './components/StagewiseToolbar';
 import HealthCheck from './components/HealthCheck';
 
 // Import design system and styled theme

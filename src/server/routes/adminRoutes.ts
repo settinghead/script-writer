@@ -12,7 +12,7 @@ import { createEpisodeSynopsisToolDefinition } from '../tools/EpisodeSynopsisToo
 import { JsonPatchOperationsSchema } from '@/common/schemas/transforms';
 import { StreamingExecutionMode } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import { buildAffectedContextText } from '../tools/shared/contextFormatting';
-import { computeAffectedContextForOutline } from '../services/EditPromptContextService';
+import { computeAffectedContextForEdit } from '../services/EditPromptContextService';
 
 /**
  * Admin routes for debugging and development
@@ -469,9 +469,13 @@ export function createAdminRoutes(
                     // Compose affected context by computing diffs on server to match runtime
                     let affected = [] as any[];
                     try {
-                        if (toolName === 'edit_剧本设定' && rawInput.jsondocs && rawInput.jsondocs.length > 0) {
-                            const outlineId = rawInput.jsondocs[0].jsondocId;
-                            affected = await computeAffectedContextForOutline(projectId, outlineId, jsondocRepo, transformRepo);
+                        if (rawInput.jsondocs && rawInput.jsondocs.length > 0) {
+                            const targetId = rawInput.jsondocs[0].jsondocId;
+                            // Derive schemaType from the first jsondoc reference when available, else try fetching
+                            const schemaType = rawInput.jsondocs[0].schemaType || (await jsondocRepo.getJsondoc(targetId))?.schema_type;
+                            if (schemaType) {
+                                affected = await computeAffectedContextForEdit(projectId, schemaType, targetId, jsondocRepo, transformRepo);
+                            }
                         }
                     } catch { }
                     const extra = buildAffectedContextText(affected);
