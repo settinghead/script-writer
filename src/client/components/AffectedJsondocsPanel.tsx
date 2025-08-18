@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { Card, Typography, List, Tag, Button, Progress, message, Popover, Badge } from 'antd';
+import { Card, Typography, List, Tag, Button, Progress, message, Space, Tooltip } from 'antd';
 import type { AffectedJsondoc } from '../../common/staleDetection';
 
 const { Text, Title } = Typography;
@@ -7,7 +7,7 @@ const { Text, Title } = Typography;
 interface AffectedJsondocsPanelProps {
     projectId: string;
     affected: AffectedJsondoc[];
-    compact?: boolean;
+    compact?: boolean; // render as an inline compact tile for juxtaposition with actions
 }
 
 export const AffectedJsondocsPanel: React.FC<AffectedJsondocsPanelProps> = ({ projectId, affected, compact = false }) => {
@@ -91,58 +91,24 @@ export const AffectedJsondocsPanel: React.FC<AffectedJsondocsPanelProps> = ({ pr
 
     if (affected.length === 0) return null;
 
-    // Compact tile content for juxtaposition with other actions
+    // Compact inline rendering: a small pill with count + button
     if (compact) {
-        const popoverContent = (
-            <div style={{ maxWidth: 360 }}>
-                <List
-                    size="small"
-                    dataSource={Array.isArray(affected) ? affected : []}
-                    renderItem={(item) => (
-                        <List.Item style={{ color: '#ddd' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <div>
-                                    <Tag color={severityColor(item.severity as any)}>{item.schemaType}</Tag>
-                                </div>
-                                <Text type="secondary">{item.reason}</Text>
-                            </div>
-                        </List.Item>
-                    )}
-                />
-            </div>
-        );
-
         return (
-            <Card
-                size="small"
-                style={{
-                    backgroundColor: '#111',
-                    border: '1px solid #333',
-                    minWidth: 260
-                }}
-                title={
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Text style={{ color: '#fff' }}>受影响</Text>
-                        <Badge count={total} color="#722ed1" style={{ backgroundColor: '#722ed1' }} />
+            <Space size={8} style={{ alignItems: 'center' }}>
+                <Tooltip title={
+                    <div>
+                        {affected.map((a, idx) => (
+                            <div key={idx} style={{ color: '#ddd' }}>{a.schemaType}：{a.reason}</div>
+                        ))}
                     </div>
-                }
-                extra={(
-                    <Button type="primary" size="small" onClick={handleAutoFix} disabled={isRunning}>
-                        {isRunning ? '处理中…' : '自动修正'}
-                    </Button>
-                )}
-            >
-                {isRunning && (
-                    <div style={{ marginBottom: 8 }}>
-                        <Progress percent={progress} size="small" />
-                    </div>
-                )}
-                <div>
-                    <Popover placement="bottomLeft" content={popoverContent} title={<Text style={{ color: '#fff' }}>受影响详情</Text>}>
-                        <Button size="small">查看详情</Button>
-                    </Popover>
-                </div>
-            </Card>
+                }>
+                    <Tag color="gold" style={{ margin: 0 }}>{`受影响 ${affected.length}`}</Tag>
+                </Tooltip>
+                <Button size="small" type="primary" onClick={handleAutoFix} disabled={isRunning}>
+                    {isRunning ? '处理中...' : '自动修正'}
+                </Button>
+                {isRunning && <Progress percent={progress} size="small" style={{ width: 120, margin: 0 }} />}
+            </Space>
         );
     }
 

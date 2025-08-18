@@ -455,6 +455,10 @@ export class TransformJsondocRepository {
             jsondoc_path: jsondocPath || '$', // NEW: Store JSONPath, '$' = root object
             project_id: projectId
         }));
+        // Guard against empty inserts which cause SQL syntax errors
+        if (inputData.length === 0) {
+            return;
+        }
 
         await this.db
             .insertInto('transform_inputs')
@@ -474,6 +478,9 @@ export class TransformJsondocRepository {
             output_role: outputRole || null,
             project_id: projectId
         }));
+        if (outputData.length === 0) {
+            return;
+        }
 
         await this.db
             .insertInto('transform_outputs')

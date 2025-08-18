@@ -179,18 +179,20 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
         >
             {/* Actions on the right */}
             {actions.length > 0 ? (
-                <div style={{ display: "flex", flexWrap: "wrap", width: "100%", justifyContent: "center", gap: 12 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", width: "100%", alignItems: 'center', justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
                     {/* Compact affected tile placed alongside actions */}
-                    <div style={{ alignSelf: 'flex-start' }}>
+                    <div style={{ alignSelf: 'stretch' }}>
                         <AffectedJsondocsPanel projectId={projectId} affected={affected as any} compact />
                     </div>
                     {actions.map((action: any, index: number) => (
-                        <div key={`${action.type}-${index}`}>
+                        <div key={`${action.type}-${index}`} style={{ marginRight: 8 }}>
                             <ActionItemRenderer
                                 action={action}
                                 projectId={projectId}
                                 hasActiveTransforms={hasActiveTransforms}
-                                onSuccess={() => { }}
+                                onSuccess={() => {
+                                    // Action completed successfully
+                                }}
                                 onError={(error: Error) => {
                                     console.error('❌ Action failed:', action.type, error);
                                 }}
