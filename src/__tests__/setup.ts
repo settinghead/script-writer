@@ -73,7 +73,6 @@ vi.mock('@/common/utils/lineageResolution', () => ({
 
     extractEffectiveOutlines: vi.fn().mockReturnValue([]),
     findEffectiveBrainstormIdeas: vi.fn().mockReturnValue([]),
-    findMainWorkflowPath: vi.fn().mockReturnValue([]),
     convertEffectiveIdeasToIdeaWithTitle: vi.fn().mockReturnValue([
         {
             title: '误爱成宠',
@@ -97,7 +96,6 @@ vi.mock('../../common/utils/lineageResolution', () => ({
     ]),
     extractEffectiveOutlines: vi.fn().mockReturnValue([]),
     findEffectiveBrainstormIdeas: vi.fn().mockReturnValue([]),
-    findMainWorkflowPath: vi.fn().mockReturnValue([]),
     convertEffectiveIdeasToIdeaWithTitle: vi.fn().mockReturnValue([
         {
             title: '误爱成宠',

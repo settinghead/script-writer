@@ -429,7 +429,6 @@ The application supports two distinct paths for script creation, each optimized 
 ```typescript
 // Lineage-based computation flow
 const lineageGraph = buildLineageGraph(jsondocs, transforms, ...);
-const workflowNodes = findMainWorkflowPath(jsondocs, lineageGraph);
 const currentStage = detectStageFromWorkflowNodes(workflowNodes);
 const actions = computeActionsFromLineage(currentStage, context);
 ```

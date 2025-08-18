@@ -1562,4 +1562,4 @@ export function hasHumanTransformForPath(
     }
 
     return { hasTransform: false };
-} 
+}

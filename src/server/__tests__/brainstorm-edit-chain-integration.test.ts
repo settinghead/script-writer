@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildLineageGraph, findLatestJsondoc, findMainWorkflowPath } from '../../common/transform-jsondoc-framework/lineageResolution';
+import { buildLineageGraph, findLatestJsondoc, } from '../../common/transform-jsondoc-framework/lineageResolution';
 import { computeActionsFromLineage } from '../../client/utils/lineageBasedActionComputation';
 import type {
     ElectricJsondoc,
@@ -227,9 +227,6 @@ describe('Brainstorm Edit Chain Integration Test', () => {
         const latestJsondocResult = findLatestJsondoc('jsondoc-1', '$', lineageGraph, jsondocs);
         expect(latestJsondocResult.jsondocId).toBe('jsondoc-4');
 
-        const mainPath = findMainWorkflowPath(jsondocs, lineageGraph);
-        expect(mainPath).toBeDefined();
-        expect(mainPath.length).toBeGreaterThan(0);
 
         console.log('✅ Step 7: Verified lineage resolution - latest jsondoc:', latestJsondocResult.jsondocId);
 

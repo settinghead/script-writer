@@ -22,7 +22,6 @@ vi.mock('../../common/utils/lineageResolution', () => ({
     })),
 
     extractEffectiveOutlines: vi.fn(() => []),
-    findMainWorkflowPath: vi.fn(() => []),
     convertEffectiveIdeasToIdeaWithTitle: vi.fn(() => [
         {
             title: '误爱成宠',
