@@ -261,44 +261,105 @@ export async function computeAffectedContextForEdit(
 
 
 // =============================
-// Generic implementation with relation config
+// Generic implementation (no relation config)
 // =============================
 
-type FieldSpec = { path: string; fieldType: 'string' | 'array' | 'object' };
-type UpstreamRelation = { upstreamType: string; fields: FieldSpec[] };
+function isObjectLike(value: any): boolean {
+    return value !== null && typeof value === 'object';
+}
 
-const RELATION_CONFIG: Record<string, UpstreamRelation[]> = {
-    '剧本设定': [
-        {
-            upstreamType: '灵感创意', fields: [
-                { path: '$.title', fieldType: 'string' },
-                { path: '$.body', fieldType: 'string' }
-            ]
-        }
-    ],
-    'chronicles': [
-        {
-            upstreamType: '灵感创意', fields: [
-                { path: '$.title', fieldType: 'string' },
-                { path: '$.body', fieldType: 'string' }
-            ]
-        }
-    ],
-    '分集结构': [
-        {
-            upstreamType: 'chronicles', fields: [
-                { path: '$.stages', fieldType: 'array' }
-            ]
-        }
-    ]
-};
+function buildTopLevelDiffs(beforeData: any, afterData: any): DiffItem[] {
+    const diffs: DiffItem[] = [];
+    const before = isObjectLike(beforeData) ? beforeData : {};
+    const after = isObjectLike(afterData) ? afterData : {};
+    const keys = new Set<string>([...Object.keys(before), ...Object.keys(after)]);
 
-function getByPath(obj: any, path: string): any {
-    if (!obj || !path || path === '$') return obj;
-    // Only support simple top-level paths like '$.field'
-    const m = /^\$\.(.+)$/.exec(path);
-    const key = m ? m[1] : path;
-    return obj ? obj[key] : undefined;
+    for (const key of keys) {
+        const prevVal = before[key];
+        const nextVal = after[key];
+        const prevIsArray = Array.isArray(prevVal);
+        const nextIsArray = Array.isArray(nextVal);
+        const fieldType: 'string' | 'array' | 'object' = typeof nextVal === 'string' || typeof prevVal === 'string'
+            ? 'string'
+            : (prevIsArray || nextIsArray) ? 'array' : 'object';
+
+        const equal = fieldType === 'string'
+            ? prevVal === nextVal
+            : JSON.stringify(prevVal ?? null) === JSON.stringify(nextVal ?? null);
+
+        if (!equal) {
+            diffs.push({ path: `$.${key}`, before: prevVal, after: nextVal, fieldType });
+        }
+    }
+    return diffs;
+}
+
+function canonicalToMap(canonical: any, jsondocMap: Map<string, any>): Map<string, any> {
+    const map = new Map<string, any>();
+    const pairs: Array<[string, any | null]> = [
+        ['brainstorm_input_params', canonical.canonicalBrainstormInput || null],
+        ['灵感创意', canonical.canonicalBrainstormIdea || null],
+        ['brainstorm_collection', canonical.canonicalBrainstormCollection || null],
+        ['剧本设定', canonical.canonicalOutlineSettings || null],
+        ['chronicles', canonical.canonicalChronicles || null],
+        ['分集结构', canonical.canonicalEpisodePlanning || null]
+    ];
+    for (const [schemaType, entry] of pairs) {
+        if (entry && entry.id) {
+            const jd = jsondocMap.get(entry.id);
+            if (jd) map.set(schemaType, jd);
+        }
+    }
+    return map;
+}
+
+function collectDirectInputAncestorsBySchemaType(targetJsondocId: string, lineageGraph: any): Map<string, any> {
+    const result = new Map<string, any>();
+    const node = lineageGraph.nodes.get(targetJsondocId);
+    if (!node || node.type !== 'jsondoc') return result;
+    const st = node.sourceTransform && node.sourceTransform !== 'none' ? node.sourceTransform : null;
+    if (!st) return result;
+    const sources = st.sourceJsondocs || [];
+    for (const src of sources) {
+        const srcNode = lineageGraph.nodes.get(src.jsondocId);
+        if (srcNode && srcNode.type === 'jsondoc' && srcNode.jsondoc) {
+            const schemaType = srcNode.jsondoc.schema_type;
+            if (schemaType && !result.has(schemaType)) {
+                result.set(schemaType, srcNode.jsondoc);
+            }
+        }
+    }
+    return result;
+}
+
+function isAncestorOf(ancestorJsondocId: string, descendantJsondocId: string, lineageGraph: any): boolean {
+    const visited = new Set<string>();
+    const queue: string[] = [descendantJsondocId];
+    visited.add(descendantJsondocId);
+
+    while (queue.length > 0) {
+        const currentId = queue.shift() as string;
+        if (currentId === ancestorJsondocId) return true;
+        const node = lineageGraph.nodes.get(currentId);
+        if (!node) continue;
+
+        if (node.type === 'jsondoc') {
+            const st = node.sourceTransform && node.sourceTransform !== 'none' ? node.sourceTransform : null;
+            if (st && !visited.has(st.transformId)) {
+                visited.add(st.transformId);
+                queue.push(st.transformId);
+            }
+        } else if (node.type === 'transform') {
+            const sources = node.sourceJsondocs || [];
+            for (const src of sources) {
+                if (!visited.has(src.jsondocId)) {
+                    visited.add(src.jsondocId);
+                    queue.push(src.jsondocId);
+                }
+            }
+        }
+    }
+    return false;
 }
 
 async function computeAffectedContextForEditGeneric(
@@ -338,45 +399,34 @@ async function computeAffectedContextForEditGeneric(
         const target = jsondocMap.get(targetJsondocId);
         if (!target) return [];
 
-        const relations = RELATION_CONFIG[targetType] || [];
         const results: AffectedItem[] = [];
 
-        for (const relation of relations) {
-            // Find nearest ancestor of the desired upstream type (not just direct parent)
-            const parent = await findNearestAncestorBySchemaType(targetJsondocId, relation.upstreamType, lineageGraph, jsondocs, transforms, transformInputs, transformOutputs);
+        // 1) Collect direct input ancestors (one hop) by schema type used to produce the target
+        const nearestAncestors = collectDirectInputAncestorsBySchemaType(targetJsondocId, lineageGraph);
 
-            // Determine canonical upstream
-            let canonicalUpstream: any | undefined;
-            if (relation.upstreamType === '灵感创意') canonicalUpstream = canonical.canonicalBrainstormIdea;
-            else if (relation.upstreamType === '剧本设定') canonicalUpstream = canonical.canonicalOutlineSettings;
-            else if (relation.upstreamType === 'chronicles') canonicalUpstream = canonical.canonicalChronicles;
-            else if (relation.upstreamType === '分集结构') canonicalUpstream = canonical.canonicalEpisodePlanning;
+        // 2) Build canonical map by schema type
+        const canonicalMap = canonicalToMap(canonical, jsondocMap);
 
-            if (!parent || !canonicalUpstream || parent.id === canonicalUpstream.id) continue;
+        // 3) For each ancestor type, compare with canonical of same type (only if canonical is a descendant of the ancestor)
+        for (const [schemaTypeKey, ancestor] of nearestAncestors.entries()) {
+            const canonicalUpstream = canonicalMap.get(schemaTypeKey);
+            if (!canonicalUpstream) continue;
+            if (canonicalUpstream.id === ancestor.id) continue;
+            // Only include if canonical is on the same branch (descendant of ancestor)
+            if (!isAncestorOf(ancestor.id, canonicalUpstream.id, lineageGraph)) continue;
 
-            const parentData = typeof parent.data === 'string' ? JSON.parse(parent.data) : parent.data;
+            const parentData = typeof ancestor.data === 'string' ? JSON.parse(ancestor.data) : ancestor.data;
             const latestData = typeof canonicalUpstream.data === 'string' ? JSON.parse(canonicalUpstream.data) : canonicalUpstream.data;
 
-            const diffs: DiffItem[] = [];
-            for (const field of relation.fields) {
-                const beforeVal = getByPath(parentData, field.path);
-                const afterVal = getByPath(latestData, field.path);
-                const isEqual = field.fieldType === 'string'
-                    ? beforeVal === afterVal
-                    : JSON.stringify(beforeVal ?? null) === JSON.stringify(afterVal ?? null);
-                if (!isEqual) {
-                    diffs.push({ path: field.path, before: beforeVal, after: afterVal, fieldType: field.fieldType });
-                }
-            }
+            const diffs = buildTopLevelDiffs(parentData, latestData);
+            if (diffs.length === 0) continue;
 
-            if (diffs.length > 0) {
-                results.push({
-                    jsondocId: canonicalUpstream.id,
-                    schemaType: relation.upstreamType,
-                    reason: `上游${relation.upstreamType}已更新`,
-                    diffs
-                });
-            }
+            results.push({
+                jsondocId: canonicalUpstream.id,
+                schemaType: schemaTypeKey,
+                reason: `上游${schemaTypeKey}已更新`,
+                diffs
+            });
         }
 
         return results;
