@@ -1,0 +1,7 @@
+{
+  "port": 3100,
+  "appPort": 4600,
+  "protocol": "https",
+  "autoPlugins": true,
+  "plugins": []
+}

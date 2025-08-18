@@ -297,7 +297,6 @@ const App: React.FC = () => {
                 </Routes>
               </AuthProvider>
             </Router>
-            <StagewiseToolbar />
           </HealthCheck>
         </AntdApp>
       </ThemeProvider>
