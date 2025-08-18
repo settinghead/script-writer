@@ -1,9 +1,8 @@
-import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import EpisodePlanningAction from '../EpisodePlanningAction';
 import { apiService } from '../../../services/apiService';
-import { DEFAULT_EPISODES } from '../../../../common/config/constants';
+import { DEFAULT_EPISODES } from '@/common/config/constants';
 
 // Mock the API service
 vi.mock('../../../services/apiService', () => ({
@@ -13,7 +12,7 @@ vi.mock('../../../services/apiService', () => ({
 }));
 
 // Mock the AIButton component
-vi.mock('../../shared', () => ({
+vi.mock('@/client/components/shared', () => ({
     AIButton: ({ children, onClick, loading, disabled, ...props }: any) => (
         <button
             onClick={onClick}
@@ -43,6 +42,12 @@ vi.mock('antd', () => {
 
     return {
         Form,
+        Row: ({ children, ...props }: any) => (
+            <div data-testid="row" {...props}>{children}</div>
+        ),
+        Col: ({ children, ...props }: any) => (
+            <div data-testid="col" {...props}>{children}</div>
+        ),
         InputNumber: ({ value, onChange, ...props }: any) => (
             <input
                 type="number"

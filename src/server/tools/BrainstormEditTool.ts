@@ -1,6 +1,7 @@
 import { BrainstormEditInput, BrainstormEditInputSchema, JsonPatchOperation, JsonPatchOperationsSchema } from '@/common/schemas/transforms';
 import { TypedJsondoc } from '@/common/types';
 import { z } from 'zod';
+import { match } from 'ts-pattern';
 import { extractDataAtPath } from '../services/transform-instantiations/pathTransforms';
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import type { StreamingToolDefinition } from '../transform-jsondoc-framework/StreamingAgentFramework';
@@ -33,20 +34,11 @@ async function extractPatchContentForAgent(
                         const pathParts = patch.path.replace(/^\//, '').split('/');
                         const fieldName = pathParts[pathParts.length - 1];
 
-                        let summary = '';
-                        switch (patch.op) {
-                            case 'replace':
-                                summary = `Update ${fieldName}`;
-                                break;
-                            case 'add':
-                                summary = `Add ${fieldName}`;
-                                break;
-                            case 'remove':
-                                summary = `Remove ${fieldName}`;
-                                break;
-                            default:
-                                summary = `${patch.op} ${fieldName}`;
-                        }
+                        const summary = match(patch.op)
+                            .with('replace', () => `Update ${fieldName}`)
+                            .with('add', () => `Add ${fieldName}`)
+                            .with('remove', () => `Remove ${fieldName}`)
+                            .otherwise((op) => `${op} ${fieldName}`);
 
                         patchContent.push({
                             path: patch.path,

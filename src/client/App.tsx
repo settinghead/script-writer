@@ -4,7 +4,7 @@ import '@ant-design/v5-patch-for-react-19';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { Layout, ConfigProvider, Button, Drawer, Menu, Dropdown, Avatar, App as AntdApp } from 'antd';
+import { Layout, Button, Drawer, Menu, Dropdown, Avatar, App as AntdApp } from 'antd';
 import { MenuOutlined, UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons';
 import LogoSvg from './components/LogoSvg';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -16,9 +16,9 @@ import ProjectLayout from './components/ProjectLayout';
 import ProjectAccessGuard from './components/ProjectAccessGuard';
 import Breadcrumb from './components/Breadcrumb';
 import StagewiseToolbar from './components/StagewiseToolbar';
+import HealthCheck from './components/HealthCheck';
 
 // Import design system and styled theme
-import { antdTheme } from '@/common/theme/designSystem';
 import { ThemeProvider } from './styled-system';
 
 // Import CSS for styling
@@ -156,15 +156,27 @@ const AppContent: React.FC = () => {
         height: "auto"
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <LogoSvg
+          <div
+            onClick={() => navigate('/')}
             style={{
-              height: '28px',
-              width: 'auto',
-              color: 'white',
-              margin: '10px 16px',
-              fill: 'currentColor'
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              transition: 'opacity 0.2s ease'
             }}
-          />
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            <LogoSvg
+              style={{
+                height: '28px',
+                width: 'auto',
+                color: 'white',
+                margin: '10px 16px',
+                fill: 'currentColor'
+              }}
+            />
+          </div>
           <Breadcrumb style={{ margin: '0 30px' }} />
         </div>
 
@@ -276,15 +288,17 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <AntdApp>
-          <Router>
-            <AuthProvider>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/*" element={<AppContent />} />
-              </Routes>
-            </AuthProvider>
-          </Router>
-          <StagewiseToolbar />
+          <HealthCheck>
+            <Router>
+              <AuthProvider>
+                <Routes>
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/*" element={<AppContent />} />
+                </Routes>
+              </AuthProvider>
+            </Router>
+            <StagewiseToolbar />
+          </HealthCheck>
         </AntdApp>
       </ThemeProvider>
       <ReactQueryDevtools initialIsOpen={false} />

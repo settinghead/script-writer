@@ -1,6 +1,6 @@
-import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
-import { Input, Select, Button, Typography, Card, Space, Tag, InputNumber } from 'antd';
-import { PlusOutlined, DeleteOutlined, RightOutlined } from '@ant-design/icons';
+import React, { useCallback, useMemo} from 'react';
+import { Input, Select, Button, Typography, Card, Space, InputNumber } from 'antd';
+import { PlusOutlined, DeleteOutlined} from '@ant-design/icons';
 import TextareaAutosize from 'react-textarea-autosize';
 import { useYJSField } from '../contexts/YJSJsondocContext';
 import { YJSSlateArrayOfStringField } from './YJSSlateArrayField';

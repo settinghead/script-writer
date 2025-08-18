@@ -3,7 +3,7 @@ import { Select, Button, Typography, Alert, Spin, Form } from 'antd';
 import { UserOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { StyledCard, StyledButton, Container, Stack, Inline } from './shared/StyledComponents';
+import { StyledCard, StyledButton, Container, Inline } from './shared/StyledComponents';
 import { DesignTokens } from '@/common/theme/designSystem';
 import { AppColors } from '@/common/theme/colors';
 

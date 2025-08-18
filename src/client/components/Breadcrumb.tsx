@@ -1,7 +1,7 @@
-import React, { useState, useEffect, HTMLAttributes } from 'react';
+import React, { HTMLAttributes } from 'react';
 import { Breadcrumb as AntBreadcrumb } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { HomeOutlined, BulbOutlined, MessageOutlined, EditOutlined, HistoryOutlined, FileTextOutlined, PlayCircleOutlined, ProjectOutlined } from '@ant-design/icons';
+import { BulbOutlined, MessageOutlined, EditOutlined, HistoryOutlined, FileTextOutlined, PlayCircleOutlined, ProjectOutlined } from '@ant-design/icons';
 import { useProjectStore } from '../stores/projectStore';
 
 interface BreadcrumbItem {

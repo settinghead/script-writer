@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Mentions, Spin, Typography, Tag } from 'antd';
 import { SearchOutlined, FileTextOutlined } from '@ant-design/icons';
-import { useParticleSearch, ParticleSearchResult } from '../../hooks/useParticleSearch';
+import { useParticleSearch} from '../../hooks/useParticleSearch';
 import { useDebounce } from '../../hooks/useDebounce';
 
 const { Text } = Typography;

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
-import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessageRepository';
+import { db } from '../database/connection.js';
 import { TemplateService } from '../services/templates/TemplateService';
 import { createBrainstormToolDefinition } from '../tools/BrainstormGenerationTool';
 import { createBrainstormEditToolDefinition } from '../tools/BrainstormEditTool';
@@ -819,7 +819,6 @@ export function createAdminRoutes(
             }
 
             // Get human transforms for the project using direct database query
-            const { db } = await import('../database/connection.js');
             const humanTransforms = await db
                 .selectFrom('human_transforms as ht')
                 .innerJoin('transforms as t', 't.id', 'ht.transform_id')
@@ -877,7 +876,6 @@ export function createAdminRoutes(
             }
 
             // Get transform inputs for the project using direct database query
-            const { db } = await import('../database/connection.js');
             const inputs = await db
                 .selectFrom('transform_inputs')
                 .selectAll()
@@ -918,7 +916,6 @@ export function createAdminRoutes(
             }
 
             // Get transform outputs for the project using direct database query
-            const { db } = await import('../database/connection.js');
             const outputs = await db
                 .selectFrom('transform_outputs')
                 .selectAll()
@@ -1061,7 +1058,6 @@ export function createAdminRoutes(
             }
 
             // Step 1: Delete all particles for the project
-            const { db } = await import('../database/connection.js');
             const deleteResult = await db
                 .deleteFrom('particles')
                 .where('project_id', '=', projectId)
@@ -1131,26 +1127,6 @@ export function createAdminRoutes(
         }
     });
 
-    // Debug health check for particle-based agent
-    router.get('/particle-agent/health', async (req: Request, res: Response) => {
-        try {
-            const { AgentService } = await import('../transform-jsondoc-framework/AgentService.js');
-            const agentService = new AgentService(transformRepo, jsondocRepo);
-            const health = await agentService.checkParticleSearchHealth();
-            res.json({
-                status: 'ok',
-                timestamp: new Date().toISOString(),
-                health
-            });
-        } catch (error) {
-            console.error('[AdminRoutes] Particle agent health check failed:', error);
-            res.status(500).json({
-                status: 'error',
-                timestamp: new Date().toISOString(),
-                error: error instanceof Error ? error.message : 'Unknown error'
-            });
-        }
-    });
 
     // Debug test for particle-based agent
     router.post('/particle-agent/test', authMiddleware.authenticate, async (req: Request, res: Response) => {
@@ -1210,95 +1186,96 @@ export function createAdminRoutes(
         }
     });
 
+    // TODO: Reimplement with new conversation system
     // Get tool call conversations for a project (using raw messages grouped by tool call ID)
-    router.get('/tool-conversations/:projectId', async (req: any, res: any) => {
-        try {
-            const { projectId } = req.params;
+    // router.get('/tool-conversations/:projectId', async (req: any, res: any) => {
+    //     try {
+    //         const { projectId } = req.params;
 
-            // Create ChatMessageRepository instance and get raw messages
-            const { db } = await import('../database/connection.js');
-            const chatMessageRepo = new ChatMessageRepository(db);
-            const rawMessages = await chatMessageRepo.getRawMessages(projectId);
+    //         // Create ChatMessageRepository instance and get raw messages
+    //         const chatMessageRepo = new ChatMessageRepository(db);
+    //         const rawMessages = await chatMessageRepo.getRawMessages(projectId);
 
-            // Group messages by tool call ID
-            const conversationGroups: Record<string, any[]> = {};
+    //         // Group messages by tool call ID
+    //         const conversationGroups: Record<string, any[]> = {};
 
-            for (const message of rawMessages) {
-                let metadata;
-                try {
-                    metadata = typeof message.metadata === 'string'
-                        ? JSON.parse(message.metadata)
-                        : message.metadata;
-                } catch {
-                    metadata = {};
-                }
+    //         for (const message of rawMessages) {
+    //             let metadata;
+    //             try {
+    //                 metadata = typeof message.metadata === 'string'
+    //                     ? JSON.parse(message.metadata)
+    //                     : message.metadata;
+    //             } catch {
+    //                 metadata = {};
+    //             }
 
-                const toolCallId = metadata?.toolCallId || metadata?.tool_call_id;
-                if (toolCallId && message.tool_name) {
-                    if (!conversationGroups[toolCallId]) {
-                        conversationGroups[toolCallId] = [];
-                    }
-                    conversationGroups[toolCallId].push({
-                        ...message,
-                        metadata
-                    });
-                }
-            }
+    //             const toolCallId = metadata?.toolCallId || metadata?.tool_call_id;
+    //             if (toolCallId && message.tool_name) {
+    //                 if (!conversationGroups[toolCallId]) {
+    //                     conversationGroups[toolCallId] = [];
+    //                 }
+    //                 conversationGroups[toolCallId].push({
+    //                     ...message,
+    //                     metadata
+    //                 });
+    //             }
+    //         }
 
-            // Convert to array format expected by frontend
-            const conversations = Object.entries(conversationGroups).map(([toolCallId, messages]) => {
-                const sortedMessages = messages.sort((a, b) =>
-                    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-                );
-                const firstMessage = sortedMessages[0];
+    //         // Convert to array format expected by frontend
+    //         const conversations = Object.entries(conversationGroups).map(([toolCallId, messages]) => {
+    //             const sortedMessages = messages.sort((a, b) =>
+    //                 new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    //             );
+    //             const firstMessage = sortedMessages[0];
 
-                return {
-                    id: toolCallId,
-                    tool_name: firstMessage.tool_name,
-                    tool_call_id: toolCallId,
-                    messages: sortedMessages,
-                    created_at: firstMessage.created_at,
-                    updated_at: sortedMessages[sortedMessages.length - 1].created_at
-                };
-            }).sort((a, b) =>
-                new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-            );
+    //             return {
+    //                 id: toolCallId,
+    //                 tool_name: firstMessage.tool_name,
+    //                 tool_call_id: toolCallId,
+    //                 messages: sortedMessages,
+    //                 created_at: firstMessage.created_at,
+    //                 updated_at: sortedMessages[sortedMessages.length - 1].created_at
+    //             };
+    //         }).sort((a, b) =>
+    //             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    //         );
 
-            res.json({
-                success: true,
-                conversations
-            });
-        } catch (error: any) {
-            console.error('Error fetching tool conversations:', error);
-            res.status(500).json({
-                success: false,
-                error: error.message || 'Internal server error'
-            });
-        }
-    });
+    //         res.json({
+    //             success: true,
+    //             conversations
+    //         });
+    //     } catch (error: any) {
+    //         console.error('Error fetching tool conversations:', error);
+    //         res.status(500).json({
+    //             success: false,
+    //             error: error.message || 'Internal server error'
+    //         });
+    //     }
+    // });
 
-    // Get raw messages for a project
-    router.get('/raw-messages/:projectId', async (req: any, res: any) => {
-        try {
-            const { projectId } = req.params;
+    // TODO: Reimplement with new conversation system  
+    // // Get raw messages for a project
+    // router.get('/raw-messages/:projectId', async (req: any, res: any) => {
+    //     try {
+    //         const { projectId } = req.params;
 
-            // Create ChatMessageRepository instance and get raw messages
-            const { db } = await import('../database/connection.js');
-            const chatMessageRepo = new ChatMessageRepository(db);
-            const messages = await chatMessageRepo.getRawMessages(projectId);
+    //         // Create ChatMessageRepository instance and get raw messages
+    //         const chatMessageRepo = new ChatMessageRepository(db);
+    //         const messages = await chatMessageRepo.getRawMessages(projectId);
 
-            res.json({
-                success: true,
-                messages
-            });
-        } catch (error: any) {
-            console.error('Error fetching raw messages:', error);
-            res.status(500).json({
-                success: false,
-                error: error.message || 'Internal server error'
-            });
-        }
-    });
+    //         res.json({
+    //             success: true,
+    //             messages
+    //         });
+    //     } catch (error: any) {
+    //         console.error('Error fetching raw messages:', error);
+    //         res.status(500).json({
+    //             success: false,
+    //             error: error.message,
+    //             details: 'Failed to fetch raw messages'
+    //         });
+    //     }
+    // });
 
     return router;
 } 

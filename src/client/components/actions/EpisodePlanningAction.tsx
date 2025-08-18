@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Typography, Alert, message, Form, InputNumber, Space } from 'antd';
+import { Typography, Alert, message, Form, InputNumber, Space, Row, Col } from 'antd';
+import TextareaAutosize from 'react-textarea-autosize';
 import { VideoCameraOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
 import { AIButton } from '../shared';
-import { MIN_EPISODES, MAX_EPISODES, DEFAULT_EPISODES } from '../../../common/config/constants';
+import { MIN_EPISODES, MAX_EPISODES, DEFAULT_EPISODES } from '@/common/config/constants';
 
 const { Title, Text } = Typography;
 
@@ -16,6 +17,7 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
     const { projectId, onSuccess, onError } = props;
     const [isGenerating, setIsGenerating] = useState(false);
     const [numberOfEpisodes, setNumberOfEpisodes] = useState<number>(DEFAULT_EPISODES);
+    const [additionalInstructions, setAdditionalInstructions] = useState('');
 
     // Get chronicles from props (new way) or null (old way)
     const latestChronicles = 'jsondocs' in props ? props.jsondocs.chronicles : null;
@@ -34,7 +36,20 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
 
         setIsGenerating(true);
         try {
-            await apiService.generateEpisodePlanningFromChronicles(projectId, latestChronicles.id, numberOfEpisodes);
+            if (additionalInstructions.trim().length > 0) {
+                await apiService.generateEpisodePlanningFromChronicles(
+                    projectId,
+                    latestChronicles.id,
+                    numberOfEpisodes,
+                    additionalInstructions
+                );
+            } else {
+                await apiService.generateEpisodePlanningFromChronicles(
+                    projectId,
+                    latestChronicles.id,
+                    numberOfEpisodes
+                );
+            }
 
             message.success('分集结构生成已启动');
             onSuccess?.();
@@ -46,7 +61,7 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
         } finally {
             setIsGenerating(false);
         }
-    }, [latestChronicles, projectId, numberOfEpisodes, onSuccess, onError]);
+    }, [latestChronicles, projectId, numberOfEpisodes, additionalInstructions, onSuccess, onError]);
 
     // Show error if no chronicles found
     if (!latestChronicles) {
@@ -86,20 +101,51 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
             </Text>
 
             <Form layout="vertical">
-                <Form.Item
-                    label="总集数"
-                    help="建议根据故事复杂度设置，每集约2分钟"
-                >
-                    <InputNumber
-                        min={MIN_EPISODES}
-                        max={MAX_EPISODES}
-                        value={numberOfEpisodes}
-                        onChange={(value) => setNumberOfEpisodes(value || DEFAULT_EPISODES)}
-                        style={{ width: '100%' }}
-                        placeholder={`输入总集数（${MIN_EPISODES}-${MAX_EPISODES}`}
-                        data-testid="episode-count-input"
-                    />
-                </Form.Item>
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} md={12}>
+                        <Form.Item
+                            label="总集数"
+                            help="建议根据故事复杂度设置，每集约2分钟"
+                        >
+                            <InputNumber
+                                min={MIN_EPISODES}
+                                max={MAX_EPISODES}
+                                value={numberOfEpisodes}
+                                onChange={(value) => setNumberOfEpisodes(value || DEFAULT_EPISODES)}
+                                style={{ width: '100%' }}
+                                placeholder={`输入总集数（${MIN_EPISODES}-${MAX_EPISODES}`}
+                                data-testid="episode-count-input"
+                            />
+                        </Form.Item>
+                    </Col>
+                    <Col xs={24} md={12}>
+                        <Form.Item label="补充说明（可选）">
+                            <TextareaAutosize
+                                placeholder="例如：强调反转更密集；第一阶段尽量在第6集结束；注意女主的成长线更明显等"
+                                value={additionalInstructions}
+                                onChange={(e) => setAdditionalInstructions(e.target.value)}
+                                minRows={1}
+                                maxRows={6}
+                                onKeyDown={(e) => {
+                                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleGenerateEpisodePlanning();
+                                    }
+                                }}
+                                style={{
+                                    width: '100%',
+                                    resize: 'none',
+                                    padding: '8px 12px',
+                                    borderRadius: 6,
+                                    background: '#1f1f1f',
+                                    color: '#fff',
+                                    border: '1px solid #303030',
+                                    lineHeight: 1.5,
+                                }}
+                            />
+                        </Form.Item>
+                    </Col>
+                </Row>
             </Form>
 
             <AIButton

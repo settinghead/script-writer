@@ -176,7 +176,14 @@ UI Update: Real-time display with complete audit trail
 - **Scrollable Content** - Max-height containers with proper overflow handling for long content
 - **Chinese Localization** - Complete interface in Chinese (修改提议审批, 原始值, 建议值, etc.)
 
-**Chat Interface with Assistant-UI Integration**:
+**Chat Interface with Conversation Management**:
+- **Persistent Conversations** - Each project maintains its conversation across sessions
+- **User-Friendly Messages** - Technical tool names replaced with engaging progress messages:
+  - Brainstorming: "✨ 创意火花四溅中..."
+  - Outline Generation: "📝 精心编织故事大纲..."
+  - Chronicles: "⏰ 梳理时间线索..."
+  - Episode Planning: "🎬 规划精彩剧集..."
+- **New Conversation Button** - "新对话" to start fresh conversations while preserving history
 - **Auto-Scroll Functionality** - Smart auto-scroll to bottom when new messages arrive, with user control preservation
 - **Modern Message Layout** - Card-based messages with user/assistant avatars and proper alignment
 - **Scroll Position Tracking** - Monitors user scroll position with floating scroll-to-bottom button
@@ -184,6 +191,7 @@ UI Update: Real-time display with complete audit trail
 - **Real-time Streaming** - Maintains Electric SQL streaming with smooth loading animations
 - **Keyboard Shortcuts** - Enter to send, Shift+Enter for new lines
 - **Performance Optimized** - Efficient scroll tracking without performance impact
+- **Context Caching** - Automatic cost reduction through intelligent conversation prefix caching
 
 ### 🔄 State Persistence Philosophy
 
@@ -806,6 +814,34 @@ interface EpisodeScript {
 - **Collaborative Workflow** - Team members can review and edit scripts in real-time
 
 The combined episode planning and script generation system represents a sophisticated approach to Chinese short drama production, providing complete content creation from initial planning through final scripts, all optimized for platforms like 抖音, 快手, and 小红书.
+
+#### Editing Episode Scripts (Click‑to‑Edit via Human Transform)
+
+The app uses a universal click‑to‑edit pattern across all stages. AI‑generated jsondocs are read‑only. When the user clicks a read‑only surface, the app creates a Human Transform that produces a new editable jsondoc (`origin_type: user_input`), leaving the original intact.
+
+- Endpoint: `POST /api/jsondocs/:id/human-transform` (authenticated; project membership required)
+- Request body:
+  - `transformName`: transform identifier
+  - `derivationPath`: JSONPath within the source jsondoc (use `$` for whole‑document editing)
+  - `fieldUpdates`: optional initial field values
+- Response: `{ transform, derivedJsondoc }`
+
+For episode scripts specifically:
+
+- Transform: `edit_单集剧本` (source: `单集剧本` → target: `单集剧本`, whole‑document editing)
+- Typical request:
+  - `transformName: "edit_单集剧本"`
+  - `derivationPath: "$"`
+  - `fieldUpdates: {}`
+- UI pattern: components use `JsondocDisplayWrapper` with `schemaType="单集剧本"` and `enableClickToEdit=true`. Clicking invokes the endpoint above; on success, the editor switches to the returned `derivedJsondoc` and enables YJS collaboration.
+
+This click‑to‑edit mechanism applies consistently to previous stages as well. Common transforms include:
+
+- `edit_分集结构` (Episode Planning, whole‑document)
+- `user_edit_单集大纲` (Episode Synopsis, whole‑document)
+- Field/path‑level edits where available (using an appropriate `derivationPath` such as `$.stages[0]`)
+
+See also the API Reference section for the Human Transform endpoint and examples.
 
 ## Technical Architecture
 
@@ -1618,15 +1654,27 @@ npm run dev
 - `POST /api/projects/create-from-brainstorm` - Create project from brainstorm ideas
 
 ### Agent & Chat System
+
+**Conversation-Centric Architecture**: All agent interactions now flow through a comprehensive conversation management system that provides complete history tracking, context caching, and user-friendly message presentation.
+
+**Key Features**:
+- **Persistent Conversations** - Each project maintains its current conversation across sessions
+- **User-Friendly Messages** - Technical details hidden with engaging progress updates
+- **Context Caching** - Automatic cost reduction through conversation prefix caching
+- **Complete History** - Every message, tool call, and parameter tracked immutably
+
+**API Endpoints**:
 - `POST /api/projects/:id/agent` - Send general agent request
-- `POST /api/chat/:projectId/messages` - Send user message to agent
+- `POST /api/chat/:projectId/messages` - Send user message in conversation context
 - `GET /api/chat/:projectId/messages` - Get chat history (Electric SQL)
+- `GET /api/projects/:projectId/current-conversation` - Get current conversation
+- `POST /api/projects/:projectId/conversations/new` - Create new conversation
 
 ** The chat API endpoint is `/api/chat/:projectId/messages`, NOT `/api/chat`. Always include the projectId in the URL path.
 
-**Chat API Request Format**:
+**Enhanced Chat API Request**:
 ```typescript
-// ✅ Correct format
+// ✅ Correct format with conversation context
 fetch(`/api/chat/${projectId}/messages`, {
   method: 'POST',
   headers: {
@@ -1636,6 +1684,7 @@ fetch(`/api/chat/${projectId}/messages`, {
   credentials: 'include',
   body: JSON.stringify({
     content: "Your message content here",
+    conversationId: currentConversationId, // Required for conversation tracking
     metadata: {}
   })
 });
@@ -1649,6 +1698,12 @@ fetch('/api/chat', {
   })
 });
 ```
+
+**User Experience**:
+- **Progress Messages** - See fun updates like "✨ 创意火花四溅中..." during generation
+- **No Technical Details** - Tool names and parameters hidden from users
+- **Real-time Updates** - Messages stream in as AI generates content
+- **Conversation Management** - "新对话" button to start fresh conversations
 
 ### Content Management
 - `POST /api/jsondocs/:id/human-transform` - Execute human edit transform (supports chronicle stage editing, field edits, etc.)

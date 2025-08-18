@@ -1,0 +1,31 @@
+we currently don't have a good architectual design to faithfully save raw llm messages (system, human + assistant). it's kinda ad hoc. Let's redesign the system, to achieve the following design goals:
+
+1. the old system should go or be refactored, including @ChatMessageRepository.ts, @CachedLLMService.ts 
+2. we would want to introduce the idea of "session/conversation" in the db/persistence level. It would probably mean a new table for session/conversation, and each message must be asociated with a session/conversation
+3. let's wrap ai sdk's streamText, streamObject (see @CachedLLMService.ts on how it's implemented), so that: 1. they are not directly eposed as callable functions. instead, we first have a createConversation(), or resumeConversation(convoId) , and such functions will return streamText, and streamObject. (I do not like classes and would rather write everything with functions and closure). The idea is that whenever you call streamText and streamObject, they MUST come along with a context. 
+4. let's refactor all places in the codebase that uses streamText or streamObject in the db (need to do a codebase wide search for this) to use this new paradigm. in a lot of these places it would mean to have the caller be conversation-aware, and decide either to start or resume a conversation. 
+5. the conversation is immutable, with the exception of the last ai/assitance message since we are in streaming mode and could keep updating it to the latest state. in retry mode we would want to replace it.
+5. It would further imply that transforms (@transform_schemas.ts @HumanTransformExecutor.ts @StreamingTransformExecutor.ts ) would always be associated with a (conversationId, rawMessageId). the second rawMessageId indicates up to which raw message was the transform created, thereby associating the transform with accurate history.
+6. on both the agent and the tool call level, given a conversation that has happened, we would want to be able to pull the full history as the LLM sees it. The success criteria is that we would in the future be able to feed this conversation history back into the LLM to continue the conversaion (all previous messages being the context). 
+7. Finally, we will need to redo @RawChatMessages.tsx to use this new paradigm, so that we can see a flat list of all conversations (with dropdown list of conversations), whether it's on agent level or is on tool call level (in db there's no difference)
+8. for each raw message, we would also need to faithfully record all parameters (temperature, model, etc; whatever gets passed into streamText and streamObject). The success criteria is that if we load up the all but last messages, we would be able to rerun on LLM with the same config and produce similar resutls
+9. when all of the above is in place, we would want to enable caching. but now since we have everything in the db, we would not run the cache via files (like how @CachedLLMService.ts does), but hit the cache by loading all information needed from db.
+10. No backward compatibilty or legacy code. Let's change/remove things that are necessary.
+
+This is a complex refactoring, so first let's take a deep dive into the codebase, and ask any clarification questions. 
+
+=====
+
+1. for now, new tool call = new conversation. for agents, let's treat the agent session as one. we want to take advantage of context caching: @https://www.alibabacloud.com/help/tc/model-studio/context-cache , which part of the reason why we are doing this refactoring. so let's try enabling that at the agent level. Currently @AssistantChatSidebar.tsx has a "clear converastion" button (trash can icon). let's replace that with "new conversation", to prime the user with this concept as well. Let's not worry about conversation branching for now (but leave room as a future improvement).
+2. update the same message. 
+3. complement it. i believe tool call id also comes internally from the llm. let's store them all. Should we track which specific message in a conversation triggered a transform creation? yes, I always assume the user/human message preceeding (conversationId, rawMessageId) would be the one that triggers it, but it doesn't hurt to record this explicitly as well.
+4. I don't undersatand your question. the sequence should be: start/resume conversation => obtain streamText/streamObject, then whenever you call streamText/streamObject, at the start human / system messages are stored. then when llm start returning stuff (could be multiple ones in a multi step tool call), messages are continually saved.
+Tool calls should be tracked, to the extent that if i want to filter out all tool calls, including calling params, i should be able to (tool calls in theory are special kind of raw messages. I'm not sure. use your best judgement to design data structure so that the full history can be restored, analyzed, replayed (via say cache, etc)).
+5. store at the message level. the rationale is that in theory we could switch model/change params mid way in any part of hte  conversation. 
+6. i'd prefer we nuke the old and just create something new. you could still call it chat_messages_raw (and another table for conversation/session).
+7. i think it makes more sense at the message level. the hash would be based on the full conversation history up to the point of the current message, among other things you think should include and make sense.
+8. like i said, no backward compatibility. nuke everything old. no legacy support, please, please, please. I don't want extra stuff. we are in dev mode. it's ok to tear things down.
+9. @RawChatMessages.tsx always loads for a single project context (see @ProjectLayout.tsx ). but within a project, let's just do a dropdown at top listing all conversations. then for a single conversation, add some filters say human/assistant/tool call, etc. sure, metadata is a good idea.
+10. good question. for completeenss's stake, can we store failed conversation as well, but when say we reconstruct history for resuming llm conversation's sake, exclude failde ones? 
+
+This is a super complex feature. Please take another deep dive in the codebase, then write down a detailed implementation plan in a markdwon file, including design rationale, goals, what files needs to touch and modify, sketch of ideas, schemas, and a todo checklist in phases. 

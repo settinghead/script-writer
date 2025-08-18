@@ -14,7 +14,7 @@ import {
 } from './outlineSchemas';
 
 // Import schemas from streaming.ts 
-import { IdeaSchema, ScriptSchema } from './streaming';
+import { IdeaSchema} from './streaming';
 
 // Import JSON patch schema from transforms
 import { JsonPatchOperationsSchema } from './transforms';

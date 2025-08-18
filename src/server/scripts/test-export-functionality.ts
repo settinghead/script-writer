@@ -25,10 +25,9 @@ async function testExportFunctionality() {
         await db.insertInto('projects')
             .values({
                 id: testProjectId,
-                name: 'Export Test Project',
+                title: 'Export Test Project',
                 description: 'Test project for export functionality',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
+                created_at: new Date().toISOString()
             })
             .execute();
 

@@ -50,7 +50,7 @@ const EditableEpisodeScriptForm: React.FC<EditableEpisodeScriptFormProps> = ({ j
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
                     <ClockCircleOutlined style={{ color: '#faad14', marginRight: '8px' }} />
                     <Text strong style={{ fontSize: '14px', color: '#fff' }}>
-                        预估时长（分钟）
+                        预估时长（秒）
                     </Text>
                 </div>
                 <YJSNumberField

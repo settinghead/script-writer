@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request} from 'express';
 import { createAuthMiddleware } from '../middleware/auth';
 import { db } from '../database/connection';
 import { AuthDatabase } from '../database/auth';

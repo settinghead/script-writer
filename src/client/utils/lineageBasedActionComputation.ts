@@ -22,7 +22,6 @@ import BrainstormIdeaSelection from '../components/actions/BrainstormIdeaSelecti
 import OutlineGenerationForm from '../components/actions/OutlineGenerationForm';
 import ChroniclesGenerationAction from '../components/actions/ChroniclesGenerationAction';
 import EpisodePlanningAction from '../components/actions/EpisodePlanningAction';
-import EpisodeGenerationAction from '../components/actions/EpisodeGenerationAction';
 import EpisodeSynopsisGenerationAction from '../components/actions/EpisodeSynopsisGenerationAction';
 import EpisodeScriptGenerationAction from '../components/actions/EpisodeScriptGenerationAction';
 
@@ -113,18 +112,37 @@ export function computeActionsFromLineage(
 
 // Helper function to parse episode range like "1-3" to [1, 2, 3]
 function parseEpisodeRange(episodeRange: string): number[] {
-    const parts = episodeRange.split('-');
-    if (parts.length !== 2) return [];
+    if (!episodeRange) return [];
+    // Normalize various formats: “第1-3集”, "1～3", "1–3", "1,2,3"
+    const normalized = episodeRange
+        .replace(/第/g, '')
+        .replace(/集/g, '')
+        .replace(/[～—–−–]/g, '-') // various dashes to hyphen
+        .replace(/，/g, ',')
+        .trim();
 
-    const start = parseInt(parts[0]);
-    const end = parseInt(parts[1]);
-
-    if (isNaN(start) || isNaN(end) || start > end) return [];
-
-    const episodes = [];
-    for (let i = start; i <= end; i++) {
-        episodes.push(i);
+    // If comma-separated list
+    if (normalized.includes(',')) {
+        return normalized
+            .split(',')
+            .map(s => parseInt(s.trim(), 10))
+            .filter(n => !isNaN(n));
     }
+
+    // If single number
+    if (/^\d+$/.test(normalized)) {
+        const n = parseInt(normalized, 10);
+        return isNaN(n) ? [] : [n];
+    }
+
+    // Range a-b
+    const parts = normalized.split('-').map(p => p.trim());
+    if (parts.length !== 2) return [];
+    const start = parseInt(parts[0], 10);
+    const end = parseInt(parts[1], 10);
+    if (isNaN(start) || isNaN(end) || start > end) return [];
+    const episodes: number[] = [];
+    for (let i = start; i <= end; i++) episodes.push(i);
     return episodes;
 }
 
@@ -132,9 +150,9 @@ function parseEpisodeRange(episodeRange: string): number[] {
  * Generate actions for a specific workflow stage
  */
 function generateActionsFromContext(context: LineageBasedActionContext): ActionItem[] {
-    if (context.hasActiveTransforms) {
-        return [];
-    }
+    // Do NOT short-circuit when there are active transforms.
+    // We still want to display available actions so users can see next steps.
+    // Components will receive hasActiveTransforms and can render as disabled.
 
     const actions: ActionItem[] = [];
 

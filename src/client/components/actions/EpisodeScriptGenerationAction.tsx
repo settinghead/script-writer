@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { Button, message, Alert, Typography } from 'antd';
+import { Button, message, Alert, Typography, Row, Col } from 'antd';
+import TextareaAutosize from 'react-textarea-autosize';
 import { apiService } from '../../services/apiService';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 
@@ -19,6 +20,7 @@ interface EpisodeScriptGenerationActionProps extends ActionComponentProps {
 const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps> = (props) => {
     const { projectId, onSuccess, onError, targetEpisode, jsondocs } = props;
     const [isGenerating, setIsGenerating] = useState(false);
+    const [additionalInstructions, setAdditionalInstructions] = useState('');
 
     const episodeSynopsis = jsondocs.episodeSynopsis;
 
@@ -30,13 +32,19 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
 
         setIsGenerating(true);
         try {
-            // Send chat message to trigger generation (following existing pattern)
-            await apiService.sendChatMessage(projectId,
-                `生成第${targetEpisode.episodeNumber}集剧本`,
+            // Get or create conversation ID
+            const conversationId = await (apiService as any).getOrCreateConversation(projectId);
+
+            // Send chat message with intent field to trigger shortcut
+            await apiService.sendChatMessage(
+                projectId,
+                conversationId,
+                `生成第${targetEpisode.episodeNumber}集剧本。要求: ${additionalInstructions || '无特殊要求'}`,
                 {
-                    action: 'generate_单集剧本',
+                    intent: 'generate_episode_script',
                     episodeNumber: targetEpisode.episodeNumber,
-                    episodeSynopsisJsondocId: targetEpisode.synopsisId
+                    episodeSynopsisJsondocId: targetEpisode.synopsisId,
+                    userRequirements: additionalInstructions
                 }
             );
 
@@ -49,7 +57,7 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
         } finally {
             setIsGenerating(false);
         }
-    }, [episodeSynopsis, targetEpisode, projectId, onSuccess, onError]);
+    }, [episodeSynopsis, targetEpisode, projectId, additionalInstructions, onSuccess, onError]);
 
     if (!episodeSynopsis) {
         return (
@@ -58,26 +66,54 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
     }
 
     return (
-        <div style={{ textAlign: 'center' }}>
-            <Button
-                type="primary"
-                size="large"
-                loading={isGenerating}
-                onClick={handleGenerate}
-                style={{
-                    fontSize: '16px',
-                    background: 'linear-gradient(135deg, #52c41a 0%, #389e0d 100%)',
-                    border: 'none'
-                }}
-            >
-                {isGenerating ? '生成中...' : `生成第${targetEpisode.episodeNumber}集剧本`}
-            </Button>
-
-            <div style={{ marginTop: 8 }}>
-                <Text type="secondary">
-                    基于分集大纲生成完整剧本内容
-                </Text>
-            </div>
+        <div style={{ width: '100%' }}>
+            <Row gutter={[12, 12]} align="middle" justify="center">
+                <Col xs={24} md={16}>
+                    <TextareaAutosize
+                        placeholder="补充说明（可选）：例如台词风格、场景要求、镜头节奏、表演语气等。按 Ctrl/⌘+Enter 立即生成。"
+                        value={additionalInstructions}
+                        onChange={(e) => setAdditionalInstructions(e.target.value)}
+                        minRows={1}
+                        maxRows={6}
+                        onKeyDown={(e) => {
+                            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                                e.preventDefault();
+                                handleGenerate();
+                            }
+                        }}
+                        style={{
+                            width: '100%',
+                            resize: 'none',
+                            padding: '8px 12px',
+                            borderRadius: 6,
+                            background: '#1f1f1f',
+                            color: '#fff',
+                            border: '1px solid #303030',
+                            lineHeight: 1.5,
+                        }}
+                    />
+                </Col>
+                <Col xs={24} md={8} style={{ textAlign: 'center' }}>
+                    <Button
+                        type="primary"
+                        size="large"
+                        loading={isGenerating}
+                        onClick={handleGenerate}
+                        style={{
+                            width: '100%',
+                            height: 48,
+                            fontSize: '16px',
+                            background: 'linear-gradient(135deg, #52c41a 0%, #389e0d 100%)',
+                            border: 'none'
+                        }}
+                    >
+                        {isGenerating ? '生成中...' : `生成第${targetEpisode.episodeNumber}集剧本`}
+                    </Button>
+                </Col>
+                <Col span={24} style={{ textAlign: 'center' }}>
+                    <Text type="secondary">基于分集大纲生成完整剧本内容</Text>
+                </Col>
+            </Row>
         </div>
     );
 };

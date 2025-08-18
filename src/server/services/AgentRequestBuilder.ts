@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { CanonicalJsondocService } from './CanonicalJsondocService';
 import { type CanonicalJsondocContext } from '../../common/canonicalJsondocLogic';
@@ -227,13 +226,13 @@ export function computeAvailableToolsFromCanonicalContext(
         const particleSystem = getParticleSystem();
         if (particleSystem && particleSystem.unifiedSearch) {
             const particleSearchTools = getParticleSearchToolNames();
-            particleSearchTools.forEach(toolName => {
-                if (toolName === 'queryJsondocs') {
-                    addTool(() => createQueryToolDefinition(particleSystem.unifiedSearch, projectId, userId));
-                } else if (toolName === 'getJsondocContent') {
-                    addTool(() => createGetJsondocContentToolDefinition(jsondocRepo, projectId, userId));
-                }
-            });
+            // particleSearchTools.forEach(toolName => {
+            //     if (toolName === 'queryJsondocs') {
+            //         addTool(() => createQueryToolDefinition(particleSystem.unifiedSearch, projectId, userId));
+            //     } else if (toolName === 'getJsondocContent') {
+            //         addTool(() => createGetJsondocContentToolDefinition(jsondocRepo, projectId, userId));
+            //     }
+            // });
             // console.log(`[AgentRequestBuilder] Added particle search tools (${particleSearchTools.length}):`, particleSearchTools);
         } else {
             console.log('[AgentRequestBuilder] Particle system not available, skipping particle search tools');

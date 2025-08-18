@@ -76,6 +76,35 @@ const humanTransform = {
 };
 ```
 
+#### Human Transforms in Practice (UI/Trigger Patterns)
+
+Human transforms model user‑initiated edits. The core invariants are framework‑level and UI‑agnostic:
+
+- AI outputs are immutable. Editing creates a new jsondoc via a Human Transform.
+- The relationship is tracked: source jsondoc → Human Transform → derived `user_input` jsondoc.
+- Editing can target the whole document (`derivationPath: "$"`) or a specific sub‑path (e.g., `$.items[0]`).
+- All operations are validated (Zod) and recorded with complete lineage.
+
+Applications can implement any trigger pattern. Common patterns include (non‑exhaustive):
+
+- Click‑to‑edit on read‑only views (entire card/section or explicit edit affordance)
+- Explicit “Edit” or “Create editable copy” buttons in toolbars/action bars
+- Context menus on specific fields or nested sections (path‑level editing)
+- Programmatic/API‑driven edits (e.g., batch operations, integrations)
+- Collaborative editors (e.g., CRDT/YJS sessions) that, upon commit, produce a human transform output
+
+Canonical HTTP API pattern (reference implementation):
+
+- Endpoint: `POST /api/jsondocs/:id/human-transform` (authenticated; project‑scoped authorization)
+- Body: `{ transformName: string; derivationPath: string; fieldUpdates?: Record<string, unknown> }`
+- Result: `{ transform, derivedJsondoc }`
+
+Notes:
+
+- `transformName` is application‑defined and mapped in a transform registry (source/target types, path pattern, instantiation function).
+- The endpoint name and routing are part of the reference implementation; other applications may expose equivalent RPCs or internal service calls.
+- The framework’s responsibility is to enforce the jsondoc → transform → jsondoc paradigm, path‑scoped derivations, schema validation, and project‑scoped access control, independent of UI choices.
+
 ### **Machine Transforms: When AI Processes Content**
 
 **What they are**: Machine transforms occur when AI models, algorithms, or automated processes generate new content from existing jsondocs.
@@ -828,7 +857,6 @@ export function ParticleMentions({ projectId, value, onChange }: Props) {
 **API Endpoints**:
 - `GET /api/particles/search` - Embedding-based semantic search for agents
 - `GET /api/particles/search-mention` - String-based fast search for @mentions
-- `GET /api/admin/particle-agent/health` - System health monitoring
 - `POST /api/admin/particle-agent/test` - Agent testing with custom queries
 
 **Health Monitoring**:
@@ -2000,91 +2028,7 @@ First Run:  Cache MISS → Saved 77 chunks to cache
 Second Run: Cache HIT (77 chunks) → Near-instantaneous replay
 ```
 
-### Long-Term Context Caching
 
-**Context Caching System**: The framework implements intelligent conversation history management to leverage LLM context caching (e.g., Qwen Context Cache) for significant cost savings and performance improvements.
-
-**Key Features**:
-- **Conversation History Storage** - Complete conversation tracking linked to transform lineage
-- **Automatic Continuation Detection** - Smart detection of follow-up requests for multi-batch operations
-- **Cache-Optimized Prompts** - Template restructuring with fixed content first for maximum caching efficiency
-- **Seamless User Experience** - Transparent history reconstruction without user intervention
-
-**Architecture Components**:
-
-**1. Conversation Storage**:
-```sql
--- Chat conversations table for history tracking
-CREATE TABLE chat_conversations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  project_id TEXT NOT NULL REFERENCES projects(id),
-  tool_name TEXT NOT NULL,
-  tool_call_id VARCHAR(255),
-  messages JSONB NOT NULL, -- Array of {role, content} objects
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
--- Enhanced transforms table with tool call linking
-ALTER TABLE transforms ADD COLUMN tool_call_id VARCHAR(255);
-```
-
-**2. Smart Continuation Detection**:
-```typescript
-// Automatic detection of continuation requests
-const continuationKeywords = ['continue', 'next', '继续', '接下来'];
-const episodeRangePattern = /第\s*\d+\s*-\s*\d+\s*集/; // "第7-12集"
-
-const isContinuation = userRequest.toLowerCase().includes('continue') || 
-                      userRequest.includes('接下来') ||
-                      episodeRangePattern.test(userRequest);
-```
-
-**3. History Reconstruction**:
-```typescript
-// ChatMessageRepository methods for conversation management
-async saveConversation(projectId, toolName, toolCallId, messages): Promise<void>
-async reconstructHistoryForAction(projectId, toolName, params): Promise<Message[]>
-async hasExistingConversation(projectId, toolName): Promise<boolean>
-```
-
-**4. Cache-Optimized Templates**:
-```typescript
-// Template structure optimized for context caching
-const episodeSynopsisTemplate = `
-## 参考资料
-%%jsondocs%% // Fixed content - cacheable prefix (≥256 tokens)
-
-## 创作要求
-[Fixed instructions and formatting requirements]
-
----
-## 任务 
-%%params%% // Variable content - non-cacheable suffix
-`;
-```
-
-**Usage Pattern - Episode Synopsis Generation**:
-```typescript
-// First request: "生成第1-6集的剧集大纲"
-// → Full context sent to LLM → Conversation history stored
-
-// Continuation request: "继续生成第7-12集的大纲"  
-// → History reconstructed → Multi-message prompt enables caching
-// → Shared prefixes cached at 40% cost of input tokens
-```
-
-**Benefits**:
-- **30%+ Cost Savings** - Cached tokens cost 40% of input tokens (Qwen Context Cache)
-- **Faster Response Times** - Cached prefixes processed more efficiently
-- **Seamless Continuations** - Multi-batch workflows (episodes 1-6, then 7-12) work transparently
-- **Complete Audit Trail** - All conversations linked to transform lineage via tool call IDs
-
-**Integration with Transform System**:
-- **Tool Call Linking** - Every transform records its `tool_call_id` for conversation tracking
-- **Automatic Saving** - Successful tool executions automatically store conversation history
-- **Project-Based Access** - Conversation history respects project membership and access control
-- **Framework Agnostic** - Can be extended to any tool requiring context continuity
 
 ## Electric SQL Integration
 
@@ -2966,7 +2910,6 @@ export class ParticleExtractor {
 **API Endpoints**:
 - `GET /api/particles/search` - Embedding-based semantic search for agents
 - `GET /api/particles/search-mention` - String-based fast search for @mentions
-- `GET /api/admin/particle-agent/health` - System health and performance monitoring
 
 ### Debug Facility & Tool Registry
 
@@ -4603,3 +4546,317 @@ The framework includes a fully implemented **patch approval system** that provid
 - **General Algorithm** - Works with any jsondoc schema type using canonical resolution logic
 
 This implementation showcases how the Transform Jsondoc Framework enables sophisticated workflows that would be complex to implement from scratch, while maintaining the core principles of immutability, traceability, and real-time collaboration. 
+
+### Conversation Management System
+
+**Conversation-Centric Architecture**: The framework implements a comprehensive conversation management system that serves as the foundation for all LLM interactions, enabling context caching, complete history tracking, and user-friendly message presentation.
+
+**Design Philosophy**:
+- **Conversation-First** - Every LLM interaction must belong to a conversation context
+- **Complete History** - Store all messages (system, user, assistant, tool) with full parameters
+- **Immutable Messages** - Messages are immutable except for the last assistant message during streaming
+- **Dual Message Streams** - Raw technical messages for backend + user-friendly display messages for frontend
+
+**Key Features**:
+- **Context Caching Integration** - Leverages provider context caching (e.g., Alibaba Qwen Context Cache) for 40%+ cost reduction
+- **Transform Association** - Links transforms to specific conversation messages for complete lineage
+- **Tool Call Tracking** - Comprehensive tracking of tool invocations with parameters and results
+- **User-Friendly Messages** - Parallel display message stream hides technical details from users
+- **Real-time Synchronization** - Electric SQL sync for instant message updates across clients
+
+**Architecture Components**:
+
+**1. Database Schema**:
+```sql
+-- Core conversations table
+CREATE TABLE conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    type TEXT NOT NULL CHECK (type IN ('agent', 'tool')), -- conversation type
+    metadata JSONB DEFAULT '{}', -- flexible metadata storage
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Complete message history with LLM parameters
+CREATE TABLE conversation_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('system', 'user', 'assistant', 'tool')),
+    content TEXT NOT NULL,
+    
+    -- Tool-specific fields
+    tool_name TEXT, -- for tool calls
+    tool_call_id TEXT, -- from LLM
+    tool_parameters JSONB, -- tool input parameters
+    tool_result JSONB, -- tool execution result
+    
+    -- LLM parameters (stored per message for flexibility)
+    model_name TEXT,
+    temperature NUMERIC,
+    top_p NUMERIC,
+    max_tokens INTEGER,
+    seed INTEGER,
+    
+    -- Caching support
+    content_hash TEXT, -- hash of full conversation up to this point
+    cache_hit BOOLEAN DEFAULT FALSE,
+    cached_tokens INTEGER DEFAULT 0,
+    
+    -- Status tracking
+    status TEXT DEFAULT 'completed' CHECK (status IN ('streaming', 'completed', 'failed')),
+    error_message TEXT,
+    
+    -- Metadata
+    metadata JSONB DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- User-friendly display messages
+CREATE TABLE conversation_messages_display (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    raw_message_id UUID NOT NULL REFERENCES conversation_messages(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('user', 'assistant')), -- Simplified roles
+    content TEXT NOT NULL, -- User-friendly, vague content
+    display_type TEXT DEFAULT 'message' CHECK (display_type IN ('message', 'thinking', 'progress')),
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    UNIQUE(raw_message_id) -- One display message per raw message
+);
+
+-- Current conversation tracking per project
+CREATE TABLE project_current_conversations (
+    project_id TEXT PRIMARY KEY REFERENCES projects(id) ON DELETE CASCADE,
+    conversation_id UUID NOT NULL REFERENCES conversations(id),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Enhanced transforms table with conversation tracking
+ALTER TABLE transforms 
+ADD COLUMN conversation_id UUID REFERENCES conversations(id),
+ADD COLUMN trigger_message_id UUID REFERENCES conversation_messages(id);
+```
+
+**2. Functional Conversation Management**:
+```typescript
+// Core conversation management using functional patterns
+type ConversationId = string;
+type MessageId = string;
+
+// Create or resume conversation
+async function createConversation(
+    projectId: string,
+    type: 'agent' | 'tool',
+    metadata?: Record<string, any>
+): Promise<ConversationId>
+
+async function resumeConversation(
+    conversationId: ConversationId
+): Promise<ConversationContext>
+
+// Conversation context with bound streaming functions
+interface ConversationContext {
+    conversationId: ConversationId;
+    projectId: string;
+    
+    // Bound streaming functions that automatically track messages
+    streamText: (params: StreamTextParams) => Promise<StreamTextResult>;
+    streamObject: <T>(params: StreamObjectParams<T>) => Promise<StreamObjectResult<T>>;
+    
+    // Message management
+    addMessage: (message: ConversationMessage) => Promise<MessageId>;
+    getMessages: () => Promise<ConversationMessage[]>;
+    updateLastMessage: (content: string, status?: MessageStatus) => Promise<void>;
+}
+
+// Transactional message creation with display messages
+async function createMessageWithDisplay(
+    conversationId: string,
+    role: MessageRole,
+    content: string,
+    options: MessageOptions
+): Promise<{ rawMessageId: string; displayMessageId: string }> {
+    return await db.transaction().execute(async (trx) => {
+        // 1. Create raw message
+        const rawMessage = await trx.insertInto('conversation_messages')...
+        
+        // 2. Create display message
+        const displayContent = generateUserFriendlyContent(role, content, options);
+        const displayMessage = await trx.insertInto('conversation_messages_display')...
+        
+        return { rawMessageId, displayMessageId };
+    });
+}
+```
+
+**3. User-Friendly Message Generation**:
+```typescript
+// Message mapping for user-friendly display
+const TOOL_MESSAGES = {
+    'brainstorm_generation': [
+        "✨ 创意火花四溅中...",
+        "🎨 灵感正在酝酿...",
+        "💡 捕捉精彩创意..."
+    ],
+    'outline_generation': [
+        "📝 精心编织故事大纲...",
+        "🏗️ 构建剧情框架...",
+        "📖 雕琢故事细节..."
+    ],
+    'chronicles_generation': [
+        "⏰ 梳理时间线索...",
+        "📅 编排剧情节奏...",
+        "🗓️ 整理故事脉络..."
+    ],
+    'episode_planning': [
+        "🎬 规划精彩剧集...",
+        "📺 设计分集结构...",
+        "🎭 安排剧情高潮..."
+    ]
+};
+
+// Generate user-friendly content based on message type
+function generateUserFriendlyContent(
+    role: MessageRole,
+    content: string,
+    options: { toolName?: string; status?: string }
+): string {
+    if (role === 'user') return content; // Users see what they typed
+    if (role === 'system') return ''; // System messages hidden
+    if (role === 'tool' && options.toolName) {
+        const messages = TOOL_MESSAGES[options.toolName] || ["🔧 努力工作中..."];
+        return messages[Math.floor(Math.random() * messages.length)];
+    }
+    return content; // Assistant messages shown as-is
+}
+```
+
+**4. Content Hash Calculation for Caching**:
+```typescript
+// Calculate content hash for cache key generation
+function calculateContentHash(
+    messages: ConversationMessage[],
+    currentParams: StreamParams
+): string {
+    // Include all message content + current parameters
+    const hashInput = {
+        messages: messages.map(m => ({ role: m.role, content: m.content })),
+        model: currentParams.model,
+        temperature: currentParams.temperature,
+        // ... other relevant parameters
+    };
+    
+    return crypto
+        .createHash('sha256')
+        .update(JSON.stringify(hashInput))
+        .digest('hex');
+}
+```
+
+**5. Streaming with Conversation Context**:
+```typescript
+// Streaming wrapper that tracks messages automatically
+function createConversationContext(
+    conversation: Conversation,
+    existingMessages: ConversationMessage[]
+): ConversationContext {
+    const streamText = async (params: StreamTextParams) => {
+        // Save user/system messages before streaming
+        await savePreStreamingMessages(conversationId, params.messages);
+        
+        // Calculate content hash for caching
+        const contentHash = calculateContentHash(existingMessages, params);
+        
+        // Create assistant message placeholder
+        const assistantMessageId = await createStreamingMessage(
+            conversationId, 
+            'assistant',
+            params
+        );
+        
+        // Stream with automatic message tracking
+        const result = await aiStreamText({
+            model,
+            ...params,
+            // Add context caching headers if supported
+            experimental_contextCache: {
+                contentHash,
+                conversationId
+            }
+        });
+        
+        // Wrap stream to track content and create display messages
+        return wrapStreamForTracking(result, assistantMessageId, conversationId);
+    };
+    
+    return { conversationId, projectId, streamText, streamObject, ... };
+}
+```
+
+**Usage Patterns**:
+
+**Agent Conversations** (one conversation for entire session):
+```typescript
+// Create conversation for agent session
+const conversationId = await createConversation(projectId, 'agent');
+const context = await resumeConversation(conversationId);
+
+// Use bound streaming functions
+const result = await context.streamText({
+    messages: [
+        { role: 'system', content: 'You are a helpful assistant' },
+        { role: 'user', content: userRequest }
+    ],
+    temperature: 0.7,
+    tools: agentTools
+});
+```
+
+**Tool Conversations** (new conversation per invocation):
+```typescript
+// Create conversation for tool invocation
+const toolConversationId = await createConversation(projectId, 'tool', {
+    toolName: 'brainstorm_ideas',
+    parentConversationId: conversationId // link to agent conversation
+});
+
+const toolContext = await resumeConversation(toolConversationId);
+const toolResult = await toolContext.streamObject({
+    messages: [...],
+    schema: BrainstormOutputSchema
+});
+```
+
+**Benefits**:
+- **40%+ Cost Reduction** - Context caching for repeated conversation prefixes
+- **Complete Audit Trail** - Every message and parameter tracked immutably
+- **IP Protection** - Technical details hidden from users via display messages
+- **Transform Lineage** - Direct association between conversations and transforms
+- **Real-time Updates** - Electric SQL sync for collaborative chat experiences
+- **Debugging Power** - Comprehensive conversation debugging tools (see below)
+
+**Conversation Debugging Tools**:
+
+The framework includes a comprehensive suite of Node.js debugging tools for conversation analysis:
+
+- **`list-project-conversations.ts`** - Overview of all conversations with statistics
+- **`get-conversation-by-transform.ts`** - Find conversation that generated a transform
+- **`get-recent-agent-conversations.ts`** - Analyze recent agent activity with metrics
+- **`get-conversation-content.ts`** - View complete conversation with all details
+- **`search-conversations.ts`** - Search across conversations with multiple criteria
+
+Example usage:
+```bash
+# Project conversation overview
+./run-ts src/server/scripts/list-project-conversations.ts <project-id>
+
+# Debug transform generation
+./run-ts src/server/scripts/get-conversation-by-transform.ts <transform-id> --verbose
+
+# Search for errors
+./run-ts src/server/scripts/search-conversations.ts --project <project-id> --has-errors
+```
+
+// ... existing code ...

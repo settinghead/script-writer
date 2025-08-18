@@ -68,38 +68,65 @@ export interface AuthProviders {
   user_id: string;
 }
 
-export interface ChatMessagesDisplay {
-  content: string;
-  created_at: Generated<Timestamp>;
-  display_type: Generated<string | null>;
-  id: string;
-  project_id: string;
-  raw_message_id: string | null;
-  role: string;
-  status: Generated<string | null>;
-  updated_at: Generated<Timestamp>;
-}
-
-export interface ChatMessagesRaw {
-  content: string;
-  created_at: Generated<Timestamp>;
-  id: string;
-  metadata: Json | null;
-  project_id: string;
-  role: string;
-  tool_name: string | null;
-  tool_parameters: Json | null;
-  tool_result: Json | null;
-  updated_at: Generated<Timestamp>;
-}
-
-export interface ChatConversations {
+// New conversation tables
+export interface Conversations {
   id: Generated<string>;
   project_id: string;
-  tool_name: string;
-  tool_call_id: string | null;
-  messages: Json;
+  type: string; // 'agent' | 'tool'
+  status: Generated<string>; // 'active' | 'completed' | 'failed'
+  metadata: Generated<Json>;
   created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface ConversationMessages {
+  id: Generated<string>;
+  conversation_id: string;
+  role: string; // 'system' | 'user' | 'assistant' | 'tool'
+  content: string;
+
+  // Tool-specific fields
+  tool_name: string | null;
+  tool_call_id: string | null;
+  tool_parameters: Json | null;
+  tool_result: Json | null;
+
+  // LLM parameters
+  model_name: string | null;
+  temperature: Numeric | null;
+  top_p: Numeric | null;
+  max_tokens: number | null;
+  seed: number | null;
+
+  // Caching support
+  content_hash: string | null;
+  cache_hit: Generated<boolean>;
+  cached_tokens: Generated<number>;
+
+  // Status tracking
+  status: Generated<string>; // 'streaming' | 'completed' | 'failed'
+  error_message: string | null;
+
+  // Metadata
+  metadata: Generated<Json>;
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface ConversationMessagesDisplay {
+  id: Generated<string>;
+  conversation_id: string;
+  raw_message_id: string;
+  role: string; // 'user' | 'assistant'
+  content: string;
+  display_type: Generated<string>; // 'message' | 'thinking' | 'progress'
+  created_at: Generated<Timestamp>;
+  updated_at: Generated<Timestamp>;
+}
+
+export interface ProjectCurrentConversations {
+  project_id: string;
+  conversation_id: string;
   updated_at: Generated<Timestamp>;
 }
 
@@ -136,10 +163,10 @@ export interface Projects {
   created_at: Generated<Timestamp>;
   description: string | null;
   id: string;
-  name: string;
+  project_title_manual_override: Generated<boolean>;
   project_type: Generated<string | null>;
   status: Generated<string | null>;
-  updated_at: Generated<Timestamp>;
+  title: string;
 }
 
 export interface ProjectsUsers {
@@ -182,6 +209,9 @@ export interface Transforms {
   type: string;
   type_version: Generated<string>;
   updated_at: Generated<Timestamp>;
+  // New conversation tracking columns
+  conversation_id: string | null;
+  trigger_message_id: string | null;
 }
 
 export interface Users {
@@ -232,9 +262,10 @@ export interface DB {
   jsondoc_yjs_documents: JsondocYjsDocuments;
   jsondocs: Jsondocs;
   auth_providers: AuthProviders;
-  chat_conversations: ChatConversations;
-  chat_messages_display: ChatMessagesDisplay;
-  chat_messages_raw: ChatMessagesRaw;
+  conversations: Conversations;
+  conversation_messages: ConversationMessages;
+  conversation_messages_display: ConversationMessagesDisplay;
+  project_current_conversations: ProjectCurrentConversations;
   embedding_cache: EmbeddingCache;
   human_transforms: HumanTransforms;
   llm_prompts: LlmPrompts;

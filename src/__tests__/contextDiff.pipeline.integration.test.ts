@@ -2,14 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import { createPatch } from 'rfc6902';
-import { jsonrepair } from 'jsonrepair';
 import {
     extractUnifiedDiffOnly,
     applyContextDiffAndGeneratePatches,
     parseUnifiedDiff,
     applyHunksToText,
     UnifiedDiffHunk
-} from '../common/contextDiff';
+} from '@/common/contextDiff';
 import { repairJsonSync } from '../server/utils/jsonRepair';
 
 /**

@@ -25,12 +25,11 @@ async function testMultiPatchWorkflow() {
         await db.insertInto('projects')
             .values({
                 id: projectId,
-                name: 'Multi-Patch Workflow Test Project',
+                title: 'Multi-Patch Workflow Test Project',
                 description: 'Test project for multi-patch workflow',
                 project_type: 'script',
                 status: 'active',
-                created_at: new Date(),
-                updated_at: new Date()
+                created_at: new Date()
             })
             .execute();
 

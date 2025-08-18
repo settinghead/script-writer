@@ -28,11 +28,10 @@ async function main() {
             .insertInto('projects')
             .values({
                 id: TEST_PROJECT_ID,
-                name: 'Test Recursive Deletion Project',
+                title: 'Test Recursive Deletion Project',
                 description: 'Testing recursive patch deletion',
                 status: 'active',
-                created_at: new Date(),
-                updated_at: new Date()
+                created_at: new Date()
             })
             .onConflict((oc) => oc.column('id').doNothing())
             .execute();

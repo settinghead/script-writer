@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { Button, Space, Typography, message } from 'antd';
-import { BulbOutlined, EditOutlined } from '@ant-design/icons';
+import { Button, Typography, message } from 'antd';
+import { EditOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';

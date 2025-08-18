@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Typography, Tabs, Select, Spin, Alert, Empty, Button } from 'antd';
+import { Card, Typography, Tabs, Select, Spin, Alert, Button } from 'antd';
 import { BugOutlined, MessageOutlined, HistoryOutlined, ReloadOutlined } from '@ant-design/icons';
 import DebugRawToolCall from './DebugRawToolCall';
 

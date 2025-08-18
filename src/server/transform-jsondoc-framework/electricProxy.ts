@@ -97,6 +97,18 @@ export function createElectricProxyRoutes(authDB: AuthDatabase, jsondocRepo: Tra
                         ? `(${existingWhere}) AND (${userScopedWhere})`
                         : userScopedWhere;
                     break;
+                case 'conversation_messages_display':
+                    // New conversation display messages table - no project_id scoping needed
+                    // as it's filtered by conversation_id which is already access-controlled
+                    finalWhereClause = existingWhere || '';
+                    break;
+                case 'conversations':
+                case 'project_current_conversations':
+                    // Conversation-related tables scoped by project_id
+                    finalWhereClause = existingWhere
+                        ? `(${existingWhere}) AND (${userScopedWhere})`
+                        : userScopedWhere;
+                    break;
                 case 'jsondoc_yjs_documents':
                 case 'jsondoc_yjs_awareness':
                     // For YJS tables, we'll handle authorization at the API level instead

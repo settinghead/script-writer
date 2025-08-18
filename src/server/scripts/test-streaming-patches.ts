@@ -29,14 +29,11 @@ async function testStreamingPatches() {
         await db.insertInto('projects')
             .values({
                 id: testProjectId,
-                name: 'Streaming Patches Test',
+                title: 'Streaming Patches Test',
                 description: 'Test project for streaming patches',
-                created_at: new Date(),
-                updated_at: new Date()
+                created_at: new Date()
             })
-            .onConflict((oc) => oc.column('id').doUpdateSet({
-                updated_at: new Date()
-            }))
+            .onConflict((oc) => oc.column('id').doNothing())
             .execute();
 
         await db.insertInto('projects_users')

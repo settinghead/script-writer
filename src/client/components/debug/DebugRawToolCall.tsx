@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Card, Typography, Tabs, Spin, Alert, Select, Button, Space, Form, Input, Divider } from 'antd';
-import { ToolOutlined, BugOutlined, FileTextOutlined, DatabaseOutlined, SaveOutlined, DeleteOutlined, ReloadOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import { Card, Typography, Spin, Alert, Select, Button, Space, Form, Input, Divider } from 'antd';
+import { BugOutlined, FileTextOutlined, DatabaseOutlined, DeleteOutlined, ReloadOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useDebugParams } from '../../hooks/useDebugParams';
 import { extractCanonicalJsondocIds } from '../../../common/canonicalJsondocLogic';
 import { applyPatch, deepClone } from 'fast-json-patch';
 import * as Diff from 'diff';
-import { applyContextDiffToJSON, applyContextDiffAndGeneratePatches } from '../../../common/contextDiff';
 import type {
     ElectricJsondoc,
     ElectricTransform,

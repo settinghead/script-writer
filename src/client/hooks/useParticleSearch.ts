@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { apiService } from '../services/apiService';
 
 export interface ParticleSearchResult {
     id: string;

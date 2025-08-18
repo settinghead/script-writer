@@ -1,5 +1,6 @@
 // Component State System for Universal Editability Control
 
+import { match } from 'ts-pattern';
 import type {
     ProjectDataContextType
 } from '../../common/types';
@@ -203,39 +204,26 @@ export function isInteractive(state: ComponentState): boolean {
  * Helper function to get user-friendly state description
  */
 export function getStateDescription(stateInfo: ComponentStateInfo): string {
-    switch (stateInfo.state) {
-        case ComponentState.EDITABLE:
-            return '可编辑';
-        case ComponentState.CLICK_TO_EDIT:
-            return '点击编辑';
-        case ComponentState.READ_ONLY:
-            return '只读';
-        case ComponentState.PENDING_PARENT_TRANSFORM:
-            return '等待生成完成';
-        case ComponentState.LOADING:
-            return '加载中';
-        case ComponentState.ERROR:
-            return '错误';
-        default:
-            return '未知状态';
-    }
+    return match(stateInfo.state)
+        .with(ComponentState.EDITABLE, () => '可编辑')
+        .with(ComponentState.CLICK_TO_EDIT, () => '点击编辑')
+        .with(ComponentState.READ_ONLY, () => '只读')
+        .with(ComponentState.PENDING_PARENT_TRANSFORM, () => '等待生成完成')
+        .with(ComponentState.LOADING, () => '加载中')
+        .with(ComponentState.ERROR, () => '错误')
+        .exhaustive();
 }
 
 /**
  * Helper function to get appropriate UI cursor for state
  */
 export function getStateCursor(state: ComponentState): string {
-    switch (state) {
-        case ComponentState.EDITABLE:
-        case ComponentState.CLICK_TO_EDIT:
-            return 'pointer';
-        case ComponentState.PENDING_PARENT_TRANSFORM:
-            return 'wait';
-        case ComponentState.LOADING:
-            return 'wait';
-        case ComponentState.READ_ONLY:
-        case ComponentState.ERROR:
-        default:
-            return 'default';
-    }
+    return match(state)
+        .with(ComponentState.EDITABLE, () => 'pointer')
+        .with(ComponentState.CLICK_TO_EDIT, () => 'pointer')
+        .with(ComponentState.PENDING_PARENT_TRANSFORM, () => 'wait')
+        .with(ComponentState.LOADING, () => 'wait')
+        .with(ComponentState.READ_ONLY, () => 'default')
+        .with(ComponentState.ERROR, () => 'default')
+        .exhaustive();
 } 

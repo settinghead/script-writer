@@ -1,10 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Card, Typography, Space, Tag, Divider, Empty, Select, Alert } from 'antd';
-import { useShape } from '@electric-sql/react';
-import { createElectricConfig } from '../../common/config/electric';
-import type { ElectricRawChatMessage } from '@/common/transform-jsondoc-types';
+import { Card, Typography, Space, Tag, Divider, Empty, Select, Alert, Button, Checkbox, Badge, Collapse } from 'antd';
+import { AppColors } from '@/common/theme/colors';
 
-const { Text, Paragraph } = Typography;
+const { Text, Paragraph, Title } = Typography;
 const { Option } = Select;
 
 interface RawChatMessagesProps {
@@ -13,46 +11,52 @@ interface RawChatMessagesProps {
 
 interface Conversation {
     id: string;
-    tool_name: string;
-    tool_call_id: string;
-    messages: any[];
+    type: 'agent' | 'tool';
+    status: 'active' | 'completed' | 'failed';
+    metadata: Record<string, any>;
     created_at: string;
     updated_at: string;
+}
+
+interface ConversationMessage {
+    id: string;
+    conversation_id: string;
+    role: 'system' | 'user' | 'assistant' | 'tool';
+    content: string;
+    tool_name?: string;
+    tool_call_id?: string;
+    tool_parameters?: Record<string, any>;
+    tool_result?: Record<string, any>;
+    model_name?: string;
+    temperature?: number;
+    cache_hit?: boolean;
+    cached_tokens?: number;
+    status: 'streaming' | 'completed' | 'failed';
+    metadata: Record<string, any>;
+    created_at: string;
 }
 
 const RawChatMessages: React.FC<RawChatMessagesProps> = ({ projectId }) => {
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [selectedConversationId, setSelectedConversationId] = useState<string>('');
-    const [conversationsLoading, setConversationsLoading] = useState(true);
-    const [conversationsError, setConversationsError] = useState<string>('');
+    const [messages, setMessages] = useState<ConversationMessage[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string>('');
 
-    // Electric SQL subscription for raw chat messages
-    const electricConfig = useMemo(() => createElectricConfig(), []);
+    // Message type filters
+    const [filterSystem, setFilterSystem] = useState(true);
+    const [filterUser, setFilterUser] = useState(true);
+    const [filterAssistant, setFilterAssistant] = useState(true);
+    const [filterTool, setFilterTool] = useState(true);
 
-    const rawChatMessagesConfig = useMemo(() => ({
-        ...electricConfig,
-        params: {
-            table: 'chat_messages_raw',
-            where: `project_id = '${projectId}'`,
-        },
-        backoffOptions: {
-            initialDelay: 200,
-            maxDelay: 5000,
-            multiplier: 2.0,
-            maxRetries: 3
-        }
-    }), [electricConfig, projectId]);
-
-    const { data: rawChatMessages, isLoading: rawMessagesLoading } = useShape<ElectricRawChatMessage>(rawChatMessagesConfig);
-
-    // Fetch conversations from admin API
+    // Fetch conversations for the project
     useEffect(() => {
         const fetchConversations = async () => {
             try {
-                setConversationsLoading(true);
-                setConversationsError('');
+                setLoading(true);
+                setError('');
 
-                const response = await fetch(`/api/admin/tool-conversations/${projectId}`, {
+                const response = await fetch(`/api/chat/conversations/${projectId}`, {
                     method: 'GET',
                     headers: {
                         'Authorization': 'Bearer debug-auth-token-script-writer-dev'
@@ -65,66 +69,69 @@ const RawChatMessages: React.FC<RawChatMessagesProps> = ({ projectId }) => {
                 }
 
                 const data = await response.json();
+                setConversations(data);
 
-                if (data.success && data.conversations) {
-                    setConversations(data.conversations);
-                    // Auto-select the most recent conversation
-                    if (data.conversations.length > 0 && !selectedConversationId) {
-                        setSelectedConversationId(data.conversations[0].id);
-                    }
-                } else {
-                    setConversationsError('Failed to fetch conversations');
+                // Auto-select the most recent conversation
+                if (data.length > 0 && !selectedConversationId) {
+                    setSelectedConversationId(data[0].id);
                 }
             } catch (error) {
                 console.error('Error fetching conversations:', error);
-                setConversationsError(error instanceof Error ? error.message : 'Unknown error');
+                setError(error instanceof Error ? error.message : 'Unknown error');
             } finally {
-                setConversationsLoading(false);
+                setLoading(false);
             }
         };
 
         if (projectId) {
             fetchConversations();
         }
-    }, [projectId, selectedConversationId]);
+    }, [projectId]);
 
-    // Safe JSON parsing function
-    const safeJsonParse = (value: any) => {
-        if (!value) return null;
-        if (typeof value === 'object') return value; // Already parsed
-        if (typeof value !== 'string') return value; // Not a string, return as-is
+    // Fetch messages for selected conversation
+    useEffect(() => {
+        const fetchMessages = async () => {
+            if (!selectedConversationId) {
+                setMessages([]);
+                return;
+            }
 
-        try {
-            return JSON.parse(value);
-        } catch (error) {
-            console.warn('Failed to parse JSON:', value, error);
-            return value; // Return original value if parsing fails
-        }
-    };
+            try {
+                const response = await fetch(`/api/chat/conversations/${selectedConversationId}/messages`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer debug-auth-token-script-writer-dev'
+                    },
+                    credentials: 'include'
+                });
 
-    // Filter raw messages by selected conversation
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                setMessages(data);
+            } catch (error) {
+                console.error('Error fetching messages:', error);
+                setError(error instanceof Error ? error.message : 'Unknown error');
+            }
+        };
+
+        fetchMessages();
+    }, [selectedConversationId]);
+
+    // Filter messages based on role filters
     const filteredMessages = useMemo(() => {
-        if (!rawChatMessages || !selectedConversationId) return [];
-
-        return rawChatMessages
-            .map(msg => ({
-                ...msg,
-                metadata: safeJsonParse(msg.metadata),
-                tool_parameters: safeJsonParse(msg.tool_parameters),
-                tool_result: safeJsonParse(msg.tool_result),
-            }))
-            .filter(msg => {
-                const metadata = msg.metadata;
-                const toolCallId = metadata?.toolCallId || metadata?.tool_call_id;
-                return toolCallId === selectedConversationId;
-            })
-            .sort((a, b) => {
-                // Sort by created_at in ascending order (oldest first for conversation flow)
-                const dateA = new Date(a.created_at).getTime();
-                const dateB = new Date(b.created_at).getTime();
-                return dateA - dateB;
-            });
-    }, [rawChatMessages, selectedConversationId]);
+        return messages.filter(msg => {
+            switch (msg.role) {
+                case 'system': return filterSystem;
+                case 'user': return filterUser;
+                case 'assistant': return filterAssistant;
+                case 'tool': return filterTool;
+                default: return true;
+            }
+        });
+    }, [messages, filterSystem, filterUser, filterAssistant, filterTool]);
 
     const formatTimestamp = (timestamp: string) => {
         return new Date(timestamp).toLocaleString('zh-CN', {
@@ -139,9 +146,20 @@ const RawChatMessages: React.FC<RawChatMessagesProps> = ({ projectId }) => {
 
     const getRoleColor = (role: string) => {
         switch (role) {
+            case 'system': return 'purple';
             case 'user': return 'blue';
             case 'assistant': return 'green';
             case 'tool': return 'orange';
+            default: return 'default';
+        }
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'active': return 'processing';
+            case 'completed': return 'success';
+            case 'failed': return 'error';
+            case 'streaming': return 'processing';
             default: return 'default';
         }
     };
@@ -150,268 +168,325 @@ const RawChatMessages: React.FC<RawChatMessagesProps> = ({ projectId }) => {
         if (!obj) return 'null';
         try {
             return JSON.stringify(obj, null, 2);
-        } catch {
+        } catch (error) {
             return String(obj);
         }
     };
 
-    // Get selected conversation details
-    const selectedConversation = conversations.find(conv => conv.id === selectedConversationId);
+    const selectedConversation = conversations.find(c => c.id === selectedConversationId);
 
-    if (conversationsLoading || rawMessagesLoading) {
-        return (
-            <div style={{ padding: '24px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ color: '#666' }}>加载中...</Text>
-            </div>
-        );
+    if (loading) {
+        return <Card loading title="对话历史" />;
     }
 
-    if (conversationsError) {
+    if (error) {
         return (
-            <div style={{ padding: '24px', height: '100%' }}>
-                <Alert
-                    message="加载对话失败"
-                    description={conversationsError}
-                    type="error"
-                    showIcon
-                />
-            </div>
-        );
-    }
-
-    if (conversations.length === 0) {
-        return (
-            <div style={{ padding: '24px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Empty
-                    description="暂无对话记录"
-                    style={{ color: '#666' }}
-                />
-            </div>
+            <Card title="对话历史">
+                <Alert message="加载失败" description={error} type="error" showIcon />
+            </Card>
         );
     }
 
     return (
-        <div style={{
-            padding: '16px',
-            height: '100%',
-            background: '#0a0a0a',
-            display: 'flex',
-            flexDirection: 'column'
-        }}>
-            {/* Header with conversation selector */}
-            <div style={{ marginBottom: '16px', flexShrink: 0 }}>
-                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                    <div>
-                        <Text strong style={{ color: '#fff', fontSize: '16px' }}>
-                            对话记录 ({conversations.length} 个会话)
-                        </Text>
-                    </div>
-
-                    <div>
-                        <Text style={{ color: '#999', marginRight: '8px' }}>选择对话:</Text>
-                        <Select
-                            value={selectedConversationId}
-                            onChange={setSelectedConversationId}
-                            style={{ width: '100%', maxWidth: '500px' }}
-                            placeholder="请选择一个对话会话"
-                        >
-                            {conversations.map(conv => (
-                                <Option key={conv.id} value={conv.id}>
-                                    <Space>
-                                        <Tag color="purple">{conv.tool_name}</Tag>
-                                        <Text style={{ fontSize: '12px' }}>
-                                            {formatTimestamp(conv.created_at)}
-                                        </Text>
-                                        <Text type="secondary" style={{ fontSize: '11px' }}>
-                                            ({conv.messages.length} 条消息)
-                                        </Text>
-                                    </Space>
-                                </Option>
-                            ))}
-                        </Select>
-                    </div>
-
-                    {/* Show selected conversation info */}
-                    {selectedConversation && (
-                        <div style={{
-                            padding: '8px 12px',
-                            background: '#1a1a1a',
-                            border: '1px solid #333',
-                            borderRadius: '4px'
-                        }}>
-                            <Space>
-                                <Text strong style={{ color: '#1890ff' }}>当前会话:</Text>
-                                <Tag color="purple">{selectedConversation.tool_name}</Tag>
-                                <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    {formatTimestamp(selectedConversation.created_at)}
-                                </Text>
-                                <Text type="secondary" style={{ fontSize: '12px' }}>
-                                    ID: {selectedConversation.tool_call_id}
-                                </Text>
-                            </Space>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Card
+                title="对话历史"
+                style={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden'
+                }}
+                bodyStyle={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    padding: '16px',
+                    overflow: 'hidden'
+                }}
+            >
+                {/* Conversation Selection - Fixed height section */}
+                <div style={{ flexShrink: 0, marginBottom: 16 }}>
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                        <div>
+                            <Text strong>选择对话:</Text>
+                            <Select
+                                style={{ width: '100%', marginTop: 8 }}
+                                placeholder="选择一个对话"
+                                value={selectedConversationId}
+                                onChange={setSelectedConversationId}
+                                showSearch
+                                optionFilterProp="children"
+                            >
+                                {conversations.map(conv => (
+                                    <Option key={conv.id} value={conv.id}>
+                                        <Space>
+                                            <Badge status={getStatusColor(conv.status)} />
+                                            <Tag color={conv.type === 'agent' ? 'blue' : 'green'}>
+                                                {conv.type === 'agent' ? '智能体' : '工具'}
+                                            </Tag>
+                                            <Text>{formatTimestamp(conv.created_at)}</Text>
+                                            {conv.metadata?.userRequest && (
+                                                <Text type="secondary" ellipsis style={{ maxWidth: 200 }}>
+                                                    {conv.metadata.userRequest.substring(0, 50)}...
+                                                </Text>
+                                            )}
+                                        </Space>
+                                    </Option>
+                                ))}
+                            </Select>
                         </div>
-                    )}
-                </Space>
-            </div>
 
-            {/* Messages area */}
-            <div style={{
-                flex: 1,
-                overflowY: 'auto',
-                paddingRight: '8px'
-            }}>
-                {filteredMessages.length === 0 ? (
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: '100%'
-                    }}>
-                        <Empty
-                            description="该对话暂无消息"
-                            style={{ color: '#666' }}
+                        {/* Message Type Filters */}
+                        <div>
+                            <Text strong>消息类型过滤:</Text>
+                            <div style={{ marginTop: 8 }}>
+                                <Space wrap>
+                                    <Checkbox
+                                        checked={filterSystem}
+                                        onChange={(e) => setFilterSystem(e.target.checked)}
+                                    >
+                                        <Tag color="purple">系统消息</Tag>
+                                    </Checkbox>
+                                    <Checkbox
+                                        checked={filterUser}
+                                        onChange={(e) => setFilterUser(e.target.checked)}
+                                    >
+                                        <Tag color="blue">用户消息</Tag>
+                                    </Checkbox>
+                                    <Checkbox
+                                        checked={filterAssistant}
+                                        onChange={(e) => setFilterAssistant(e.target.checked)}
+                                    >
+                                        <Tag color="green">助手回复</Tag>
+                                    </Checkbox>
+                                    <Checkbox
+                                        checked={filterTool}
+                                        onChange={(e) => setFilterTool(e.target.checked)}
+                                    >
+                                        <Tag color="orange">工具调用</Tag>
+                                    </Checkbox>
+                                </Space>
+                            </div>
+                        </div>
+                    </Space>
+                </div>
+
+                <Divider style={{ margin: '16px 0', flexShrink: 0 }} />
+
+                {/* Conversation Metadata - Collapsible section */}
+                {selectedConversation && (
+                    <div style={{ flexShrink: 0, marginBottom: 16 }}>
+                        <Collapse
+                            size="small"
+                            ghost
+                            items={[
+                                {
+                                    key: 'conversation-info',
+                                    label: (
+                                        <Space>
+                                            <Text strong>对话信息</Text>
+                                            <Tag color={selectedConversation.type === 'agent' ? 'blue' : 'green'}>
+                                                {selectedConversation.type === 'agent' ? '智能体' : '工具'}
+                                            </Tag>
+                                            <Badge status={getStatusColor(selectedConversation.status)} />
+                                        </Space>
+                                    ),
+                                    children: (
+                                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                            <div>
+                                                <Text strong>类型: </Text>
+                                                <Tag color={selectedConversation.type === 'agent' ? 'blue' : 'green'}>
+                                                    {selectedConversation.type === 'agent' ? '智能体对话' : '工具调用'}
+                                                </Tag>
+                                                <Text strong>状态: </Text>
+                                                <Badge status={getStatusColor(selectedConversation.status)} text={
+                                                    selectedConversation.status === 'active' ? '进行中' :
+                                                        selectedConversation.status === 'completed' ? '已完成' : '失败'
+                                                } />
+                                            </div>
+                                            <div>
+                                                <Text strong>创建时间: </Text>
+                                                <Text>{formatTimestamp(selectedConversation.created_at)}</Text>
+                                            </div>
+                                            <div>
+                                                <Text strong>更新时间: </Text>
+                                                <Text>{formatTimestamp(selectedConversation.updated_at)}</Text>
+                                            </div>
+                                            {selectedConversation.metadata && Object.keys(selectedConversation.metadata).length > 0 && (
+                                                <div>
+                                                    <Text strong>元数据: </Text>
+                                                    <pre style={{
+                                                        fontSize: '12px',
+                                                        backgroundColor: AppColors.background.secondary,
+                                                        color: AppColors.text.primary,
+                                                        padding: '8px',
+                                                        borderRadius: '4px',
+                                                        maxHeight: '100px',
+                                                        overflow: 'auto'
+                                                    }}>
+                                                        {formatJson(selectedConversation.metadata)}
+                                                    </pre>
+                                                </div>
+                                            )}
+                                        </Space>
+                                    )
+                                }
+                            ]}
                         />
                     </div>
-                ) : (
-                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-                        {filteredMessages.map((message, index) => (
-                            <Card
-                                key={message.id}
-                                size="small"
-                                style={{
-                                    background: '#1a1a1a',
-                                    border: '1px solid #333',
-                                }}
-                                title={
-                                    <Space>
-                                        <Text style={{ color: '#666', fontSize: '12px' }}>
-                                            #{index + 1}
-                                        </Text>
-                                        <Tag color={getRoleColor(message.role)}>
-                                            {message.role.toUpperCase()}
-                                        </Tag>
-                                        {message.tool_name && (
-                                            <Tag color="purple">{message.tool_name}</Tag>
-                                        )}
-                                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                                            {formatTimestamp(message.created_at)}
-                                        </Text>
-                                    </Space>
-                                }
-                            >
-                                <Space direction="vertical" size="small" style={{ width: '100%' }}>
-                                    {/* Message ID */}
-                                    <div>
-                                        <Text strong style={{ color: '#1890ff' }}>ID: </Text>
-                                        <Text code style={{ fontSize: '11px' }}>{message.id}</Text>
+                )}
+
+                {/* Messages List - Scrollable section */}
+                <div
+                    style={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        minHeight: 0, // Important for flex child to be scrollable
+                        paddingRight: '4px' // Space for scrollbar
+                    }}
+                >
+                    {filteredMessages.length === 0 ? (
+                        <Empty
+                            description={selectedConversationId ? "没有符合过滤条件的消息" : "请选择一个对话"}
+                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        />
+                    ) : (
+                        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                            {filteredMessages.map((message, index) => (
+                                <Card
+                                    key={message.id}
+                                    size="small"
+                                    style={{
+                                        borderLeft: `4px solid ${message.role === 'system' ? '#722ed1' :
+                                            message.role === 'user' ? '#1890ff' :
+                                                message.role === 'assistant' ? '#52c41a' : '#fa8c16'
+                                            }`
+                                    }}
+                                >
+                                    <div style={{ marginBottom: 8 }}>
+                                        <Space wrap>
+                                            <Tag color={getRoleColor(message.role)}>
+                                                {message.role === 'system' ? '系统' :
+                                                    message.role === 'user' ? '用户' :
+                                                        message.role === 'assistant' ? '助手' : '工具'}
+                                            </Tag>
+                                            <Badge status={getStatusColor(message.status)} text={
+                                                message.status === 'streaming' ? '流式传输中' :
+                                                    message.status === 'completed' ? '已完成' : '失败'
+                                            } />
+                                            <Text type="secondary" style={{ fontSize: '12px' }}>
+                                                {formatTimestamp(message.created_at)}
+                                            </Text>
+                                            {message.cache_hit && (
+                                                <Tag color="gold">
+                                                    缓存命中 ({message.cached_tokens || 0} tokens)
+                                                </Tag>
+                                            )}
+                                            {message.model_name && (
+                                                <Tag color="cyan">{message.model_name}</Tag>
+                                            )}
+                                            {message.temperature !== undefined && (
+                                                <Tag>温度: {message.temperature}</Tag>
+                                            )}
+                                        </Space>
                                     </div>
 
-                                    {/* Content */}
-                                    <div>
-                                        <Text strong style={{ color: '#1890ff' }}>Content:</Text>
+                                    {/* Message Content */}
+                                    <div style={{ marginBottom: 8 }}>
+                                        <Text strong>内容:</Text>
                                         <Paragraph
                                             style={{
-                                                background: '#262626',
+                                                marginTop: 4,
+                                                backgroundColor: AppColors.background.secondary,
                                                 padding: '8px',
                                                 borderRadius: '4px',
-                                                margin: '4px 0 0 0',
-                                                fontSize: '12px',
-                                                fontFamily: 'monospace',
-                                                whiteSpace: 'pre-wrap',
-                                                color: '#d9d9d9',
-                                                maxHeight: '300px',
-                                                overflowY: 'auto'
+                                                marginBottom: 8,
+                                                color: AppColors.text.primary
                                             }}
                                         >
-                                            {message.content}
+                                            <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
+                                                {message.content}
+                                            </pre>
                                         </Paragraph>
                                     </div>
 
+                                    {/* Tool Information */}
+                                    {message.tool_name && (
+                                        <div style={{ marginBottom: 8 }}>
+                                            <Text strong>工具: </Text>
+                                            <Tag color="orange">{message.tool_name}</Tag>
+                                            {message.tool_call_id && (
+                                                <>
+                                                    <Text strong> 调用ID: </Text>
+                                                    <Text code style={{ fontSize: '12px' }}>{message.tool_call_id}</Text>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* Tool Parameters */}
-                                    {message.tool_parameters && (
-                                        <div>
-                                            <Text strong style={{ color: '#1890ff' }}>Tool Parameters:</Text>
-                                            <Paragraph
-                                                style={{
-                                                    background: '#262626',
-                                                    padding: '8px',
-                                                    borderRadius: '4px',
-                                                    margin: '4px 0 0 0',
-                                                    fontSize: '11px',
-                                                    fontFamily: 'monospace',
-                                                    whiteSpace: 'pre-wrap',
-                                                    color: '#d9d9d9',
-                                                    maxHeight: '200px',
-                                                    overflowY: 'auto'
-                                                }}
-                                            >
+                                    {message.tool_parameters && Object.keys(message.tool_parameters).length > 0 && (
+                                        <div style={{ marginBottom: 8 }}>
+                                            <Text strong>工具参数:</Text>
+                                            <pre style={{
+                                                fontSize: '12px',
+                                                backgroundColor: AppColors.background.secondary,
+                                                color: AppColors.text.primary,
+                                                padding: '8px',
+                                                borderRadius: '4px',
+                                                marginTop: '4px',
+                                                maxHeight: '200px',
+                                                overflow: 'auto'
+                                            }}>
                                                 {formatJson(message.tool_parameters)}
-                                            </Paragraph>
+                                            </pre>
                                         </div>
                                     )}
 
                                     {/* Tool Result */}
-                                    {message.tool_result && (
-                                        <div>
-                                            <Text strong style={{ color: '#1890ff' }}>Tool Result:</Text>
-                                            <Paragraph
-                                                style={{
-                                                    background: '#262626',
-                                                    padding: '8px',
-                                                    borderRadius: '4px',
-                                                    margin: '4px 0 0 0',
-                                                    fontSize: '11px',
-                                                    fontFamily: 'monospace',
-                                                    whiteSpace: 'pre-wrap',
-                                                    color: '#d9d9d9',
-                                                    maxHeight: '200px',
-                                                    overflowY: 'auto'
-                                                }}
-                                            >
+                                    {message.tool_result && Object.keys(message.tool_result).length > 0 && (
+                                        <div style={{ marginBottom: 8 }}>
+                                            <Text strong>工具结果:</Text>
+                                            <pre style={{
+                                                fontSize: '12px',
+                                                backgroundColor: AppColors.background.tertiary,
+                                                color: AppColors.text.primary,
+                                                padding: '8px',
+                                                borderRadius: '4px',
+                                                marginTop: '4px',
+                                                maxHeight: '200px',
+                                                overflow: 'auto'
+                                            }}>
                                                 {formatJson(message.tool_result)}
-                                            </Paragraph>
+                                            </pre>
                                         </div>
                                     )}
 
                                     {/* Metadata */}
-                                    {message.metadata && (
+                                    {message.metadata && Object.keys(message.metadata).length > 0 && (
                                         <div>
-                                            <Text strong style={{ color: '#1890ff' }}>Metadata:</Text>
-                                            <Paragraph
-                                                style={{
-                                                    background: '#262626',
-                                                    padding: '8px',
-                                                    borderRadius: '4px',
-                                                    margin: '4px 0 0 0',
-                                                    fontSize: '11px',
-                                                    fontFamily: 'monospace',
-                                                    whiteSpace: 'pre-wrap',
-                                                    color: '#d9d9d9',
-                                                    maxHeight: '150px',
-                                                    overflowY: 'auto'
-                                                }}
-                                            >
+                                            <Text strong>元数据:</Text>
+                                            <pre style={{
+                                                fontSize: '12px',
+                                                backgroundColor: AppColors.background.secondary,
+                                                color: AppColors.text.primary,
+                                                padding: '8px',
+                                                borderRadius: '4px',
+                                                marginTop: '4px',
+                                                maxHeight: '100px',
+                                                overflow: 'auto'
+                                            }}>
                                                 {formatJson(message.metadata)}
-                                            </Paragraph>
+                                            </pre>
                                         </div>
                                     )}
-
-                                    {/* Timestamps */}
-                                    <Divider style={{ margin: '8px 0' }} />
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <Text type="secondary" style={{ fontSize: '11px' }}>
-                                            Created: {formatTimestamp(message.created_at)}
-                                        </Text>
-                                        <Text type="secondary" style={{ fontSize: '11px' }}>
-                                            Updated: {formatTimestamp(message.updated_at)}
-                                        </Text>
-                                    </div>
-                                </Space>
-                            </Card>
-                        ))}
-                    </Space>
-                )}
-            </div>
+                                </Card>
+                            ))}
+                        </Space>
+                    )}
+                </div>
+            </Card>
         </div>
     );
 };

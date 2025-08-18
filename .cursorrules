@@ -51,6 +51,61 @@
 - Properly type all streaming services and API responses
 - Frontend-only types go in `src/client/types/`, backend-only types go in `src/server/types/`
 
+### 6.1. Zod-First Typing Strategy
+- **ALWAYS define data structures using Zod schemas first** - do not create TypeScript interfaces/types manually
+- **Infer TypeScript types from Zod schemas** using `z.infer<typeof Schema>` - this ensures runtime validation matches compile-time types
+- **Use Zod enums for constants** instead of TypeScript enums or const assertions - provides both runtime validation and type safety
+- **Place all Zod schemas in appropriate schema directories** - `src/common/schemas/` for shared, `src/server/schemas/` for backend-only
+- **Validate at boundaries** - use `.parse()` or `.safeParse()` at API endpoints, tool inputs/outputs, and external data sources
+- **Example pattern**:
+  ```typescript
+  // Define schema first
+  const UserInputSchema = z.object({
+    name: z.string().min(1),
+    role: z.enum(['user', 'admin', 'guest']),
+    metadata: z.record(z.any()).optional()
+  });
+  
+  // Infer type from schema
+  type UserInput = z.infer<typeof UserInputSchema>;
+  
+  // Use in functions with validation
+  function processUserInput(rawData: unknown): UserInput {
+    return UserInputSchema.parse(rawData); // Throws if invalid
+  }
+  ```
+- **Benefits**: Single source of truth, automatic type sync, runtime safety, better error messages, composable schemas
+
+### 6.2. Functional Programming Patterns
+- **ALWAYS prefer functional patterns over classes** - use functions with closures instead of class-based architecture
+- **Use factory functions** to create objects with encapsulated state and behavior
+- **Leverage closures** for private state and method encapsulation
+- **Compose functions** rather than using inheritance hierarchies
+- **Example pattern**:
+  ```typescript
+  // Prefer this functional approach
+  function createIntentHandler(intentType: string, dependencies: Dependencies) {
+    const resolveParameters = async (context: IntentContext) => {
+      // Implementation using closure over dependencies
+    };
+    
+    const getToolName = () => intentType;
+    
+    return {
+      intentType,
+      resolveParameters,
+      getToolName
+    };
+  }
+  
+  // Instead of class-based approach
+  class IntentHandler {
+    constructor(private intentType: string, private dependencies: Dependencies) {}
+    // ... methods
+  }
+  ```
+- **Benefits**: Better testability, simpler composition, clearer data flow, easier reasoning about state
+
 ### 7. File Structure
 ```
 src/
@@ -142,6 +197,46 @@ src/
 - **For inspecting the actual content of jsondocs or particles**, use the inspect-content.ts script: `./run-ts src/server/scripts/inspect-content.ts <project-id> <type> <comma_separated_ids>` where type is either "jsondoc" or "particle"
 - **For understanding the field structure of canonical jsondocs in a project**, use the canonical-content-viewer.ts script: `./run-ts src/server/scripts/canonical-content-viewer.ts [project-id]`
 - The canonical content viewer shows what jsondocs are currently "active" in the UI and displays their field paths in JSONPath format ($.field, $.array[*]) - useful for debugging edit patches, understanding available content structure, and providing LLM context about project state
+
+### 16.1. LLM Conversation Debugging Tools
+Based on the LLM Conversation Refactor implementation, use these specialized conversation debugging tools:
+
+- **For listing all conversations in a project**: `./run-ts src/server/scripts/list-project-conversations.ts <project-id> [--type agent|tool] [--limit N]`
+  - Shows conversation summaries with message counts, tools used, and timing information
+  - Groups by agent vs tool conversations with aggregate statistics
+
+- **For finding conversation by transform ID**: `./run-ts src/server/scripts/get-conversation-by-transform.ts <transform-id> [--verbose]`
+  - Traces transform back to its generating conversation
+  - Shows complete conversation history and trigger message identification
+
+- **For analyzing recent agent conversations**: `./run-ts src/server/scripts/get-recent-agent-conversations.ts <project-id> [--limit N] [--days N] [--verbose]`
+  - Provides detailed statistics including tool success rates and cache effectiveness
+  - Shows aggregate metrics for performance monitoring
+
+- **For viewing complete conversation content**: `./run-ts src/server/scripts/get-conversation-content.ts <conversation-id> [--verbose] [--include-failed] [--format json]`
+  - Displays full message content with tool parameters and LLM settings
+  - Supports JSON export for programmatic processing
+
+- **For searching conversations**: `./run-ts src/server/scripts/search-conversations.ts [--project <id>] [--text <search>] [--tool <name>] [--status <status>] [--has-errors] [--cache-hits-only] [--days N] [--limit N]`
+  - Flexible search across conversations using multiple criteria
+  - Useful for error investigation and pattern analysis
+
+**Common Debugging Workflows:**
+```bash
+# Project health overview
+./run-ts src/server/scripts/list-project-conversations.ts <project-id>
+
+# Transform debugging
+./run-ts src/server/scripts/get-conversation-by-transform.ts <transform-id> --verbose
+
+# Error investigation
+./run-ts src/server/scripts/search-conversations.ts --project <project-id> --has-errors
+
+# Performance analysis
+./run-ts src/server/scripts/get-recent-agent-conversations.ts <project-id> --verbose
+```
+
+### 16.2. Pipeline Debugging
 - **For complex debugging issues, create reusable pipeline scripts** that can be chained together using Unix pipes
 - Pipeline scripts should communicate via JSON over stdin/stdout with clear delimiters like `=== PROJECT_DATA_JSON_START ===` and `=== PROJECT_DATA_JSON_END ===`
 - **ALWAYS add `process.exit(0)` in the finally block** of debugging scripts to prevent them from hanging
@@ -151,9 +246,10 @@ src/
 ## Data Validation
 
 ### 17. Input Validation
+- **Follow the Zod-first typing strategy** as defined in section 6.1
 - Validate all input data at API boundaries using Zod schemas
-- Use TypeScript for compile-time type checking
-- Include runtime validation for external data
+- Use TypeScript for compile-time type checking (types inferred from Zod)
+- Include runtime validation for external data using `.parse()` or `.safeParse()`
 - Test edge cases and error conditions
 - Follow schema patterns documented in framework
 

@@ -25,7 +25,9 @@
     "seed": "./run-ts src/server/scripts/seed.ts",
     "nuke": "docker compose down -v && docker compose up -d && sleep 10 && npm run migrate && npm run seed",
     "test:schema": "./run-ts src/server/scripts/test-schema-system.ts",
-    "test:brainstorm": "./run-ts src/server/scripts/test-brainstorm-frontend.ts"
+    "test:brainstorm": "./run-ts src/server/scripts/test-brainstorm-frontend.ts",
+    "remove-unused-imports": "./run-ts src/server/scripts/remove-unused-imports.ts",
+    "remove-unused-imports:fix": "./run-ts src/server/scripts/remove-unused-imports.ts --fix"
   },
   "repository": {
     "type": "git",
@@ -95,7 +97,7 @@
     "lucide-react": "^0.525.0",
     "openai": "^5.5.1",
     "pg": "^8.16.1",
-    "qwen-ai-provider": "^0.1.0",
+    "qwen-ai-provider": "^0.1.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-resizable": "^3.0.5",
@@ -108,6 +110,7 @@
     "slate-history": "^0.113.1",
     "slate-react": "^0.117.1",
     "styled-components": "^6.1.15",
+    "ts-pattern": "^5.8.0",
     "typescript": "^5.8.3",
     "uuid": "^11.1.0",
     "vite": "^6.3.5",

@@ -25,12 +25,11 @@ async function testNonBlockingTools() {
         await db.insertInto('projects')
             .values({
                 id: projectId,
-                name: 'Non-Blocking Tools Test Project',
+                title: 'Non-Blocking Tools Test Project',
                 description: 'Test project for non-blocking tool execution',
                 project_type: 'script',
                 status: 'active',
-                created_at: new Date(),
-                updated_at: new Date()
+                created_at: new Date()
             })
             .execute();
 

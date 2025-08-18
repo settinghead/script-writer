@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { debugParamsStorage, type AgentContextParams as StorageAgentContextParams } from '../services/debugParamsStorage';
+import { debugParamsStorage } from '../services/debugParamsStorage';
 
 export interface AgentContextParams {
     userInput: string;

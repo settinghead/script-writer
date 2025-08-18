@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Typography, Space, Card, Tag } from 'antd';
-import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined, ThunderboltOutlined, BulbOutlined } from '@ant-design/icons';
+import { UserOutlined, HeartOutlined, StarOutlined, EnvironmentOutlined, TeamOutlined, BulbOutlined } from '@ant-design/icons';
 import { TypedJsondoc } from '@/common/types';
 
 const { Text } = Typography;

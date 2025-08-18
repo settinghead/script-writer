@@ -26,7 +26,10 @@ export function useProjectChatRuntime(projectId: string) {
 
             // Send message to our existing backend
             try {
-                await apiService.sendChatMessage(projectId, textContent, {
+                // Get or create conversation ID for the chat message
+                const conversationId = await (apiService as any).getOrCreateConversation(projectId);
+
+                await apiService.sendChatMessage(projectId, conversationId, textContent, {
                     timestamp: new Date().toISOString(),
                     source: 'assistant-ui'
                 });

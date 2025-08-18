@@ -1,5 +1,4 @@
 import { vi } from 'vitest';
-import { DB } from '../../server/database/types';
 
 export function createMockKyselyDatabase() {
     return {

@@ -3,7 +3,6 @@ import { AuthDatabase } from '../database/auth';
 import { createAuthMiddleware } from '../middleware/auth';
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
-import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessageRepository';
 import { ProjectService } from '../services/ProjectService';
 import { AgentService } from '../transform-jsondoc-framework/AgentService';
 import { ChatService } from '../transform-jsondoc-framework/ChatService';
@@ -26,7 +25,6 @@ export function createAPIRoutes(
     jsondocRepo: TransformJsondocRepository,
     transformRepo: TransformJsondocRepository,
     projectRepo: ProjectRepository,
-    chatMessageRepo: ChatMessageRepository,
     projectService: ProjectService,
     agentService: AgentService,
     chatService: ChatService

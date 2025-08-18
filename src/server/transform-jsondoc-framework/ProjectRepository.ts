@@ -6,9 +6,72 @@ import type { DB } from '../database/types';
 export class ProjectRepository {
     constructor(private db: Kysely<DB>) { }
 
+    // Compute the last updated time for a project based on jsondocs and transforms activity
+    async getProjectLastUpdated(projectId: string): Promise<Date> {
+        // Get the most recent timestamp from jsondocs and transforms
+        const jsondocResult = await this.db
+            .selectFrom('jsondocs')
+            .select(['updated_at', 'created_at'])
+            .where('project_id', '=', projectId)
+            .orderBy('updated_at', 'desc')
+            .orderBy('created_at', 'desc')
+            .limit(1)
+            .executeTakeFirst();
+
+        const transformResult = await this.db
+            .selectFrom('transforms')
+            .select(['updated_at', 'created_at'])
+            .where('project_id', '=', projectId)
+            .orderBy('updated_at', 'desc')
+            .orderBy('created_at', 'desc')
+            .limit(1)
+            .executeTakeFirst();
+
+        // Find the most recent timestamp
+        let lastUpdated: Date | null = null;
+
+        if (jsondocResult?.updated_at) {
+            lastUpdated = new Date(jsondocResult.updated_at);
+        }
+
+        if (transformResult?.updated_at) {
+            const transformDate = new Date(transformResult.updated_at);
+            if (!lastUpdated || transformDate > lastUpdated) {
+                lastUpdated = transformDate;
+            }
+        }
+
+        // If no jsondocs or transforms exist, fall back to project creation time
+        if (!lastUpdated) {
+            const projectResult = await this.db
+                .selectFrom('projects')
+                .select('created_at')
+                .where('id', '=', projectId)
+                .executeTakeFirst();
+
+            lastUpdated = projectResult?.created_at ? new Date(projectResult.created_at) : new Date();
+        }
+
+        return lastUpdated;
+    }
+
+    // Get project by ID with computed last updated time
+    async getProjectWithLastUpdated(projectId: string): Promise<(Project & { lastUpdated: string }) | null> {
+        const project = await this.getProject(projectId);
+        if (!project) {
+            return null;
+        }
+
+        const lastUpdated = await this.getProjectLastUpdated(projectId);
+        return {
+            ...project,
+            lastUpdated: lastUpdated.toISOString()
+        };
+    }
+
     // Create a new project
     async createProject(
-        name: string,
+        title: string,
         ownerId: string,
         description?: string,
         projectType: string = 'script'
@@ -18,12 +81,12 @@ export class ProjectRepository {
 
         const projectData = {
             id,
-            name,
+            title,
+            project_title_manual_override: false,
             description: description || null,
             project_type: projectType,
             status: 'active',
-            created_at: now,
-            updated_at: now
+            created_at: now
         };
 
         await this.db.transaction().execute(async (trx) => {
@@ -47,12 +110,12 @@ export class ProjectRepository {
 
         return {
             id,
-            name,
+            title,
+            project_title_manual_override: false,
             description,
             project_type: projectType,
             status: 'active',
-            created_at: now.toISOString(),
-            updated_at: now.toISOString()
+            created_at: now.toISOString()
         };
     }
 
@@ -70,40 +133,55 @@ export class ProjectRepository {
 
         return {
             id: row.id,
-            name: row.name,
+            title: (row as any).title,
+            project_title_manual_override: Boolean((row as any).project_title_manual_override ?? false),
             description: row.description || undefined,
             project_type: row.project_type || 'default',
             status: (row.status as 'active' | 'archived' | 'deleted') || 'active',
-            created_at: row.created_at?.toISOString() || new Date().toISOString(),
-            updated_at: row.updated_at?.toISOString() || new Date().toISOString()
+            created_at: row.created_at?.toISOString() || new Date().toISOString()
         };
     }
 
     // Get projects for a user
     async getUserProjects(userId: string, limit?: number): Promise<Project[]> {
+        // First get the basic project data
         let query = this.db
             .selectFrom('projects as p')
             .innerJoin('projects_users as pu', 'p.id', 'pu.project_id')
-            .select(['p.id', 'p.name', 'p.description', 'p.project_type', 'p.status', 'p.created_at', 'p.updated_at'])
+            .selectAll('p')
             .where('pu.user_id', '=', userId)
-            .where('p.status', '=', 'active')
-            .orderBy('p.updated_at', 'desc');
-
-        if (limit) {
-            query = query.limit(limit);
-        }
+            .where('p.status', '=', 'active');
 
         const rows = await query.execute();
 
-        return rows.map(row => ({
-            id: row.id,
-            name: row.name,
-            description: row.description || undefined,
-            project_type: row.project_type || 'default',
-            status: (row.status as 'active' | 'archived' | 'deleted') || 'active',
-            created_at: row.created_at?.toISOString() || new Date().toISOString(),
-            updated_at: row.updated_at?.toISOString() || new Date().toISOString()
-        }));
+        // Create projects with computed last updated time
+        const projectsWithLastUpdated = await Promise.all(
+            rows.map(async row => {
+                const lastUpdated = await this.getProjectLastUpdated(row.id);
+                return {
+                    id: String(row.id),
+                    title: (row as any).title,
+                    project_title_manual_override: Boolean((row as any).project_title_manual_override ?? false),
+                    description: row.description || undefined,
+                    project_type: row.project_type || 'default',
+                    status: (row.status as 'active' | 'archived' | 'deleted') || 'active',
+                    created_at: row.created_at?.toISOString() || new Date().toISOString(),
+                    lastUpdated // Keep for sorting
+                };
+            })
+        );
+
+        // Sort by computed last updated time (descending)
+        projectsWithLastUpdated.sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
+
+        // Apply limit if specified
+        const limitedProjects = limit ? projectsWithLastUpdated.slice(0, limit) : projectsWithLastUpdated;
+
+        // Remove the temporary lastUpdated field and return
+        return limitedProjects.map(project => {
+            const { lastUpdated, ...projectWithoutLastUpdated } = project;
+            return projectWithoutLastUpdated;
+        });
     }
 
     // Update project
@@ -111,14 +189,9 @@ export class ProjectRepository {
         projectId: string,
         updates: Partial<Omit<Project, 'id' | 'created_at'>>
     ): Promise<void> {
-        const now = new Date();
-
         await this.db
             .updateTable('projects')
-            .set({
-                ...updates,
-                updated_at: now
-            })
+            .set(updates)
             .where('id', '=', projectId)
             .execute();
     }

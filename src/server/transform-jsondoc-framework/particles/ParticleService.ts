@@ -1,7 +1,7 @@
 import { Kysely, sql } from 'kysely';
 import { DB } from '../../database/types.js';
 import { EmbeddingService } from '../EmbeddingService.js';
-import { ParticleExtractor, ParticleData } from './ParticleExtractor';
+import { ParticleExtractor } from './ParticleExtractor';
 import { TypedJsondoc } from '../../../common/jsondocs.js';
 import { TransformJsondocRepository } from '../TransformJsondocRepository.js';
 import { CanonicalJsondocService } from '../../services/CanonicalJsondocService.js';

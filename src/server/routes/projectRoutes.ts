@@ -36,13 +36,13 @@ export function createProjectRoutes(
                 return res.status(401).json({ error: "User not authenticated" });
             }
 
-            const { name, description } = req.body;
+            const { title, description } = req.body;
 
-            if (!name) {
-                return res.status(400).json({ error: "Project name is required" });
+            if (!title) {
+                return res.status(400).json({ error: "Project title is required" });
             }
 
-            const project = await projectService.createProject(user.id, name, description);
+            const project = await projectService.createProject(user.id, title, description);
             res.status(201).json(project);
         } catch (error: any) {
             console.error('Error creating project:', error);
@@ -120,6 +120,40 @@ export function createProjectRoutes(
                 error: 'Failed to run general agent',
                 details: error.message
             });
+        }
+    });
+
+    // PUT /api/projects/:id/title - Update project title and mark manual override
+    router.put('/:id/title', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const user = authMiddleware.getCurrentUser(req);
+            if (!user) {
+                return res.status(401).json({ error: "User not authenticated" });
+            }
+
+            const projectId = req.params.id;
+            const { title } = req.body || {};
+            if (typeof title !== 'string') {
+                return res.status(400).json({ error: 'Invalid title' });
+            }
+
+            // Verify access
+            const project = await projectService.getProject(projectId, user.id);
+            if (!project) {
+                return res.status(404).json({ error: 'Project not found' });
+            }
+
+            // Persist
+            await (projectService as any)['db']
+                .updateTable('projects')
+                .set({ title, project_title_manual_override: true })
+                .where('id', '=', projectId)
+                .execute();
+
+            res.json({ success: true });
+        } catch (error: any) {
+            console.error('Error updating project title:', error);
+            res.status(500).json({ error: 'Failed to update title', details: error.message });
         }
     });
 

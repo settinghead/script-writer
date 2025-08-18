@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { TypedJsondoc } from '@/common/types';
 
 interface UseChroniclesDescendantsResult {
     hasChroniclesDescendants: boolean;

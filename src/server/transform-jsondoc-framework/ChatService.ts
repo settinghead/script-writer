@@ -1,16 +1,211 @@
-import { ChatMessageRepository } from './ChatMessageRepository';
-import { AgentService } from './AgentService';
-import { ChatMessageDisplay } from '../../common/schemas/chatMessages';
+import { z } from 'zod';
+import { AgentService } from './AgentService.js';
+import type { TransformJsondocRepository } from './TransformJsondocRepository.js';
+import {
+    createConversation,
+    getConversationsByProject,
+    getConversationMessages,
+    createMessageWithDisplay,
+    getCurrentConversation,
+    setCurrentConversation,
+    createAndSetCurrentConversation,
+    userHasConversationAccess
+} from '../conversation/ConversationManager.js';
+import { supportsIntent } from '../../common/schemas/intentSchemas.js';
+import { createIntentShortcutService } from '../services/IntentShortcutService.js';
+import { CanonicalJsondocService } from '../services/CanonicalJsondocService.js';
+import { db } from '../database/connection.js';
 
 export interface SendMessageRequest {
     content: string;
     metadata?: Record<string, any>;
 }
 
+// Functional conversation creators - replacing the ChatService class
+
+/**
+ * Send a user message to a specific conversation and trigger agent processing
+ */
+export async function sendUserMessage(
+    projectId: string,
+    userId: string,
+    conversationId: string,
+    request: SendMessageRequest,
+    dependencies: {
+        agentService: AgentService;
+        jsondocRepo: TransformJsondocRepository;
+    }
+): Promise<void> {
+    const { agentService, jsondocRepo } = dependencies;
+
+    // Validate project access
+    const hasAccess = await jsondocRepo.userHasProjectAccess(userId, projectId);
+    if (!hasAccess) {
+        throw new Error('User does not have access to this project');
+    }
+
+    // Validate conversation access
+    const hasConversationAccess = await userHasConversationAccess(userId, conversationId);
+    if (!hasConversationAccess) {
+        throw new Error('User does not have access to this conversation');
+    }
+
+    try {
+        // 1. Add user message to the conversation
+        await createMessageWithDisplay(conversationId, 'user', request.content, {
+            metadata: request.metadata
+        });
+
+        // 2. Set this as the current conversation for the project
+        await setCurrentConversation(projectId, conversationId);
+
+        // 3. Check for intent shortcuts
+        if (request.metadata?.intent && supportsIntent(request.metadata.intent)) {
+            console.log(`[ChatService] Intent shortcut detected: ${request.metadata.intent}`);
+
+            // Create intent shortcut service
+            const transformRepo = jsondocRepo; // Using same instance for transforms
+            const canonicalService = new CanonicalJsondocService(db, jsondocRepo, transformRepo);
+            const intentShortcutService = createIntentShortcutService({
+                canonicalService,
+                jsondocRepo,
+                transformRepo
+            });
+
+            // Handle intent via shortcut
+            await intentShortcutService.handleIntent({
+                intent: request.metadata.intent,
+                metadata: request.metadata,
+                content: request.content,
+                conversationId,
+                projectId,
+                userId
+            });
+
+            console.log(`[ChatService] Intent shortcut completed: ${request.metadata.intent}`);
+        } else {
+            console.log(`[ChatService] Using standard LLM path`);
+
+            // 4. Let AgentService handle the agent processing using the existing conversation
+            await agentService.runGeneralAgent(projectId, userId, {
+                userRequest: request.content,
+                projectId: projectId,
+                contextType: 'general'
+            }, {
+                createChatMessages: false, // We're managing conversations directly now
+                conversationId: conversationId // Pass the conversation ID to agent service
+            });
+        }
+
+    } catch (error) {
+        console.error('Error processing user message:', error);
+        throw error;
+    }
+}
+
+/**
+ * Get all conversation messages for a project (replaces getChatMessages)
+ */
+export async function getProjectConversationMessages(
+    projectId: string,
+    userId: string,
+    jsondocRepo: TransformJsondocRepository
+): Promise<Array<{
+    id: string;
+    conversationId: string;
+    role: string;
+    content: string;
+    createdAt: Date;
+    metadata?: any;
+}>> {
+    // Validate project access
+    const hasAccess = await jsondocRepo.userHasProjectAccess(userId, projectId);
+    if (!hasAccess) {
+        throw new Error('User does not have access to this project');
+    }
+
+    // Get all conversations for the project
+    const conversations = await getConversationsByProject(projectId);
+
+    // Get messages from all conversations
+    const allMessages = [];
+    for (const conversation of conversations) {
+        const messages = await getConversationMessages(conversation.id);
+
+        // Transform to match expected format
+        const transformedMessages = messages.map(msg => ({
+            id: msg.id,
+            conversationId: conversation.id,
+            role: msg.role,
+            content: msg.content,
+            createdAt: new Date(msg.created_at),
+            metadata: msg.metadata
+        }));
+
+        allMessages.push(...transformedMessages);
+    }
+
+    // Sort by creation time
+    return allMessages.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+}
+
+/**
+ * Get conversation message count for a project
+ */
+export async function getProjectConversationMessageCount(
+    projectId: string,
+    userId: string,
+    jsondocRepo: TransformJsondocRepository
+): Promise<number> {
+    // Validate project access
+    const hasAccess = await jsondocRepo.userHasProjectAccess(userId, projectId);
+    if (!hasAccess) {
+        throw new Error('User does not have access to this project');
+    }
+
+    const messages = await getProjectConversationMessages(projectId, userId, jsondocRepo);
+    return messages.length;
+}
+
+/**
+ * Delete all conversations and messages for a project
+ */
+export async function deleteProjectConversations(
+    projectId: string,
+    userId: string,
+    jsondocRepo: TransformJsondocRepository
+): Promise<void> {
+    // Validate project access
+    const hasAccess = await jsondocRepo.userHasProjectAccess(userId, projectId);
+    if (!hasAccess) {
+        throw new Error('User does not have access to this project');
+    }
+
+    // Get all conversations for the project
+    const conversations = await getConversationsByProject(projectId);
+
+    // Delete each conversation (messages will cascade delete)
+    const { db } = await import('../database/connection.js');
+
+    for (const conversation of conversations) {
+        await db
+            .deleteFrom('conversations')
+            .where('id', '=', conversation.id)
+            .execute();
+    }
+
+    console.log(`[ChatService] Deleted ${conversations.length} conversations for project ${projectId}`);
+}
+
+/**
+ * Legacy class wrapper for backward compatibility during transition
+ * This maintains the existing interface while using functional implementations
+ */
 export class ChatService {
     constructor(
-        private chatRepo: ChatMessageRepository,
+        private chatRepo: any, // Not used anymore but kept for interface compatibility
         private agentService: AgentService,
+        private jsondocRepo?: TransformJsondocRepository
     ) { }
 
     async sendUserMessage(
@@ -18,56 +213,43 @@ export class ChatService {
         userId: string,
         request: SendMessageRequest
     ): Promise<void> {
-        // Validate project access
-        const hasAccess = await this.chatRepo.validateProjectAccess(userId, projectId);
-        if (!hasAccess) {
-            throw new Error('User does not have access to this project');
+        if (!this.jsondocRepo) {
+            throw new Error('ChatService not properly initialized with jsondocRepo');
         }
 
-        try {
-            // Let AgentService handle all chat messages with its streaming system
-            await this.agentService.runGeneralAgent(projectId, userId, {
-                userRequest: request.content,
-                projectId: projectId,
-                contextType: 'general'
-            }, {
-                createChatMessages: true // Let AgentService handle the dual message system
-            });
-
-        } catch (error) {
-            console.error('Error processing user message:', error);
-            throw error;
+        // Get or create current conversation for the project
+        let conversationId = await getCurrentConversation(projectId);
+        if (!conversationId) {
+            conversationId = await createAndSetCurrentConversation(projectId, 'agent');
         }
+
+        return sendUserMessage(projectId, userId, conversationId, request, {
+            agentService: this.agentService,
+            jsondocRepo: this.jsondocRepo
+        });
     }
 
-    // Public methods for getting chat data
-    async getChatMessages(projectId: string, userId: string): Promise<ChatMessageDisplay[]> {
-        // Validate project access
-        const hasAccess = await this.chatRepo.validateProjectAccess(userId, projectId);
-        if (!hasAccess) {
-            throw new Error('User does not have access to this project');
+    async getChatMessages(projectId: string, userId: string): Promise<any[]> {
+        if (!this.jsondocRepo) {
+            throw new Error('ChatService not properly initialized with jsondocRepo');
         }
 
-        return this.chatRepo.getDisplayMessages(projectId);
+        return getProjectConversationMessages(projectId, userId, this.jsondocRepo);
     }
 
     async getChatMessageCount(projectId: string, userId: string): Promise<number> {
-        // Validate project access
-        const hasAccess = await this.chatRepo.validateProjectAccess(userId, projectId);
-        if (!hasAccess) {
-            throw new Error('User does not have access to this project');
+        if (!this.jsondocRepo) {
+            throw new Error('ChatService not properly initialized with jsondocRepo');
         }
 
-        return this.chatRepo.getMessageCount(projectId);
+        return getProjectConversationMessageCount(projectId, userId, this.jsondocRepo);
     }
 
     async deleteProjectChat(projectId: string, userId: string): Promise<void> {
-        // Validate project access
-        const hasAccess = await this.chatRepo.validateProjectAccess(userId, projectId);
-        if (!hasAccess) {
-            throw new Error('User does not have access to this project');
+        if (!this.jsondocRepo) {
+            throw new Error('ChatService not properly initialized with jsondocRepo');
         }
 
-        await this.chatRepo.deleteMessagesForProject(projectId);
+        return deleteProjectConversations(projectId, userId, this.jsondocRepo);
     }
 } 

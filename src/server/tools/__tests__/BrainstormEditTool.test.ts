@@ -2,18 +2,75 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createBrainstormEditToolDefinition } from '../BrainstormEditTool';
 import { createMockTransformJsondocRepository } from '../../../__tests__/mocks/databaseMocks';
 
+// Mock the executeStreamingTransform function
+vi.mock('../../transform-jsondoc-framework/StreamingTransformExecutor', () => ({
+    executeStreamingTransform: vi.fn()
+}));
 
-
-
+import { executeStreamingTransform } from '../../transform-jsondoc-framework/StreamingTransformExecutor';
 
 describe('BrainstormEditTool (Unified Streaming Patch)', () => {
     let mockTransformRepo: any;
     let mockJsondocRepo: any;
     let brainstormEditTool: any;
+    let mockExecuteStreamingTransform: any;
 
     beforeEach(() => {
         mockTransformRepo = createMockTransformJsondocRepository();
         mockJsondocRepo = createMockTransformJsondocRepository();
+
+        // Set up executeStreamingTransform mock
+        mockExecuteStreamingTransform = vi.mocked(executeStreamingTransform);
+        mockExecuteStreamingTransform.mockResolvedValue({
+            transformId: 'mock-transform-123',
+            finishReason: 'stop'
+        });
+
+        // Set up additional mocks needed for extractPatchContentForAgent
+        mockTransformRepo.getTransformOutputs.mockResolvedValue([
+            { jsondoc_id: 'mock-patch-jsondoc-1' }
+        ]);
+
+        // Mock patch jsondoc data
+        const mockPatchJsondoc = {
+            id: 'mock-patch-jsondoc-1',
+            schema_type: 'json_patch',
+            data: {
+                patches: [
+                    {
+                        op: 'replace',
+                        path: '/title',
+                        value: '改进后的标题'
+                    },
+                    {
+                        op: 'replace',
+                        path: '/body',
+                        value: '改进后的内容'
+                    }
+                ]
+            }
+        };
+
+        // Mock getJsondoc to return different values based on the ID
+        mockJsondocRepo.getJsondoc.mockImplementation((id: string) => {
+            if (id === 'mock-patch-jsondoc-1') {
+                return Promise.resolve(mockPatchJsondoc);
+            }
+            // For other IDs, return what was previously mocked
+            return Promise.resolve({
+                id: id,
+                schema_type: '灵感创意',
+                project_id: 'test-project',
+                data: {
+                    title: '测试标题',
+                    body: '测试内容'
+                },
+                metadata: {
+                    platform: '抖音',
+                    genre: '现代甜宠'
+                }
+            });
+        });
 
         brainstormEditTool = createBrainstormEditToolDefinition(
             mockTransformRepo,

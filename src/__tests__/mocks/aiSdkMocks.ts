@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import { CacheReader, CachedResponse } from '../utils/cacheReader';
-import { generateCacheKey, generateSchemaHash, CacheKeyParams } from '../../common/transform-jsondoc-framework/cacheKeyGenerator';
+import { generateCacheKey, generateSchemaHash} from '@/common/transform-jsondoc-framework/cacheKeyGenerator';
 import { z } from 'zod';
 
 const cacheReader = new CacheReader();

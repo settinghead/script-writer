@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useChat } from '@ai-sdk/react';
-import { Button, Typography, Spin, Alert, Space } from 'antd';
+import { Button, Typography, Alert} from 'antd';
 import { SendOutlined, UserOutlined, RobotOutlined } from '@ant-design/icons';
 import TextareaAutosize from 'react-textarea-autosize';
 

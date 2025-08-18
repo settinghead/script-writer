@@ -1,4 +1,4 @@
-import { Kysely, sql } from 'kysely';
+import { Kysely } from 'kysely';
 
 export async function up(db: Kysely<any>): Promise<void> {
     // Add jsondoc_path column to transform_inputs table

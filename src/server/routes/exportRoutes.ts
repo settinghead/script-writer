@@ -3,9 +3,7 @@ import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 import { AuthMiddleware } from '../middleware/auth';
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
-import { deduceProjectTitle } from '../../common/utils/projectTitleDeduction';
 import { CanonicalJsondocService } from '../services/CanonicalJsondocService';
-import { extractCanonicalJsondocIds } from '../../common/canonicalJsondocLogic';
 import { db } from '../database/connection';
 
 export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
@@ -27,7 +25,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         id: string;
         name: string;
         content: any;
-        type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '剧本设定' | 'chronicles' | '分集结构' | 'episode_group';
+        type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '剧本设定' | 'chronicles' | '分集结构' | 'episode_group' | '单集大纲' | '单集剧本';
         defaultSelected: boolean;
         // For episode groups
         episodeNumber?: number;
@@ -218,13 +216,35 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                     name: `第${episodeNumber}集`,
                     content: group, // Contains both synopsis and script
                     type: 'episode_group',
-                    defaultSelected: true,
+                    defaultSelected: false,
                     episodeNumber,
                     hasSynopsis,
                     hasScript,
                     synopsisContent: group.synopsis,
                     scriptContent: group.script
                 });
+
+                if (hasSynopsis && group.synopsis) {
+                    items.push({
+                        id: `episode-group-${episodeNumber}-synopsis`,
+                        name: `第${episodeNumber}集 · 大纲`,
+                        content: group.synopsis,
+                        type: '单集大纲',
+                        defaultSelected: true,
+                        episodeNumber,
+                    });
+                }
+
+                if (hasScript && group.script) {
+                    items.push({
+                        id: `episode-group-${episodeNumber}-script`,
+                        name: `第${episodeNumber}集 · 剧本`,
+                        content: group.script,
+                        type: '单集剧本',
+                        defaultSelected: true,
+                        episodeNumber,
+                    });
+                }
             }
         });
 
@@ -251,6 +271,10 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                     return formatEpisodePlanning(item.content);
                 case 'episode_group':
                     return formatEpisodeGroup(item.content);
+                case '单集大纲':
+                    return formatEpisodeSynopsis(item.content);
+                case '单集剧本':
+                    return formatEpisodeScript(item.content);
                 default:
                     return '无法识别的内容类型';
             }
@@ -322,21 +346,76 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
             const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
             let content = '';
 
+            // 基本信息
             if (data.title) content += `**标题**: ${data.title}\n\n`;
             if (data.genre) content += `**类型**: ${data.genre}\n\n`;
-            if (data.target_platform) content += `**目标平台**: ${data.target_platform}\n\n`;
-            if (data.target_episodes) content += `**目标集数**: ${data.target_episodes}\n\n`;
 
-            if (data.core_themes && Array.isArray(data.core_themes)) {
-                content += `**核心主题**: ${data.core_themes.join(', ')}\n\n`;
+            // 目标受众（符合最新的 OutlineSettingsOutputSchema）
+            if (data.target_audience) {
+                const ta = data.target_audience;
+                if (ta.demographic) content += `**目标受众**: ${ta.demographic}\n\n`;
+                if (Array.isArray(ta.core_themes) && ta.core_themes.length > 0) {
+                    content += `**核心主题**: ${ta.core_themes.join(', ')}\n\n`;
+                }
             }
 
-            if (data.selling_points && Array.isArray(data.selling_points)) {
-                content += `**卖点**: ${data.selling_points.join(', ')}\n\n`;
+            // 卖点与爽点
+            if (Array.isArray(data.selling_points) && data.selling_points.length > 0) {
+                content += `**卖点**:\n`;
+                data.selling_points.forEach((p: string, idx: number) => {
+                    content += `${idx + 1}. ${p}\n`;
+                });
+                content += '\n';
             }
 
-            if (data.satisfaction_points && Array.isArray(data.satisfaction_points)) {
-                content += `**爽点**: ${data.satisfaction_points.join(', ')}\n\n`;
+            if (Array.isArray(data.satisfaction_points) && data.satisfaction_points.length > 0) {
+                content += `**爽点**:\n`;
+                data.satisfaction_points.forEach((p: string, idx: number) => {
+                    content += `${idx + 1}. ${p}\n`;
+                });
+                content += '\n';
+            }
+
+            // 故事设定
+            if (data.setting) {
+                const s = data.setting;
+                if (s.core_setting_summary) content += `**世界观/核心设定**: ${s.core_setting_summary}\n\n`;
+                if (Array.isArray(s.key_scenes) && s.key_scenes.length > 0) {
+                    content += `**关键场景**:\n`;
+                    s.key_scenes.forEach((scene: string, idx: number) => {
+                        content += `${idx + 1}. ${scene}\n`;
+                    });
+                    content += '\n';
+                }
+            }
+
+            // 角色设定
+            if (Array.isArray(data.characters) && data.characters.length > 0) {
+                content += `**角色设定**:\n`;
+                data.characters.forEach((char: any) => {
+                    const traits = Array.isArray(char.personality_traits)
+                        ? char.personality_traits.join('、')
+                        : undefined;
+                    content += `- **${char.name || '未命名角色'}**${char.type ? ` (${char.type})` : ''}`;
+                    if (char.age || char.gender || char.occupation) {
+                        const meta = [char.age, char.gender, char.occupation].filter(Boolean).join(' / ');
+                        if (meta) content += ` - ${meta}`;
+                    }
+                    content += '\n';
+                    if (char.description) content += `  描述: ${char.description}\n`;
+                    if (traits) content += `  性格: ${traits}\n`;
+                    if (char.character_arc) content += `  成长线: ${char.character_arc}\n`;
+                    if (char.relationships && typeof char.relationships === 'object') {
+                        const entries = Object.entries(char.relationships as Record<string, string>);
+                        if (entries.length > 0) {
+                            content += `  关系:\n`;
+                            entries.forEach(([other, rel]) => {
+                                content += `    - ${other}: ${rel}\n`;
+                            });
+                        }
+                    }
+                });
+                content += '\n';
             }
 
             return content;
@@ -352,25 +431,42 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
             const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
             let content = '';
 
-            if (data.title) content += `**标题**: ${data.title}\n\n`;
+            // 新版编年史：stages 数组
+            if (Array.isArray(data.stages) && data.stages.length > 0) {
+                data.stages.forEach((stage: any, index: number) => {
+                    const title = stage.title || `阶段 ${index + 1}`;
+                    content += `### ${title}\n`;
+                    if (stage.stageSynopsis) content += `**阶段概述**: ${stage.stageSynopsis}\n`;
+                    if (stage.event) content += `**核心事件**: ${stage.event}\n`;
 
-            if (data.synopsis_stages && Array.isArray(data.synopsis_stages)) {
-                content += `**故事梗概**:\n`;
-                data.synopsis_stages.forEach((stage: string, index: number) => {
-                    content += `${index + 1}. ${stage}\n`;
+                    if (Array.isArray(stage.emotionArcs) && stage.emotionArcs.length > 0) {
+                        content += `**情感发展**:\n`;
+                        stage.emotionArcs.forEach((arc: any, i: number) => {
+                            const chars = Array.isArray(arc.characters) ? arc.characters.join(', ') : '';
+                            content += `${i + 1}. ${chars ? `${chars}: ` : ''}${arc.content}\n`;
+                        });
+                    }
+
+                    if (Array.isArray(stage.relationshipDevelopments) && stage.relationshipDevelopments.length > 0) {
+                        content += `**关系发展**:\n`;
+                        stage.relationshipDevelopments.forEach((rel: any, i: number) => {
+                            const chars = Array.isArray(rel.characters) ? rel.characters.join(', ') : '';
+                            content += `${i + 1}. ${chars ? `${chars}: ` : ''}${rel.content}\n`;
+                        });
+                    }
+
+                    if (Array.isArray(stage.insights) && stage.insights.length > 0) {
+                        content += `**洞察**:\n`;
+                        stage.insights.forEach((ins: string, i: number) => {
+                            content += `${i + 1}. ${ins}\n`;
+                        });
+                    }
+
+                    content += '\n';
                 });
-                content += '\n';
             }
 
-            if (data.characters && Array.isArray(data.characters)) {
-                content += `**角色设定**:\n`;
-                data.characters.forEach((char: any) => {
-                    content += `- **${char.name}** (${char.type}): ${char.description}\n`;
-                });
-                content += '\n';
-            }
-
-            return content;
+            return content || '无内容';
         } catch (error) {
             return '内容解析错误';
         }
@@ -383,23 +479,55 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
             const data = typeof jsondoc.data === 'string' ? JSON.parse(jsondoc.data) : jsondoc.data;
             let content = '';
 
-            if (data.title) content += `**标题**: ${data.title}\n\n`;
-            if (data.total_episodes) content += `**总集数**: ${data.total_episodes}\n\n`;
+            // New schema fields
+            if (data.totalEpisodes) content += `**总集数**: ${data.totalEpisodes}\n\n`;
+            if (data.overallStrategy) content += `**整体策略**: ${data.overallStrategy}\n\n`;
 
-            if (data.episodes && Array.isArray(data.episodes)) {
+            if (Array.isArray(data.episodeGroups)) {
+                data.episodeGroups.forEach((group: any, idx: number) => {
+                    const header = group.groupTitle ? `${group.groupTitle}` : `阶段 ${idx + 1}`;
+                    const range = group.episodes ? `（${group.episodes}）` : '';
+                    content += `### ${header}${range}\n`;
+                    if (group.plotDescription) content += `**剧情描述**: ${group.plotDescription}\n`;
+
+                    if (Array.isArray(group.keyEvents) && group.keyEvents.length > 0) {
+                        content += `**关键事件**:\n`;
+                        group.keyEvents.forEach((e: string, i: number) => {
+                            content += `${i + 1}. ${e}\n`;
+                        });
+                    }
+
+                    if (Array.isArray(group.hooks) && group.hooks.length > 0) {
+                        content += `**悬念钩子**:\n`;
+                        group.hooks.forEach((h: string, i: number) => {
+                            content += `${i + 1}. ${h}\n`;
+                        });
+                    }
+
+                    if (Array.isArray(group.emotionalBeats) && group.emotionalBeats.length > 0) {
+                        content += `**情感节拍**:\n`;
+                        group.emotionalBeats.forEach((b: string, i: number) => {
+                            content += `${i + 1}. ${b}\n`;
+                        });
+                    }
+
+                    content += '\n';
+                });
+            } else if (Array.isArray(data.episodes)) {
+                // Backward-compatibility with older shape
                 content += `**分集规划**:\n`;
                 data.episodes.forEach((episode: any, index: number) => {
                     content += `### 第${index + 1}集\n`;
                     if (episode.title) content += `**标题**: ${episode.title}\n`;
                     if (episode.summary) content += `**概要**: ${episode.summary}\n`;
-                    if (episode.key_scenes && Array.isArray(episode.key_scenes)) {
+                    if (Array.isArray(episode.key_scenes)) {
                         content += `**关键场景**: ${episode.key_scenes.join(', ')}\n`;
                     }
                     content += '\n';
                 });
             }
 
-            return content;
+            return content || '无内容';
         } catch (error) {
             return '内容解析错误';
         }
@@ -434,23 +562,32 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
 
             if (data.episodeNumber) content += `**集数**: 第${data.episodeNumber}集\n\n`;
             if (data.title) content += `**标题**: ${data.title}\n\n`;
-            if (data.summary) content += `**概要**: ${data.summary}\n\n`;
 
-            if (data.key_scenes && Array.isArray(data.key_scenes)) {
+            // New schema fields (EpisodeSynopsisSchema)
+            if (data.openingHook) content += `**开场钩子**: ${data.openingHook}\n\n`;
+            if (data.mainPlot) content += `**主要剧情**: ${data.mainPlot}\n\n`;
+            if (data.emotionalClimax) content += `**情感高潮**: ${data.emotionalClimax}\n\n`;
+            if (data.cliffhanger) content += `**结尾悬念**: ${data.cliffhanger}\n\n`;
+            if (Array.isArray(data.suspenseElements) && data.suspenseElements.length > 0) {
+                content += `**悬念元素**:\n`;
+                data.suspenseElements.forEach((s: string, i: number) => {
+                    content += `${i + 1}. ${s}\n`;
+                });
+                content += '\n';
+            }
+            if (data.estimatedDuration) content += `**预估时长**: ${data.estimatedDuration}秒\n\n`;
+
+            // Backward compatibility with older schema fields
+            if (data.summary) content += `**概要**: ${data.summary}\n\n`;
+            if (Array.isArray(data.key_scenes)) {
                 content += `**关键场景**:\n`;
                 data.key_scenes.forEach((scene: string, index: number) => {
                     content += `${index + 1}. ${scene}\n`;
                 });
                 content += '\n';
             }
-
-            if (data.character_development) {
-                content += `**角色发展**: ${data.character_development}\n\n`;
-            }
-
-            if (data.emotional_arc) {
-                content += `**情感线**: ${data.emotional_arc}\n\n`;
-            }
+            if (data.character_development) content += `**角色发展**: ${data.character_development}\n\n`;
+            if (data.emotional_arc) content += `**情感线**: ${data.emotional_arc}\n\n`;
 
             return content;
         } catch (error) {
@@ -467,7 +604,16 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
 
             if (data.episodeNumber) content += `**集数**: 第${data.episodeNumber}集\n\n`;
             if (data.title) content += `**标题**: ${data.title}\n\n`;
+            if (data.estimatedDuration) content += `**预估时长**: ${data.estimatedDuration}分钟\n\n`;
 
+            // New schema: scriptContent is a full text block
+            if (typeof data.scriptContent === 'string' && data.scriptContent.trim().length > 0) {
+                content += `**剧本正文**:\n\n`;
+                content += `${data.scriptContent}\n`;
+                return content;
+            }
+
+            // Backward compatibility: older structured scenes format
             if (data.scenes && Array.isArray(data.scenes)) {
                 content += `**场景**:\n\n`;
                 data.scenes.forEach((scene: any, index: number) => {

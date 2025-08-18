@@ -1,10 +1,9 @@
 import { ProjectRepository } from '../transform-jsondoc-framework/ProjectRepository';
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
-
+import { CanonicalJsondocService } from './CanonicalJsondocService';
 
 import type { Kysely } from 'kysely';
 import type { DB } from '../database/types';
-import { ChatMessageRepository } from '../transform-jsondoc-framework/ChatMessageRepository';
 import { Project } from '../../common/transform-jsondoc-types';
 
 export class ProjectService {
@@ -12,24 +11,24 @@ export class ProjectService {
     private projectRepo: ProjectRepository;
     private jsondocRepo: TransformJsondocRepository;
     private transformRepo: TransformJsondocRepository;
-    private chatMessageRepo: ChatMessageRepository;
+    private canonicalService: CanonicalJsondocService;
 
     constructor(database: Kysely<DB>) {
         this.db = database;
         this.projectRepo = new ProjectRepository(database);
         this.jsondocRepo = new TransformJsondocRepository(database);
         this.transformRepo = new TransformJsondocRepository(database);
-        this.chatMessageRepo = new ChatMessageRepository(database);
+        this.canonicalService = new CanonicalJsondocService(database, this.jsondocRepo, this.jsondocRepo);
     }
 
     // Create a new project
     async createProject(
         userId: string,
-        name: string,
+        title: string,
         description?: string,
         projectType: string = 'script'
     ): Promise<Project> {
-        return await this.projectRepo.createProject(name, userId, description, projectType);
+        return await this.projectRepo.createProject(title, userId, description, projectType);
     }
 
     // Get projects for a user with summary information
@@ -38,34 +37,50 @@ export class ProjectService {
 
         const projectsWithSummary = await Promise.all(
             projects.map(async (project) => {
+                // Get computed last updated time for this project
+                const lastUpdated = await this.projectRepo.getProjectLastUpdated(project.id);
                 try {
                     // Get project statistics
                     const jsondocs = await this.jsondocRepo.getProjectJsondocs(project.id, 50);
                     const transforms = await this.transformRepo.getProjectTransforms(project.id, 10);
 
-                    // Count different types of jsondocs
-                    const jsondocCounts = {
-                        ideations: jsondocs.filter(a => a.schema_type === 'brainstorm_collection').length,
-                        剧本设定: jsondocs.filter(a => a.schema_type === '剧本设定').length,
-                        chronicles: jsondocs.filter(a => a.schema_type === 'chronicles').length,
-                    };
-
-                    // Determine project status and current phase
-                    const latestTransform = transforms[0]; // Most recent
-                    let status = 'active';
+                    // Get canonical jsondocs to determine current phase properly
                     let currentPhase = 'brainstorming';
+                    let canonicalContext = null;
 
-                    if (latestTransform) {
-                        status = latestTransform.status === 'failed' ? 'failed' : 'active';
+                    try {
+                        const canonicalData = await this.canonicalService.getProjectCanonicalData(project.id);
+                        canonicalContext = canonicalData.canonicalContext;
 
-                        // Determine phase based on latest jsondocs
-                        if (jsondocCounts.chronicles > 0) {
-                            currentPhase = 'chronicles';
-                        } else if (jsondocCounts.剧本设定 > 0) {
-                            currentPhase = '剧本设定';
-                        } else {
+                        // Determine phase based on canonical jsondocs (most advanced stage)
+                        if (canonicalContext.canonicalEpisodeScriptsList && canonicalContext.canonicalEpisodeScriptsList.length > 0) {
+                            currentPhase = 'scripts';
+                        } else if (canonicalContext.canonicalEpisodeSynopsisList && canonicalContext.canonicalEpisodeSynopsisList.length > 0) {
+                            currentPhase = 'episodes';
+                        } else if (canonicalContext.canonicalChronicles) {
+                            currentPhase = 'outline';
+                        } else if (canonicalContext.canonicalBrainstormIdea) {
                             currentPhase = 'brainstorming';
                         }
+                    } catch (error) {
+                        console.warn(`Failed to get canonical data for project ${project.id}:`, error);
+                        // Fallback to old logic
+                        currentPhase = 'brainstorming';
+                    }
+
+                    // Count different types of jsondocs for display
+                    const jsondocCounts = {
+                        ideations: jsondocs.filter(a => a.schema_type === 'brainstorm_collection').length,
+                        outlines: jsondocs.filter(a => a.schema_type === 'chronicles').length,
+                        episodes: jsondocs.filter(a => a.schema_type === '单集大纲').length,
+                        scripts: jsondocs.filter(a => a.schema_type === '单集剧本').length,
+                    };
+
+                    // Determine project status
+                    const latestTransform = transforms[0]; // Most recent
+                    let status = 'active';
+                    if (latestTransform) {
+                        status = latestTransform.status === 'failed' ? 'failed' : 'active';
                     }
 
                     // Get some sample content for preview
@@ -99,32 +114,35 @@ export class ProjectService {
 
                     return {
                         id: project.id,
-                        name: project.name,
+                        title: (project as any).title,
+                        project_title_manual_override: Boolean((project as any).project_title_manual_override ?? false),
                         description: project.description || previewContent,
                         currentPhase,
                         status,
                         platform,
                         genre,
                         createdAt: project.created_at,
-                        updatedAt: project.updated_at,
+                        updatedAt: lastUpdated.toISOString(),
                         jsondocCounts
                     };
                 } catch (error) {
                     console.error(`Error getting project summary for ${project.id}:`, error);
                     return {
                         id: project.id,
-                        name: project.name,
+                        title: (project as any).title,
+                        project_title_manual_override: Boolean((project as any).project_title_manual_override ?? false),
                         description: project.description || '',
                         currentPhase: 'brainstorming',
                         status: 'active',
                         platform: '',
                         genre: '',
                         createdAt: project.created_at,
-                        updatedAt: project.updated_at,
+                        updatedAt: lastUpdated.toISOString(),
                         jsondocCounts: {
                             ideations: 0,
-                            剧本设定: 0,
-                            chronicles: 0,
+                            outlines: 0,
+                            episodes: 0,
+                            scripts: 0,
                         }
                     };
                 }
@@ -150,7 +168,7 @@ export class ProjectService {
     async updateProject(
         projectId: string,
         userId: string,
-        updates: Partial<Pick<Project, 'name' | 'description' | 'status'>>
+        updates: Partial<Pick<Project, 'title' | 'description' | 'status'>>
     ): Promise<void> {
         // Check if user has access
         const hasAccess = await this.projectRepo.userHasAccess(projectId, userId);
@@ -241,16 +259,20 @@ export class ProjectService {
                 .execute();
             console.log(`[ProjectService] Deleted jsondocs for project ${projectId}`);
 
-            // 7. Delete all chat messages for this project
+            // 7. Delete all conversations and messages for this project
             await this.db
-                .deleteFrom('chat_messages_display')
-                .where('project_id', '=', projectId)
+                .deleteFrom('conversation_messages')
+                .where('conversation_id', 'in', (qb) =>
+                    qb.selectFrom('conversations')
+                        .select('id')
+                        .where('project_id', '=', projectId)
+                )
                 .execute();
             await this.db
-                .deleteFrom('chat_messages_raw')
+                .deleteFrom('conversations')
                 .where('project_id', '=', projectId)
                 .execute();
-            console.log(`[ProjectService] Deleted chat messages for project ${projectId}`);
+            console.log(`[ProjectService] Deleted conversations and messages for project ${projectId}`);
 
             // 8. Delete project membership
             await this.db
@@ -284,10 +306,9 @@ export class ProjectService {
                 .insertInto('projects')
                 .values({
                     id: projectId,
-                    name: title || `Test Project ${Date.now()}`,
+                    title: title || `Test Project ${Date.now()}`,
                     description: 'Integration test project',
-                    created_at: new Date(),
-                    updated_at: new Date()
+                    created_at: new Date()
                 })
                 .execute();
 

@@ -1,10 +1,10 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Typography, Alert, message } from 'antd';
-import { CheckOutlined, EditOutlined, RightOutlined } from '@ant-design/icons';
+import { CheckOutlined, RightOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useActionItemsStore } from '../../stores/actionItemsStore';
-import { getJsondocAtPath } from '../../../common/transform-jsondoc-framework/lineageResolution';
+import { getJsondocAtPath } from '@/common/transform-jsondoc-framework/lineageResolution';
 import { HumanButton } from '../shared';
 
 const { Text, Title } = Typography;
@@ -116,7 +116,6 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
 
             <div style={{
                 background: '#2a2a2a',
-                border: '2px solid #1890ff',
                 borderRadius: '8px',
                 padding: '16px',
                 marginBottom: '16px',
@@ -165,7 +164,7 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
             >
                 {isCreatingTransform ? '确认中...' : (
                     <>
-                        开始编辑<br />"{selectedIdeaTitle}" <RightOutlined />
+                        选中并编辑<br />"{selectedIdeaTitle}" <RightOutlined />
                     </>
                 )}
             </HumanButton>

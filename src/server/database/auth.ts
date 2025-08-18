@@ -1,5 +1,4 @@
-import { Kysely, sql } from 'kysely';
-import { v4 as uuidv4 } from 'uuid';
+import { Kysely } from 'kysely';
 import type { DB } from './types';
 
 export interface User {
@@ -264,7 +263,7 @@ export class AuthDatabase {
             .select('project_id')
             .where('user_id', '=', userId)
             .execute();
-        
+
         return results.map(row => row.project_id);
     }
 } 

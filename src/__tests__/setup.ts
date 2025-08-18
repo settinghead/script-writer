@@ -67,7 +67,7 @@ vi.mock('./LLMConfig', () => ({
 
 // Mock lineage resolution utilities
 // Note: Mock multiple possible import paths since different files import it differently
-vi.mock('../common/utils/lineageResolution', () => ({
+vi.mock('@/common/utils/lineageResolution', () => ({
     buildLineageGraph: vi.fn().mockReturnValue({}),
     findLatestJsondoc: vi.fn().mockReturnValue({ jsondocId: 'test-brainstorm-1' }),
 

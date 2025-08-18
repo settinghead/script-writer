@@ -61,7 +61,8 @@ export const ChroniclesStageSchema = z.object({
 // Chronicles Schemas
 export const ChroniclesInputSchema = BaseToolInputSchema.extend({
     totalEpisodes: z.number().min(MIN_EPISODES).max(MAX_EPISODES).describe('总集数'),
-    requirements: z.string().optional()
+    // Make requirements required so UI-provided instructions are always passed through
+    requirements: z.string().describe('时间顺序大纲生成要求')
 });
 
 export const ChroniclesOutputSchema = z.object({
@@ -91,7 +92,8 @@ export const EpisodeGroupSchema = z.object({
 // Episode Planning Schemas
 export const EpisodePlanningInputSchema = BaseToolInputSchema.extend({
     numberOfEpisodes: z.number().min(MIN_EPISODES).max(MAX_EPISODES).describe('要规划的总集数'),
-    requirements: z.string().optional().describe('额外要求')
+    // Make requirements optional to allow streamlined defaults; UI may omit it
+    requirements: z.string().optional().describe('分集结构生成要求')
 });
 
 export const EpisodePlanningOutputSchema = z.object({
@@ -133,7 +135,8 @@ export const EpisodeSynopsisSchema = z.object({
 export const EpisodeSynopsisInputSchema = BaseToolInputSchema.extend({
     episodeStart: z.number().describe('开始集数'),
     episodeEnd: z.number().describe('结束集数'),
-    groupTitle: z.string().describe('当前生成组的标题（用于上下文）')
+    groupTitle: z.string().describe('当前生成组的标题（用于上下文）'),
+    requirements: z.string().optional().describe('单集大纲生成要求')
 });
 
 // Updated tool result schema for individual episode
@@ -151,10 +154,11 @@ export type EpisodeSynopsisToolResult = z.infer<typeof EpisodeSynopsisToolResult
 export const EpisodeScriptSchema = z.object({
     episodeNumber: z.number(),
     title: z.string(),
-    scriptContent: z.string().describe('完整剧本内容 - 包含场景、对话、动作指导'),
+    // Make fields tolerant to imperfect LLM responses; Tool will fill defaults
+    scriptContent: z.string().optional().describe('完整剧本内容 - 包含场景、对话、动作指导'),
     wordCount: z.number().optional(),
-    estimatedDuration: z.number().describe('预估时长(分钟)'),
-    episodeSynopsisJsondocId: z.string().describe('对应的分集大纲ID')
+    estimatedDuration: z.number().optional().describe('预估时长(分钟)'),
+    episodeSynopsisJsondocId: z.string().optional().describe('对应的分集大纲ID')
 });
 
 export const EpisodeScriptInputSchema = BaseToolInputSchema.extend({

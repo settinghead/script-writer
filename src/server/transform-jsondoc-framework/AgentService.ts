@@ -1,11 +1,20 @@
 import { z } from 'zod';
-import { streamText, wrapLanguageModel } from 'ai';
+import { wrapLanguageModel } from 'ai';
 import { TransformJsondocRepository } from './TransformJsondocRepository';
 import { createAgentTool } from './StreamingAgentFramework';
-import { buildAgentConfiguration, buildPromptForRequestType } from '../services/AgentRequestBuilder';
+import { buildAgentConfiguration } from '../services/AgentRequestBuilder';
 import { getLLMModel } from './LLMConfig';
 import { createUserContextMiddleware } from '../middleware/UserContextMiddleware';
 import { getParticleSystem } from './particles/ParticleSystemInitializer';
+import {
+    createConversation,
+    getConversationMessages,
+    createMessageWithDisplay
+} from '../conversation/ConversationManager.js';
+import {
+    createConversationContext,
+    type ConversationStreamTextResult
+} from '../conversation/StreamingWrappers.js';
 
 // Schema for general agent requests
 export const GeneralAgentRequestSchema = z.object({
@@ -18,17 +27,10 @@ export const GeneralAgentRequestSchema = z.object({
 export type GeneralAgentRequest = z.infer<typeof GeneralAgentRequestSchema>;
 
 export class AgentService {
-    private chatMessageRepo?: any; // Injected later to avoid circular dependency
-
     constructor(
         private transformRepo: TransformJsondocRepository,
         private jsondocRepo: TransformJsondocRepository,
     ) { }
-
-    // Method to inject chat repository after initialization
-    public setChatMessageRepository(chatMessageRepo: any) {
-        this.chatMessageRepo = chatMessageRepo;
-    }
 
     // Helper function to generate computation state indicators
     private generateComputationIndicator(phase: string, content?: string): string {
@@ -88,91 +90,6 @@ export class AgentService {
         }
     }
 
-    /**
-     * Build minimal context that provides only workflow state overview for particle-based search
-     * This is used when particle search tools are available to reduce context size
-     */
-    private async buildMinimalContextForParticleSearch(
-        projectId: string,
-        jsondocRepo: TransformJsondocRepository
-    ): Promise<string> {
-        const contextLines: string[] = [];
-        contextLines.push('=== 项目状态概览 ===');
-
-        try {
-            // Get basic project state without loading full content
-            const allJsondocs = await jsondocRepo.getProjectJsondocs(projectId);
-
-            const hasInput = allJsondocs.some((j: any) => j.schema_type === 'user_input');
-            const hasBrainstorm = allJsondocs.some((j: any) => j.schema_type === '灵感创意');
-            const hasOutline = allJsondocs.some((j: any) => j.schema_type === '剧本设定');
-            const hasChronicles = allJsondocs.some((j: any) => j.schema_type === 'chronicles');
-            const hasEpisodePlanning = allJsondocs.some((j: any) => j.schema_type === '分集结构');
-            const episodeSynopses = allJsondocs.filter((j: any) => j.schema_type === '单集大纲');
-
-            if (hasInput) contextLines.push('✓ 用户输入已创建');
-            if (hasBrainstorm) contextLines.push('✓ 故事创意已生成');
-            if (hasOutline) contextLines.push('✓ 剧本设定已生成');
-            if (hasChronicles) contextLines.push('✓ 时间顺序大纲已生成');
-            if (hasEpisodePlanning) contextLines.push('✓ 分集结构已生成');
-            if (episodeSynopses.length > 0) {
-                contextLines.push(`✓ 已生成 ${episodeSynopses.length} 个分集大纲`);
-            }
-
-            if (contextLines.length === 1) {
-                contextLines.push('项目尚未开始，可以从创建故事创意开始');
-            }
-
-        } catch (error) {
-            console.warn('[AgentService] Failed to load project state for minimal context:', error);
-            contextLines.push('无法加载项目状态，请使用查询工具获取信息');
-        }
-
-        contextLines.push('');
-        contextLines.push('使用 query 工具搜索具体内容，使用 getJsondocContent 工具查看完整文档。');
-
-        return contextLines.join('\n');
-    }
-
-    /**
-     * Enhanced prompt with query guidance for particle-based search
-     */
-    private buildQueryGuidedPrompt(userRequest: string, minimalContext: string): string {
-        return `你是一个专业的短剧剧本创作和编辑助手。你拥有智能查询工具来按需获取项目信息。
-
-**用户请求：** "${userRequest}"
-
-${minimalContext}
-
-**你的工作流程：**
-
-1. **分析用户请求** - 理解用户的真实意图和需要什么信息
-2. **智能信息收集** - 使用 query 工具搜索相关信息
-   - 例如：query("角色设定") 来查找人物信息
-   - 例如：query("故事背景") 来了解设定信息
-   - 例如：query("剧集结构") 来查看分集安排
-3. **深入内容获取** - 使用 getJsondocContent 工具获取完整文档
-4. **决策和执行** - 基于收集的信息选择合适的工具执行任务
-
-**查询策略指导：**
-- 对于编辑任务：先查询相关的现有内容
-- 对于生成任务：查询所需的上游依赖信息
-- 对于问答任务：查询用户询问的具体内容
-- 可以进行多次查询来全面了解情况
-
-**重要原则：**
-- 根据查询结果中的 similarity 分数判断信息相关性
-- similarity > 0.7: 高度相关，可直接使用
-- similarity 0.4-0.7: 中等相关，需要进一步确认
-- similarity < 0.4: 低相关，可能需要重新查询
-
-**可用工具说明：**
-- query: 语义搜索项目中的相关信息
-- getJsondocContent: 获取指定文档的完整内容
-- 其他创作工具会根据项目状态自动提供
-
-开始分析用户请求，进行必要的信息查询，然后执行相应的工具。`;
-    }
 
     /**
      * Generate user-friendly error messages based on error type and content
@@ -234,108 +151,6 @@ ${minimalContext}
     }
 
     /**
-     * Check if request is a continuation and reconstruct conversation history
-     */
-    private async checkForContinuation(
-        request: GeneralAgentRequest,
-        projectId: string
-    ): Promise<{ isContinuation: boolean; conversationHistory: Array<{ role: string; content: string }> }> {
-        // Check if this is a continuation request (contains keywords like "continue", "next", or specific episode ranges)
-        const userRequest = request.userRequest.toLowerCase();
-        const isContinuation = userRequest.includes('continue') ||
-            userRequest.includes('next') ||
-            userRequest.includes('接下来') ||
-            userRequest.includes('继续') ||
-            /第\s*\d+\s*-\s*\d+\s*集/.test(userRequest); // Pattern like "第7-12集"
-
-        if (!isContinuation || !this.chatMessageRepo) {
-            return { isContinuation: false, conversationHistory: [] };
-        }
-
-        // For episode synopsis generation, try to reconstruct history
-        const toolName = 'generate_单集大纲';
-        const hasExisting = await this.chatMessageRepo.hasExistingConversation(projectId, toolName);
-
-        if (!hasExisting) {
-            return { isContinuation: false, conversationHistory: [] };
-        }
-
-        // Reconstruct conversation history with continuation parameters
-        const continuationParams = {
-            userRequest: request.userRequest,
-            contextType: request.contextType,
-            contextData: request.contextData
-        };
-
-        const conversationHistory = await this.chatMessageRepo.reconstructHistoryForAction(
-            projectId,
-            toolName,
-            continuationParams
-        );
-
-        return { isContinuation: true, conversationHistory };
-    }
-
-    /**
-     * Build multi-message prompt from conversation history
-     */
-    private buildMultiMessagePrompt(conversationHistory: Array<{ role: string; content: string }>): string {
-        // Convert conversation history to a single prompt that preserves the conversation structure
-        // This maintains compatibility with the existing streamText interface while enabling caching
-
-        console.log(`[AgentService] Building continuation prompt from ${conversationHistory.length} previous messages`);
-
-        const conversationText = conversationHistory.map((msg, index) => {
-            const roleLabel = msg.role === 'user' ? '用户' :
-                msg.role === 'assistant' ? '助手' :
-                    msg.role === 'system' ? '系统' : '未知';
-
-            // For system messages, add a marker to indicate it was the previous system prompt
-            const prefix = msg.role === 'system' ? '[之前的系统提示]' : `[${roleLabel}]`;
-
-            // Truncate very long messages for logging
-            const contentPreview = msg.content.length > 200 ?
-                msg.content.substring(0, 200) + '...' : msg.content;
-            console.log(`[AgentService] Conversation history ${index + 1}: ${prefix} (${msg.content.length} chars): ${contentPreview}`);
-
-            return `${prefix}: ${msg.content}`;
-        }).join('\n\n');
-
-        const continuationPrompt = `以下是之前的对话历史，请基于此上下文继续处理用户的新请求：
-
-${conversationText}
-
-请根据上述对话历史和最新的用户请求，继续执行相应的工具调用。`;
-
-        console.log(`[AgentService] Final continuation prompt length: ${continuationPrompt.length} characters`);
-
-        return continuationPrompt;
-    }
-
-    /**
-     * Save conversation history after successful tool execution
-     */
-    private async saveConversationHistory(
-        projectId: string,
-        toolName: string,
-        toolCallId: string,
-        systemPromptSentToLLM: string,
-        toolResult: any,
-        assistantResponse: string
-    ): Promise<void> {
-        if (!this.chatMessageRepo) return;
-
-        // Save the complete conversation that was sent to/from the LLM
-        // This represents the actual conversation format: system prompt -> assistant response
-        const messages = [
-            { role: 'system', content: systemPromptSentToLLM }, // The complete system prompt sent to LLM
-            { role: 'assistant', content: assistantResponse }   // The assistant's response
-        ];
-
-        await this.chatMessageRepo.saveConversation(projectId, toolName, toolCallId, messages);
-    }
-
-    /**
      * General agent method that can handle various types of requests including brainstorm editing
      */
     public async runGeneralAgent(
@@ -346,6 +161,7 @@ ${conversationText}
             createChatMessages?: boolean;
             existingThinkingMessageId?: string;
             existingThinkingStartTime?: string;
+            conversationId?: string; // Add conversationId parameter
             // Caching options for reproducible testing
             enableCaching?: boolean;
             seed?: number;
@@ -363,24 +179,10 @@ ${conversationText}
         console.log(`[AgentService] Starting agent execution with ID: ${executionId}`);
 
         try {
-            // Handle chat messages based on options
-            if (options.createChatMessages && this.chatMessageRepo) {
-                // Create user message event (only if not called from ChatService)
-                await this.chatMessageRepo.createUserMessage(projectId, request.userRequest);
-
-                // Create computation message for internal processing
-                const computationMessage = await this.chatMessageRepo.createComputationMessage(
-                    projectId,
-                    this.generateComputationIndicator('thinking')
-                );
-                computationMessageId = computationMessage.id;
-
-                // Note: Response message will be created when we have actual content
-                responseMessageId = undefined;
-            }
+            // Note: Message tracking is now handled automatically by the conversation system
+            // through StreamingWrappers - no need for manual message creation
 
             // 1. Check for conversation continuation
-            const { isContinuation, conversationHistory } = await this.checkForContinuation(request, projectId);
 
             // 2. Check if particle search is available for optimized context approach
             let useParticleSearchApproach = false;
@@ -399,15 +201,9 @@ ${conversationText}
             let agentConfig;
             let completePrompt;
 
-            if (useParticleSearchApproach && !isContinuation) {
+            if (useParticleSearchApproach) {
                 // Use minimal context + particle search approach
                 console.log('[AgentService] Using particle-search optimized approach');
-
-                // Build minimal context
-                const minimalContext = await this.buildMinimalContextForParticleSearch(projectId, this.jsondocRepo);
-
-                // Build query-guided prompt
-                completePrompt = this.buildQueryGuidedPrompt(request.userRequest, minimalContext);
 
                 // Build agent configuration with minimal context
                 agentConfig = await buildAgentConfiguration(
@@ -425,7 +221,9 @@ ${conversationText}
                     }
                 );
 
-                console.log(`[AgentService] Minimal context size: ${minimalContext.length} characters (vs traditional approach)`);
+                // Set the complete prompt for particle search approach
+                completePrompt = agentConfig.prompt;
+
             } else {
                 // Use traditional full context approach
                 console.log('[AgentService] Using traditional full-context approach');
@@ -447,51 +245,10 @@ ${conversationText}
                 );
 
                 // Use conversation history for continuation or regular prompt
-                completePrompt = isContinuation && conversationHistory.length > 0
-                    ? this.buildMultiMessagePrompt(conversationHistory)
-                    : agentConfig.prompt;
+                completePrompt = agentConfig.prompt;
             }
 
             const toolDefinitions = agentConfig.tools;
-
-            console.log(`[AgentService] ${isContinuation ? 'Continuation' : 'New'} request detected`);
-            if (isContinuation) {
-                console.log(`[AgentService] Using conversation history with ${conversationHistory.length} messages`);
-            }
-
-            // Update computation message to show analysis phase
-            if (computationMessageId && this.chatMessageRepo) {
-                await this.chatMessageRepo.updateComputationMessage(
-                    computationMessageId,
-                    this.generateComputationIndicator('analyzing', request.userRequest)
-                );
-            }
-
-            // 4. Save user request as raw message
-            if (this.chatMessageRepo) {
-                await this.chatMessageRepo.createRawMessage(
-                    projectId,
-                    'user',
-                    request.userRequest,
-                    { metadata: { source: 'streaming_agent', executionId } }
-                );
-
-                // Save the complete system prompt sent to the LLM
-                await this.chatMessageRepo.createRawMessage(
-                    projectId,
-                    'system',
-                    completePrompt,
-                    {
-                        metadata: {
-                            source: 'streaming_agent',
-                            executionId,
-                            promptType: isContinuation ? 'continuation_prompt' : 'initial_prompt',
-                            useParticleSearch: useParticleSearchApproach,
-                            conversationHistoryLength: conversationHistory.length
-                        }
-                    }
-                );
-            }
 
             // 2. Run the streaming agent directly
             console.log('--- Starting Streaming Agent ---');
@@ -531,16 +288,31 @@ ${conversationText}
             console.log('[AgentService] Using enhanced model with user context middleware');
             console.log('[AgentService] Original user request length:', request.userRequest.length);
 
-            const result = await streamText({
-                model: enhancedModel, // Use enhanced model instead of base model
+            // Use provided conversation or create a new one for this agent session
+            const conversationId = options.conversationId || await createConversation(projectId, 'agent', {
+                userId,
+                executionId,
+                userRequest: request.userRequest,
+                contextType: request.contextType
+            });
+
+            // Get existing messages for the conversation context
+            const existingMessages = await getConversationMessages(conversationId);
+
+            // Get conversation context with bound streaming functions
+            const conversationContext = createConversationContext(conversationId, projectId, existingMessages);
+
+            // Call streamText through the conversation context
+            const result = await conversationContext.streamText({
+                messages: [
+                    { role: 'user', content: completePrompt }
+                ],
                 tools: tools,
-                maxSteps: 25, // Allow more steps for complex editing workflows
-                prompt: completePrompt,
-                // Pass AI SDK options directly
-                ...(seed && { seed }),
-                ...(temperature && { temperature }),
-                ...(topP && { topP }),
-                ...(maxTokens && { maxTokens })
+                maxTokens: maxTokens,
+                temperature: temperature,
+                topP: topP,
+                seed: seed,
+                model: enhancedModel
             });
 
             console.log('\n\n--- Agent Stream & Final Output ---');
@@ -549,38 +321,13 @@ ${conversationText}
             let toolCallCount = 0;
             let toolResultCount = 0;
 
+            // Process the streaming results - message tracking is handled automatically by conversation system
             for await (const delta of result.fullStream) {
                 switch (delta.type) {
                     case 'text-delta':
                         process.stdout.write(delta.textDelta);
                         accumulatedResponse += delta.textDelta;
                         finalResponse += delta.textDelta;
-
-                        // Create response message on first content if not already created
-                        if (!responseMessageId && options.createChatMessages && this.chatMessageRepo && accumulatedResponse.trim()) {
-                            const responseMessage = await this.chatMessageRepo.createResponseMessage(projectId, accumulatedResponse);
-                            responseMessageId = responseMessage.id;
-                        }
-
-                        // Try to parse JSON and update response message in real-time
-                        if (responseMessageId && this.chatMessageRepo) {
-                            const parseResult = await this.tryParseAgentJSON(accumulatedResponse);
-                            if (parseResult.parsed && parseResult.humanReadableMessage) {
-                                // Successfully parsed JSON, update with human readable message
-                                await this.chatMessageRepo.updateResponseMessage(
-                                    responseMessageId,
-                                    parseResult.humanReadableMessage,
-                                    'streaming'
-                                );
-                            } else {
-                                // JSON not complete yet, show accumulated text
-                                await this.chatMessageRepo.updateResponseMessage(
-                                    responseMessageId,
-                                    accumulatedResponse,
-                                    'streaming'
-                                );
-                            }
-                        }
                         break;
 
                     case 'tool-call':
@@ -588,30 +335,21 @@ ${conversationText}
                         currentToolCall = delta;
                         toolCallCount++;
 
-                        // Update computation message to show processing phase
-                        if (computationMessageId && this.chatMessageRepo) {
-                            await this.chatMessageRepo.updateComputationMessage(
-                                computationMessageId,
-                                this.generateComputationIndicator('processing', delta.toolName)
-                            );
-                        }
-
-                        // Save tool call as raw message
-                        if (this.chatMessageRepo && projectId) {
-                            await this.chatMessageRepo.createRawMessage(
-                                projectId,
-                                'tool',
-                                `Tool call: ${delta.toolName}`,
-                                {
-                                    toolName: delta.toolName,
-                                    toolParameters: delta.args,
-                                    metadata: {
-                                        toolCallId: delta.toolCallId,
-                                        source: 'streaming_agent',
-                                        executionId
-                                    }
-                                }
-                            );
+                        // Log tool call as conversation message
+                        try {
+                            await createMessageWithDisplay(conversationId, 'tool', JSON.stringify({
+                                toolCall: delta.toolName,
+                                toolCallId: delta.toolCallId,
+                                args: delta.args
+                            }), {
+                                toolName: delta.toolName,
+                                toolCallId: delta.toolCallId,
+                                toolParameters: delta.args,
+                                status: 'streaming'
+                            });
+                            console.log(`[Agent Action] Logged tool call message for '${delta.toolName}'`);
+                        } catch (error) {
+                            console.error(`[Agent Action] Failed to log tool call message:`, error);
                         }
                         break;
 
@@ -619,68 +357,36 @@ ${conversationText}
                         console.log(`\n[Agent Action] Received result for tool call '${delta.toolCallId}'`);
                         toolResultCount++;
 
-                        // Update computation message to show generation phase
-                        if (computationMessageId && this.chatMessageRepo) {
-                            await this.chatMessageRepo.updateComputationMessage(
-                                computationMessageId,
-                                this.generateComputationIndicator('generating', currentToolCall?.toolName)
-                            );
-                        }
-
-                        // Save tool result as raw message
-                        if (this.chatMessageRepo && projectId && currentToolCall) {
-                            await this.chatMessageRepo.createRawMessage(
-                                projectId,
-                                'tool',
-                                `Tool result: ${currentToolCall.toolName}`,
-                                {
-                                    toolName: currentToolCall.toolName,
-                                    toolParameters: currentToolCall.args,
-                                    toolResult: delta.result,
-                                    metadata: {
-                                        toolCallId: delta.toolCallId,
-                                        source: 'streaming_agent',
-                                        executionId
-                                    }
-                                }
-                            );
-
-                            // Save conversation history for episode synopsis tool
-                            if (currentToolCall.toolName === 'generate_单集大纲') {
-                                await this.saveConversationHistory(
-                                    projectId,
-                                    currentToolCall.toolName,
-                                    delta.toolCallId,
-                                    completePrompt, // The complete system prompt that was sent to the LLM
-                                    delta.result,
-                                    accumulatedResponse || 'Tool executed successfully'
-                                );
-                            }
+                        // Update tool call message with result
+                        try {
+                            await createMessageWithDisplay(conversationId, 'tool', JSON.stringify({
+                                toolCallId: delta.toolCallId,
+                                result: delta.result
+                            }), {
+                                toolCallId: delta.toolCallId,
+                                toolResult: delta.result,
+                                status: 'completed'
+                            });
+                            console.log(`[Agent Action] Logged tool result message for '${delta.toolCallId}'`);
+                        } catch (error) {
+                            console.error(`[Agent Action] Failed to log tool result message:`, error);
                         }
                         break;
 
                     case 'step-finish':
                         console.log(`\n[Agent Step] Step completed with reason: ${delta.finishReason}`);
-                        // These are completion events for agent reasoning/tool-calling steps
-                        // They're informational and don't require specific handling
                         break;
 
                     case 'step-start':
                         console.log(`\n[Agent Step] Step started`);
-                        // These are start events for agent reasoning/tool-calling steps
-                        // They're informational and don't require specific handling
                         break;
 
                     case 'error':
                         console.log(`\n[Agent Error] Error occurred:`, (delta as any).error?.message || 'Unknown error');
-                        // Error events during agent processing
-                        // The error will be handled by the outer try-catch
                         break;
 
                     case 'finish':
                         console.log(`\n[Agent Finish] Agent completed with reason: ${delta.finishReason}`);
-                        // Final completion event for the entire agent execution
-                        // This is informational as the result is handled elsewhere
                         break;
 
                     default:
@@ -689,68 +395,6 @@ ${conversationText}
                 }
             }
             console.log('\n-----------------------------------');
-
-            // Final processing of the response
-            if (options.createChatMessages && this.chatMessageRepo) {
-                // Create response message if it wasn't created during streaming (e.g., tool-only responses)
-                if (!responseMessageId) {
-                    const defaultMessage = toolCallCount > 0 ? '我已完成您的请求。' : '收到您的请求，正在处理中...';
-                    const responseMessage = await this.chatMessageRepo.createResponseMessage(projectId, defaultMessage);
-                    responseMessageId = responseMessage.id;
-                }
-
-                if (responseMessageId) {
-                    // Try both accumulatedResponse and finalResponse
-                    let finalParseResult = await this.tryParseAgentJSON(accumulatedResponse);
-                    if (!finalParseResult.parsed && finalResponse !== accumulatedResponse) {
-                        finalParseResult = await this.tryParseAgentJSON(finalResponse);
-                    }
-
-                    if (finalParseResult.parsed && finalParseResult.humanReadableMessage) {
-                        // Successfully parsed JSON, use human readable message
-                        await this.chatMessageRepo.updateResponseMessage(
-                            responseMessageId,
-                            finalParseResult.humanReadableMessage,
-                            'completed'
-                        );
-
-                        // Add a small delay and force another update to ensure it's persisted
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                        await this.chatMessageRepo.updateResponseMessage(
-                            responseMessageId,
-                            finalParseResult.humanReadableMessage,
-                            'completed'
-                        );
-                    } else {
-                        // JSON parsing failed, use accumulated text as fallback
-                        const fallbackMessage = accumulatedResponse || finalResponse || (toolCallCount > 0 ? '我已完成您的请求。' : '收到您的请求。');
-                        await this.chatMessageRepo.updateResponseMessage(
-                            responseMessageId,
-                            fallbackMessage,
-                            'completed'
-                        );
-                    }
-                }
-            }
-
-            // Complete computation message
-            if (computationMessageId && this.chatMessageRepo) {
-                await this.chatMessageRepo.updateComputationMessage(
-                    computationMessageId,
-                    this.generateComputationIndicator('completing'),
-                    'completed'
-                );
-            }
-
-            // Save final assistant response as raw message
-            if (this.chatMessageRepo && projectId && finalResponse.trim()) {
-                await this.chatMessageRepo.createRawMessage(
-                    projectId,
-                    'assistant',
-                    finalResponse.trim(),
-                    { metadata: { source: 'streaming_agent', executionId } }
-                );
-            }
 
             const finishReason = await result.finishReason;
 
@@ -768,92 +412,11 @@ ${conversationText}
 
             // Generate user-friendly error message based on error type
             const userFriendlyMessage = this.generateUserFriendlyErrorMessage(error);
-
-            // Update messages with error state
-            if (computationMessageId && this.chatMessageRepo) {
-                await this.chatMessageRepo.updateComputationMessage(
-                    computationMessageId,
-                    this.generateComputationIndicator('error'),
-                    'failed'
-                );
-            }
-
-            if (options.createChatMessages && this.chatMessageRepo) {
-                // Create response message if it wasn't created yet
-                if (!responseMessageId) {
-                    const responseMessage = await this.chatMessageRepo.createResponseMessage(projectId, userFriendlyMessage);
-                    responseMessageId = responseMessage.id;
-                } else {
-                    await this.chatMessageRepo.updateResponseMessage(
-                        responseMessageId,
-                        userFriendlyMessage,
-                        'failed'
-                    );
-                }
-            }
-
-            // Save error as raw message
-            if (this.chatMessageRepo && projectId) {
-                await this.chatMessageRepo.createRawMessage(
-                    projectId,
-                    'assistant',
-                    `Error: ${error instanceof Error ? error.message : String(error)}`,
-                    { metadata: { source: 'streaming_agent', error: true, executionId } }
-                );
-            }
+            console.log(`[AgentService] User-friendly error: ${userFriendlyMessage}`);
 
             throw error;
         }
     }
 
-    /**
-     * Health check for particle-based search capabilities
-     */
-    public async checkParticleSearchHealth(): Promise<{
-        particleSystemAvailable: boolean;
-        unifiedSearchAvailable: boolean;
-        searchModes: {
-            stringSearchAvailable: boolean;
-            embeddingSearchAvailable: boolean;
-        };
-        particleCount: number;
-    }> {
-        try {
-            const particleSystem = getParticleSystem();
-            if (!particleSystem) {
-                return {
-                    particleSystemAvailable: false,
-                    unifiedSearchAvailable: false,
-                    searchModes: {
-                        stringSearchAvailable: false,
-                        embeddingSearchAvailable: false
-                    },
-                    particleCount: 0
-                };
-            }
 
-            const healthCheck = await particleSystem.unifiedSearch.healthCheck();
-
-            return {
-                particleSystemAvailable: true,
-                unifiedSearchAvailable: true,
-                searchModes: {
-                    stringSearchAvailable: healthCheck.stringSearchAvailable,
-                    embeddingSearchAvailable: healthCheck.embeddingSearchAvailable
-                },
-                particleCount: healthCheck.particleCount
-            };
-        } catch (error) {
-            console.error('[AgentService] Particle search health check failed:', error);
-            return {
-                particleSystemAvailable: false,
-                unifiedSearchAvailable: false,
-                searchModes: {
-                    stringSearchAvailable: false,
-                    embeddingSearchAvailable: false
-                },
-                particleCount: 0
-            };
-        }
-    }
 } 

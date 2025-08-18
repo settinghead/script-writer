@@ -1,5 +1,4 @@
 import { z } from 'zod';
-
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import {
     EpisodePlanningInputSchema,
@@ -10,7 +9,7 @@ import {
     EpisodePlanningEditInput,
     EpisodePlanningEditToolResultSchema,
     EpisodePlanningEditToolResult,
-} from '../../common/schemas/outlineSchemas';
+} from '@/common/schemas/outlineSchemas';
 import {
     executeStreamingTransform,
     StreamingTransformConfig

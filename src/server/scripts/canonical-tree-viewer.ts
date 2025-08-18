@@ -1,10 +1,9 @@
 import { db } from '../database/connection';
 import { buildLineageGraph } from '../../common/transform-jsondoc-framework/lineageResolution';
 import { computeCanonicalJsondocsFromLineage } from '../../common/canonicalJsondocLogic';
-import type { LineageGraph } from '../../common/transform-jsondoc-framework/lineageResolution';
+import type {} from '../../common/transform-jsondoc-framework/lineageResolution';
 import type { CanonicalJsondocContext } from '../../common/canonicalJsondocLogic';
 import { ElectricJsondoc, ElectricTransform, ElectricHumanTransform, ElectricTransformInput, ElectricTransformOutput } from '@/common/transform-jsondoc-types';
-import { JsondocSchemaRegistry } from '../../common/schemas/jsondocs';
 
 /**
  * Core function that generates canonical jsondoc tree structure from lineage data
@@ -199,7 +198,7 @@ async function getMostRecentProject(): Promise<string | null> {
         const result = await db
             .selectFrom('projects')
             .select('id')
-            .orderBy('updated_at', 'desc')
+            .orderBy('created_at', 'desc')
             .limit(1)
             .executeTakeFirst();
 

@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Outlet, useParams, useNavigate } from 'react-router-dom';
 import { Layout, Typography, Space, Button, Drawer, Grid, Tabs, Alert, Spin } from 'antd';
-import { HomeOutlined, ProjectOutlined, EyeInvisibleOutlined, ApartmentOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { EyeInvisibleOutlined, ApartmentOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
-import { useProjectStore } from '../stores/projectStore';
-import { ProjectDataProvider } from '../contexts/ProjectDataContext';
 import { ScrollSyncProvider } from '../contexts/ScrollSyncContext';
 import { ChatSidebarWrapper } from './chat/ChatSidebarWrapper';
 import RawGraphVisualization from './RawGraphVisualization'; // Replace WorkflowVisualization
@@ -16,6 +14,7 @@ import { DebugMenu, DebugPanels } from './debug';
 import { ProjectCreationForm } from './ProjectCreationForm';
 import { UnifiedDisplayRenderer } from './UnifiedDisplayRenderer';
 import { ExportButton } from './ExportButton';
+import { ProjectSettingsModal } from './ProjectSettingsModal';
 import { computeUnifiedWorkflowState } from '../utils/actionComputation';
 import { PatchReviewModal } from './PatchReviewModal';
 
@@ -441,6 +440,8 @@ const ProjectHeader: React.FC<{
                 projectId={projectId}
                 isMobile={isMobile}
             />
+            {/* Project settings modal is controlled via URL param (?projectSettings=1) */}
+            <ProjectSettingsModal projectId={projectId} />
         </div>
     );
 };

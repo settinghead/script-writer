@@ -82,6 +82,27 @@ export const particlePathsRegistry: Record<string, ParticlePathDefinition[]> = {
             titleDefault: '单集大纲'
         }
     ]
+    ,
+    '单集剧本': [
+        {
+            path: '$',
+            type: '单集剧本',
+            titlePath: '$.title',
+            titleDefault: '单集剧本'
+        },
+        {
+            path: '$.scenes[*]',
+            type: '场景',
+            titlePath: '$.location',
+            titleDefault: '场景'
+        },
+        {
+            path: '$.scenes[*].dialogue[*]',
+            type: '台词',
+            titlePath: '$.character',
+            titleDefault: '台词'
+        }
+    ]
 };
 
 /**
@@ -114,7 +135,8 @@ function getDefaultParticleType(schemaType: string): string {
         '剧本设定': '剧本设定',
         'chronicles': '时间顺序大纲',
         '分集结构': '分集结构',
-        '单集大纲': '单集大纲'
+        '单集大纲': '单集大纲',
+        '单集剧本': '单集剧本'
     };
 
     return typeMap[schemaType] || schemaType;
@@ -131,7 +153,8 @@ function getDefaultParticleTitle(schemaType: string): string {
         '剧本设定': '剧本设定',
         'chronicles': '时间顺序大纲',
         '分集结构': '分集结构',
-        '单集大纲': '单集大纲'
+        '单集大纲': '单集大纲',
+        '单集剧本': '单集剧本'
     };
 
     return titleMap[schemaType] || schemaType;

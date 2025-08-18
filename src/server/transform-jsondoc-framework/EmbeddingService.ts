@@ -1,4 +1,4 @@
-import { embed, EmbedResult, embedMany } from 'ai';
+import { embed, embedMany } from 'ai';
 import { createHash } from 'crypto';
 import { getEmbeddingCredentials, getEmbeddingModel } from './LLMConfig';
 import { db } from '../database/connection';
