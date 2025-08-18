@@ -13,6 +13,29 @@ export const AffectedJsondocsPanel: React.FC<AffectedJsondocsPanelProps> = ({ pr
     const [isRunning, setIsRunning] = useState(false);
     const [progress, setProgress] = useState(0);
 
+    const subscribeProgress = useCallback(() => {
+        try {
+            const es = new EventSource(`/api/auto-fix/stream/${projectId}`);
+            es.onmessage = (evt) => {
+                try {
+                    const data = JSON.parse(evt.data);
+                    if (data.type === 'start') {
+                        setProgress(0);
+                    } else if (data.type === 'progress' && data.total > 0) {
+                        setProgress(Math.round((data.processed / data.total) * 100));
+                    } else if (data.type === 'done') {
+                        setProgress(100);
+                        es.close();
+                    }
+                } catch { }
+            };
+            es.onerror = () => es.close();
+            return es;
+        } catch {
+            return null;
+        }
+    }, [projectId]);
+
     const total = affected.length;
     const severityColor = useCallback((sev: AffectedJsondoc['severity']) => {
         switch (sev) {
@@ -52,9 +75,11 @@ export const AffectedJsondocsPanel: React.FC<AffectedJsondocsPanelProps> = ({ pr
                 const err = await response.json().catch(() => ({}));
                 throw new Error(err.error || `HTTP ${response.status}`);
             }
+            const es = subscribeProgress();
             const result = await response.json();
             message.success(`自动修正完成：${result.processed} / ${total}`);
             setProgress(100);
+            es && es.close();
         } catch (e: any) {
             console.error('Auto-fix failed:', e);
             message.error(`自动修正失败：${e.message || e}`);
@@ -81,7 +106,7 @@ export const AffectedJsondocsPanel: React.FC<AffectedJsondocsPanelProps> = ({ pr
                 </div>
             )}
             <List
-                dataSource={affected}
+                dataSource={Array.isArray(affected) ? affected : []}
                 renderItem={(item) => (
                     <List.Item style={{ color: '#ddd' }}>
                         <div style={{ display: 'flex', flexDirection: 'column' }}>

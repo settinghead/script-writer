@@ -382,12 +382,7 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
                 </div>
               </div>
 
-              {/* Progress bar */}
-              {isStreaming && (
-                <div className="mt-4">
-                  正在生成想法...
-                </div>
-              )}
+
             </div>
 
             {/* Results */}

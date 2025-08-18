@@ -81,6 +81,37 @@ export function createAPIRoutes(
     });
     app.use('/api/auto-fix', autoFixRouter);
 
+    // Auto-fix SSE progress stream
+    app.get('/api/auto-fix/stream/:projectId', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const user = authMiddleware.getCurrentUser(req);
+            const { projectId } = req.params;
+            if (!user) return res.status(401).end();
+            const hasAccess = await jsondocRepo.userHasProjectAccess(user.id, projectId);
+            if (!hasAccess) return res.status(403).end();
+
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            res.flushHeaders?.();
+
+            const { BatchAutoFixService } = await import('../services/BatchAutoFixService.js');
+            const emitter = BatchAutoFixService.getEmitter(projectId);
+
+            const onMessage = (payload: any) => {
+                res.write(`data: ${JSON.stringify(payload)}\n\n`);
+            };
+            emitter.on('message', onMessage);
+
+            req.on('close', () => {
+                emitter.off('message', onMessage);
+                res.end();
+            });
+        } catch (e) {
+            res.status(500).end();
+        }
+    });
+
     // Catch-all for unmatched API routes - return 404 instead of falling through to ViteExpress
     app.use(/^\/api\/.*$/, (req, res) => {
         res.status(404).json({

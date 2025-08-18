@@ -960,7 +960,7 @@ export function generateSchemaSpecificInstructions(schemaType: string): string[]
 **Integration Points:**
 - [x] Add to `ActionItemsSection.tsx`
 - [ ] Subscribe to jsondoc edit events (debounced)
-- [x] Update when lineage changes
+- [x] Update when lineage changes (initial heuristic via localUpdates)
 
 ### 6. ✅ Batch Auto-Fix System
 
@@ -969,7 +969,7 @@ export function generateSchemaSpecificInstructions(schemaType: string): string[]
 **Features:**
 - [x] Parallel patch generation for multiple jsondocs
 - [ ] Progress tracking via SSE/WebSocket
-- [x] Batch approval endpoint (reuses existing `/api/patches/approve`)
+- [x] Batch approval endpoint
 - [ ] Rollback capability
 
 **Flow:**
@@ -1006,17 +1006,17 @@ export function generateSchemaSpecificInstructions(schemaType: string): string[]
 - [x] Create registry for schema → tool mapping
 
 ### Phase 3: UI Integration (Week 2)
-- [x] Create `AffectedJsondocsPanel.tsx` component
-- [x] Integrate with `ActionItemsSection.tsx`
+- [ ] Create `AffectedJsondocsPanel.tsx` component
+- [ ] Integrate with `ActionItemsSection.tsx`
 - [ ] Add debounced stale detection on edits
-- [x] Implement "自动修正" button and loading states
-- [x] Add Chinese translations for UI elements
+- [ ] Implement "自动修正" button and loading states
+- [ ] Add Chinese translations for UI elements
 
 ### Phase 4: Batch Processing (Week 2-3)
-- [x] Create `BatchAutoFixService.ts`
-- [x] Implement parallel patch generation
+- [ ] Create `BatchAutoFixService.ts`
+- [ ] Implement parallel patch generation
 - [ ] Add progress tracking system
-- [x] Create batch approval endpoint
+- [ ] Create batch approval endpoint
 - [ ] Add patch preview UI component
 
 ### Phase 5: Testing & Polish (Week 3)

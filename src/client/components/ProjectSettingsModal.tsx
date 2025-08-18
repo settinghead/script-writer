@@ -48,7 +48,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({ proj
       onCancel={handleCancel}
       onOk={handleOk}
       confirmLoading={saving}
-      destroyOnClose
+      destroyOnHidden
     >
       <Form form={form} layout="vertical" preserve={false}>
         <Form.Item

@@ -6,6 +6,8 @@ import { computeUnifiedWorkflowState } from '../utils/actionComputation';
 import ActionItemRenderer from './actions/ActionItemRenderer';
 import { AffectedJsondocsPanel } from './AffectedJsondocsPanel';
 import { computeStaleJsondocs, DiffChange } from '../../common/staleDetection';
+import type { AffectedJsondoc } from '../../common/staleDetection';
+import { PatchApprovalPanel } from './PatchApprovalPanel';
 // import { WorkflowSteps } from './WorkflowSteps';
 
 const { Text, Title } = Typography;
@@ -21,6 +23,37 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
     // Use refs to track previous values to prevent unnecessary re-renders
     const prevProjectDataRef = useRef(projectData);
     const prevComputationResultRef = useRef<any>(null);
+
+    // Compute affected jsondocs from recent local updates (async)
+    const [affected, setAffected] = React.useState<AffectedJsondoc[]>([]);
+    React.useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                if (!Array.isArray(projectData.jsondocs) || projectData.lineageGraph === 'pending') {
+                    if (!cancelled) setAffected([]);
+                    return;
+                }
+                const lineageGraph = projectData.lineageGraph as any;
+                const diffs: DiffChange[] = [];
+                projectData.localUpdates.forEach((val, key) => {
+                    if (key.startsWith('jsondoc-') && val && val.data) {
+                        const jsondocId = key.replace('jsondoc-', '');
+                        diffs.push({ jsondocId, path: '$', before: null, after: val.data });
+                    }
+                });
+                if (diffs.length === 0) {
+                    if (!cancelled) setAffected([]);
+                    return;
+                }
+                const results = await computeStaleJsondocs(diffs, lineageGraph, projectData.jsondocs as any);
+                if (!cancelled) setAffected(results as any);
+            } catch {
+                if (!cancelled) setAffected([]);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [projectData.localUpdates, projectData.jsondocs, projectData.lineageGraph]);
 
     // Stable computation with minimal dependencies
     const computationResult = useMemo(() => {
@@ -91,26 +124,6 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
 
     const { steps, displayComponents, actions, parameters } = computationResult;
 
-    // Compute affected jsondocs from recent local updates (simple heuristic)
-    const affected = useMemo(() => {
-        try {
-            if (!Array.isArray(projectData.jsondocs) || projectData.lineageGraph === 'pending') return [] as any[];
-            const lineageGraph = projectData.lineageGraph as any;
-            // Build diff list from localUpdates map (best-effort)
-            const diffs: DiffChange[] = [];
-            projectData.localUpdates.forEach((val, key) => {
-                if (key.startsWith('jsondoc-') && val && val.data) {
-                    const jsondocId = key.replace('jsondoc-', '');
-                    diffs.push({ jsondocId, path: '$', before: null, after: val.data });
-                }
-            });
-            if (diffs.length === 0) return [] as any[];
-            return computeStaleJsondocs(diffs, lineageGraph, projectData.jsondocs as any);
-        } catch {
-            return [] as any[];
-        }
-    }, [projectData.localUpdates, projectData.jsondocs, projectData.lineageGraph]);
-
     // Check for active transforms
     const hasActiveTransforms = Array.isArray(projectData.transforms) &&
         projectData.transforms.some((t: any) => t.status === 'running' || t.status === 'pending');
@@ -166,8 +179,9 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                             <Text type="secondary">生成中(完成后可编辑)...</Text>
                         </>
                     ) : (
-                        <div style={{ width: '100%' }}>
+                        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
                             <AffectedJsondocsPanel projectId={projectId} affected={affected as any} />
+                            <PatchApprovalPanel projectId={projectId} />
                             <Text type="secondary">已生成，暂无可执行操作</Text>
                         </div>
                     )}
