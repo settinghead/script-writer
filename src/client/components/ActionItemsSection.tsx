@@ -190,7 +190,7 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                                 action={action}
                                 projectId={projectId}
                                 hasActiveTransforms={hasActiveTransforms}
-                                onSuccess={() => {}}
+                                onSuccess={() => { }}
                                 onError={(error: Error) => {
                                     console.error('❌ Action failed:', action.type, error);
                                 }}
