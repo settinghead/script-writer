@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback } from 'react';
-import { Card, Typography, List, Tag, Button, Progress, message } from 'antd';
+import { Card, Typography, List, Tag, Button, Progress, message, Popover, Badge } from 'antd';
 import type { AffectedJsondoc } from '../../common/staleDetection';
 
 const { Text, Title } = Typography;
@@ -7,9 +7,10 @@ const { Text, Title } = Typography;
 interface AffectedJsondocsPanelProps {
     projectId: string;
     affected: AffectedJsondoc[];
+    compact?: boolean;
 }
 
-export const AffectedJsondocsPanel: React.FC<AffectedJsondocsPanelProps> = ({ projectId, affected }) => {
+export const AffectedJsondocsPanel: React.FC<AffectedJsondocsPanelProps> = ({ projectId, affected, compact = false }) => {
     const [isRunning, setIsRunning] = useState(false);
     const [progress, setProgress] = useState(0);
 
@@ -89,6 +90,61 @@ export const AffectedJsondocsPanel: React.FC<AffectedJsondocsPanelProps> = ({ pr
     }, [affected, isRunning, projectId, total]);
 
     if (affected.length === 0) return null;
+
+    // Compact tile content for juxtaposition with other actions
+    if (compact) {
+        const popoverContent = (
+            <div style={{ maxWidth: 360 }}>
+                <List
+                    size="small"
+                    dataSource={Array.isArray(affected) ? affected : []}
+                    renderItem={(item) => (
+                        <List.Item style={{ color: '#ddd' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div>
+                                    <Tag color={severityColor(item.severity as any)}>{item.schemaType}</Tag>
+                                </div>
+                                <Text type="secondary">{item.reason}</Text>
+                            </div>
+                        </List.Item>
+                    )}
+                />
+            </div>
+        );
+
+        return (
+            <Card
+                size="small"
+                style={{
+                    backgroundColor: '#111',
+                    border: '1px solid #333',
+                    minWidth: 260
+                }}
+                title={
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Text style={{ color: '#fff' }}>受影响</Text>
+                        <Badge count={total} color="#722ed1" style={{ backgroundColor: '#722ed1' }} />
+                    </div>
+                }
+                extra={(
+                    <Button type="primary" size="small" onClick={handleAutoFix} disabled={isRunning}>
+                        {isRunning ? '处理中…' : '自动修正'}
+                    </Button>
+                )}
+            >
+                {isRunning && (
+                    <div style={{ marginBottom: 8 }}>
+                        <Progress percent={progress} size="small" />
+                    </div>
+                )}
+                <div>
+                    <Popover placement="bottomLeft" content={popoverContent} title={<Text style={{ color: '#fff' }}>受影响详情</Text>}>
+                        <Button size="small">查看详情</Button>
+                    </Popover>
+                </div>
+            </Card>
+        );
+    }
 
     return (
         <Card

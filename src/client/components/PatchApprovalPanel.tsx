@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { Card, Typography, Table, Button, Space, message, Tag } from 'antd';
+import { Card, Typography, Table, Button, Space, message, Tag, Modal } from 'antd';
 
 const { Title, Text } = Typography;
 
@@ -21,6 +21,8 @@ export const PatchApprovalPanel: React.FC<PatchApprovalPanelProps> = ({ projectI
     const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
     const [approving, setApproving] = useState(false);
     const [rejecting, setRejecting] = useState(false);
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [previewContent, setPreviewContent] = useState<any[]>([]);
 
     const fetchPending = useCallback(async () => {
         setLoading(true);
@@ -97,6 +99,61 @@ export const PatchApprovalPanel: React.FC<PatchApprovalPanelProps> = ({ projectI
         }
     }, [selectedRowKeys, projectId, fetchPending]);
 
+    // RFC6902 JSON Pointer resolver
+    const jsonPointerGet = (obj: any, pointer: string): any => {
+        try {
+            if (pointer === '' || pointer === '/') return obj;
+            const parts = pointer.split('/').slice(1).map(p => p.replace(/~1/g, '/').replace(/~0/g, '~'));
+            return parts.reduce((acc: any, key: string) => {
+                if (acc == null) return undefined;
+                const idx = Number(key);
+                if (Array.isArray(acc) && !Number.isNaN(idx)) {
+                    return acc[idx];
+                }
+                return acc[key];
+            }, obj);
+        } catch {
+            return undefined;
+        }
+    };
+
+    const openPreview = useCallback(async (record: PendingPatchItem) => {
+        try {
+            // Fetch patch jsondoc
+            const patchRes = await fetch(`/api/jsondocs/${record.patchJsondoc.id}`, { credentials: 'include' });
+            if (!patchRes.ok) throw new Error(`HTTP ${patchRes.status}`);
+            const patchJsondoc = await patchRes.json();
+
+            // Fetch original jsondoc
+            const origRes = await fetch(`/api/jsondocs/${record.originalJsondoc.id}`, { credentials: 'include' });
+            if (!origRes.ok) throw new Error(`HTTP ${origRes.status}`);
+            const originalJsondoc = await origRes.json();
+
+            let patchData = patchJsondoc?.data;
+            if (typeof patchData === 'string') {
+                try { patchData = JSON.parse(patchData); } catch { }
+            }
+            const ops = Array.isArray(patchData?.patches) ? patchData.patches : [];
+
+            let originalData = originalJsondoc?.data;
+            if (typeof originalData === 'string') {
+                try { originalData = JSON.parse(originalData); } catch { }
+            }
+
+            const enhanced = ops.map((op: any) => {
+                const beforeVal = (op.op === 'add') ? undefined : jsonPointerGet(originalData, op.path);
+                const afterVal = (op.op === 'remove') ? undefined : op.value;
+                return { ...op, before: beforeVal, after: afterVal };
+            });
+
+            setPreviewContent(enhanced);
+            setPreviewOpen(true);
+        } catch (e: any) {
+            console.error('Preview failed:', e);
+            message.error('加载补丁内容失败');
+        }
+    }, []);
+
     const columns = [
         {
             title: '补丁ID',
@@ -125,6 +182,14 @@ export const PatchApprovalPanel: React.FC<PatchApprovalPanelProps> = ({ projectI
             key: 'createdAt',
             width: 180,
             render: (val: string) => <Text style={{ color: '#888' }}>{val ? new Date(val).toLocaleString() : '-'}</Text>
+        },
+        {
+            title: '预览',
+            key: 'preview',
+            width: 100,
+            render: (_: any, record: PendingPatchItem) => (
+                <Button size="small" onClick={() => openPreview(record)}>预览</Button>
+            )
         }
     ];
 
@@ -155,9 +220,34 @@ export const PatchApprovalPanel: React.FC<PatchApprovalPanelProps> = ({ projectI
                 pagination={{ pageSize: 5 }}
                 style={{ color: '#ddd' }}
             />
+            <Modal
+                open={previewOpen}
+                onCancel={() => setPreviewOpen(false)}
+                footer={<Button onClick={() => setPreviewOpen(false)}>关闭</Button>}
+                title={<Text style={{ color: '#fff' }}>补丁预览</Text>}
+            >
+                <div style={{ maxHeight: 360, overflow: 'auto' }}>
+                    {previewContent.length === 0 ? (
+                        <Text type="secondary">无可用补丁操作</Text>
+                    ) : (
+                        <Table
+                            size="small"
+                            pagination={false}
+                            rowKey={(_, idx) => String(idx)}
+                            dataSource={previewContent}
+                            columns={[
+                                { title: '操作', dataIndex: 'op', key: 'op', width: 100 },
+                                { title: '路径', dataIndex: 'path', key: 'path', width: 240 },
+                                { title: '原值', dataIndex: 'before', key: 'before', render: (val: any) => <Text style={{ color: '#f5222d' }}>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</Text> },
+                                { title: '新值', dataIndex: 'after', key: 'after', render: (val: any) => <Text style={{ color: '#52c41a' }}>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</Text> }
+                            ] as any}
+                        />
+                    )}
+                </div>
+            </Modal>
         </Card>
     );
-};
+}
 
 export default PatchApprovalPanel;
 

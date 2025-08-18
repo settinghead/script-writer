@@ -159,8 +159,24 @@ export function computeComponentState(
         };
     }
 
-    // NEW: User input is always directly editable
+    // NEW: User input editability depends on descendants
     if (jsondoc.origin_type === 'user_input') {
+        const hasDescendants = hasJsondocDescendants(jsondoc.id, projectData);
+        if (hasDescendants) {
+            // Treat as immutable; allow click-to-edit to create a derived copy
+            return {
+                state: ComponentState.CLICK_TO_EDIT,
+                reason: '该内容已有下游引用，点击创建可编辑副本',
+                parentTransformId: parentTransform?.id,
+                parentTransformStatus: parentTransform?.status,
+                canTransition: [ComponentState.EDITABLE],
+                metadata: {
+                    originType: jsondoc.origin_type,
+                    hasDescendants: true,
+                    canCreateEditableVersion: true
+                }
+            };
+        }
         return {
             state: ComponentState.EDITABLE,
             reason: '用户创建的内容，可直接编辑',

@@ -6,6 +6,7 @@ import { computeUnifiedWorkflowState } from '../utils/actionComputation';
 import ActionItemRenderer from './actions/ActionItemRenderer';
 import { AffectedJsondocsPanel } from './AffectedJsondocsPanel';
 import { computeStaleJsondocs, DiffChange } from '../../common/staleDetection';
+import { findParentJsondocsBySchemaType } from '../../common/transform-jsondoc-framework/lineageResolution';
 import type { AffectedJsondoc } from '../../common/staleDetection';
 import { PatchApprovalPanel } from './PatchApprovalPanel';
 // import { WorkflowSteps } from './WorkflowSteps';
@@ -42,18 +43,45 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                         diffs.push({ jsondocId, path: '$', before: null, after: val.data });
                     }
                 });
-                if (diffs.length === 0) {
-                    if (!cancelled) setAffected([]);
-                    return;
+                let results: any[] = [];
+                if (diffs.length > 0) {
+                    results = await computeStaleJsondocs(diffs, lineageGraph, projectData.jsondocs as any);
                 }
-                const results = await computeStaleJsondocs(diffs, lineageGraph, projectData.jsondocs as any);
+
+                // Heuristic lineage-based detection: if canonical idea exists and outline settings parent idea != canonical idea, mark affected
+                try {
+                    const canonical = projectData.canonicalContext !== 'pending' && projectData.canonicalContext !== 'error' ? projectData.canonicalContext as any : null;
+                    const canonicalIdeaId = canonical?.canonicalBrainstormIdea?.id || null;
+                    if (canonicalIdeaId) {
+                        const jsondocsArr = projectData.jsondocs as any[];
+                        const outlines = jsondocsArr.filter(j => j.schema_type === '剧本设定' && j.origin_type === 'ai_generated');
+                        for (const outline of outlines) {
+                            const parents = findParentJsondocsBySchemaType(outline.id, '灵感创意', lineageGraph, jsondocsArr);
+                            const parentIdeaId = parents && parents.length > 0 ? parents[0].id : null;
+                            if (parentIdeaId && parentIdeaId !== canonicalIdeaId) {
+                                // Add affected entry if not already
+                                const exists = results.some(r => r.jsondocId === outline.id);
+                                if (!exists) {
+                                    results.push({
+                                        jsondocId: outline.id,
+                                        schemaType: outline.schema_type,
+                                        reason: '上游创意已更新，设定可能需要同步',
+                                        affectedPaths: ['$'],
+                                        sourceChanges: []
+                                    });
+                                }
+                            }
+                        }
+                    }
+                } catch { }
+
                 if (!cancelled) setAffected(results as any);
             } catch {
                 if (!cancelled) setAffected([]);
             }
         }, 500); // debounce 500ms
         return () => { cancelled = true; clearTimeout(handle); };
-    }, [projectData.localUpdates, projectData.jsondocs, projectData.lineageGraph]);
+    }, [projectData.localUpdates, projectData.jsondocs, projectData.lineageGraph, projectData.canonicalContext]);
 
     // Stable computation with minimal dependencies
     const computationResult = useMemo(() => {
@@ -151,25 +179,24 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
         >
             {/* Actions on the right */}
             {actions.length > 0 ? (
-                <div style={{ display: "flex", flexWrap: "wrap", width: "100%", justifyContent: "center" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", width: "100%", justifyContent: "center", gap: 12 }}>
+                    {/* Compact affected tile placed alongside actions */}
+                    <div style={{ alignSelf: 'flex-start' }}>
+                        <AffectedJsondocsPanel projectId={projectId} affected={affected as any} compact />
+                    </div>
                     {actions.map((action: any, index: number) => (
                         <div key={`${action.type}-${index}`}>
                             <ActionItemRenderer
                                 action={action}
                                 projectId={projectId}
                                 hasActiveTransforms={hasActiveTransforms}
-                                onSuccess={() => {
-                                    // Action completed successfully
-                                }}
+                                onSuccess={() => {}}
                                 onError={(error: Error) => {
                                     console.error('❌ Action failed:', action.type, error);
                                 }}
                             />
                         </div>
                     ))}
-                    <div style={{ width: '100%', marginTop: 16 }}>
-                        <AffectedJsondocsPanel projectId={projectId} affected={affected as any} />
-                    </div>
                 </div>
             ) : (
                 <div style={{ display: "flex", flexWrap: "wrap", width: "100%", justifyContent: "center", padding: '24px', color: '#666', gap: 8 }}>
@@ -180,7 +207,7 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                         </>
                     ) : (
                         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            <AffectedJsondocsPanel projectId={projectId} affected={affected as any} />
+                            <AffectedJsondocsPanel projectId={projectId} affected={affected as any} compact />
                             <PatchApprovalPanel projectId={projectId} />
                             <Text type="secondary">已生成，暂无可执行操作</Text>
                         </div>

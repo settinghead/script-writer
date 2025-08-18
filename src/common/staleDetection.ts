@@ -17,7 +17,6 @@ export interface AffectedJsondoc {
     schemaType: string;
     reason: string;
     affectedPaths?: string[];
-    severity: 'high' | 'medium' | 'low';
     sourceChanges: DiffChange[];
     suggestedAction?: string;
 }
@@ -54,19 +53,12 @@ export async function computeStaleJsondocs(
             if (existing) {
                 existing.sourceChanges.push(diff);
                 existing.affectedPaths = mergeAffectedPaths(existing.affectedPaths, impact.affectedPaths);
-                if (
-                    impact.severity === 'high' ||
-                    (impact.severity === 'medium' && existing.severity === 'low')
-                ) {
-                    existing.severity = impact.severity as 'high' | 'medium' | 'low';
-                }
             } else {
                 affectedMap.set(child.id, {
                     jsondocId: child.id,
                     schemaType: child.schema_type,
                     reason: generateReason(sourceJsondoc.schema_type, diff, child.schema_type),
                     affectedPaths: impact.affectedPaths,
-                    severity: impact.severity as 'high' | 'medium' | 'low',
                     sourceChanges: [diff],
                     suggestedAction: generateSuggestedAction(child.schema_type)
                 });
@@ -107,31 +99,31 @@ function findDirectChildren(
     return children;
 }
 
-const SCHEMA_IMPACT_MAP: Record<string, Record<string, { impactedSchemas: string[]; severity: 'high' | 'medium' }>> = {
+const SCHEMA_IMPACT_MAP: Record<string, Record<string, { impactedSchemas: string[] }>> = {
     '灵感创意': {
-        '$.title': { impactedSchemas: ['剧本设定'], severity: 'high' },
-        '$.genre': { impactedSchemas: ['剧本设定'], severity: 'high' },
-        '$.body': { impactedSchemas: ['剧本设定', 'chronicles'], severity: 'medium' }
+        '$.title': { impactedSchemas: ['剧本设定'] },
+        '$.genre': { impactedSchemas: ['剧本设定'] },
+        '$.body': { impactedSchemas: ['剧本设定', 'chronicles'] }
     },
     '剧本设定': {
-        '$.characters': { impactedSchemas: ['chronicles', '分集结构'], severity: 'high' },
-        '$.synopsis': { impactedSchemas: ['chronicles'], severity: 'medium' }
+        '$.characters': { impactedSchemas: ['chronicles', '分集结构'] },
+        '$.synopsis': { impactedSchemas: ['chronicles'] }
     },
     'chronicles': {
-        '$.stages': { impactedSchemas: ['分集结构'], severity: 'high' }
+        '$.stages': { impactedSchemas: ['分集结构'] }
     }
 };
 
-function analyzeImpact(sourceSchema: string, changePath: string, targetSchema: string): { severity: 'high' | 'medium' | 'low'; affectedPaths?: string[] } {
+function analyzeImpact(sourceSchema: string, changePath: string, targetSchema: string): { affectedPaths?: string[] } {
     const sourceImpacts = SCHEMA_IMPACT_MAP[sourceSchema];
-    if (!sourceImpacts) return { severity: 'medium' };
+    if (!sourceImpacts) return {};
 
     for (const [pathPattern, impact] of Object.entries(sourceImpacts)) {
         if (changePath.startsWith(pathPattern) && impact.impactedSchemas.includes(targetSchema)) {
-            return { severity: impact.severity, affectedPaths: [changePath] };
+            return { affectedPaths: [changePath] };
         }
     }
-    return { severity: 'low' };
+    return {};
 }
 
 function generateReason(sourceSchema: string, diff: DiffChange, targetSchema: string): string {
