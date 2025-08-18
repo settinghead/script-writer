@@ -11,6 +11,7 @@ import { createEpisodePlanningToolDefinition, createEpisodePlanningEditToolDefin
 import { createEpisodeSynopsisToolDefinition } from '../tools/EpisodeSynopsisTool';
 import { JsonPatchOperationsSchema } from '@/common/schemas/transforms';
 import { StreamingExecutionMode } from '../transform-jsondoc-framework/StreamingTransformExecutor';
+import { buildAffectedContextText } from '../tools/shared/contextFormatting';
 
 /**
  * Admin routes for debugging and development
@@ -455,11 +456,37 @@ export function createAdminRoutes(
             const inputSchema = await toolInfo.config.schemas.inputSchema();
             const outputSchema = await toolInfo.config.schemas.outputSchema();
 
-            const config = {
+            // Build config; for edit tools, include a prepareTemplateVariables that injects affectedContext/diffs into editRequirements
+            const isEditTool = toolName.includes('edit') || toolInfo.templateName.endsWith('_diff');
+            const config: any = {
                 templateName: toolInfo.templateName,
                 inputSchema,
                 outputSchema
             };
+            if (isEditTool) {
+                config.prepareTemplateVariables = async (rawInput: any) => {
+                    // Compose additional context text from affectedContext (+ diffs) if provided
+                    const ap = additionalParams || {};
+                    const extra = buildAffectedContextText(ap.affectedContext);
+                    // Build jsondocs map (first jsondoc is the source for edit tools)
+                    const jdMap: any = {};
+                    try {
+                        if (rawInput.jsondocs && rawInput.jsondocs.length > 0) {
+                            const first = rawInput.jsondocs[0];
+                            const jd = await jsondocRepo.getJsondoc(first.jsondocId);
+                            if (jd) {
+                                jdMap[first.schemaType || jd.schema_type] = typeof jd.data === 'string' ? JSON.parse(jd.data) : jd.data;
+                            }
+                        }
+                    } catch { }
+                    return {
+                        params: {
+                            editRequirements: (ap.editRequirements || '') + extra
+                        },
+                        jsondocs: jdMap
+                    };
+                };
+            }
 
             const transformMetadata = {
                 toolName,
@@ -468,7 +495,7 @@ export function createAdminRoutes(
 
             // Determine execution mode for edit tools
             let executionMode: StreamingExecutionMode | null = null;
-            const isEditTool = toolName.includes('edit') || toolInfo.templateName.endsWith('_diff');
+            // isEditTool declared above
 
             if (isEditTool && input.jsondocs && input.jsondocs.length > 0) {
                 // For edit tools, get the original jsondoc being edited (first one in the array)
@@ -489,12 +516,14 @@ export function createAdminRoutes(
                 }
             }
 
-            if (toolName.startsWith("generate_")) {
-                executionMode = {
-                    mode: "full-object"
+            // If not edit tool, default to full-object
+            if (!executionMode) {
+                if (toolName.startsWith('generate_')) {
+                    executionMode = { mode: 'full-object' };
+                } else {
+                    // Fallback safe default for unknown names in debug
+                    executionMode = { mode: 'full-object' };
                 }
-            } else {
-                throw new Error("Unknown toolName: " + toolName);
             }
 
             // Execute the streaming transform with dryRun: true and streaming callback

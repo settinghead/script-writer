@@ -8,6 +8,7 @@ import {
 import { JsonPatchOperationsSchema } from '@/common/schemas/transforms';
 import { JsondocSchemaRegistry } from '@/common/schemas/jsondocs';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import { buildAffectedContextText, computeSchemaGuidance } from './shared/contextFormatting';
 
 // =============================
 // Generic Edit Input Schema
@@ -19,7 +20,13 @@ export const GenericEditInputSchema = z.object({
     affectedContext: z.array(z.object({
         jsondocId: z.string(),
         schemaType: z.string(),
-        reason: z.string()
+        reason: z.string(),
+        diffs: z.array(z.object({
+            path: z.string(),
+            before: z.any().optional(),
+            after: z.any().optional(),
+            fieldType: z.string().optional()
+        })).optional()
     })).optional().describe('受影响的下游jsondocs'),
     // Provide source/context jsondocs for lineage linking and prompt assembly
     jsondocs: z.array(z.object({
@@ -127,32 +134,8 @@ export function createGenericEditToolDefinition(
                         ? JSON.parse(sourceJsondoc.data)
                         : sourceJsondoc.data;
 
-                    // Generate schema-specific field guidance from Zod schema
-                    let schemaGuidance = '';
-                    try {
-                        const jsonSchema = zodToJsonSchema(zodSchema as unknown as z.ZodSchema<any>);
-                        const fieldDescriptions: string[] = [];
-                        function extract(obj: any, path: string = '') {
-                            if (!obj || typeof obj !== 'object') return;
-                            if (obj.properties) {
-                                for (const [key, value] of Object.entries(obj.properties)) {
-                                    const fieldPath = path ? `${path}.${key}` : key;
-                                    const desc = (value as any).description;
-                                    if (desc) fieldDescriptions.push(`${fieldPath}: ${desc}`);
-                                    extract(value, fieldPath);
-                                }
-                            }
-                            if (obj.items) extract(obj.items, `${path}[*]`);
-                        }
-                        extract(jsonSchema);
-                        if (fieldDescriptions.length > 0) {
-                            schemaGuidance = `\n字段说明(供参考)：\n${fieldDescriptions.map(d => `- ${d}`).join('\n')}`;
-                        }
-                    } catch { }
-
-                    const additionalContextText = input.affectedContext
-                        ? `\n受影响的内容：\n${input.affectedContext.map(a => `- ${a.schemaType}: ${a.reason}`).join('\n')}`
-                        : '';
+                    const schemaGuidance = computeSchemaGuidance(zodSchema as unknown as z.ZodSchema<any>);
+                    const additionalContextText = buildAffectedContextText(input.affectedContext as any);
 
                     return {
                         jsondocs: { [schemaType]: jsondocData },

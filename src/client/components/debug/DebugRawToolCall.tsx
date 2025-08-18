@@ -5,6 +5,7 @@ import { useProjectData } from '../../contexts/ProjectDataContext';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useDebugParams } from '../../hooks/useDebugParams';
 import { extractCanonicalJsondocIds } from '../../../common/canonicalJsondocLogic';
+import { findParentJsondocsBySchemaType } from '../../../common/transform-jsondoc-framework/lineageResolution';
 import { applyPatch, deepClone } from 'fast-json-patch';
 import DiffView from '../shared/DiffView';
 import type {
@@ -289,10 +290,59 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
             };
         });
 
+        // Auto-enrich params with affectedContext diffs when using edit_剧本设定
+        let enrichedParams = { ...mergedParams } as any;
+        try {
+            const isOutlineEdit = selectedTool === 'edit_剧本设定';
+            if (isOutlineEdit && lineageGraph !== 'pending' && lineageGraph !== 'error' && Array.isArray(rawJsondocs)) {
+                // Determine the outline jsondoc from selection
+                const outlineSelectionId = validSelectedJsondocs.find((id) => {
+                    const j = rawJsondocs.find((r: any) => r.id === id);
+                    return j && j.schema_type === '剧本设定';
+                }) || validSelectedJsondocs[0];
+
+                const outlineJsondoc = rawJsondocs.find((r: any) => r.id === outlineSelectionId);
+                if (outlineJsondoc) {
+                    // Find parent idea via lineage
+                    const parents = findParentJsondocsBySchemaType(outlineJsondoc.id, '灵感创意', lineageGraph as any, rawJsondocs as any);
+                    const parentIdea = Array.isArray(parents) && parents.length > 0 ? parents[0] : null;
+
+                    // Find canonical idea from canonical context
+                    const canonicalIdeaId = (canonicalContextFromData as any)?.canonicalBrainstormIdea?.id;
+                    const canonicalIdea = canonicalIdeaId ? (rawJsondocs as any[]).find((j) => j.id === canonicalIdeaId) : null;
+
+                    if (parentIdea && canonicalIdea && parentIdea.id !== canonicalIdea.id) {
+                        // Compute simple diffs for title/body
+                        const parentData = typeof parentIdea.data === 'string' ? JSON.parse(parentIdea.data) : parentIdea.data;
+                        const latestData = typeof canonicalIdea.data === 'string' ? JSON.parse(canonicalIdea.data) : canonicalIdea.data;
+                        const diffs: Array<{ path: string; before?: any; after?: any; fieldType?: string }> = [];
+                        if (parentData?.title !== latestData?.title) {
+                            diffs.push({ path: '$.title', before: parentData?.title, after: latestData?.title, fieldType: 'string' });
+                        }
+                        if (parentData?.body !== latestData?.body) {
+                            diffs.push({ path: '$.body', before: parentData?.body, after: latestData?.body, fieldType: 'string' });
+                        }
+                        if (diffs.length > 0) {
+                            enrichedParams.affectedContext = [
+                                {
+                                    jsondocId: canonicalIdea.id,
+                                    schemaType: '灵感创意',
+                                    reason: '上游创意已更新',
+                                    diffs
+                                }
+                            ];
+                        }
+                    }
+                }
+            }
+        } catch {
+            // Best-effort enrichment only
+        }
+
         const payload = {
             toolName: selectedTool,
             jsondocs: jsondocsArray,
-            additionalParams: mergedParams
+            additionalParams: enrichedParams
         };
 
         return payload;
