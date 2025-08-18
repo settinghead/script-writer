@@ -1,6 +1,6 @@
 // Import necessary modules
 import { db } from '../database/connection';
-import { buildLineageGraph, findMainWorkflowPath } from '../../common/transform-jsondoc-framework/lineageResolution';
+import { buildLineageGraph, } from '../../common/transform-jsondoc-framework/lineageResolution';
 import type { LineageGraph } from '../../common/transform-jsondoc-framework/lineageResolution';
 import { ElectricJsondoc, ElectricTransform, ElectricHumanTransform, ElectricTransformInput, ElectricTransformOutput } from '@/common/transform-jsondoc-types';
 
@@ -71,12 +71,7 @@ async function extractLineageTree(projectId: string) {
             printTree(rootId, graph);
         });
 
-        // Print main workflow path
-        const mainPath = findMainWorkflowPath(jsondocs, graph);
-        console.log('\nMain Workflow Path:');
-        mainPath.forEach((node, index) => {
-            console.log(`${index + 1}. ${node.schemaType}: ${node.id}`);
-        });
+
 
     } catch (error) {
         console.error('Error:', error);

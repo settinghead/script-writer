@@ -1,7 +1,5 @@
 import {
     LineageGraph,
-    findMainWorkflowPath,
-    type WorkflowNode
 } from './transform-jsondoc-framework/lineageResolution';
 import type {
     ElectricJsondoc,
@@ -24,8 +22,6 @@ export interface CanonicalJsondocContext {
     canonicalEpisodeSynopsisList: ElectricJsondoc[]; // All episode synopsis jsondocs
     canonicalEpisodeScriptsList: ElectricJsondoc[]; // All episode script jsondocs
 
-    // Workflow state
-    workflowNodes: WorkflowNode[];
 
     // Transform state
     hasActiveTransforms: boolean;
@@ -96,7 +92,6 @@ export function computeCanonicalJsondocsFromLineage(
         canonicalBrainstormInput,
         canonicalEpisodeSynopsisList,
         canonicalEpisodeScriptsList: findCanonicalEpisodeScriptsByEpisode(lineageGraph, jsondocs),
-        workflowNodes: findMainWorkflowPath(jsondocs, lineageGraph),
         hasActiveTransforms: transforms.some(t => t.status === 'running' || t.status === 'pending'),
         activeTransforms: transforms.filter(t => t.status === 'running' || t.status === 'pending'),
         lineageGraph,

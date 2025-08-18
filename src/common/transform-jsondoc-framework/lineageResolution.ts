@@ -1184,48 +1184,7 @@ export function extractEffectiveBrainstormIdeas(
 // NEW: Main Workflow Path Algorithm
 // ============================================================================
 
-/**
- * Find the main workflow path for the project
- * GUIDING PRINCIPLE: Always capture the "main" thing - the primary workflow path
- * that represents the user's chosen direction.
- */
-export function findMainWorkflowPath(
-    jsondocs: ElectricJsondoc[],
-    graph: LineageGraph
-): WorkflowNode[] {
-    const workflowNodes: WorkflowNode[] = [];
 
-
-
-    try {
-        // Step 1: Find the main outline (only one allowed per project)
-        const outlineJsondocs = jsondocs.filter(a =>
-            a.schema_type === '剧本设定'
-        );
-
-        // Sort by creation date to get the latest/main outline
-        const mainOutline = outlineJsondocs
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
-
-        if (!mainOutline) {
-            // No outline yet - show brainstorm collection(s) only
-            return createBrainstormOnlyWorkflow(jsondocs);
-        }
-
-        // Step 2: Trace back from outline to find the main path
-        const mainPath = traceMainPathFromOutline(mainOutline, graph, jsondocs);
-
-        // Step 3: Convert jsondocs to workflow nodes
-        const workflowNodes = createWorkflowNodes(mainPath);
-
-        return workflowNodes;
-
-    } catch (error) {
-        console.error('[findMainWorkflowPath] Error:', error);
-        // Fallback: show brainstorm collections only
-        return createBrainstormOnlyWorkflow(jsondocs);
-    }
-}
 
 /**
  * Create workflow when only brainstorm data exists (no outline yet)
@@ -1433,25 +1392,6 @@ function traceForwardFromJsondoc(
     }
 
     return forwardPath;
-}
-
-/**
- * Convert jsondoc path to workflow nodes
- */
-function createWorkflowNodes(jsondocPath: ElectricJsondoc[]): WorkflowNode[] {
-    const workflowNodes: WorkflowNode[] = [];
-    let yPosition = 50;
-
-    for (let i = 0; i < jsondocPath.length; i++) {
-        const jsondoc = jsondocPath[i];
-        const node = createWorkflowNodeFromJsondoc(jsondoc, yPosition, i === jsondocPath.length - 1);
-        if (node) {
-            workflowNodes.push(node);
-            yPosition += 120; // Space between nodes
-        }
-    }
-
-    return workflowNodes;
 }
 
 /**

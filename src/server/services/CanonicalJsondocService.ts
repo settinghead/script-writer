@@ -89,7 +89,6 @@ export class CanonicalJsondocService {
                     canonicalBrainstormInput: null,
                     canonicalEpisodeSynopsisList: [],
                     canonicalEpisodeScriptsList: [],
-                    workflowNodes: [],
                     hasActiveTransforms: false,
                     activeTransforms: [],
                     lineageGraph: { nodes: new Map(), edges: new Map(), rootNodes: new Set(), paths: new Map() },

@@ -4,7 +4,6 @@ import {
     findLatestJsondoc,
     extractEffectiveBrainstormIdeas,
     convertEffectiveIdeasToIdeaWithTitle,
-    findMainWorkflowPath,
     findParentJsondocsBySchemaType,
     hasHumanTransformForPath,
     type LineageNode,
@@ -198,46 +197,7 @@ export function useLatestBrainstormIdeas(): IdeaWithTitle[] | "pending" | "error
     }, [ideas, isLoading, error, projectData.jsondocs]);
 }
 
-/**
- * Hook to get workflow nodes for the current project
- * This represents the main workflow path from brainstorm to outline to episodes
- */
-export function useWorkflowNodes(): {
-    workflowNodes: WorkflowNode[] | "pending" | "error";
-    isLoading: boolean;
-    error: Error | null;
-} {
-    const projectData = useProjectData();
-    const [error, setError] = useState<Error | null>(null);
 
-    const workflowNodes = useMemo((): WorkflowNode[] | "pending" | "error" => {
-        if (!projectData.lineageGraph || projectData.lineageGraph === "pending") {
-            return "pending" as const;
-        }
-
-        try {
-            setError(null);
-            if (projectData.jsondocs === "pending" || projectData.jsondocs === "error" || projectData.lineageGraph === "error") {
-                return "error" as const;
-            }
-
-            // Use the globally shared lineage graph to get workflow nodes
-            return findMainWorkflowPath(projectData.jsondocs, projectData.lineageGraph);
-
-        } catch (err) {
-            const error = err instanceof Error ? err : new Error('Workflow nodes computation failed');
-            console.error('[useWorkflowNodes] Error:', error);
-            setError(error);
-            return "pending" as const;
-        }
-    }, [projectData.lineageGraph, projectData.jsondocs]);
-
-    return {
-        workflowNodes,
-        isLoading: projectData.isLoading,
-        error: projectData.error || error
-    };
-}
 
 /**
  * Hook to detect if the project is in initial mode (no jsondocs)
