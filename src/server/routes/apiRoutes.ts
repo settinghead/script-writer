@@ -17,6 +17,8 @@ import { createChatRoutes } from './chatRoutes';
 import { createAdminRoutes } from './adminRoutes';
 import { createExportRoutes } from './exportRoutes';
 import yjsRoutes from './yjsRoutes';
+import { Router } from 'express';
+import { BatchAutoFixService } from '../services/BatchAutoFixService';
 
 export function createAPIRoutes(
     app: Express,
@@ -55,6 +57,29 @@ export function createAPIRoutes(
 
     // Mount export routes
     app.use('/api/export', createExportRoutes(authMiddleware));
+
+    // Auto-fix route (batch processing)
+    const autoFixRouter = Router();
+    autoFixRouter.post('/run', authMiddleware.authenticate, async (req: any, res: any) => {
+        try {
+            const user = authMiddleware.getCurrentUser(req);
+            if (!user) return res.status(401).json({ error: 'User not authenticated' });
+            const { projectId, items } = req.body || {};
+            if (!projectId || !Array.isArray(items)) return res.status(400).json({ error: 'projectId and items are required' });
+
+            // Access control
+            const hasAccess = await jsondocRepo.userHasProjectAccess(user.id, projectId);
+            if (!hasAccess) return res.status(403).json({ error: 'Access denied' });
+
+            const service = new BatchAutoFixService(projectId, user.id, jsondocRepo, transformRepo);
+            const result = await service.run(items);
+            res.json({ success: true, ...result });
+        } catch (e: any) {
+            console.error('Auto-fix error:', e);
+            res.status(500).json({ error: 'Auto-fix failed', details: e?.message || e });
+        }
+    });
+    app.use('/api/auto-fix', autoFixRouter);
 
     // Catch-all for unmatched API routes - return 404 instead of falling through to ViteExpress
     app.use(/^\/api\/.*$/, (req, res) => {

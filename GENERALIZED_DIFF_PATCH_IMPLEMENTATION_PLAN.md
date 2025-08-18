@@ -951,25 +951,25 @@ export function generateSchemaSpecificInstructions(schemaType: string): string[]
 **New Component:** `src/client/components/AffectedJsondocsPanel.tsx`
 
 **Features:**
-- [ ] List of affected jsondocs with reasons
-- [ ] Severity indicators (color coding)
-- [ ] "自动修正" button for batch processing
-- [ ] Progress indicator during auto-fix
+- [x] List of affected jsondocs with reasons
+- [x] Severity indicators (color coding)
+- [x] "自动修正" button for batch processing
+- [x] Progress indicator during auto-fix
 - [ ] Patch approval interface
 
 **Integration Points:**
-- [ ] Add to `ActionItemsSection.tsx`
+- [x] Add to `ActionItemsSection.tsx`
 - [ ] Subscribe to jsondoc edit events (debounced)
-- [ ] Update when lineage changes
+- [x] Update when lineage changes
 
 ### 6. ✅ Batch Auto-Fix System
 
 **New File:** `src/server/services/BatchAutoFixService.ts`
 
 **Features:**
-- [ ] Parallel patch generation for multiple jsondocs
+- [x] Parallel patch generation for multiple jsondocs
 - [ ] Progress tracking via SSE/WebSocket
-- [ ] Batch approval endpoint
+- [x] Batch approval endpoint (reuses existing `/api/patches/approve`)
 - [ ] Rollback capability
 
 **Flow:**
@@ -1006,17 +1006,17 @@ export function generateSchemaSpecificInstructions(schemaType: string): string[]
 - [x] Create registry for schema → tool mapping
 
 ### Phase 3: UI Integration (Week 2)
-- [ ] Create `AffectedJsondocsPanel.tsx` component
-- [ ] Integrate with `ActionItemsSection.tsx`
+- [x] Create `AffectedJsondocsPanel.tsx` component
+- [x] Integrate with `ActionItemsSection.tsx`
 - [ ] Add debounced stale detection on edits
-- [ ] Implement "自动修正" button and loading states
-- [ ] Add Chinese translations for UI elements
+- [x] Implement "自动修正" button and loading states
+- [x] Add Chinese translations for UI elements
 
 ### Phase 4: Batch Processing (Week 2-3)
-- [ ] Create `BatchAutoFixService.ts`
-- [ ] Implement parallel patch generation
+- [x] Create `BatchAutoFixService.ts`
+- [x] Implement parallel patch generation
 - [ ] Add progress tracking system
-- [ ] Create batch approval endpoint
+- [x] Create batch approval endpoint
 - [ ] Add patch preview UI component
 
 ### Phase 5: Testing & Polish (Week 3)
