@@ -283,10 +283,18 @@ export class StreamingTransformExecutor {
                 // Optionally save debug prompt for diff templates
                 if (config.templateName.includes('edit_diff')) {
                     try {
-                        const { writeFileSync } = await import('fs');
+                        const { writeFileSync, mkdirSync } = await import('fs');
                         const { join } = await import('path');
-                        const debugPromptPath = join(process.cwd(), 'debug-llm-prompt.txt');
-                        writeFileSync(debugPromptPath, finalPrompt, 'utf8');
+                        // Keep legacy single file for quick viewing
+                        const legacyPath = join(process.cwd(), 'debug-llm-prompt.txt');
+                        writeFileSync(legacyPath, finalPrompt, 'utf8');
+                        // Also save a timestamped copy per run for deeper debugging
+                        const dir = join(process.cwd(), 'temp-prompts');
+                        try { mkdirSync(dir, { recursive: true } as any); } catch { /* no-op */ }
+                        const ts = new Date().toISOString().replace(/[:.]/g, '-');
+                        const filename = `${config.templateName}-${ts}.txt`;
+                        const fullPath = join(dir, filename);
+                        writeFileSync(fullPath, finalPrompt, 'utf8');
                     } catch (debugError) {
                         // Ignore debug save errors
                     }

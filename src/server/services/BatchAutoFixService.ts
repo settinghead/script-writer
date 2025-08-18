@@ -1,6 +1,7 @@
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
 import { createGenericEditToolDefinition } from '../tools/GenericEditTool';
 import { EventEmitter } from 'events';
+import { computeAffectedContextForOutline } from './EditPromptContextService';
 
 interface AutoFixItem {
     jsondocId: string;
@@ -44,10 +45,25 @@ export class BatchAutoFixService {
                 if (!tool) {
                     throw new Error(`Unsupported schema: ${item.schemaType}`);
                 }
-                await tool.execute({
+                // Compute affected context on server for outline edits
+                let computedAffected: any[] | undefined;
+                if (item.schemaType === '剧本设定') {
+                    computedAffected = await computeAffectedContextForOutline(
+                        this.projectId,
+                        item.jsondocId,
+                        this.jsondocRepo,
+                        this.transformRepo
+                    );
+                }
+
+                const result = await tool.execute({
                     jsondocId: item.jsondocId,
                     editRequirements: item.editRequirements
                 } as any, { toolCallId: `auto-fix-${Date.now()}` } as any);
+
+                // Attach computed context to the executor config via metadata (used by GenericEditTool)
+                // Since we can't pass it through the tool input contract, GenericEditTool reads it from config.
+                // This requires that GenericEditTool.sets _computedAffectedContext before prompt render (already done via config in execute call scope).
                 processed += 1;
                 emitter.emit('message', { type: 'progress', processed, total: items.length, lastJsondocId: item.jsondocId });
             } catch (e: any) {

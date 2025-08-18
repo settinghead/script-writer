@@ -12,6 +12,7 @@ import { createEpisodeSynopsisToolDefinition } from '../tools/EpisodeSynopsisToo
 import { JsonPatchOperationsSchema } from '@/common/schemas/transforms';
 import { StreamingExecutionMode } from '../transform-jsondoc-framework/StreamingTransformExecutor';
 import { buildAffectedContextText } from '../tools/shared/contextFormatting';
+import { computeAffectedContextForOutline } from '../services/EditPromptContextService';
 
 /**
  * Admin routes for debugging and development
@@ -465,9 +466,15 @@ export function createAdminRoutes(
             };
             if (isEditTool) {
                 config.prepareTemplateVariables = async (rawInput: any) => {
-                    // Compose additional context text from affectedContext (+ diffs) if provided
-                    const ap = additionalParams || {};
-                    const extra = buildAffectedContextText(ap.affectedContext);
+                    // Compose affected context by computing diffs on server to match runtime
+                    let affected = [] as any[];
+                    try {
+                        if (toolName === 'edit_剧本设定' && rawInput.jsondocs && rawInput.jsondocs.length > 0) {
+                            const outlineId = rawInput.jsondocs[0].jsondocId;
+                            affected = await computeAffectedContextForOutline(projectId, outlineId, jsondocRepo, transformRepo);
+                        }
+                    } catch { }
+                    const extra = buildAffectedContextText(affected);
                     // Build jsondocs map (first jsondoc is the source for edit tools)
                     const jdMap: any = {};
                     try {
@@ -480,10 +487,10 @@ export function createAdminRoutes(
                         }
                     } catch { }
                     // Attach computed affected context onto config so tool logic can read it
-                    (config as any)._computedAffectedContext = ap.affectedContext;
+                    (config as any)._computedAffectedContext = affected;
                     return {
                         params: {
-                            editRequirements: (ap.editRequirements || '') + extra
+                            editRequirements: ((additionalParams || {}).editRequirements || '') + extra
                         },
                         jsondocs: jdMap
                     };

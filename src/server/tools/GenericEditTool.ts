@@ -9,6 +9,7 @@ import { JsonPatchOperationsSchema } from '@/common/schemas/transforms';
 import { JsondocSchemaRegistry } from '@/common/schemas/jsondocs';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { buildAffectedContextText, computeSchemaGuidance } from './shared/contextFormatting';
+import { computeAffectedContextForOutline } from '../services/EditPromptContextService';
 
 // =============================
 // Generic Edit Input Schema
@@ -138,6 +139,21 @@ export function createGenericEditToolDefinition(
                     };
                 }
             };
+
+            // Unify runtime behavior with debug: compute and attach affected context for outline edits
+            try {
+                if (!(config as any)._computedAffectedContext && schemaType === '剧本设定') {
+                    const affected = await computeAffectedContextForOutline(
+                        projectId,
+                        params.jsondocId,
+                        jsondocRepo,
+                        transformRepo
+                    );
+                    (config as any)._computedAffectedContext = affected;
+                }
+            } catch {
+                // Non-fatal: proceed without affected context if computation fails
+            }
 
             const result = await executeStreamingTransform({
                 config,
