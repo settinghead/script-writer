@@ -1,6 +1,6 @@
 import React, { useState, useEffect, ReactNode } from 'react';
 import { Alert, Spin, Typography, Button, Space } from 'antd';
-import { ExclamationTriangleOutlined, ReloadOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { ExclamationCircleOutlined, ReloadOutlined, CheckCircleOutlined } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
 
@@ -131,7 +131,7 @@ const HealthCheck: React.FC<HealthCheckProps> = ({
                     </Space>
                 ) : (
                     <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                        <ExclamationTriangleOutlined
+                        <ExclamationCircleOutlined
                             style={{
                                 fontSize: '64px',
                                 color: '#ff4d4f'
