@@ -20,7 +20,13 @@ export const GenericEditInputSchema = z.object({
         jsondocId: z.string(),
         schemaType: z.string(),
         reason: z.string()
-    })).optional().describe('受影响的下游jsondocs')
+    })).optional().describe('受影响的下游jsondocs'),
+    // Provide source/context jsondocs for lineage linking and prompt assembly
+    jsondocs: z.array(z.object({
+        jsondocId: z.string(),
+        schemaType: z.string().optional(),
+        description: z.string().optional()
+    })).optional()
 });
 
 export type GenericEditInput = z.infer<typeof GenericEditInputSchema>;
@@ -99,6 +105,18 @@ export function createGenericEditToolDefinition(
                 };
             }
 
+            // Build tool input with explicit jsondocs array so the executor records transform_inputs
+            const toolInput: GenericEditInput = {
+                ...params,
+                jsondocs: [
+                    {
+                        jsondocId: params.jsondocId,
+                        schemaType,
+                        description: 'source'
+                    }
+                ]
+            };
+
             // Prepare config for unified diff → JSON Patch pipeline
             const config: StreamingTransformConfig<GenericEditInput, any> = {
                 templateName: templateId,
@@ -147,7 +165,7 @@ export function createGenericEditToolDefinition(
 
             const result = await executeStreamingTransform({
                 config,
-                input: params,
+                input: toolInput,
                 projectId,
                 userId,
                 transformRepo,
