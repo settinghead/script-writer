@@ -280,25 +280,7 @@ export class StreamingTransformExecutor {
                     { projectId, userId } // Particle context
                 );
 
-                // Optionally save debug prompt for diff templates
-                if (config.templateName.includes('edit_diff')) {
-                    try {
-                        const { writeFileSync, mkdirSync } = await import('fs');
-                        const { join } = await import('path');
-                        // Keep legacy single file for quick viewing
-                        const legacyPath = join(process.cwd(), 'debug-llm-prompt.txt');
-                        writeFileSync(legacyPath, finalPrompt, 'utf8');
-                        // Also save a timestamped copy per run for deeper debugging
-                        const dir = join(process.cwd(), 'temp-prompts');
-                        try { mkdirSync(dir, { recursive: true } as any); } catch { /* no-op */ }
-                        const ts = new Date().toISOString().replace(/[:.]/g, '-');
-                        const filename = `${config.templateName}-${ts}.txt`;
-                        const fullPath = join(dir, filename);
-                        writeFileSync(fullPath, finalPrompt, 'utf8');
-                    } catch (debugError) {
-                        // Ignore debug save errors
-                    }
-                }
+                // Removed file-based prompt debug output
 
                 // 6. Store the prompt (only on first attempt)
                 if (!dryRun && retryCount === 0 && transformId) {
@@ -1176,14 +1158,7 @@ export class StreamingTransformExecutor {
                     // DEBUG: Essential info only
                     const dataChanged = JSON.stringify(originalData) !== JSON.stringify(finalModifiedData);
 
-                    if (finalPatches.length === 0 && !dataChanged) {
-                        // Write debug files for inspection if needed
-                        const fs = await import('fs');
-                        await fs.writeFileSync('./debug-streaming-accumulated-text.txt', accumulatedText);
-                        await fs.writeFileSync('./debug-streaming-cleaned-diff.txt', cleanedDiff);
-                        await fs.writeFileSync('./debug-streaming-original-string.txt', originalJsonString);
-                        await fs.writeFileSync('./debug-streaming-modified-string.txt', finalModifiedJsonString);
-                    }
+                    // Removed file-based debug outputs when no content changes
 
 
                     // STEP 4: Emit final patches (always emit patches, even if empty - let the calling code decide)
