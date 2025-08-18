@@ -111,71 +111,73 @@ export function computeComponentState(
     // Get parent transform info from lineage
     const parentTransform = getParentTransform(jsondoc, projectData);
 
-    // Check if has descendants (used as input in other transforms)
-    const hasDescendants = hasJsondocDescendants(jsondoc.id, projectData);
-
-    if (hasDescendants) {
+    // NEW: Brainstorm collection special case when an idea has been chosen
+    const isBrainstormCollection = jsondoc.schema_type === 'brainstorm_collection';
+    const hasChosenIdea = checkHasChosenIdea(projectData);
+    if (jsondoc.origin_type === 'ai_generated' && isBrainstormCollection && hasChosenIdea) {
         return {
             state: ComponentState.READ_ONLY,
-            reason: 'This content has been used to generate other content and cannot be edited',
+            reason: '已选择创意，集合不可再编辑',
             parentTransformId: parentTransform?.id,
             parentTransformStatus: parentTransform?.status,
-            metadata: { hasDescendants: true }
-        };
-    }
-
-    // Apply parent transform rules - THIS IS THE KEY LOGIC
-    if (parentTransform && parentTransform.type === 'llm') {
-        // Check if parent LLM transform is not complete
-        // Note: status can be 'complete' or 'completed' depending on the system
-        if (parentTransform.status !== 'complete' && parentTransform.status !== 'completed') {
-            return {
-                state: ComponentState.PENDING_PARENT_TRANSFORM,
-                reason: `Parent LLM transform is ${parentTransform.status}`,
-                parentTransformId: parentTransform.id,
-                parentTransformStatus: parentTransform.status,
-                metadata: {
-                    transformType: parentTransform.type,
-                    blockingStatus: parentTransform.status
-                }
-            };
-        }
-
-        // LLM-generated, complete, no descendants -> can become editable
-        return {
-            state: ComponentState.CLICK_TO_EDIT,
-            reason: 'Click to create editable version',
-            parentTransformId: parentTransform.id,
-            parentTransformStatus: parentTransform.status,
-            canTransition: [ComponentState.EDITABLE],
             metadata: {
-                transformType: parentTransform.type,
-                canCreateEditableVersion: true
+                specialCase: 'brainstorm_collection_with_chosen_idea',
+                hasChosenIdea: true
             }
         };
     }
 
-    // User input with no descendants -> directly editable
-    if (jsondoc.origin_type === 'user_input') {
+    // NEW: Parent transform completion gating for AI-generated content
+    const isParentTransformComplete = !parentTransform || parentTransform.status === 'complete' || parentTransform.status === 'completed';
+
+    // NEW: AI-generated content is always click-to-edit when parent is complete, regardless of descendants
+    if (jsondoc.origin_type === 'ai_generated') {
+        if (!isParentTransformComplete) {
+            return {
+                state: ComponentState.PENDING_PARENT_TRANSFORM,
+                reason: `Parent LLM transform is ${parentTransform?.status}`,
+                parentTransformId: parentTransform?.id,
+                parentTransformStatus: parentTransform?.status,
+                metadata: {
+                    transformType: parentTransform?.type,
+                    blockingStatus: parentTransform?.status
+                }
+            };
+        }
+
         return {
-            state: ComponentState.EDITABLE,
-            reason: 'User-created content, directly editable',
+            state: ComponentState.CLICK_TO_EDIT,
+            reason: '点击创建可编辑版本',
             parentTransformId: parentTransform?.id,
             parentTransformStatus: parentTransform?.status,
-            metadata: { originType: jsondoc.origin_type }
+            canTransition: [ComponentState.EDITABLE],
+            metadata: {
+                transformType: parentTransform?.type,
+                canCreateEditableVersion: true,
+                hasExistingEditableVersion: checkExistingEditableVersion(jsondoc, projectData)
+            }
         };
     }
 
-    // Fallback to read-only (shouldn't happen in normal cases)
+    // NEW: User input is always directly editable
+    if (jsondoc.origin_type === 'user_input') {
+        return {
+            state: ComponentState.EDITABLE,
+            reason: '用户创建的内容，可直接编辑',
+            parentTransformId: parentTransform?.id,
+            parentTransformStatus: parentTransform?.status,
+            metadata: {
+                originType: jsondoc.origin_type,
+                parentAIJsondocId: getParentAIJsondocId(jsondoc, projectData)
+            }
+        };
+    }
+
+    // Fallback to read-only (unknown cases)
     return {
         state: ComponentState.READ_ONLY,
-        reason: 'Content is read-only',
-        parentTransformId: parentTransform?.id,
-        parentTransformStatus: parentTransform?.status,
-        metadata: {
-            fallback: true,
-            originType: jsondoc.origin_type
-        }
+        reason: 'Unknown jsondoc state',
+        metadata: { originType: jsondoc.origin_type }
     };
 }
 
@@ -226,4 +228,70 @@ export function getStateCursor(state: ComponentState): string {
         .with(ComponentState.READ_ONLY, () => 'default')
         .with(ComponentState.ERROR, () => 'default')
         .exhaustive();
-} 
+}
+
+// =============================
+// Helper functions (new)
+// =============================
+
+function checkHasChosenIdea(projectData: ProjectDataContextType): boolean {
+    if (
+        projectData.canonicalContext === "pending" ||
+        projectData.canonicalContext === "error" ||
+        !projectData.canonicalContext
+    ) {
+        return false;
+    }
+
+    const canonicalIdea = projectData.canonicalContext.canonicalBrainstormIdea;
+    return canonicalIdea !== null && canonicalIdea.origin_type === 'user_input';
+}
+
+function checkExistingEditableVersion(
+    jsondoc: ElectricJsondoc,
+    projectData: ProjectDataContextType
+): boolean {
+    if (!Array.isArray(projectData.transformInputs) || !Array.isArray(projectData.humanTransforms) || !Array.isArray(projectData.transformOutputs) || !Array.isArray(projectData.jsondocs)) {
+        return false;
+    }
+
+    // Find human transforms that used this jsondoc as input
+    const relatedTransformIds = projectData.transformInputs
+        .filter(input => input.jsondoc_id === jsondoc.id)
+        .map(input => input.transform_id);
+
+    const humanTransformIds = new Set(
+        projectData.humanTransforms
+            .filter(t => relatedTransformIds.includes(t.transform_id))
+            .map(t => t.transform_id)
+    );
+
+    // Check if any output of those human transforms is a user_input jsondoc
+    for (const to of projectData.transformOutputs) {
+        if (humanTransformIds.has(to.transform_id)) {
+            const outputJsondoc = projectData.jsondocs.find(j => j.id === to.jsondoc_id);
+            if (outputJsondoc && outputJsondoc.origin_type === 'user_input') {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function getParentAIJsondocId(
+    jsondoc: ElectricJsondoc,
+    projectData: ProjectDataContextType
+): string | null {
+    // Only meaningful for user_input jsondocs created via human transform
+    const parentTransform = getParentTransform(jsondoc, projectData);
+    if (!parentTransform || parentTransform.type !== 'human') {
+        return null;
+    }
+
+    if (!Array.isArray(projectData.transformInputs)) return null;
+    const inputs = projectData.transformInputs.filter(input => input.transform_id === parentTransform.id);
+    if (inputs && inputs.length > 0) {
+        return inputs[0].jsondoc_id;
+    }
+    return null;
+}

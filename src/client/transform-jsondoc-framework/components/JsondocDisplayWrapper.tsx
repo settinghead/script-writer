@@ -86,6 +86,12 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
         // Default behavior
         if (!canEdit || isCreatingTransform || !jsondoc) return;
 
+        // Avoid duplicate creation: if an editable version already exists, notify and exit
+        if (componentState && componentState.metadata && (componentState.metadata as any).hasExistingEditableVersion) {
+            message.info('已存在可编辑版本');
+            return;
+        }
+
         setIsCreatingTransform(true);
         try {
             const response = await fetch(`/api/jsondocs/${jsondoc.id}/human-transform`, {
@@ -115,7 +121,7 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
         } finally {
             setIsCreatingTransform(false);
         }
-    }, [jsondoc, canEdit, isCreatingTransform, schemaType, onClickToEdit]);
+    }, [jsondoc, canEdit, isCreatingTransform, schemaType, onClickToEdit, componentState]);
 
     // Determine effective loading state
     const effectiveLoading = clickToEditLoading || isCreatingTransform;

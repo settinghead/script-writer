@@ -370,9 +370,9 @@ describe('computeComponentState with new rules', () => {
 **File:** `src/client/transform-jsondoc-framework/components/JsondocDisplayWrapper.tsx`
 
 **Changes:**
-- [ ] Modify `handleCreateEditableVersion` to check if editable version exists
-- [ ] If no human transform exists, create it automatically
-- [ ] If human transform exists but no edits, switch to existing derived jsondoc
+- [x] Modify `handleCreateEditableVersion` to check if editable version exists
+- [x] If no human transform exists, create it automatically
+- [x] If human transform exists but no edits, switch to existing derived jsondoc
 
 ### 3. ✅ Stale Detection System
 
@@ -993,10 +993,10 @@ export function generateSchemaSpecificInstructions(schemaType: string): string[]
 ## Implementation Checklist
 
 ### Phase 1: Foundation (Week 1)
-- [ ] Create `staleDetection.ts` with core algorithm
-- [ ] Write comprehensive tests for stale detection
-- [ ] Modify `componentState.ts` editing rules
-- [ ] Test new editing rules don't break existing features
+- [x] Create `staleDetection.ts` with core algorithm
+- [x] Write comprehensive tests for stale detection
+- [x] Modify `componentState.ts` editing rules
+- [x] Test new editing rules don't break existing features
 
 ### Phase 2: Generic Diff Tool (Week 1-2)
 - [ ] Create `GenericEditTool.ts` with schema introspection
