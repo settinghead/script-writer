@@ -101,11 +101,12 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
             </Text>
 
             <Form layout="vertical">
-                <Row gutter={[16, 16]}>
-                    <Col xs={24} md={12}>
+                <Row gutter={[16, 8]} wrap={false} style={{ flexWrap: 'nowrap' }}>
+                    <Col flex="200px">
                         <Form.Item
                             label="总集数"
                             help="建议根据故事复杂度设置，每集约2分钟"
+                            style={{ marginBottom: 0 }}
                         >
                             <InputNumber
                                 min={MIN_EPISODES}
@@ -118,14 +119,14 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
                             />
                         </Form.Item>
                     </Col>
-                    <Col xs={24} md={12}>
-                        <Form.Item label="补充说明（可选）">
+                    <Col flex="auto">
+                        <Form.Item label="补充说明（可选）" style={{ marginBottom: 0 }}>
                             <TextareaAutosize
                                 placeholder="例如：强调反转更密集；第一阶段尽量在第6集结束；注意女主的成长线更明显等"
                                 value={additionalInstructions}
                                 onChange={(e) => setAdditionalInstructions(e.target.value)}
                                 minRows={1}
-                                maxRows={6}
+                                maxRows={3}
                                 onKeyDown={(e) => {
                                     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                                         e.preventDefault();
