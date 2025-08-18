@@ -141,9 +141,18 @@ export function createChroniclesEditToolDefinition(
                 inputSchema: ChroniclesEditInputSchema,
                 outputSchema: JsonPatchOperationsSchema, // JSON patch operations for external output
                 prepareTemplateVariables: async (input) => {
-                    const defaultVars = await defaultPrepareTemplateVariables(input, jsondocRepo);
+                    // DRY: use shared builder so editRequirements are enriched consistently
+                    const { buildToolTemplateContext } = await import('../services/TemplateContextBuilder.js');
+                    const context = await buildToolTemplateContext({
+                        toolName: 'edit_时间顺序大纲',
+                        projectId,
+                        userId,
+                        input,
+                        jsondocRepo,
+                        transformRepo
+                    });
                     return {
-                        ...defaultVars,
+                        ...context,
                         additionalContexts
                     };
                 }

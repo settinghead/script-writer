@@ -342,8 +342,8 @@ async function computeAffectedContextForEditGeneric(
         const results: AffectedItem[] = [];
 
         for (const relation of relations) {
-            const parents = findParentJsondocsBySchemaType(targetJsondocId, relation.upstreamType, lineageGraph, jsondocs);
-            const parent = parents && parents.length > 0 ? parents[0] : undefined;
+            // Find nearest ancestor of the desired upstream type (not just direct parent)
+            const parent = findNearestAncestorBySchemaType(targetJsondocId, relation.upstreamType, lineageGraph as any);
 
             // Determine canonical upstream
             let canonicalUpstream: any | undefined;
@@ -384,6 +384,53 @@ async function computeAffectedContextForEditGeneric(
         console.warn('[computeAffectedContextForEditGeneric] failed:', error);
         return [];
     }
+}
+
+/**
+ * Find the nearest ancestor jsondoc (walking through human/llm transforms) that matches a schema type.
+ * Uses lineageGraph.nodes which contain jsondoc nodes with sourceTransform and transform nodes with sourceJsondocs.
+ */
+function findNearestAncestorBySchemaType(
+    startJsondocId: string,
+    desiredSchemaType: string,
+    lineageGraph: any
+) {
+    try {
+        const visited = new Set<string>();
+        const queue: string[] = [startJsondocId];
+        visited.add(startJsondocId);
+
+        while (queue.length > 0) {
+            const currentId = queue.shift() as string;
+            const node = lineageGraph.nodes.get(currentId);
+            if (!node) continue;
+
+            // Move to the transform that produced this jsondoc (if any)
+            if (node.type === 'jsondoc') {
+                // If this jsondoc itself is the desired type (and not the starting one), return it
+                if (currentId !== startJsondocId && node.jsondoc?.schema_type === desiredSchemaType) {
+                    return node.jsondoc;
+                }
+                const sourceTransform = node.sourceTransform && node.sourceTransform !== 'none' ? node.sourceTransform : null;
+                if (sourceTransform && !visited.has(sourceTransform.transformId)) {
+                    visited.add(sourceTransform.transformId);
+                    queue.push(sourceTransform.transformId);
+                }
+            } else if (node.type === 'transform') {
+                // Enqueue all source jsondocs of this transform
+                const sources = node.sourceJsondocs || [];
+                for (const src of sources) {
+                    if (!visited.has(src.jsondocId)) {
+                        visited.add(src.jsondocId);
+                        queue.push(src.jsondocId);
+                    }
+                }
+            }
+        }
+    } catch {
+        // best-effort only
+    }
+    return undefined;
 }
 
 

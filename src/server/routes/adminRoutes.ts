@@ -720,11 +720,46 @@ export function createAdminRoutes(
                 }
             }
 
-            // Use the exact same template rendering as tools
-            const finalPrompt = await templateService.renderTemplate(template, {
-                params: additionalParams,
-                jsondocs: jsondocData
+            // Determine project ID context for computing upstream diffs
+            let projectIdForContext: string = '';
+            try {
+                if (Array.isArray(jsondocs) && jsondocs.length > 0) {
+                    const firstRef = jsondocs[0];
+                    const firstId = (firstRef as any).jsondocId || (firstRef as any).id;
+                    if (firstId) {
+                        const jd = await jsondocRepo.getJsondoc(firstId);
+                        projectIdForContext = jd?.project_id || '';
+                    }
+                }
+                if (!projectIdForContext) {
+                    const userId = req.user?.id;
+                    if (userId) {
+                        const projects = await projectRepo.getUserProjects(userId);
+                        projectIdForContext = projects?.[0]?.id || '';
+                    }
+                }
+            } catch { }
+
+            // DRY: Build template variables via shared builder (same as runtime)
+            const { buildToolTemplateContext } = await import('../services/TemplateContextBuilder.js');
+            const context = await buildToolTemplateContext({
+                toolName,
+                projectId: projectIdForContext,
+                userId: req.user?.id,
+                input: {
+                    ...(additionalParams || {}),
+                    jsondocs: (jsondocs || []).map((j: any) => ({
+                        jsondocId: j.jsondocId || j.id,
+                        schemaType: j.schemaType,
+                        description: j.description || j.schemaType
+                    }))
+                },
+                jsondocRepo,
+                transformRepo
             });
+
+            // Use the exact same template rendering as tools
+            const finalPrompt = await templateService.renderTemplate(template, context);
 
             // Prepare response in the same format as before (for frontend compatibility)
             const result = {

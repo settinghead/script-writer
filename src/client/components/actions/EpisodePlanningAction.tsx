@@ -119,7 +119,7 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
                             />
                         </Form.Item>
                     </Col>
-                    <Col flex="auto">
+                    <Col flex="auto" >
                         <Form.Item label="补充说明（可选）" style={{ marginBottom: 0 }}>
                             <TextareaAutosize
                                 placeholder="例如：强调反转更密集；第一阶段尽量在第6集结束；注意女主的成长线更明显等"
@@ -159,8 +159,6 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
             >
                 {isGenerating ? '正在生成分集结构...' : '生成分集结构'}
             </AIButton>
-
-
         </Space>
     );
 };
