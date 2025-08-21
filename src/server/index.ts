@@ -58,12 +58,11 @@ const chatService = new ChatService(null, agentService, jsondocRepo); // chatRep
 // Note: AgentService now uses conversation system directly, no need for ChatMessageRepository injection
 
 // Initialize particle system asynchronously
-let particleSystemInitialized = false;
 (async () => {
   try {
     const { initializeParticleSystem } = await import('./transform-jsondoc-framework/particles/ParticleSystemInitializer.js');
     await initializeParticleSystem(db);
-    particleSystemInitialized = true;
+    app.locals.particleSystemInitialized = true;
     console.log('🎯 Particle system initialized successfully');
   } catch (error) {
     console.warn('⚠️ Particle system initialization failed (this is expected if embedding env vars are not set):', error instanceof Error ? error.message : error);
@@ -74,6 +73,7 @@ let particleSystemInitialized = false;
 
 // Make services available to routes via app.locals
 app.locals.transformRepo = transformRepo;
+app.locals.particleSystemInitialized = false;
 const server = app.listen(PORT, "0.0.0.0", () =>
   console.log(`Server is listening at https://localhost:${HTTPS_PORT}...`)
 );
@@ -92,6 +92,10 @@ app.use('/api/yjs', yjsRoutes);
 import particleRoutes from './routes/particleRoutes.js';
 app.use('/api/particles', particleRoutes);
 
+// Mount health routes
+import healthRoutes from './routes/healthRoutes';
+app.use('/api/health', healthRoutes);
+
 // Mount all API routes
 import { createAPIRoutes } from './routes/apiRoutes';
 createAPIRoutes(
@@ -108,16 +112,6 @@ createAPIRoutes(
 
 // Attach authDB to all requests
 app.use(authMiddleware.attachAuthDB);
-
-// Original message endpoint
-app.get("/message", (_req, res) => {
-  res.send("Hello from Express!");
-});
-
-
-
-
-
 
 
 // ========== TRANSFORM ENDPOINTS ==========
@@ -330,19 +324,6 @@ app.get("/api/jsondocs",
 
 
 // ========== JSONDOC ENDPOINTS ===========
-
-// Health check endpoint - simple ping to verify server is responsive
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    memory: process.memoryUsage(),
-    version: process.env.npm_package_version || '1.0.0',
-    environment: process.env.NODE_ENV || 'development',
-    particleSystem: particleSystemInitialized
-  });
-});
 
 // Handle client-side routing fallback
 // This must be the last route to catch all unmatched routes

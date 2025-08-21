@@ -43,7 +43,7 @@ const HealthCheck: React.FC<HealthCheckProps> = ({
         try {
             setHealthStatus(prev => ({ ...prev, isLoading: true, error: null }));
 
-            const response = await fetch('/health', {
+            const response = await fetch('/api/health', {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
