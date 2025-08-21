@@ -315,6 +315,46 @@ The framework creates a **living history** of content creation where:
 
 This enables applications that are not just functional, but continuously improving through the natural interaction between human creativity and machine intelligence.
 
+### Generalized Diff/Patch Architecture (Framework‑Level)
+
+This framework provides a standardized, audit‑friendly way to edit immutable jsondocs via LLM‑generated diffs, with human approval and complete lineage.
+
+- Immutability with Human Transforms
+  - AI outputs are immutable (`origin_type: ai_generated`).
+  - Edits create Human Transforms that produce new `user_input` jsondocs; originals remain intact.
+
+- Streaming Transform Executor
+  - Two execution modes:
+    - `full-object`: generate complete jsondocs
+    - `patch-approval`: generate RFC6902 patches from unified diffs; persist patches as `json_patch` jsondocs; mark transform completed after streaming
+  - Stores prompts in `llm_prompts`; validates final outputs with Zod.
+
+- Server‑Side Prompt Context
+  - `TemplateContextBuilder` and `EditPromptContextService` compute upstream diffs and inject them into all `edit_*` prompts.
+  - Upstream diffs are derived from the target’s direct producing inputs (one hop), ensuring precise and minimal context.
+  - Formatting via `contextFormatting.ts` presents diffs as 清晰的 “路径 / 原文 / 更新为” blocks with inline word‑diffs, plus strict instructions to only modify listed fields.
+
+- JSON Patch Persistence
+  - Patches are stored as `json_patch` jsondocs (one patch per jsondoc) during streaming; linked to transforms via inputs/outputs for lineage.
+  - Finalization updates patch metadata and transform execution context with counts and timing.
+
+- Batch Auto‑Fix
+  - Framework service pattern supports batch auto‑fix orchestration (sequential or parallel) with SSE progress.
+  - Target resolution favors downstream AI‑generated documents and must not silently fall back to editing upstream sources.
+
+- Stale Detection (Direct Children Only)
+  - A generic, shared module computes “受影响” items using lineage edges from an edited jsondoc to its immediate AI children.
+  - No severity levels are required by default; UI may present a simple list and trigger auto‑fix.
+
+- Schema Tolerance
+  - Schemas can opt into tolerant fields (e.g., optional content with defaults, default empty arrays) to avoid stream‑time failures while maintaining final validation.
+
+#### Debug Parity
+Admin routes should use the same TemplateContextBuilder as runtime so debug prompts match production prompts (no drift).
+
+#### Developer Utilities
+- Provide a CLI script to print affected‑context and the formatted prompt context given `<projectId> <schemaType> [jsondocId]`, useful when canonical of a type does not yet exist.
+
 ## Core Paradigm: Jsondoc → Transform → Jsondoc
 
 ### The Fundamental Pattern
