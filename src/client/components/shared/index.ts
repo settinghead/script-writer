@@ -20,6 +20,7 @@ export { EditableOutlineForm } from './EditableOutlineForm';
 export { default as EditableChroniclesForm } from './EditableChroniclesForm';
 export { default as EditableEpisodePlanningForm } from './EditableEpisodePlanningForm';
 export { default as AIButton } from './AIButton';
+export { default as SmartAIButton } from './SmartAIButton';
 export { default as HumanButton } from './HumanButton';
 export * from './YJSComplexFields';
 export * from './streaming';

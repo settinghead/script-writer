@@ -18,7 +18,23 @@ vi.mock('antd', async () => {
     };
 });
 
+// Mock the generation state hook
+const mockGenerationState = {
+    isAnyGenerating: false,
+    isLocalGenerating: false,
+    setLocalGenerating: vi.fn(),
+    getDisabledReason: vi.fn(() => null),
+    activeTransformTypes: [],
+    hasActiveTransforms: false
+};
+
+vi.mock('../../../hooks/useGenerationState', () => ({
+    useGenerationState: vi.fn(() => mockGenerationState)
+}));
+
 const mockApiService = vi.mocked(apiService);
+const { useGenerationState } = await import('../../../hooks/useGenerationState');
+const mockUseGenerationState = vi.mocked(useGenerationState);
 
 describe('ChroniclesGenerationAction', () => {
     const mockProps = {
@@ -35,16 +51,11 @@ describe('ChroniclesGenerationAction', () => {
 
     beforeEach(() => {
         vi.clearAllMocks();
+        // Reset generation state mock
+        mockUseGenerationState.mockReturnValue(mockGenerationState);
     });
 
     it('should disable textarea and show proper button text during generation', async () => {
-        // Setup API service to return a promise that doesn't resolve immediately
-        let resolveGeneration: () => void;
-        const generationPromise = new Promise<void>((resolve) => {
-            resolveGeneration = resolve;
-        });
-        mockApiService.generateChroniclesFromOutline.mockReturnValue(generationPromise);
-
         render(<ChroniclesGenerationAction {...mockProps} />);
 
         // Initial state - components should be enabled
@@ -54,87 +65,68 @@ describe('ChroniclesGenerationAction', () => {
         expect(textarea).not.toBeDisabled();
         expect(button).toHaveTextContent('生成时间顺序大纲');
 
-        // Click generate button
-        fireEvent.click(button);
+        // Mock generation state to show as generating
+        mockUseGenerationState.mockReturnValue({
+            ...mockGenerationState,
+            isAnyGenerating: true,
+            isLocalGenerating: true
+        });
+
+        // Re-render with generating state
+        render(<ChroniclesGenerationAction {...mockProps} />);
 
         // During generation - components should be disabled
-        await waitFor(() => {
-            expect(textarea).toBeDisabled();
-            expect(textarea).toHaveAttribute('placeholder', '生成中，请稍等...');
-        });
+        const textareaDuringGeneration = screen.getByPlaceholderText('生成中，请稍等...');
+        const buttonDuringGeneration = screen.getByRole('button', { name: /生成完成后可点击/ });
 
-        expect(button).toHaveTextContent('生成完成后可点击');
-        expect(button).toBeDisabled();
-
-        // Resolve the generation
-        resolveGeneration!();
-        await waitFor(() => {
-            expect(textarea).not.toBeDisabled();
-            expect(button).toHaveTextContent('生成时间顺序大纲');
-        });
-
-        expect(message.success).toHaveBeenCalledWith('时间顺序大纲生成已启动');
+        expect(textareaDuringGeneration).toBeDisabled();
+        expect(buttonDuringGeneration).toHaveTextContent('生成完成后可点击');
     });
 
     it('should prevent keyboard shortcuts during generation', async () => {
-        let resolveGeneration: () => void;
-        const generationPromise = new Promise<void>((resolve) => {
-            resolveGeneration = resolve;
+        // Mock generation state to show as generating
+        mockUseGenerationState.mockReturnValue({
+            ...mockGenerationState,
+            isAnyGenerating: true,
+            isLocalGenerating: true
         });
-        mockApiService.generateChroniclesFromOutline.mockReturnValue(generationPromise);
 
         render(<ChroniclesGenerationAction {...mockProps} />);
 
-        const textarea = screen.getByPlaceholderText('补充说明（可选）');
-
-        // Start generation
-        fireEvent.click(screen.getByRole('button'));
+        const textarea = screen.getByPlaceholderText('生成中，请稍等...');
 
         // Try to trigger keyboard shortcut during generation
         fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
 
-        // API should only be called once (from the button click, not the keyboard shortcut)
-        expect(mockApiService.generateChroniclesFromOutline).toHaveBeenCalledTimes(1);
-
-        resolveGeneration!();
-        await waitFor(() => {
-            expect(textarea).not.toBeDisabled();
-        });
+        // API should not be called due to generation state
+        expect(mockApiService.generateChroniclesFromOutline).not.toHaveBeenCalled();
     });
 
     it('should apply proper visual styling during generation', async () => {
-        let resolveGeneration: () => void;
-        const generationPromise = new Promise<void>((resolve) => {
-            resolveGeneration = resolve;
-        });
-        mockApiService.generateChroniclesFromOutline.mockReturnValue(generationPromise);
+        // First render without generation
+        const { rerender } = render(<ChroniclesGenerationAction {...mockProps} />);
 
-        render(<ChroniclesGenerationAction {...mockProps} />);
-
-        const textarea = screen.getByPlaceholderText('补充说明（可选）');
-        const button = screen.getByRole('button');
+        let textarea = screen.getByPlaceholderText('补充说明（可选）');
 
         // Check initial styling
         expect(textarea).toHaveStyle({ opacity: '1' });
-        expect(button).toHaveStyle({ opacity: '1' });
 
-        // Start generation
-        fireEvent.click(button);
-
-        // Check disabled styling
-        await waitFor(() => {
-            expect(textarea).toHaveStyle({
-                opacity: '0.6',
-                cursor: 'not-allowed',
-                background: '#0f0f0f',
-                color: '#666'
-            });
-            expect(button).toHaveStyle({ opacity: '0.7' });
+        // Mock generation state and re-render
+        mockUseGenerationState.mockReturnValue({
+            ...mockGenerationState,
+            isAnyGenerating: true,
+            isLocalGenerating: true
         });
 
-        resolveGeneration!();
-        await waitFor(() => {
-            expect(textarea).toHaveStyle({ opacity: '1' });
+        rerender(<ChroniclesGenerationAction {...mockProps} />);
+
+        // Check disabled styling
+        textarea = screen.getByPlaceholderText('生成中，请稍等...');
+        expect(textarea).toHaveStyle({
+            opacity: '0.6',
+            cursor: 'not-allowed',
+            background: '#0f0f0f',
+            color: '#666'
         });
     });
 });

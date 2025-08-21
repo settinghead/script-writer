@@ -4,7 +4,8 @@ import TextareaAutosize from 'react-textarea-autosize';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
-import { AIButton } from '../shared';
+import { SmartAIButton } from '../shared';
+import { useGenerationState } from '../../hooks/useGenerationState';
 
 const { Title, Text } = Typography;
 
@@ -13,8 +14,14 @@ type ChroniclesGenerationActionProps = BaseActionProps | ActionComponentProps;
 
 const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (props) => {
     const { projectId, onSuccess, onError } = props;
-    const [isGenerating, setIsGenerating] = useState(false);
     const [additionalInstructions, setAdditionalInstructions] = useState('');
+
+    // Use centralized generation state management
+    const {
+        isAnyGenerating,
+        isLocalGenerating,
+        setLocalGenerating
+    } = useGenerationState('chronicles-generation');
 
     // Get 剧本设定 from props (new way) or null (old way)
     const latestOutlineSettings = 'jsondocs' in props ? props.jsondocs.outlineSettings : null;
@@ -26,7 +33,7 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
             return;
         }
 
-        setIsGenerating(true);
+        setLocalGenerating(true);
         try {
             await apiService.generateChroniclesFromOutline(
                 projectId,
@@ -42,9 +49,9 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
             message.error(errorMessage);
             onError?.(error instanceof Error ? error : new Error(errorMessage));
         } finally {
-            setIsGenerating(false);
+            setLocalGenerating(false);
         }
-    }, [latestOutlineSettings, projectId, onSuccess, onError, additionalInstructions]);
+    }, [latestOutlineSettings, projectId, onSuccess, onError, additionalInstructions, setLocalGenerating]);
 
     // Show error if no 剧本设定 found
     if (!latestOutlineSettings) {
@@ -75,14 +82,14 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center' }}>
             <TextareaAutosize
-                placeholder={isGenerating ? "生成中，请稍等..." : "补充说明（可选）"}
+                placeholder={isAnyGenerating ? "生成中，请稍等..." : "补充说明（可选）"}
                 value={additionalInstructions}
                 onChange={(e) => setAdditionalInstructions(e.target.value)}
-                disabled={isGenerating}
+                disabled={isAnyGenerating}
                 minRows={1}
                 maxRows={6}
                 onKeyDown={(e) => {
-                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !isGenerating) {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !isAnyGenerating) {
                         e.preventDefault();
                         handleGenerateChronicles();
                     }
@@ -92,29 +99,29 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
                     resize: 'none',
                     padding: '8px 12px',
                     borderRadius: 6,
-                    background: isGenerating ? '#0f0f0f' : '#1f1f1f',
-                    color: isGenerating ? '#666' : '#fff',
-                    border: `1px solid ${isGenerating ? '#1a1a1a' : '#303030'}`,
+                    background: isAnyGenerating ? '#0f0f0f' : '#1f1f1f',
+                    color: isAnyGenerating ? '#666' : '#fff',
+                    border: `1px solid ${isAnyGenerating ? '#1a1a1a' : '#303030'}`,
                     lineHeight: 1.5,
-                    cursor: isGenerating ? 'not-allowed' : 'text',
-                    opacity: isGenerating ? 0.6 : 1,
+                    cursor: isAnyGenerating ? 'not-allowed' : 'text',
+                    opacity: isAnyGenerating ? 0.6 : 1,
                 }}
             />
-            <AIButton
+            <SmartAIButton
+                componentId="chronicles-generation"
                 type="primary"
                 size="large"
-                loading={isGenerating}
-                disabled={isGenerating}
                 onClick={handleGenerateChronicles}
+                loading={isLocalGenerating}
+                generatingText="生成完成后可点击"
                 style={{
                     width: '200px',
                     height: '48px',
                     fontSize: '16px',
-                    opacity: isGenerating ? 0.7 : 1,
                 }}
             >
-                {isGenerating ? '生成完成后可点击' : '生成时间顺序大纲'}
-            </AIButton>
+                生成时间顺序大纲
+            </SmartAIButton>
         </div>
     );
 };

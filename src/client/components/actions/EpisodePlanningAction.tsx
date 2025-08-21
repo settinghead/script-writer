@@ -5,7 +5,7 @@ import { VideoCameraOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
-import { AIButton } from '../shared';
+import { SmartAIButton } from '../shared';
 import { MIN_EPISODES, MAX_EPISODES, DEFAULT_EPISODES } from '@/common/config/constants';
 
 const { Title, Text } = Typography;
@@ -149,16 +149,18 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
                 </Row>
             </Form>
 
-            <AIButton
+            <SmartAIButton
+                componentId="episode-planning"
                 type="primary"
                 loading={isGenerating}
                 onClick={handleGenerateEpisodePlanning}
-                disabled={!latestChronicles || numberOfEpisodes < MIN_EPISODES || numberOfEpisodes > MAX_EPISODES}
+                manuallyDisabled={!latestChronicles || numberOfEpisodes < MIN_EPISODES || numberOfEpisodes > MAX_EPISODES}
+                generatingText="正在生成分集结构..."
                 style={{ width: '100%' }}
                 data-testid="generate-episode-planning-btn"
             >
-                {isGenerating ? '正在生成分集结构...' : '生成分集结构'}
-            </AIButton>
+                生成分集结构
+            </SmartAIButton>
         </Space>
     );
 };

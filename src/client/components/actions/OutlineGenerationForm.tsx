@@ -5,7 +5,7 @@ import { RightOutlined, ArrowLeftOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
-import { AIButton } from '../shared';
+import { SmartAIButton } from '../shared';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 
 const { Title, Text } = Typography;
@@ -185,18 +185,20 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
             />
 
             {/* Generate button */}
-            <AIButton
+            <SmartAIButton
+                componentId="outline-generation"
                 type="primary"
                 onClick={() => handleGenerateOutline({ title: ideaData?.title || '', requirements: additionalInstructions })}
                 loading={isGenerating}
-                disabled={isGenerating || isDeleting}
+                manuallyDisabled={isDeleting}
+                generatingText="生成中..."
                 style={{
                     minWidth: '140px',
                     height: '40px'
                 }}
             >
-                {isGenerating ? '生成中...' : <> 生成剧本设定 <RightOutlined /></>}
-            </AIButton>
+                <> 生成剧本设定 <RightOutlined /></>
+            </SmartAIButton>
         </div>
     );
 };
