@@ -1,8 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { Button, message, Alert, Typography, Row, Col } from 'antd';
+import { message, Alert, Typography, Row, Col } from 'antd';
 import TextareaAutosize from 'react-textarea-autosize';
 import { apiService } from '../../services/apiService';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
+import { SmartAIButton } from '../shared';
+import { useGenerationState } from '../../hooks/useGenerationState';
 
 const { Text } = Typography;
 
@@ -24,6 +26,13 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
 
     const episodeSynopsis = jsondocs.episodeSynopsis;
 
+    // Centralized generation state
+    const {
+        isAnyGenerating,
+        isLocalGenerating,
+        setLocalGenerating
+    } = useGenerationState('episode-script-generation');
+
     const handleGenerate = useCallback(async () => {
         if (!episodeSynopsis) {
             message.error('未找到分集大纲');
@@ -31,6 +40,7 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
         }
 
         setIsGenerating(true);
+        setLocalGenerating(true);
         try {
             // Get or create conversation ID
             const conversationId = await (apiService as any).getOrCreateConversation(projectId);
@@ -56,6 +66,7 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
             onError?.(error instanceof Error ? error : new Error('生成失败'));
         } finally {
             setIsGenerating(false);
+            setLocalGenerating(false);
         }
     }, [episodeSynopsis, targetEpisode, projectId, additionalInstructions, onSuccess, onError]);
 
@@ -70,13 +81,14 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
             <Row gutter={[12, 12]} align="middle" justify="center">
                 <Col xs={24} md={16}>
                     <TextareaAutosize
-                        placeholder="补充说明（可选）：例如台词风格、场景要求、镜头节奏、表演语气等。按 Ctrl/⌘+Enter 立即生成。"
+                        placeholder={isAnyGenerating ? '生成中，请稍等...' : '补充说明（可选）：例如台词风格、场景要求、镜头节奏、表演语气等。按 Ctrl/⌘+Enter 立即生成。'}
                         value={additionalInstructions}
                         onChange={(e) => setAdditionalInstructions(e.target.value)}
+                        disabled={isAnyGenerating}
                         minRows={1}
                         maxRows={6}
                         onKeyDown={(e) => {
-                            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !isAnyGenerating) {
                                 e.preventDefault();
                                 handleGenerate();
                             }
@@ -86,29 +98,27 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
                             resize: 'none',
                             padding: '8px 12px',
                             borderRadius: 6,
-                            background: '#1f1f1f',
-                            color: '#fff',
-                            border: '1px solid #303030',
+                            background: isAnyGenerating ? '#0f0f0f' : '#1f1f1f',
+                            color: isAnyGenerating ? '#666' : '#fff',
+                            border: `1px solid ${isAnyGenerating ? '#1a1a1a' : '#303030'}`,
                             lineHeight: 1.5,
+                            cursor: isAnyGenerating ? 'not-allowed' : 'text',
+                            opacity: isAnyGenerating ? 0.6 : 1,
                         }}
                     />
                 </Col>
                 <Col xs={24} md={8} style={{ textAlign: 'center' }}>
-                    <Button
+                    <SmartAIButton
+                        componentId="episode-script-generation"
                         type="primary"
                         size="large"
-                        loading={isGenerating}
                         onClick={handleGenerate}
-                        style={{
-                            width: '100%',
-                            height: 48,
-                            fontSize: '16px',
-                            background: 'linear-gradient(135deg, #52c41a 0%, #389e0d 100%)',
-                            border: 'none'
-                        }}
+                        loading={isLocalGenerating}
+                        generatingText="生成完成后可点击"
+                        style={{ width: '100%', height: 48, fontSize: '16px' }}
                     >
                         {isGenerating ? '生成中...' : `生成第${targetEpisode.episodeNumber}集剧本`}
-                    </Button>
+                    </SmartAIButton>
                 </Col>
                 <Col span={24} style={{ textAlign: 'center' }}>
                     <Text type="secondary">基于分集大纲生成完整剧本内容</Text>

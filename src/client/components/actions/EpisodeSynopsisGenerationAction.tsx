@@ -1,8 +1,10 @@
 import React, { useState, useCallback } from 'react';
-import { Button, message, Alert, Typography, Row, Col } from 'antd';
+import { message, Alert, Typography } from 'antd';
 import TextareaAutosize from 'react-textarea-autosize';
 import { apiService } from '../../services/apiService';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
+import { SmartAIButton } from '../shared';
+import { useGenerationState } from '../../hooks/useGenerationState';
 
 const { Text } = Typography;
 
@@ -21,6 +23,13 @@ const EpisodeSynopsisGenerationAction: React.FC<EpisodeSynopsisGenerationActionP
 
     const episodePlanning = jsondocs.episodePlanning;
 
+    // Centralized generation state: disable while parent steps are generating
+    const {
+        isAnyGenerating,
+        isLocalGenerating,
+        setLocalGenerating
+    } = useGenerationState('episode-synopsis-generation');
+
     const handleGenerate = useCallback(async () => {
         if (!episodePlanning) {
             message.error('未找到分集结构');
@@ -28,6 +37,7 @@ const EpisodeSynopsisGenerationAction: React.FC<EpisodeSynopsisGenerationActionP
         }
 
         setIsGenerating(true);
+        setLocalGenerating(true);
         try {
             // Get or create conversation ID (following the pattern used in other generation methods)
             const conversationId = await (apiService as any).getOrCreateConversation(projectId);
@@ -55,6 +65,7 @@ const EpisodeSynopsisGenerationAction: React.FC<EpisodeSynopsisGenerationActionP
             onError?.(error instanceof Error ? error : new Error('生成失败'));
         } finally {
             setIsGenerating(false);
+            setLocalGenerating(false);
         }
     }, [episodePlanning, nextGroup, projectId, additionalInstructions, onSuccess, onError]);
 
@@ -66,47 +77,48 @@ const EpisodeSynopsisGenerationAction: React.FC<EpisodeSynopsisGenerationActionP
 
     return (
         <div style={{ width: '100%' }}>
-            <Row gutter={[12, 12]} align="middle" justify="center">
-                <Col xs={24} md={16}>
-                    <TextareaAutosize
-                        placeholder="补充说明（可选）：例如强调开场钩子更强、埋更清晰的悬念、增加角色情感冲突等。按 Ctrl/⌘+Enter 立即生成。"
-                        value={additionalInstructions}
-                        onChange={(e) => setAdditionalInstructions(e.target.value)}
-                        minRows={1}
-                        maxRows={6}
-                        onKeyDown={(e) => {
-                            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                                e.preventDefault();
-                                handleGenerate();
-                            }
-                        }}
-                        style={{
-                            width: '100%',
-                            resize: 'none',
-                            padding: '8px 12px',
-                            borderRadius: 6,
-                            background: '#1f1f1f',
-                            color: '#fff',
-                            border: '1px solid #303030',
-                            lineHeight: 1.5,
-                        }}
-                    />
-                </Col>
-                <Col xs={24} md={8} style={{ textAlign: 'center' }}>
-                    <Button
-                        type="primary"
-                        size="large"
-                        loading={isGenerating}
-                        onClick={handleGenerate}
-                        style={{ width: '100%', height: 48, fontSize: '16px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', border: 'none' }}
-                    >
-                        {isGenerating ? '生成中...' : `生成第${nextGroup.episodeRange}集单集大纲`}
-                    </Button>
-                </Col>
-                <Col span={24} style={{ textAlign: 'center' }}>
-                    <Text type="secondary">将为"{nextGroup.groupTitle}"生成详细的单集大纲</Text>
-                </Col>
-            </Row>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center' }}>
+                <TextareaAutosize
+                    placeholder={isAnyGenerating ? '生成中，请稍等...' : '补充说明（可选）：例如强调开场钩子更强、埋更清晰的悬念、增加角色情感冲突等。按 Ctrl/⌘+Enter 立即生成。'}
+                    value={additionalInstructions}
+                    onChange={(e) => setAdditionalInstructions(e.target.value)}
+                    disabled={isAnyGenerating}
+                    minRows={1}
+                    maxRows={6}
+                    onKeyDown={(e) => {
+                        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !isAnyGenerating) {
+                            e.preventDefault();
+                            handleGenerate();
+                        }
+                    }}
+                    style={{
+                        width: '420px',
+                        resize: 'none',
+                        padding: '8px 12px',
+                        borderRadius: 6,
+                        background: isAnyGenerating ? '#0f0f0f' : '#1f1f1f',
+                        color: isAnyGenerating ? '#666' : '#fff',
+                        border: `1px solid ${isAnyGenerating ? '#1a1a1a' : '#303030'}`,
+                        lineHeight: 1.5,
+                        cursor: isAnyGenerating ? 'not-allowed' : 'text',
+                        opacity: isAnyGenerating ? 0.6 : 1,
+                    }}
+                />
+                <SmartAIButton
+                    componentId="episode-synopsis-generation"
+                    type="primary"
+                    size="large"
+                    onClick={handleGenerate}
+                    loading={isLocalGenerating}
+                    generatingText="生成完成后可点击"
+                    style={{ width: '200px', height: 48, fontSize: '16px' }}
+                >
+                    {isGenerating ? '生成中...' : `生成第${nextGroup.episodeRange}集单集大纲`}
+                </SmartAIButton>
+            </div>
+            <div style={{ textAlign: 'center', marginTop: 8 }}>
+                <Text type="secondary">将为"{nextGroup.groupTitle}"生成详细的单集大纲</Text>
+            </div>
         </div>
     );
 };
