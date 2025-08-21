@@ -113,16 +113,6 @@ createAPIRoutes(
 // Attach authDB to all requests
 app.use(authMiddleware.attachAuthDB);
 
-// Original message endpoint
-app.get("/message", (_req, res) => {
-  res.send("Hello from Express!");
-});
-
-
-
-
-
-
 
 // ========== TRANSFORM ENDPOINTS ==========
 
