@@ -75,13 +75,14 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center' }}>
             <TextareaAutosize
-                placeholder="补充说明（可选）"
+                placeholder={isGenerating ? "生成中，请稍等..." : "补充说明（可选）"}
                 value={additionalInstructions}
                 onChange={(e) => setAdditionalInstructions(e.target.value)}
+                disabled={isGenerating}
                 minRows={1}
                 maxRows={6}
                 onKeyDown={(e) => {
-                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !isGenerating) {
                         e.preventDefault();
                         handleGenerateChronicles();
                     }
@@ -91,24 +92,28 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
                     resize: 'none',
                     padding: '8px 12px',
                     borderRadius: 6,
-                    background: '#1f1f1f',
-                    color: '#fff',
-                    border: '1px solid #303030',
+                    background: isGenerating ? '#0f0f0f' : '#1f1f1f',
+                    color: isGenerating ? '#666' : '#fff',
+                    border: `1px solid ${isGenerating ? '#1a1a1a' : '#303030'}`,
                     lineHeight: 1.5,
+                    cursor: isGenerating ? 'not-allowed' : 'text',
+                    opacity: isGenerating ? 0.6 : 1,
                 }}
             />
             <AIButton
                 type="primary"
                 size="large"
                 loading={isGenerating}
+                disabled={isGenerating}
                 onClick={handleGenerateChronicles}
                 style={{
                     width: '200px',
                     height: '48px',
-                    fontSize: '16px'
+                    fontSize: '16px',
+                    opacity: isGenerating ? 0.7 : 1,
                 }}
             >
-                {isGenerating ? '生成中...' : '生成时间顺序大纲'}
+                {isGenerating ? '生成完成后可点击' : '生成时间顺序大纲'}
             </AIButton>
         </div>
     );
