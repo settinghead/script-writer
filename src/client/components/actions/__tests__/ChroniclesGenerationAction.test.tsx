@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { message } from 'antd';
 import ChroniclesGenerationAction from '../ChroniclesGenerationAction';
 import { apiService } from '../../../services/apiService';
+import { useGenerationState } from '../../../hooks/useGenerationState';
 
 // Mock dependencies
 vi.mock('../../../services/apiService');
@@ -33,7 +34,6 @@ vi.mock('../../../hooks/useGenerationState', () => ({
 }));
 
 const mockApiService = vi.mocked(apiService);
-const { useGenerationState } = await import('../../../hooks/useGenerationState');
 const mockUseGenerationState = vi.mocked(useGenerationState);
 
 describe('ChroniclesGenerationAction', () => {
