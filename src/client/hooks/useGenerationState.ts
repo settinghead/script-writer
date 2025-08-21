@@ -86,25 +86,37 @@ export const useGenerationState = (componentId?: string): GenerationStateHook =>
         };
     }, [forceUpdate]);
 
-    // Get project-level active transforms
-    const { hasActiveTransforms, activeTransforms, activeTransformTypes } = useMemo(() => {
+    // Get project-level active transforms and streaming jsondocs
+    const { hasActiveTransforms, activeTransforms, activeTransformTypes, hasStreamingJsondocs } = useMemo<{
+        hasActiveTransforms: boolean;
+        activeTransforms: any[];
+        activeTransformTypes: string[];
+        hasStreamingJsondocs: boolean;
+    }>(() => {
         if (projectData.canonicalContext === "pending" || projectData.canonicalContext === "error") {
             return {
                 hasActiveTransforms: false,
                 activeTransforms: [],
-                activeTransformTypes: []
+                activeTransformTypes: [],
+                hasStreamingJsondocs: false
             };
         }
 
         const context = projectData.canonicalContext;
-        const transformTypes = context.activeTransforms.map(t =>
-            t.transform_name || t.transform_type || 'unknown'
+        const transformTypes: string[] = context.activeTransforms.map(t =>
+            String((t as any).transform_name || (t as any).transform_type || 'unknown')
         );
+
+        // Fallback/augment: also consider jsondocs that are currently streaming
+        const hasStreaming = Array.isArray(projectData.jsondocs)
+            ? projectData.jsondocs.some(j => j.streaming_status === 'streaming')
+            : false;
 
         return {
             hasActiveTransforms: context.hasActiveTransforms,
             activeTransforms: context.activeTransforms,
-            activeTransformTypes: transformTypes
+            activeTransformTypes: transformTypes,
+            hasStreamingJsondocs: hasStreaming
         };
     }, [projectData.canonicalContext]);
 
@@ -114,8 +126,8 @@ export const useGenerationState = (componentId?: string): GenerationStateHook =>
     // Use the snapshot for hasAnyLocalGeneration
     const hasAnyLocalGeneration = localGenerationSnapshot;
 
-    // Combined generation state
-    const isAnyGenerating = hasActiveTransforms || hasAnyLocalGeneration;
+    // Combined generation state (augment with streaming jsondocs)
+    const isAnyGenerating = hasActiveTransforms || hasAnyLocalGeneration || hasStreamingJsondocs;
 
     // Function to set local generation state
     const setLocalGenerating = useCallback((generating: boolean) => {
@@ -137,12 +149,17 @@ export const useGenerationState = (componentId?: string): GenerationStateHook =>
             return `${transformNames} 生成中，生成完成后可点击`;
         }
 
+        // If any jsondoc is streaming but we didn't detect transform types
+        if (hasStreamingJsondocs) {
+            return '生成中，生成完成后可点击';
+        }
+
         if (localGenerationSnapshot) {
             return '生成中，请稍等...';
         }
 
         return null;
-    }, [hasActiveTransforms, activeTransformTypes, localGenerationSnapshot]);
+    }, [hasActiveTransforms, activeTransformTypes, localGenerationSnapshot, hasStreamingJsondocs]);
 
     // Cleanup on unmount
     useEffect(() => {

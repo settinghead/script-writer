@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { message, Alert, Typography, Row, Col } from 'antd';
+import { message, Alert, Typography } from 'antd';
 import TextareaAutosize from 'react-textarea-autosize';
 import { apiService } from '../../services/apiService';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
@@ -78,52 +78,48 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
 
     return (
         <div style={{ width: '100%' }}>
-            <Row gutter={[12, 12]} align="middle" justify="center">
-                <Col xs={24} md={16}>
-                    <TextareaAutosize
-                        placeholder={isAnyGenerating ? '生成中，请稍等...' : '补充说明（可选）：例如台词风格、场景要求、镜头节奏、表演语气等。按 Ctrl/⌘+Enter 立即生成。'}
-                        value={additionalInstructions}
-                        onChange={(e) => setAdditionalInstructions(e.target.value)}
-                        disabled={isAnyGenerating}
-                        minRows={1}
-                        maxRows={6}
-                        onKeyDown={(e) => {
-                            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !isAnyGenerating) {
-                                e.preventDefault();
-                                handleGenerate();
-                            }
-                        }}
-                        style={{
-                            width: '100%',
-                            resize: 'none',
-                            padding: '8px 12px',
-                            borderRadius: 6,
-                            background: isAnyGenerating ? '#0f0f0f' : '#1f1f1f',
-                            color: isAnyGenerating ? '#666' : '#fff',
-                            border: `1px solid ${isAnyGenerating ? '#1a1a1a' : '#303030'}`,
-                            lineHeight: 1.5,
-                            cursor: isAnyGenerating ? 'not-allowed' : 'text',
-                            opacity: isAnyGenerating ? 0.6 : 1,
-                        }}
-                    />
-                </Col>
-                <Col xs={24} md={8} style={{ textAlign: 'center' }}>
-                    <SmartAIButton
-                        componentId="episode-script-generation"
-                        type="primary"
-                        size="large"
-                        onClick={handleGenerate}
-                        loading={isLocalGenerating}
-                        generatingText="生成完成后可点击"
-                        style={{ width: '100%', height: 48, fontSize: '16px' }}
-                    >
-                        {isGenerating ? '生成中...' : `生成第${targetEpisode.episodeNumber}集剧本`}
-                    </SmartAIButton>
-                </Col>
-                <Col span={24} style={{ textAlign: 'center' }}>
-                    <Text type="secondary">基于分集大纲生成完整剧本内容</Text>
-                </Col>
-            </Row>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center' }}>
+                <TextareaAutosize
+                    placeholder={isAnyGenerating ? '生成中，请稍等...' : '补充说明（可选）：例如台词风格、场景要求、镜头节奏、表演语气等。按 Ctrl/⌘+Enter 立即生成。'}
+                    value={additionalInstructions}
+                    onChange={(e) => setAdditionalInstructions(e.target.value)}
+                    disabled={isAnyGenerating}
+                    minRows={1}
+                    maxRows={6}
+                    onKeyDown={(e) => {
+                        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !isAnyGenerating) {
+                            e.preventDefault();
+                            handleGenerate();
+                        }
+                    }}
+                    style={{
+                        width: '420px',
+                        resize: 'none',
+                        padding: '8px 12px',
+                        borderRadius: 6,
+                        background: isAnyGenerating ? '#0f0f0f' : '#1f1f1f',
+                        color: isAnyGenerating ? '#666' : '#fff',
+                        border: `1px solid ${isAnyGenerating ? '#1a1a1a' : '#303030'}`,
+                        lineHeight: 1.5,
+                        cursor: isAnyGenerating ? 'not-allowed' : 'text',
+                        opacity: isAnyGenerating ? 0.6 : 1,
+                    }}
+                />
+                <SmartAIButton
+                    componentId="episode-script-generation"
+                    type="primary"
+                    size="large"
+                    onClick={handleGenerate}
+                    loading={isLocalGenerating}
+                    generatingText="生成完成后可点击"
+                    style={{ width: '200px', height: 48, fontSize: '16px' }}
+                >
+                    {isGenerating ? '生成中...' : `生成第${targetEpisode.episodeNumber}集剧本`}
+                </SmartAIButton>
+            </div>
+            <div style={{ textAlign: 'center', marginTop: 8 }}>
+                <Text type="secondary">基于分集大纲生成完整剧本内容</Text>
+            </div>
         </div>
     );
 };
