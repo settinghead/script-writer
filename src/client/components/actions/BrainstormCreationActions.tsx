@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
-import { Button, Typography, message } from 'antd';
-import { EditOutlined } from '@ant-design/icons';
+import { Button, Typography, message, Grid } from 'antd';
+import { EditOutlined, BulbOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
@@ -52,6 +52,9 @@ const BrainstormCreationActions: React.FC<BrainstormCreationActionsProps> = (pro
         }
     }, [projectId, onSuccess, onError, isCreatingManual]);
 
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.md;
+
     return (
         <div style={{
             padding: '12px 0',
@@ -66,23 +69,28 @@ const BrainstormCreationActions: React.FC<BrainstormCreationActionsProps> = (pro
 
             <div style={{
                 display: 'flex',
-                gap: '12px',
+                gap: isMobile ? '12px' : '24px',
                 justifyContent: 'center',
                 alignItems: 'stretch',
                 width: '100%',
-                maxWidth: '600px',
-                padding: '0 12px'
+                maxWidth: isMobile ? '600px' : '760px',
+                padding: isMobile ? '0 12px' : '0 16px',
+                flexWrap: 'nowrap'
             }}>
                 {/* Brainstorm Creation Button */}
-                <div style={{ flex: '1 1 0', minWidth: 0 }}>
+                <div style={{ flex: isMobile ? '1 1 0' : '0 1 320px', minWidth: isMobile ? 0 : 260 }}>
                     <AIButton
                         size="large"
                         onClick={handleCreateBrainstormInput}
                         loading={isCreating}
-                        style={{ height: 120, width: '100%', fontSize: 16 }}
+                        showIcon={false}
+                        style={{ height: isMobile ? 120 : 130, width: '100%', fontSize: 16, padding: isMobile ? '12px 12px' : '16px 20px' }}
                     >
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                            <div>使用头脑风暴</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <BulbOutlined style={{ fontSize: '20px' }} />
+                                <span>使用头脑风暴</span>
+                            </div>
                             <div style={{ fontSize: '12px', opacity: 0.8 }}>
                                 通过AI辅助生成创意想法
                             </div>
@@ -91,15 +99,14 @@ const BrainstormCreationActions: React.FC<BrainstormCreationActionsProps> = (pro
                 </div>
 
                 {/* Manual Creation Button */}
-                <div style={{ flex: '1 1 0', minWidth: 0 }}>
+                <div style={{ flex: isMobile ? '1 1 0' : '0 1 320px', minWidth: isMobile ? 0 : 260 }}>
                     <Button
                         type="primary"
                         size="large"
-                        icon={<EditOutlined />}
                         onClick={handleCreateManualInput}
                         loading={isCreatingManual}
                         style={{
-                            height: 120,
+                            height: isMobile ? 120 : 130,
                             width: '100%',
                             fontSize: 16,
                             borderRadius: '12px',
@@ -110,7 +117,8 @@ const BrainstormCreationActions: React.FC<BrainstormCreationActionsProps> = (pro
                             boxShadow: '0 4px 12px rgba(24, 144, 255, 0.3)',
                             transition: 'all 0.3s ease',
                             position: 'relative',
-                            overflow: 'hidden'
+                            overflow: 'hidden',
+                            padding: isMobile ? '12px 12px' : '16px 20px'
                         }}
                         onMouseEnter={(e) => {
                             const target = e.currentTarget as HTMLElement;
@@ -130,8 +138,10 @@ const BrainstormCreationActions: React.FC<BrainstormCreationActionsProps> = (pro
                         }}
                     >
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ fontSize: '24px' }}>📝</div>
-                            <div>手动输入素材</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <EditOutlined style={{ fontSize: '20px' }} />
+                                <span>手动输入素材</span>
+                            </div>
                             <div style={{ fontSize: '12px', opacity: 0.8 }}>
                                 直接输入您的创意内容
                             </div>
