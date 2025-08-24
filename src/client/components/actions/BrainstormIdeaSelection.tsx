@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Typography, Alert, message } from 'antd';
+import { Typography, Alert, message, Grid } from 'antd';
 import { CheckOutlined, RightOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { useProjectData } from '../../contexts/ProjectDataContext';
@@ -10,6 +10,8 @@ import { HumanButton } from '../shared';
 const { Text, Title } = Typography;
 
 const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSuccess, onError }) => {
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.md;
     const [isCreatingTransform, setIsCreatingTransform] = useState(false);
     const projectData = useProjectData();
     const store = useActionItemsStore(projectId);
@@ -111,55 +113,30 @@ const BrainstormIdeaSelection: React.FC<BaseActionProps> = ({ projectId, onSucce
     }
 
     return (
-        <div style={{ padding: '16px 0', textAlign: 'center', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{
+            padding: '16px 0',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: isMobile ? 'column' as const : 'row' as const,
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: isMobile ? 12 : 16,
+            width: '100%'
+        }}>
 
 
-            <div style={{
-                background: '#2a2a2a',
-                borderRadius: '8px',
-                padding: '16px',
-                marginBottom: '16px',
-                maxWidth: '600px',
-                margin: '0 auto 16px',
-                marginRight: '16px'
-            }}>
-                <Text style={{ color: '#1890ff', fontWeight: 'bold' }}>
-                    已选择
-                </Text>
-                <div style={{ marginBottom: '8px' }}>
 
-                    <Text strong style={{ color: '#fff', fontSize: '16px' }}>
-                        <CheckOutlined />
-                        创意 "{selectedIdeaTitle || `第${(store.selectedJsondocAndPath.index || 0) + 1}个创意`}"
-                    </Text>
-                </div>
-
-
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    color: '#1890ff'
-                }}>
-
-                </div>
-                <div style={{ marginBottom: '16px' }}>
-                    <Text style={{ color: '#ccc', fontSize: '14px' }}>
-                        点击下方按钮继续
-                    </Text>
-                </div>
-            </div>
 
             <HumanButton
                 size="large"
                 loading={isCreatingTransform}
                 onClick={handleConfirmSelection}
                 style={{
-                    minWidth: '200px',
+                    minWidth: isMobile ? '0' : '200px',
                     fontSize: '16px',
                     padding: '10px 16px',
-                    height: 'auto'
+                    height: 'auto',
+                    width: isMobile ? '100%' : 'auto'
                 }}
             >
                 {isCreatingTransform ? '确认中...' : (
