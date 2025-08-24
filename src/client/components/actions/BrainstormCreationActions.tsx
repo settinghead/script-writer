@@ -53,31 +53,33 @@ const BrainstormCreationActions: React.FC<BrainstormCreationActionsProps> = (pro
     }, [projectId, onSuccess, onError, isCreatingManual]);
 
     return (
-        <div style={{ padding: '16px 0' }}>
-            <Text type="secondary" style={{ display: 'block', marginBottom: '16px', textAlign: 'center' }}>
+        <div style={{
+            padding: '12px 0',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            width: '100%'
+        }}>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 12, textAlign: 'center' }}>
                 选择您希望如何开始创建项目
             </Text>
 
             <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                gap: '16px',
-                maxWidth: '640px',
-                margin: '0 auto',
-                padding: '0 16px'
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'center',
+                alignItems: 'stretch',
+                width: '100%',
+                maxWidth: '600px',
+                padding: '0 12px'
             }}>
                 {/* Brainstorm Creation Button */}
-                <div style={{ textAlign: 'center' }}>
+                <div style={{ flex: '1 1 0', minWidth: 0 }}>
                     <AIButton
                         size="large"
                         onClick={handleCreateBrainstormInput}
                         loading={isCreating}
-                        style={{
-                            height: '120px',
-                            width: '100%',
-                            minWidth: '200px',
-                            fontSize: '16px'
-                        }}
+                        style={{ height: 120, width: '100%', fontSize: 16 }}
                     >
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
                             <div>使用头脑风暴</div>
@@ -89,7 +91,7 @@ const BrainstormCreationActions: React.FC<BrainstormCreationActionsProps> = (pro
                 </div>
 
                 {/* Manual Creation Button */}
-                <div style={{ textAlign: 'center' }}>
+                <div style={{ flex: '1 1 0', minWidth: 0 }}>
                     <Button
                         type="primary"
                         size="large"
@@ -97,10 +99,9 @@ const BrainstormCreationActions: React.FC<BrainstormCreationActionsProps> = (pro
                         onClick={handleCreateManualInput}
                         loading={isCreatingManual}
                         style={{
-                            height: '120px',
+                            height: 120,
                             width: '100%',
-                            minWidth: '200px',
-                            fontSize: '16px',
+                            fontSize: 16,
                             borderRadius: '12px',
                             background: 'linear-gradient(135deg, #1890ff, #40a9ff, #69c0ff, #1890ff)',
                             backgroundSize: '200% 200%',

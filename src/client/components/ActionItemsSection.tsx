@@ -10,6 +10,7 @@ import { findParentJsondocsBySchemaType } from '../../common/transform-jsondoc-f
 import type { AffectedJsondoc } from '../../common/staleDetection';
 import { PatchApprovalPanel } from './PatchApprovalPanel';
 // import { WorkflowSteps } from './WorkflowSteps';
+import { Grid } from 'antd';
 
 const { Text, Title } = Typography;
 
@@ -18,6 +19,8 @@ interface ActionItemsSectionProps {
 }
 
 export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectId }) => {
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.md;
     const projectData = useProjectData();
     const store = useActionItemsStore(projectId);
 
@@ -166,9 +169,9 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
             style={{
                 display: 'flex',
                 alignItems: 'flex-start',
-                gap: '24px',
+                gap: isMobile ? '12px' : '24px',
                 width: '100%',
-                padding: '36px 32px',
+                padding: isMobile ? '16px 12px' : '36px 32px',
                 background: 'linear-gradient(145deg, #232323 60%, #181818 100%)',
                 borderRadius: '12px',
                 boxShadow:
@@ -177,28 +180,47 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                 transition: 'box-shadow 0.2s cubic-bezier(.4,2,.6,1)'
             }}
         >
-            {/* Actions on the right */}
+            {/* Actions */}
             {actions.length > 0 ? (
-                <div style={{ display: "flex", flexWrap: "wrap", width: "100%", alignItems: 'center', justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
-                    {/* Compact affected tile placed alongside actions */}
-                    <div style={{ alignSelf: 'stretch' }}>
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    width: '100%'
+                }}>
+                    {/* Compact affected tile displayed above, full width */}
+                    <div style={{ width: '100%', marginBottom: 12 }}>
                         <AffectedJsondocsPanel projectId={projectId} affected={affected as any} compact />
                     </div>
-                    {actions.map((action: any, index: number) => (
-                        <div key={`${action.type}-${index}`} style={{ marginRight: 8 }}>
-                            <ActionItemRenderer
-                                action={action}
-                                projectId={projectId}
-                                hasActiveTransforms={hasActiveTransforms}
-                                onSuccess={() => {
-                                    // Action completed successfully
-                                }}
-                                onError={(error: Error) => {
-                                    console.error('❌ Action failed:', action.type, error);
-                                }}
-                            />
-                        </div>
-                    ))}
+                    <div style={{
+                        display: 'flex',
+                        gap: '12px',
+                        justifyContent: 'center',
+                        alignItems: 'stretch',
+                        flexWrap: 'wrap',
+                        width: '100%',
+                        maxWidth: actions.length === 2 ? '600px' : '100%'
+                    }}>
+                        {actions.map((action: any, index: number) => (
+                            <div key={`${action.type}-${index}`} style={{
+                                flex: actions.length === 2 ? '1 1 0' : '0 1 auto',
+                                minWidth: actions.length === 2 ? 0 : '260px',
+                                maxWidth: actions.length === 2 ? '100%' : '320px'
+                            }}>
+                                <ActionItemRenderer
+                                    action={action}
+                                    projectId={projectId}
+                                    hasActiveTransforms={hasActiveTransforms}
+                                    onSuccess={() => {
+                                        // Action completed successfully
+                                    }}
+                                    onError={(error: Error) => {
+                                        console.error('❌ Action failed:', action.type, error);
+                                    }}
+                                />
+                            </div>
+                        ))}
+                    </div>
                 </div>
             ) : (
                 <div style={{ display: "flex", flexWrap: "wrap", width: "100%", justifyContent: "center", padding: '24px', color: '#666', gap: 8 }}>

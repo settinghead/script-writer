@@ -109,7 +109,7 @@ const AppContent: React.FC = () => {
     navigate('/login');
   };
 
-  // Mobile menu items
+  // Core app navigation items
   const menuItems = [
     {
       key: 'projects',
@@ -133,6 +133,46 @@ const AppContent: React.FC = () => {
     }
   ];
 
+  // Drawer items for mobile (include auth actions)
+  const drawerItems = (() => {
+    if (isMobile) {
+      if (isAuthenticated && user) {
+        return [
+          {
+            key: 'user-info',
+            label: (
+              <div style={{ padding: '8px 12px' }}>
+                <div style={{ fontWeight: 500 }}>{user.display_name || user.username}</div>
+                <div style={{ fontSize: '12px', color: '#666' }}>@{user.username}</div>
+              </div>
+            ),
+            disabled: true as const,
+          },
+          { type: 'divider' as const },
+          {
+            key: 'logout',
+            label: '退出登录',
+            icon: <LogoutOutlined />,
+            onClick: handleLogout,
+          },
+          { type: 'divider' as const },
+          ...menuItems,
+        ];
+      }
+      return [
+        {
+          key: 'login',
+          label: '登录',
+          icon: <LoginOutlined />,
+          onClick: handleLogin,
+        },
+        { type: 'divider' as const },
+        ...menuItems,
+      ];
+    }
+    return menuItems;
+  })();
+
   // Common content wrapper styles
   const getContentWrapperStyle = () => ({
     flexGrow: 1,
@@ -154,7 +194,7 @@ const AppContent: React.FC = () => {
         justifyContent: 'space-between',
         height: "auto"
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px', minWidth: 0 }}>
           <div
             onClick={() => navigate('/')}
             style={{
@@ -168,20 +208,24 @@ const AppContent: React.FC = () => {
           >
             <LogoSvg
               style={{
-                height: '28px',
+                height: isMobile ? '22px' : '28px',
                 width: 'auto',
                 color: 'white',
-                margin: '10px 16px',
+                margin: isMobile ? '6px 8px' : '10px 16px',
                 fill: 'currentColor'
               }}
             />
           </div>
-          <Breadcrumb style={{ margin: '0 30px' }} />
+          <Breadcrumb style={{
+            margin: isMobile ? '0 8px' : '0 30px',
+            flex: isMobile ? '1 1 auto' : undefined,
+            minWidth: isMobile ? 0 : undefined
+          }} />
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '12px' }}>
           {/* User Authentication Section */}
-          {isAuthenticated && user ? (
+          {!isMobile && isAuthenticated && user ? (
             <Dropdown
               menu={{
                 items: [
@@ -211,26 +255,28 @@ const AppContent: React.FC = () => {
                 type="text"
                 style={{
                   height: 'auto',
-                  padding: '4px 8px',
+                  padding: isMobile ? '2px 4px' : '4px 8px',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '8px',
+                  gap: isMobile ? '0px' : '8px',
                   color: 'white',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  border: isMobile ? 'none' : '1px solid rgba(255, 255, 255, 0.2)',
                   borderRadius: '6px'
                 }}
               >
                 <Avatar
-                  size="small"
+                  size={isMobile ? 'small' : 'small'}
                   icon={<UserOutlined />}
                   style={{ backgroundColor: '#1890ff' }}
                 />
-                <span style={{ fontSize: '14px' }}>
-                  {user.display_name || user.username}
-                </span>
+                {!isMobile && (
+                  <span style={{ fontSize: '14px' }}>
+                    {user.display_name || user.username}
+                  </span>
+                )}
               </Button>
             </Dropdown>
-          ) : (
+          ) : (!isMobile && (
             <Button
               type="primary"
               icon={<LoginOutlined />}
@@ -243,7 +289,7 @@ const AppContent: React.FC = () => {
             >
               登录
             </Button>
-          )}
+          ))}
 
           {/* Mobile Menu Button */}
           {isMobile && (
@@ -267,7 +313,7 @@ const AppContent: React.FC = () => {
           >
             <Menu
               mode="vertical"
-              items={menuItems}
+              items={drawerItems}
               style={{ height: '100%' }}
             />
           </Drawer>
