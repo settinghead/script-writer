@@ -11,9 +11,9 @@ vi.mock('../../../services/apiService', () => ({
     },
 }));
 
-// Mock the AIButton component
-vi.mock('@/client/components/shared', () => ({
-    AIButton: ({ children, onClick, loading, disabled, ...props }: any) => (
+// Mock the shared buttons (both AIButton and SmartAIButton)
+vi.mock('@/client/components/shared', () => {
+    const MockButton = ({ children, onClick, loading, disabled, ...props }: any) => (
         <button
             onClick={onClick}
             disabled={loading || disabled}
@@ -22,8 +22,13 @@ vi.mock('@/client/components/shared', () => ({
         >
             {loading ? 'Loading...' : children}
         </button>
-    ),
-}));
+    );
+
+    return {
+        AIButton: MockButton,
+        SmartAIButton: MockButton,
+    };
+});
 
 // Mock Ant Design icons
 vi.mock('@ant-design/icons', () => ({

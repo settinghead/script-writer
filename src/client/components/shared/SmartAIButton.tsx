@@ -92,6 +92,7 @@ const SmartAIButton: React.FC<SmartAIButtonProps> = ({
         position: 'relative',
         overflow: 'hidden',
         fontSize: '18px',
+        padding: '0 16px',
         opacity: isDisabled ? 0.7 : 1,
         cursor: isDisabled ? 'not-allowed' : 'pointer',
         ...style
