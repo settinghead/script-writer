@@ -450,7 +450,8 @@ const ProjectHeader: React.FC<{
 const MainContentArea: React.FC<{
     projectId: string;
     scrollContainerRef: React.RefObject<HTMLDivElement | null>;
-}> = ({ projectId, scrollContainerRef }) => {
+    isMobile: boolean;
+}> = ({ projectId, scrollContainerRef, isMobile }) => {
     return (
         <Content style={{
             display: 'flex',
@@ -480,7 +481,7 @@ const MainContentArea: React.FC<{
                     <Outlet />
                     <div
                         style={{
-                            marginTop: "20vh",
+                            marginTop: isMobile ? "12px" : "20vh",
                             marginBottom: "20px",
                             textAlign: "center",
                             color: "#888",
@@ -697,6 +698,7 @@ const ProjectLayout: React.FC = () => {
                         <MainContentArea
                             projectId={projectId!}
                             scrollContainerRef={scrollContainerRef}
+                            isMobile={isMobile}
                         />
                     </Layout>
 
