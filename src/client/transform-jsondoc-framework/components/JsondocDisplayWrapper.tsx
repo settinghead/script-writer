@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { Card, Typography, Button, Spin, message } from 'antd';
 import JsondocDiffModal from '../../components/shared/JsondocDiffModal';
-import { EditOutlined, LoadingOutlined } from '@ant-design/icons';
+import { EditOutlined, LoadingOutlined, DiffOutlined } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { YJSJsondocProvider } from '../contexts/YJSJsondocContext';
 import { ReadOnlyJsondocDisplay } from '../../components/shared/ReadOnlyJsondocDisplay';
@@ -203,10 +203,15 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                             </Text>
                         </div>
                     </div>
-                    {/* 修改总结 button top-right when editable summary exists */}
+                    {/* Diff icon button top-right when editable summary exists */}
                     {jsondoc?.id && (
                         <Button
-                            type="primary"
+                            type="default"
+                            ghost
+                            size="small"
+                            shape="circle"
+                            icon={<DiffOutlined />}
+                            aria-label="查看修改总结"
                             onClick={async () => {
                                 try {
                                     // Prefer lineage graph locally to resolve immediate parent
@@ -250,9 +255,7 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                                     message.error('加载对比失败');
                                 }
                             }}
-                        >
-                            修改总结
-                        </Button>
+                        />
                     )}
                 </div>
 

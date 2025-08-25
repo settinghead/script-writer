@@ -58,6 +58,7 @@ const SmartAIButton: React.FC<SmartAIButtonProps> = ({
     onClick,
     ...props
 }) => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
     const {
         isAnyGenerating,
         getDisabledReason,
@@ -91,8 +92,8 @@ const SmartAIButton: React.FC<SmartAIButtonProps> = ({
         transition: 'all 0.3s ease',
         position: 'relative',
         overflow: 'hidden',
-        fontSize: '18px',
-        padding: '0 16px',
+        fontSize: isMobile ? '14px' : '18px',
+        padding: isMobile ? '0 12px' : '0 16px',
         opacity: isDisabled ? 0.7 : 1,
         cursor: isDisabled ? 'not-allowed' : 'pointer',
         ...style
