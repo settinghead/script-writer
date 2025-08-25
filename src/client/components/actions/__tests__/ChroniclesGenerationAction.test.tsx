@@ -77,10 +77,10 @@ describe('ChroniclesGenerationAction', () => {
 
         // During generation - components should be disabled
         const textareaDuringGeneration = screen.getByPlaceholderText('生成中，请稍等...');
-        const buttonDuringGeneration = screen.getByRole('button', { name: /生成完成后可点击/ });
+        const buttonDuringGeneration = screen.getByRole('button', { name: /处理中.../ });
 
         expect(textareaDuringGeneration).toBeDisabled();
-        expect(buttonDuringGeneration).toHaveTextContent('生成完成后可点击');
+        expect(buttonDuringGeneration).toHaveTextContent('处理中...');
     });
 
     it('should prevent keyboard shortcuts during generation', async () => {

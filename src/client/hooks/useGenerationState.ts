@@ -146,12 +146,12 @@ export const useGenerationState = (componentId?: string): GenerationStateHook =>
     const getDisabledReason = useCallback((): string | null => {
         if (hasActiveTransforms && activeTransformTypes.length > 0) {
             const transformNames = activeTransformTypes.join('、');
-            return `${transformNames} 生成中，生成完成后可点击`;
+            return `${transformNames} 生成中，生成完成后可编辑`;
         }
 
         // If any jsondoc is streaming but we didn't detect transform types
         if (hasStreamingJsondocs) {
-            return '生成中，生成完成后可点击';
+            return '生成中，生成完成后可编辑';
         }
 
         if (localGenerationSnapshot) {

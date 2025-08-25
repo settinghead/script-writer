@@ -51,7 +51,7 @@ const SmartAIButton: React.FC<SmartAIButtonProps> = ({
     componentId,
     manuallyDisabled = false,
     customDisabledReason,
-    generatingText = '生成完成后可点击',
+    generatingText = '处理中...',
     allowClickDuringGeneration = false,
     children,
     style,

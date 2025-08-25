@@ -45,7 +45,7 @@ describe('SmartAIButton', () => {
         mockUseGenerationState.mockReturnValue({
             ...mockGenerationState,
             isAnyGenerating: true,
-            getDisabledReason: () => '时间顺序大纲生成 生成中，生成完成后可点击'
+            getDisabledReason: () => '时间顺序大纲生成 生成中，生成完成后可编辑'
         });
 
         render(
@@ -59,14 +59,14 @@ describe('SmartAIButton', () => {
 
         const button = screen.getByRole('button');
         expect(button).toBeDisabled();
-        expect(button).toHaveTextContent('生成完成后可点击');
+        expect(button).toHaveTextContent('处理中...');
     });
 
     it('should show tooltip with disabled reason when disabled', () => {
         mockUseGenerationState.mockReturnValue({
             ...mockGenerationState,
             isAnyGenerating: true,
-            getDisabledReason: () => '故事设定生成 生成中，生成完成后可点击'
+            getDisabledReason: () => '故事设定生成 生成中，生成完成后可编辑'
         });
 
         render(

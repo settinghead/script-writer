@@ -70,7 +70,7 @@ describe('useGenerationState', () => {
         expect(result.current.isAnyGenerating).toBe(true);
         expect(result.current.hasActiveTransforms).toBe(true);
         expect(result.current.activeTransformTypes).toEqual(['时间顺序大纲生成']);
-        expect(result.current.getDisabledReason()).toBe('时间顺序大纲生成 生成中，生成完成后可点击');
+        expect(result.current.getDisabledReason()).toBe('时间顺序大纲生成 生成中，生成完成后可编辑');
     });
 
     it('should manage local generation state', () => {

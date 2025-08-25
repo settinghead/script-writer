@@ -117,7 +117,7 @@ const MyActionComponent: React.FC<ActionProps> = ({ projectId, onSuccess, onErro
 - No more manual state coordination between components
 
 ### ✅ **Helpful User Feedback**
-- Clear messages like "时间顺序大纲生成 生成中，生成完成后可点击"
+- Clear messages like "时间顺序大纲生成 生成中，生成完成后可编辑"
 - Tooltips explain why buttons are disabled
 - Visual styling changes (opacity, cursor) indicate disabled state
 
