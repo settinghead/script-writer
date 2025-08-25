@@ -422,22 +422,25 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
             {/* Collapsed summary when a chosen idea exists */}
             {chosenIdea && collapsed && (
               <div className="text-center py-4" style={{ padding: '12px 12px' }}>
-                <div style={{
-                  padding: '12px 20px',
-                  backgroundColor: '#2a2a2a',
-                  borderRadius: '8px',
-                  border: '1px solid #444',
-                  display: 'inline-block'
-                }}>
+                <div
+                  onClick={() => setCollapsed(false)}
+                  role="button"
+                  aria-label="展开原始创意"
+                  style={{
+                    padding: '12px 20px',
+                    backgroundColor: '#2a2a2a',
+                    borderRadius: '8px',
+                    border: '1px solid #444',
+                    display: 'inline-block',
+                    cursor: 'pointer'
+                  }}
+                >
                   <Text style={{ color: '#1890ff', fontSize: '14px', fontWeight: 500 }}>
                     已选择创意: {collectionIdeasWhenChosen[0]?.title || '创意'}
                   </Text>
                 </div>
                 <div style={{ marginTop: '8px' }}>
-                  <Space size="small">
-                    <Text className="text-gray-400">头脑风暴已完成。查看原始创意：</Text>
-                    <Button type="link" size="small" icon={<DownOutlined />} onClick={() => setCollapsed(false)}>展开原始创意</Button>
-                  </Space>
+                  <Text className="text-gray-400">头脑风暴已完成。点击上方卡片展开原始创意</Text>
                 </div>
               </div>
             )}
