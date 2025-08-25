@@ -667,13 +667,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
 
         const children: any[] = [];
 
-        // Title
-        children.push(
-            new Paragraph({
-                text: '项目导出',
-                heading: HeadingLevel.HEADING_1,
-            })
-        );
+
 
         // Export time
         children.push(

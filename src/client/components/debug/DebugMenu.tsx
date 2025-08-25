@@ -1,16 +1,19 @@
 import React, { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Space, Button } from 'antd';
-import { NodeIndexOutlined, MessageOutlined, FileTextOutlined, ToolOutlined, SearchOutlined } from '@ant-design/icons';
+import { Space, Button, Dropdown } from 'antd';
+import type { MenuProps } from 'antd';
+import { NodeIndexOutlined, MessageOutlined, FileTextOutlined, ToolOutlined, SearchOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 
 interface DebugMenuProps {
     isMobile?: boolean;
     onMobileRightDrawerOpen?: () => void;
+    onHideDebug?: () => void;
 }
 
 export const DebugMenu: React.FC<DebugMenuProps> = ({
     isMobile = false,
-    onMobileRightDrawerOpen
+    onMobileRightDrawerOpen,
+    onHideDebug
 }) => {
     const [searchParams, setSearchParams] = useSearchParams();
 
@@ -114,52 +117,73 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
         );
     }
 
+    const items: MenuProps['items'] = [
+        {
+            key: 'raw-graph',
+            label: showRawGraph ? '关闭图谱' : '打开图谱',
+            icon: <NodeIndexOutlined />,
+        },
+        {
+            key: 'agent-context',
+            label: showAgentContext ? '关闭Agent上下文' : 'Agent上下文',
+            icon: <ToolOutlined />,
+        },
+        {
+            key: 'raw-context',
+            label: showRawContext ? '关闭工具调用' : '工具调用',
+            icon: <FileTextOutlined />,
+        },
+        {
+            key: 'raw-chat',
+            label: showRawChat ? '关闭内部对话' : '打开内部对话',
+            icon: <MessageOutlined />,
+        },
+        {
+            key: 'particle-debug',
+            label: showParticleDebug ? '关闭粒子搜索' : '粒子搜索',
+            icon: <SearchOutlined />,
+        },
+        { type: 'divider' },
+        {
+            key: 'hide',
+            label: '隐藏调试工具',
+            icon: <EyeInvisibleOutlined />,
+            danger: true
+        }
+    ];
+
+    const onMenuClick: MenuProps['onClick'] = ({ key }) => {
+        switch (key) {
+            case 'raw-graph':
+                toggleRawGraph();
+                break;
+            case 'agent-context':
+                toggleAgentContext();
+                break;
+            case 'raw-context':
+                toggleRawContext();
+                break;
+            case 'raw-chat':
+                toggleRawChat();
+                break;
+            case 'particle-debug':
+                toggleParticleDebug();
+                break;
+            case 'hide':
+                onHideDebug?.();
+                break;
+            default:
+                break;
+        }
+    };
+
     return (
         <Space size={'middle'}>
-            <Button
-                type="text"
-                icon={<NodeIndexOutlined />}
-                onClick={toggleRawGraph}
-                style={{ color: showRawGraph ? '#52c41a' : '#1890ff' }}
-            >
-                {showRawGraph ? '关闭图谱' : '打开图谱'}
-            </Button>
-
-            <Button
-                type="text"
-                icon={<ToolOutlined />}
-                onClick={toggleAgentContext}
-                style={{ color: showAgentContext ? '#52c41a' : '#1890ff' }}
-            >
-                {showAgentContext ? '关闭Agent上下文' : 'Agent上下文'}
-            </Button>
-            <Button
-                type="text"
-                icon={<FileTextOutlined />}
-                onClick={toggleRawContext}
-                style={{ color: showRawContext ? '#52c41a' : '#1890ff' }}
-            >
-                {showRawContext ? '关闭工具调用' : '工具调用'}
-            </Button>
-            <Button
-                type="text"
-                icon={<MessageOutlined />}
-                onClick={toggleRawChat}
-                style={{ color: showRawChat ? '#52c41a' : '#1890ff' }}
-            >
-                {showRawChat ? '关闭内部对话' : '打开内部对话'}
-            </Button>
-
-
-            <Button
-                type="text"
-                icon={<SearchOutlined />}
-                onClick={toggleParticleDebug}
-                style={{ color: showParticleDebug ? '#52c41a' : '#1890ff' }}
-            >
-                {showParticleDebug ? '关闭粒子搜索' : '粒子搜索'}
-            </Button>
-
+            <Dropdown menu={{ items, onClick: onMenuClick }} trigger={["click"]}>
+                <Button type="text" icon={<ToolOutlined />} style={{ color: '#1890ff' }}>
+                    调试
+                </Button>
+            </Dropdown>
         </Space>
     );
 };

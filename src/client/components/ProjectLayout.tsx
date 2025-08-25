@@ -419,7 +419,8 @@ const ProjectHeader: React.FC<{
     onMobileRightDrawerOpen: () => void;
     debugEnabled: boolean;
     onEnableDebug: () => void;
-}> = ({ projectId, isMobile, sidebarWidth, rightSidebarVisible, rightSidebarWidth, onMobileRightDrawerOpen, debugEnabled, onEnableDebug }) => {
+    onHideDebug: () => void;
+}> = ({ projectId, isMobile, sidebarWidth, rightSidebarVisible, rightSidebarWidth, onMobileRightDrawerOpen, debugEnabled, onEnableDebug, onHideDebug }) => {
     // Hidden unlock: tap header 10 times to enable debug
     const clickCountRef = useRef<number>(0);
 
@@ -458,7 +459,7 @@ const ProjectHeader: React.FC<{
         }} onClick={handleHeaderClick}>
             <div style={{ display: 'flex', alignItems: 'center' }}>
                 {debugEnabled ? (
-                    <DebugMenu />
+                    <DebugMenu onHideDebug={onHideDebug} />
                 ) : null}
             </div>
 
@@ -734,6 +735,7 @@ const ProjectLayout: React.FC = () => {
                                 onMobileRightDrawerOpen={showMobileRightDrawer}
                                 debugEnabled={!!debugEnabled}
                                 onEnableDebug={() => setDebugEnabled(true)}
+                                onHideDebug={() => setDebugEnabled(false)}
                             />
                         )}
 
