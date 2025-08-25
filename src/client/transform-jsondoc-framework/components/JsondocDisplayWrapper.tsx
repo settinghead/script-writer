@@ -223,11 +223,11 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                                     return '可编辑';
                                 })()}
                             </Text>
+                            {extraRight}
                         </div>
                     </div>
                     {/* Right-side header actions */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {extraRight}
                         {/* Diff icon button top-right when editable summary exists */}
                         {jsondoc?.id && hasSameTypeParent && (
                             <Button
@@ -331,12 +331,12 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                                 {jsondoc.origin_type === 'ai_generated' ? 'AI生成' : '只读'}
                                 {clickToEditAvailable && ' · 点击编辑'}
                             </Text>
+                            {extraRight}
                         </div>
                     </div>
 
                     {/* Edit button for click-to-edit */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {extraRight}
                         {clickToEditAvailable && (
                             <Button
                                 type="text"
