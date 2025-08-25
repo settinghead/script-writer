@@ -192,27 +192,27 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
 
     return (
         <>
-            {/* CSS for 45-degree transitioning gradient animation */}
+            {/* CSS for smooth moving linear gradient animation */}
             <style>{`
-                @keyframes moving-gradient-45 {
-                    0% { background-position: -400px 0; }
-                    100% { background-position: 400px 0; }
+                @keyframes moving-gradient {
+                    0% { background-position: -500px 0; }
+                    100% { background-position: 500px 0; }
                 }
                 .gradient-section {
-                    /* Base slightly-purple background (not pure black) */
-                    background-color: #151026; /* deep purple-tinted dark */
-                    /* Smooth purple sweep overlay */
+                    /* Darker purple-tinted background for better contrast */
+                    background-color: rgba(12, 8, 22, 1); /* much darker purple base */
+                    /* Transparent overlay gradient that loops seamlessly */
                     background-image: linear-gradient(
-                        45deg,
-                        rgba(109, 40, 217, 0.00) 0%,
-                        rgba(109, 40, 217, 0.08) 25%,
-                        rgba(124, 58, 237, 0.16) 50%,
-                        rgba(109, 40, 217, 0.08) 75%,
-                        rgba(109, 40, 217, 0.00) 100%
+                        90deg,
+                        rgba(139, 69, 255, 0) 0%,
+
+                        rgba(139, 69, 255, 0.25) 50%,
+
+                        rgba(139, 69, 255, 0) 100%
                     );
-                    background-size: 800px 800px; /* large to avoid checkered artifacts */
-                    background-repeat: repeat;
-                    animation: moving-gradient-45 6s linear infinite;
+                    background-size: 800px 100%;
+                    animation: moving-gradient 6s linear infinite;
+                    will-change: background-position;
                 }
             `}</style>
 
