@@ -190,16 +190,12 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
                             </Space>
                         }
                         style={{
-                            backgroundColor: '#141414',
                             border: '2px solid #434343',
                             borderRadius: '8px',
-                            marginBottom: '20px'
+                            marginBottom: '20px',
+                            backgroundColor: 'transparent'
                         }}
-                        headStyle={{
-                            borderBottom: '1px solid #434343',
-                            backgroundColor: '#1f1f1f'
-                        }}
-                        bodyStyle={{ padding: '16px' }}
+
                     >
                         <Space direction="vertical" style={{ width: '100%' }} size="middle">
                             {/* Episode Synopsis */}
@@ -211,7 +207,6 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
                                             ghost
                                             size="small"
                                             style={{
-                                                backgroundColor: '#1a1a1a',
                                                 border: '1px solid #434343',
                                                 borderRadius: '6px'
                                             }}
@@ -229,7 +224,6 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
                                                 key="synopsis"
                                                 id={`episode-${pair.episodeNumber}-synopsis`}
                                                 style={{
-                                                    backgroundColor: '#1a1a1a',
                                                     border: 'none'
                                                 }}
                                             >
@@ -312,8 +306,8 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
                                             title="大纲详情"
                                             size="small"
                                             style={{
-                                                backgroundColor: '#1a1a1a',
-                                                border: '1px solid #434343'
+                                                border: '1px solid #434343',
+                                                backgroundColor: 'transparent'
                                             }}
                                             headStyle={{ borderBottom: '1px solid #434343' }}
                                         >
