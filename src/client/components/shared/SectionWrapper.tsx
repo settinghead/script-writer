@@ -200,7 +200,7 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
                 }
                 .gradient-section {
                     /* Darker purple-tinted background for better contrast */
-                    background-color: rgba(12, 8, 22, 1); /* much darker purple base */
+                    background-color: rgba(26, 16, 51, 1); /* darker, more purple base */
                     /* Gradient that tiles seamlessly - purple at edges and middle */
                     background-image: linear-gradient(
                         90deg,
@@ -227,7 +227,7 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             />
             <section
                 id={finalSectionId}
-                className="gradient-section"
+                className={detectedMode === 'loading' ? 'gradient-section' : undefined}
                 style={{ transition: 'background-position 0.3s ease' }}
             >
                 {children}
