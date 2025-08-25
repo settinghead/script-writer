@@ -28,7 +28,7 @@ vi.mock('../../contexts/ProjectDataContext', () => ({
     ProjectDataProvider: ({ children }: { children: React.ReactNode }) => <div>{children}</div>
 }));
 
-const { useProjectData } = await import('../../contexts/ProjectDataContext');
+import { useProjectData } from '../../contexts/ProjectDataContext';
 const mockUseProjectData = vi.mocked(useProjectData);
 
 describe('useGenerationState', () => {

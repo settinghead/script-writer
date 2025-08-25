@@ -17,7 +17,7 @@ vi.mock('../../../hooks/useGenerationState', () => ({
     useGenerationState: vi.fn(() => mockGenerationState)
 }));
 
-const { useGenerationState } = await import('../../../hooks/useGenerationState');
+import { useGenerationState } from '../../../hooks/useGenerationState';
 const mockUseGenerationState = vi.mocked(useGenerationState);
 
 describe('SmartAIButton', () => {

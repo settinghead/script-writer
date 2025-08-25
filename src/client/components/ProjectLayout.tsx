@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Outlet, useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Layout, Typography, Space, Button, Drawer, Grid, Tabs, Alert, Spin } from 'antd';
+import { Layout, Typography, Space, Button, Drawer, Grid, Tabs, Alert, Spin, message } from 'antd';
 import { EyeInvisibleOutlined, ApartmentOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
 import { ScrollSyncProvider } from '../contexts/ScrollSyncContext';
@@ -417,7 +417,20 @@ const ProjectHeader: React.FC<{
     rightSidebarVisible: boolean;
     rightSidebarWidth: number;
     onMobileRightDrawerOpen: () => void;
-}> = ({ projectId, isMobile, sidebarWidth, rightSidebarVisible, rightSidebarWidth, onMobileRightDrawerOpen }) => {
+    debugEnabled: boolean;
+    onEnableDebug: () => void;
+}> = ({ projectId, isMobile, sidebarWidth, rightSidebarVisible, rightSidebarWidth, onMobileRightDrawerOpen, debugEnabled, onEnableDebug }) => {
+    // Hidden unlock: tap header 10 times to enable debug
+    const clickCountRef = useRef<number>(0);
+
+    const handleHeaderClick = () => {
+        if (debugEnabled) return;
+        clickCountRef.current += 1;
+        if (clickCountRef.current >= 10) {
+            onEnableDebug();
+            message.success('调试菜单已启用');
+        }
+    };
     // On mobile, avoid rendering a fixed-height wrapper; just mount modals
     if (isMobile) {
         return (
@@ -439,12 +452,20 @@ const ProjectHeader: React.FC<{
             borderBottom: '1px solid #333',
             background: '#1a1a1a',
             display: 'flex',
-            justifyContent: 'space-between',
+            justifyContent: 'flex-start',
             alignItems: 'center',
             height: '60px'
-        }}>
-            <DebugMenu />
-            <ExportButton projectId={projectId} />
+        }} onClick={handleHeaderClick}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+                {debugEnabled ? (
+                    <DebugMenu />
+                ) : null}
+            </div>
+
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
+                <ExportButton projectId={projectId} />
+            </div>
+
             {/* Project settings modal is controlled via URL param (?projectSettings=1) */}
             <ProjectSettingsModal projectId={projectId} />
         </div>
@@ -456,7 +477,8 @@ const MainContentArea: React.FC<{
     projectId: string;
     scrollContainerRef: React.RefObject<HTMLDivElement | null>;
     isMobile: boolean;
-}> = ({ projectId, scrollContainerRef, isMobile }) => {
+    debugEnabled: boolean;
+}> = ({ projectId, scrollContainerRef, isMobile, debugEnabled }) => {
     return (
         <Content style={{
             display: 'flex',
@@ -504,7 +526,9 @@ const MainContentArea: React.FC<{
             </div>
 
             {/* Debug Panels Overlay */}
-            <DebugPanels projectId={projectId} />
+            {debugEnabled && (
+                <DebugPanels projectId={projectId} />
+            )}
         </Content>
     );
 };
@@ -520,6 +544,7 @@ const ProjectLayout: React.FC = () => {
     const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
     const [mobileRightDrawerOpen, setMobileRightDrawerOpen] = useState(false);
     const [activeRightTab, setActiveRightTab] = useLocalStorage('right-sidebar-tab', 'tree');
+    const [debugEnabled, setDebugEnabled] = useLocalStorage('debug-menu-enabled', false);
 
     // Ref for the main content scroll container
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -707,6 +732,8 @@ const ProjectLayout: React.FC = () => {
                                 rightSidebarVisible={rightSidebarVisible}
                                 rightSidebarWidth={rightSidebarWidth}
                                 onMobileRightDrawerOpen={showMobileRightDrawer}
+                                debugEnabled={!!debugEnabled}
+                                onEnableDebug={() => setDebugEnabled(true)}
                             />
                         )}
 
@@ -715,6 +742,7 @@ const ProjectLayout: React.FC = () => {
                             projectId={projectId!}
                             scrollContainerRef={scrollContainerRef}
                             isMobile={isMobile}
+                            debugEnabled={!!debugEnabled}
                         />
                     </Layout>
 
