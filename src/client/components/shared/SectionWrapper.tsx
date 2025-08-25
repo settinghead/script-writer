@@ -192,18 +192,27 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
 
     return (
         <>
-            {/* CSS for pulse background animation */}
+            {/* CSS for 45-degree transitioning gradient animation */}
             <style>{`
-                @keyframes pulse-background {
-                    0%, 100% {
-                        background-color: #1a1a1a;
-                    }
-                    50% {
-                        background-color: rgba(109, 40, 217, 0.35);
-                    }
+                @keyframes moving-gradient-45 {
+                    0% { background-position: -400px 0; }
+                    100% { background-position: 400px 0; }
                 }
-                .pulsing-section {
-                    animation: pulse-background 2s ease-in-out infinite;
+                .gradient-section {
+                    /* Base slightly-purple background (not pure black) */
+                    background-color: #151026; /* deep purple-tinted dark */
+                    /* Smooth purple sweep overlay */
+                    background-image: linear-gradient(
+                        45deg,
+                        rgba(109, 40, 217, 0.00) 0%,
+                        rgba(109, 40, 217, 0.08) 25%,
+                        rgba(124, 58, 237, 0.16) 50%,
+                        rgba(109, 40, 217, 0.08) 75%,
+                        rgba(109, 40, 217, 0.00) 100%
+                    );
+                    background-size: 800px 800px; /* large to avoid checkered artifacts */
+                    background-repeat: repeat;
+                    animation: moving-gradient-45 6s linear infinite;
                 }
             `}</style>
 
@@ -214,8 +223,8 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             />
             <section
                 id={finalSectionId}
-                className="pulsing-section"
-                style={{ transition: 'background-color 0.3s ease' }}
+                className="gradient-section"
+                style={{ transition: 'background-position 0.3s ease' }}
             >
                 {children}
             </section>
