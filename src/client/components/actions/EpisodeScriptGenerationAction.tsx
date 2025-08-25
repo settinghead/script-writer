@@ -49,7 +49,7 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
             await apiService.sendChatMessage(
                 projectId,
                 conversationId,
-                `生成第${targetEpisode.episodeNumber}集剧本。要求: ${additionalInstructions || '无特殊要求'}`,
+                `生成第${targetEpisode.episodeNumber}集剧本。 ${additionalInstructions ? `要求: ${additionalInstructions}` : ''}`,
                 {
                     intent: 'generate_episode_script',
                     episodeNumber: targetEpisode.episodeNumber,

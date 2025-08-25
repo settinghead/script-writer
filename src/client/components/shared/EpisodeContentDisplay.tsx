@@ -228,161 +228,29 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
                                                     border: 'none'
                                                 }}
                                             >
-                                                {(() => {
-                                                    try {
-                                                        const synopsisData = typeof pair.synopsis.jsondoc.data === 'string'
-                                                            ? JSON.parse(pair.synopsis.jsondoc.data)
-                                                            : pair.synopsis.jsondoc.data;
-
-                                                        return (
-                                                            <Space direction="vertical" style={{ width: '100%' }} size="small">
-                                                                <div>
-                                                                    <Text strong style={{ color: '#1890ff' }}>标题：</Text>
-                                                                    <Text>{synopsisData.title}</Text>
-                                                                </div>
-
-                                                                <div>
-                                                                    <Text strong style={{ color: '#52c41a' }}>开场钩子：</Text>
-                                                                    <Paragraph style={{ margin: '4px 0', paddingLeft: '16px' }}>
-                                                                        {synopsisData.openingHook}
-                                                                    </Paragraph>
-                                                                </div>
-
-                                                                <div>
-                                                                    <Text strong style={{ color: '#faad14' }}>主要剧情：</Text>
-                                                                    <Paragraph style={{ margin: '4px 0', paddingLeft: '16px' }}>
-                                                                        {synopsisData.mainPlot}
-                                                                    </Paragraph>
-                                                                </div>
-
-                                                                <div>
-                                                                    <Text strong style={{ color: '#f5222d' }}>情感高潮：</Text>
-                                                                    <Paragraph style={{ margin: '4px 0', paddingLeft: '16px' }}>
-                                                                        {synopsisData.emotionalClimax}
-                                                                    </Paragraph>
-                                                                </div>
-
-                                                                <div>
-                                                                    <Text strong style={{ color: '#722ed1' }}>结尾悬念：</Text>
-                                                                    <Paragraph style={{ margin: '4px 0', paddingLeft: '16px' }}>
-                                                                        {synopsisData.cliffhanger}
-                                                                    </Paragraph>
-                                                                </div>
-
-                                                                {synopsisData.suspenseElements && synopsisData.suspenseElements.length > 0 && (
-                                                                    <div>
-                                                                        <Text strong style={{ color: '#13c2c2' }}>悬念元素：</Text>
-                                                                        <div style={{ paddingLeft: '16px', marginTop: '4px' }}>
-                                                                            {synopsisData.suspenseElements.map((element: string, idx: number) => (
-                                                                                <Tag key={idx} style={{ margin: '2px' }}>{element}</Tag>
-                                                                            ))}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-
-                                                                <div style={{ marginTop: '8px' }}>
-                                                                    <Tag color="cyan">{synopsisData.estimatedDuration || 120}秒</Tag>
-                                                                </div>
-
-                                                                {pair.synopsis.isClickToEditable && (
-                                                                    <div style={{ marginTop: '8px' }}>
-                                                                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                                                                            点击内容可编辑
-                                                                        </Text>
-                                                                    </div>
-                                                                )}
-                                                            </Space>
-                                                        );
-                                                    } catch (error) {
-                                                        console.error('Failed to parse synopsis data:', error);
-                                                        return <Text type="secondary">数据解析错误</Text>;
-                                                    }
-                                                })()}
+                                                <JsondocDisplayWrapper
+                                                    jsondoc={pair.synopsis.jsondoc}
+                                                    isEditable={pair.synopsis.isEditable}
+                                                    title="大纲详情"
+                                                    icon="🗒️"
+                                                    editableComponent={EditableEpisodeSynopsisForm}
+                                                    schemaType="单集大纲"
+                                                    enableClickToEdit={pair.synopsis.isClickToEditable}
+                                                />
                                             </Panel>
                                         </Collapse>
                                     ) : (
-                                        // If no script exists, show synopsis in a regular card (expanded)
-                                        <Card
-                                            id={`episode-${pair.episodeNumber}-synopsis`}
-                                            title="大纲详情"
-                                            size="small"
-                                            style={{
-                                                border: '1px solid #434343',
-                                                backgroundColor: 'transparent'
-                                            }}
-                                            headStyle={{ borderBottom: '1px solid #434343' }}
-                                        >
-                                            {(() => {
-                                                try {
-                                                    const synopsisData = typeof pair.synopsis.jsondoc.data === 'string'
-                                                        ? JSON.parse(pair.synopsis.jsondoc.data)
-                                                        : pair.synopsis.jsondoc.data;
-
-                                                    return (
-                                                        <Space direction="vertical" style={{ width: '100%' }} size="small">
-                                                            <div>
-                                                                <Text strong style={{ color: '#1890ff' }}>标题：</Text>
-                                                                <Text>{synopsisData.title}</Text>
-                                                            </div>
-
-                                                            <div>
-                                                                <Text strong style={{ color: '#52c41a' }}>开场钩子：</Text>
-                                                                <Paragraph style={{ margin: '4px 0', paddingLeft: '16px' }}>
-                                                                    {synopsisData.openingHook}
-                                                                </Paragraph>
-                                                            </div>
-
-                                                            <div>
-                                                                <Text strong style={{ color: '#faad14' }}>主要剧情：</Text>
-                                                                <Paragraph style={{ margin: '4px 0', paddingLeft: '16px' }}>
-                                                                    {synopsisData.mainPlot}
-                                                                </Paragraph>
-                                                            </div>
-
-                                                            <div>
-                                                                <Text strong style={{ color: '#f5222d' }}>情感高潮：</Text>
-                                                                <Paragraph style={{ margin: '4px 0', paddingLeft: '16px' }}>
-                                                                    {synopsisData.emotionalClimax}
-                                                                </Paragraph>
-                                                            </div>
-
-                                                            <div>
-                                                                <Text strong style={{ color: '#722ed1' }}>结尾悬念：</Text>
-                                                                <Paragraph style={{ margin: '4px 0', paddingLeft: '16px' }}>
-                                                                    {synopsisData.cliffhanger}
-                                                                </Paragraph>
-                                                            </div>
-
-                                                            {synopsisData.suspenseElements && synopsisData.suspenseElements.length > 0 && (
-                                                                <div>
-                                                                    <Text strong style={{ color: '#13c2c2' }}>悬念元素：</Text>
-                                                                    <div style={{ paddingLeft: '16px', marginTop: '4px' }}>
-                                                                        {synopsisData.suspenseElements.map((element: string, idx: number) => (
-                                                                            <Tag key={idx} style={{ margin: '2px' }}>{element}</Tag>
-                                                                        ))}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            <div style={{ marginTop: '8px' }}>
-                                                                <Tag color="cyan">{synopsisData.estimatedDuration || 120}秒</Tag>
-                                                            </div>
-
-                                                            {pair.synopsis.isClickToEditable && (
-                                                                <div style={{ marginTop: '8px' }}>
-                                                                    <Text type="secondary" style={{ fontSize: '12px' }}>
-                                                                        点击内容可编辑
-                                                                    </Text>
-                                                                </div>
-                                                            )}
-                                                        </Space>
-                                                    );
-                                                } catch (error) {
-                                                    console.error('Failed to parse synopsis data:', error);
-                                                    return <Text type="secondary">数据解析错误</Text>;
-                                                }
-                                            })()}
-                                        </Card>
+                                        <div id={`episode-${pair.episodeNumber}-synopsis`}>
+                                            <JsondocDisplayWrapper
+                                                jsondoc={pair.synopsis.jsondoc}
+                                                isEditable={pair.synopsis.isEditable}
+                                                title="大纲详情"
+                                                icon="🗒️"
+                                                editableComponent={EditableEpisodeSynopsisForm}
+                                                schemaType="单集大纲"
+                                                enableClickToEdit={pair.synopsis.isClickToEditable}
+                                            />
+                                        </div>
                                     )}
                                 </div>
                             )}

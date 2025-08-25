@@ -46,7 +46,7 @@ const EpisodeSynopsisGenerationAction: React.FC<EpisodeSynopsisGenerationActionP
             await apiService.sendChatMessage(
                 projectId,
                 conversationId,
-                `生成第${nextGroup.episodeRange}集单集大纲：${nextGroup.groupTitle}。要求: ${additionalInstructions || '无特殊要求'}`,
+                `生成第${nextGroup.episodeRange}集单集大纲：${nextGroup.groupTitle}。${additionalInstructions ? `要求: ${additionalInstructions}` : ''}`,
                 {
                     action: 'generate_单集大纲',
                     episodePlanningId: episodePlanning.id,

@@ -23,7 +23,7 @@ async function testTransformRetry() {
                 episodeInfo: '总共60集，每集2分钟',
                 platform: '抖音',
                 genre: '现代甜宠',
-                requirements: '无特殊要求'
+                requirements: ''
             },
             jsondocs: {}
         }),

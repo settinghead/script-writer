@@ -313,7 +313,7 @@ class ApiService {
     }
 
     async generateOutlineFromIdea(projectId: string, ideaJsondocId: string, title: string, requirements: string = ''): Promise<any> {
-        const content = `请基于创意生成故事设定。源创意ID: ${ideaJsondocId}，标题: ${title}，要求: ${requirements || '无特殊要求'}`;
+        const content = `请基于创意生成故事设定。源创意ID: ${ideaJsondocId}，标题: ${title}， ${requirements ? `要求: ${requirements}` : ''}`;
         const conversationId = await this.getOrCreateConversation(projectId);
 
         return this.sendChatMessage(projectId, conversationId, content, {
@@ -325,7 +325,7 @@ class ApiService {
     }
 
     async generateChroniclesFromOutline(projectId: string, outlineJsondocId: string, requirements: string = ''): Promise<any> {
-        const content = `请基于故事设定生成时间顺序大纲。源故事设定ID: ${outlineJsondocId}，要求: ${requirements || '无特殊要求'}`;
+        const content = `请基于故事设定生成时间顺序大纲。源故事设定ID: ${outlineJsondocId}，${requirements ? `要求: ${requirements}` : ''}`;
         const conversationId = await this.getOrCreateConversation(projectId);
 
         return this.sendChatMessage(projectId, conversationId, content, {
@@ -336,7 +336,7 @@ class ApiService {
     }
 
     async generateEpisodePlanningFromChronicles(projectId: string, chroniclesJsondocId: string, numberOfEpisodes: number, requirements: string = ''): Promise<any> {
-        const content = `请基于时间顺序大纲生成分集结构。源时间顺序大纲ID: ${chroniclesJsondocId}，总集数: ${numberOfEpisodes}，要求: ${requirements || '无特殊要求'}`;
+        const content = `请基于时间顺序大纲生成分集结构。源时间顺序大纲ID: ${chroniclesJsondocId}，总集数: ${numberOfEpisodes}，${requirements ? `要求: ${requirements}` : ''}`;
         const conversationId = await this.getOrCreateConversation(projectId);
 
         return this.sendChatMessage(projectId, conversationId, content, {
