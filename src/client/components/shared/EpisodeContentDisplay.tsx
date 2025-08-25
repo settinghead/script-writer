@@ -3,6 +3,7 @@ import { Card, Typography, Space, Tag, Collapse } from 'antd';
 import { ElectricJsondoc } from '@/common/transform-jsondoc-types';
 import { JsondocDisplayWrapper } from '../../transform-jsondoc-framework/components/JsondocDisplayWrapper';
 import EditableEpisodeScriptForm from './EditableEpisodeScriptForm';
+import EditableEpisodeSynopsisForm from './EditableEpisodeSynopsisForm';
 import { useScrollSync } from '../../contexts/ScrollSyncContext';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { SectionWrapper } from './SectionWrapper';
