@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Typography } from 'antd';
+import { Typography, Button, Space } from 'antd';
 import { IdeaWithTitle } from '../../../common/types';
 import { ReasoningIndicator, SectionWrapper, } from '../shared';
 import { useProjectData } from '../../contexts/ProjectDataContext';
@@ -8,6 +8,7 @@ import { useLatestBrainstormIdeas } from '../../transform-jsondoc-framework/useL
 import { useChosenBrainstormIdea } from '../../hooks/useChosenBrainstormIdea';
 import { useActionItemsStore } from '../../stores/actionItemsStore';
 import { BrainstormIdeaEditor } from './BrainstormIdeaEditor';
+import { DownOutlined, UpOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -58,6 +59,7 @@ const IdeaCardWrapper: React.FC<{
       isSelected={isSelected}
       isChosen={!!isChosenIdea}
       hasEditableDescendants={hasEditableDescendants || readOnly} // Treat read-only as having descendants to disable clicks
+      isHistory={readOnly && !isChosenIdea}
       ideaOutlines={ideaOutlines}
       onIdeaClick={readOnly ? () => { } : onIdeaClick} // Disable clicks in read-only mode
     />
@@ -94,9 +96,6 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
 
   // Get latest brainstorm ideas using the new hook
   const latestIdeas = useLatestBrainstormIdeas();
-
-
-
 
   // Check for chosen brainstorm idea
   const { chosenIdea, isLoading: chosenIdeaLoading } = useChosenBrainstormIdea();
@@ -271,8 +270,6 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
   const [collapsed, setCollapsed] = useState<boolean>(!!chosenIdea);
   const isCollapsedView = (chosenIdea && !chosenIdeaLoading && collapsed) || hasOnlyIndividualIdeas;
 
-
-
   // Determine if we're in selection mode
   // Don't show selection mode if we only have individual ideas
   const isReadOnly = readOnly || !!chosenIdea;
@@ -397,7 +394,7 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
         </div>
       ) : (
         // For collections, use the existing card-based rendering
-        <div className={`${isCollapsedView ? 'bg-gray-900' : 'min-h-screen bg-gray-900'} text-white`}>
+        <div className={`bg-gray-900 text-white`}>
           <div className={`container mx-auto px-4 ${isCollapsedView ? 'py-4' : 'py-8'}`}>
             {/* Header */}
             <div className="mb-8">
@@ -411,6 +408,12 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
                     </div>
                   )}
                 </div>
+                {/* Collapse button when expanded with chosen idea */}
+                {chosenIdea && !collapsed && (
+                  <Button type="link" size="small" icon={<UpOutlined />} onClick={() => setCollapsed(true)}>
+                    收起创意回顾
+                  </Button>
+                )}
               </div>
 
 
@@ -431,10 +434,10 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
                   </Text>
                 </div>
                 <div style={{ marginTop: '8px' }}>
-                  <Text className="text-gray-400">
-                    头脑风暴已完成。查看原始 3 个创意：
-                    <a style={{ marginLeft: 8 }} onClick={() => setCollapsed(false)}>展开</a>
-                  </Text>
+                  <Space size="small">
+                    <Text className="text-gray-400">头脑风暴已完成。查看原始创意：</Text>
+                    <Button type="link" size="small" icon={<DownOutlined />} onClick={() => setCollapsed(false)}>展开原始创意</Button>
+                  </Space>
                 </div>
               </div>
             )}
@@ -455,7 +458,6 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
                         </div>
                       )}
                     </div>
-
 
                   </div>
 

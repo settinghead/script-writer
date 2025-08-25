@@ -1,5 +1,5 @@
 import React, { HTMLAttributes } from 'react';
-import { Typography } from 'antd';
+import { Typography, Badge } from 'antd';
 import { StarFilled } from '@ant-design/icons';
 import { useProjectData } from '../../contexts/ProjectDataContext';
 import { getJsondocAtPath } from '@/common/transform-jsondoc-framework/lineageResolution';
@@ -18,6 +18,7 @@ export const BrainstormIdeaEditor: React.FC<{
     isSelected: boolean;
     isChosen: boolean;
     hasEditableDescendants: boolean;
+    isHistory?: boolean;
     ideaOutlines: any[];
     onIdeaClick: (collectionId: string, index: number) => void;
 } & HTMLAttributes<HTMLDivElement>> = ({
@@ -28,6 +29,7 @@ export const BrainstormIdeaEditor: React.FC<{
     isSelected,
     isChosen,
     hasEditableDescendants,
+    isHistory = false,
     onIdeaClick,
     ...props
 }) => {
@@ -103,7 +105,7 @@ export const BrainstormIdeaEditor: React.FC<{
         const statusInfo = getStatusInfo();
         const cardStyling = getCardStyling();
 
-        return (
+        const card = (
             <StyledCard
                 key={`${jsondocId}-${index}`}
                 onClick={() => isClickable && onIdeaClick(originalCollectionId, index)}
@@ -202,4 +204,23 @@ export const BrainstormIdeaEditor: React.FC<{
                 </Stack>
             </StyledCard>
         );
+
+        // Visual ribbons to reduce textual noise
+        if (isChosen) {
+            return (
+                <Badge.Ribbon text="已选择" color={AppColors.status.success}>
+                    {card}
+                </Badge.Ribbon>
+            );
+        }
+
+        if (isHistory) {
+            return (
+                <Badge.Ribbon text="历史" color="#595959">
+                    {card}
+                </Badge.Ribbon>
+            );
+        }
+
+        return card;
     };

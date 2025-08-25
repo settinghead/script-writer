@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Checkbox, Radio, Input, Button, Space, Divider, message, Spin, Card, Row, Col } from 'antd';
 import { DownloadOutlined, EyeOutlined, FileTextOutlined, VideoCameraOutlined } from '@ant-design/icons';
 import {
@@ -7,7 +7,6 @@ import {
 } from '../services/exportService';
 import { PreviewModal } from './shared/PreviewModal';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { useSearchParams } from 'react-router-dom';
 
 interface ExportModalProps {
     visible: boolean;
@@ -30,7 +29,6 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     const [previewContent, setPreviewContent] = useState('');
     const [isLoadingPreview, setIsLoadingPreview] = useState(false);
     const [initializedFromStorage, setInitializedFromStorage] = useState(false);
-    const [searchParams, setSearchParams] = useSearchParams();
 
     type PersistState = {
         selectedItems: string[];
@@ -47,26 +45,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         lastUpdated: 0
     });
 
-    // Sync modal state to URL (open + format)
-    const syncUrl = useCallback((opts?: { open?: boolean }) => {
-        const params = new URLSearchParams(searchParams);
-        if (opts?.open !== undefined ? opts.open : visible) {
-            params.set('export', '1');
-            params.set('export-format', format);
-        } else {
-            params.delete('export');
-            params.delete('export-format');
-        }
-        setSearchParams(params);
-    }, [searchParams, setSearchParams, visible, format]);
-
-    // Open from URL if ?export=1 is present
-    useEffect(() => {
-        const shouldOpen = searchParams.get('export') === '1';
-        if (shouldOpen && !visible) {
-            // parent controls visibility; we just keep URL in sync here
-        }
-    }, [searchParams, visible]);
+    // URL syncing is controlled by parent (`ExportButton`). This component no longer
+    // reads or writes query params to avoid race conditions.
 
     // Separate regular items from episode groups
     // Exclude per-episode items (单集大纲/单集剧本) from the regular list; they are controlled within episode cards
@@ -128,14 +108,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             filename,
             lastUpdated: Date.now()
         });
-        syncUrl();
     }, [visible, selectedItems, format, filename, setPersisted]);
-
-    // Keep URL in sync when visibility changes
-    useEffect(() => {
-        syncUrl();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [visible]);
 
     const fetchExportableItems = async () => {
         setIsLoading(true);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Button } from 'antd';
 import { ExportOutlined, SettingOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
@@ -13,21 +13,30 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
     projectId,
     isMobile = false
 }) => {
-    const [showExportModal, setShowExportModal] = useState(false);
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [closing, setClosing] = React.useState(false);
+    const isOpen = !closing && searchParams.get('export') === '1';
 
     const handleExportClick = () => {
-        setShowExportModal(true);
+        const sp = new URLSearchParams(searchParams);
+        sp.set('export', '1');
+        setSearchParams(sp);
     };
 
     const handleCloseModal = () => {
-        setShowExportModal(false);
+        // Optimistically close immediately; URL update will follow
+        setClosing(true);
+        // Clear URL params that auto-open the modal so it doesn't pop back up
+        const sp = new URLSearchParams(searchParams);
+        sp.delete('export');
+        sp.delete('export-format');
+        setSearchParams(sp);
     };
 
-    // Auto-open from URL (?export=1)
-    useEffect(() => {
-        if (searchParams.get('export') === '1') {
-            setShowExportModal(true);
+    // When URL no longer has export flag, allow reopening by clearing closing guard
+    React.useEffect(() => {
+        if (searchParams.get('export') !== '1') {
+            setClosing(false);
         }
     }, [searchParams]);
 
@@ -40,11 +49,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
     if (isMobile) {
         return (
             <>
-                <ExportModal
-                    visible={showExportModal}
-                    onClose={handleCloseModal}
-                    projectId={projectId}
-                />
+                <ExportModal visible={isOpen} onClose={handleCloseModal} projectId={projectId} />
             </>
         );
     }
@@ -81,11 +86,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
                 设置
             </Button>
 
-            <ExportModal
-                visible={showExportModal}
-                onClose={handleCloseModal}
-                projectId={projectId}
-            />
+            <ExportModal visible={isOpen} onClose={handleCloseModal} projectId={projectId} />
         </>
     );
 }; 

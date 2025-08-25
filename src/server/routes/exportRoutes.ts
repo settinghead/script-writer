@@ -56,13 +56,13 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
             const transformInputs = await jsondocRepo.getAllProjectTransformInputsForLineage(projectId);
             const transformOutputs = await jsondocRepo.getAllProjectTransformOutputsForLineage(projectId);
 
-            console.log('Fetched project data:', {
-                jsondocs: jsondocs ? jsondocs.length : 'undefined',
-                transforms: transforms ? transforms.length : 'undefined',
-                humanTransforms: humanTransforms ? humanTransforms.length : 'undefined',
-                transformInputs: transformInputs ? transformInputs.length : 'undefined',
-                transformOutputs: transformOutputs ? transformOutputs.length : 'undefined'
-            });
+            // console.log('Fetched project data:', {
+            //     jsondocs: jsondocs ? jsondocs.length : 'undefined',
+            //     transforms: transforms ? transforms.length : 'undefined',
+            //     humanTransforms: humanTransforms ? humanTransforms.length : 'undefined',
+            //     transformInputs: transformInputs ? transformInputs.length : 'undefined',
+            //     transformOutputs: transformOutputs ? transformOutputs.length : 'undefined'
+            // });
 
             return {
                 jsondocs,
