@@ -184,7 +184,7 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                             backgroundColor: '#52c41a',
                             borderRadius: '3px'
                         }} />
-                        <div>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
                             <Title level={4} style={{ margin: 0, color: '#fff' }}>
                                 {icon} {title}
                             </Title>

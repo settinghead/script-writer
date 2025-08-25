@@ -2,6 +2,7 @@ import 'dotenv/config';
 import db from '../database/connection';
 import { sql } from 'kysely';
 import { TransformJsondocRepository } from '../transform-jsondoc-framework/TransformJsondocRepository';
+import type { TypedJsondoc } from '@/common/types';
 
 /**
  * One-time migration script:
@@ -35,8 +36,8 @@ async function main() {
     const projectFilter = projectIdx >= 0 && args[projectIdx + 1] ? args[projectIdx + 1] : undefined;
     const limit = limitIdx >= 0 && args[limitIdx + 1] ? parseInt(args[limitIdx + 1], 10) : undefined;
 
-    const oldType = '剧本设定';
-    const newType = '故事设定';
+    const oldType = '剧本设定' as unknown as TypedJsondoc['schema_type'];
+    const newType = '故事设定' as TypedJsondoc['schema_type'];
 
     const jsondocRepo = new TransformJsondocRepository(db);
     const transformRepo = jsondocRepo; // Same repository handles both sets of tables
