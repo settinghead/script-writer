@@ -215,7 +215,7 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                                             // If it has metadata but no original_jsondoc_id, it might be from collection selection
                                             return '剧本概要';
                                         }
-                                        return '用户已修改';
+                                        return '已修改';
                                     }
                                     return '可编辑';
                                 })()}
@@ -316,13 +316,13 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                             backgroundColor: '#555',
                             borderRadius: '3px'
                         }} />
-                        <div>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
                             <Title level={4} style={{ margin: 0, color: '#888' }}>
                                 {icon} {title}
                             </Title>
                             <Text type="secondary" style={{ fontSize: '12px' }}>
                                 {jsondoc.origin_type === 'ai_generated' ? 'AI生成' : '只读'}
-                                {clickToEditAvailable && ' • 点击编辑'}
+                                {clickToEditAvailable && ' · 点击编辑'}
                             </Text>
                         </div>
                     </div>

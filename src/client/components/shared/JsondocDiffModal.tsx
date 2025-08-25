@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Modal, Typography, Spin, message } from 'antd';
+import yaml from 'js-yaml';
 import DiffView from './DiffView';
 
 const { Text } = Typography;
@@ -16,6 +17,28 @@ export const JsondocDiffModal: React.FC<JsondocDiffModalProps> = ({ open, onClos
     const [loading, setLoading] = useState(false);
     const [beforeText, setBeforeText] = useState('');
     const [afterText, setAfterText] = useState('');
+
+    const toYaml = (value: unknown): string => {
+        try {
+            let data: unknown = value;
+            if (typeof value === 'string') {
+                try {
+                    data = JSON.parse(value);
+                } catch {
+                    // If it's not JSON, assume it's already a readable string (possibly YAML)
+                    return value;
+                }
+            }
+            const normalized = data == null ? {} : data;
+            return yaml.dump(normalized, { sortKeys: false, noRefs: true, lineWidth: 120 });
+        } catch (err) {
+            try {
+                return typeof value === 'string' ? value : JSON.stringify(value ?? {}, null, 2);
+            } catch {
+                return '';
+            }
+        }
+    };
 
     useEffect(() => {
         if (!open) return;
@@ -40,8 +63,8 @@ export const JsondocDiffModal: React.FC<JsondocDiffModalProps> = ({ open, onClos
                 const before = await a.json();
                 const after = await b.json();
 
-                const bt = typeof before.data === 'string' ? before.data : JSON.stringify(before.data ?? {}, null, 2);
-                const at = typeof after.data === 'string' ? after.data : JSON.stringify(after.data ?? {}, null, 2);
+                const bt = toYaml(before.data);
+                const at = toYaml(after.data);
                 setBeforeText(bt);
                 setAfterText(at);
             } catch (e: any) {
@@ -53,6 +76,10 @@ export const JsondocDiffModal: React.FC<JsondocDiffModalProps> = ({ open, onClos
         };
         fetchBoth();
     }, [open, beforeJsondocId, afterJsondocId]);
+
+    const noChanges = useMemo(() => {
+        return beforeText.trim() === afterText.trim();
+    }, [beforeText, afterText]);
 
     return (
         <Modal
@@ -67,7 +94,24 @@ export const JsondocDiffModal: React.FC<JsondocDiffModalProps> = ({ open, onClos
                     <Spin />
                 </div>
             ) : (
-                <DiffView oldValue={beforeText} newValue={afterText} />
+                <>
+                    <DiffView oldValue={beforeText} newValue={afterText} />
+                    <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <span style={{ display: 'inline-block', width: 10, height: 10, backgroundColor: '#ff4d4f', borderRadius: 2, marginRight: 8 }} />
+                                <Text type="secondary">删除</Text>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                <span style={{ display: 'inline-block', width: 10, height: 10, backgroundColor: '#52c41a', borderRadius: 2, marginRight: 8 }} />
+                                <Text type="secondary">新增</Text>
+                            </div>
+                        </div>
+                        {noChanges && (
+                            <Text type="secondary">暂无变更</Text>
+                        )}
+                    </div>
+                </>
             )}
         </Modal>
     );
