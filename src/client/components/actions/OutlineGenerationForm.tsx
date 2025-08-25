@@ -95,7 +95,7 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
         } catch (error) {
             console.error('[OutlineGenerationForm] Error generating outline:', error);
             const errorMessage = `生成大纲失败: ${error instanceof Error ? error.message : '未知错误'}`;
-            message.error(errorMessage);
+            // message.error(errorMessage);
             onError?.(error instanceof Error ? error : new Error(errorMessage));
         } finally {
             setIsGenerating(false);

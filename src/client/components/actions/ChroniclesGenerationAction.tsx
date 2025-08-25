@@ -113,7 +113,7 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
                 size="large"
                 onClick={handleGenerateChronicles}
                 loading={isLocalGenerating}
-                generatingText="生成完成后可点击"
+                generatingText="处理中..."
                 style={{
                     fontSize: '16px',
                 }}

@@ -37,7 +37,7 @@ interface SmartAIButtonProps extends Omit<ButtonProps, 'variant' | 'icon' | 'dis
  * ```tsx
  * <SmartAIButton
  *   componentId="my-generate-action"
- *   generatingText="生成完成后可点击"
+ *   generatingText="处理中..."
  *   onClick={handleGenerate}
  * >
  *   生成内容

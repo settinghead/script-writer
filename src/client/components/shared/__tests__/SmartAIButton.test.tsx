@@ -51,7 +51,7 @@ describe('SmartAIButton', () => {
         render(
             <SmartAIButton
                 onClick={mockOnClick}
-                generatingText="生成完成后可点击"
+                generatingText="处理中..."
             >
                 Generate Content
             </SmartAIButton>

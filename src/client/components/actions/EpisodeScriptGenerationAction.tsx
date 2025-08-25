@@ -111,7 +111,7 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
                     size="large"
                     onClick={handleGenerate}
                     loading={isLocalGenerating}
-                    generatingText="生成完成后可点击"
+                    generatingText="处理中..."
                     style={{ fontSize: '16px' }}
                 >
                     {isGenerating ? '生成中...' : `生成第${targetEpisode.episodeNumber}集剧本`}

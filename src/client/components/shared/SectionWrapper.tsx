@@ -228,7 +228,7 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             <section
                 id={finalSectionId}
                 className={detectedMode === 'loading' ? 'gradient-section' : undefined}
-                style={{ transition: 'background-position 0.3s ease' }}
+                style={{ transition: 'background-position 0.3s ease', cursor: detectedMode === 'loading' ? 'not-allowed' : undefined }}
             >
                 {children}
             </section>
@@ -312,6 +312,7 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
                     textAlign: 'center',
                     ...(isLoading && {
                         animation: `${animationId} 1.5s linear infinite`,
+                        cursor: 'not-allowed'
                     }),
                     ...(isFailed && {
                         position: 'relative' as const,

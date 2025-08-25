@@ -39,7 +39,7 @@ Enhanced AI button that automatically disables during generation states.
 <SmartAIButton
   componentId="my-action-id"
   onClick={handleAction}
-  generatingText="生成完成后可点击"
+  generatingText="处理中..."
   loading={isLocalGenerating}
 >
   执行操作
@@ -86,7 +86,7 @@ const MyActionComponent: React.FC<ActionProps> = ({ projectId, onSuccess, onErro
       <SmartAIButton
         componentId="my-action-id"
         onClick={handleAction}
-        generatingText="生成完成后可点击"
+        generatingText="处理中..."
       >
         执行操作
       </SmartAIButton>
@@ -176,7 +176,7 @@ const handleGenerate = async () => {
 <SmartAIButton 
   componentId="component-id"
   onClick={handleGenerate}
-  generatingText="生成完成后可点击"
+  generatingText="处理中..."
 >
   生成内容
 </SmartAIButton>

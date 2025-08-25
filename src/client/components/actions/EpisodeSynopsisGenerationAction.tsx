@@ -110,7 +110,7 @@ const EpisodeSynopsisGenerationAction: React.FC<EpisodeSynopsisGenerationActionP
                     size="large"
                     onClick={handleGenerate}
                     loading={isLocalGenerating}
-                    generatingText="生成完成后可点击"
+                    generatingText="处理中..."
                     style={{ fontSize: '16px' }}
                 >
                     {isGenerating ? '生成中...' : `生成第${nextGroup.episodeRange}集单集大纲`}
