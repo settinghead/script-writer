@@ -175,7 +175,6 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
                 },
                 workflowContext: {
                     hasActiveTransforms: context.hasActiveTransforms,
-                    workflowNodes: context.workflowNodes
                 }
             },
             enabled: true,
@@ -202,7 +201,6 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
                 },
                 workflowContext: {
                     hasActiveTransforms: context.hasActiveTransforms,
-                    workflowNodes: context.workflowNodes
                 }
             },
             enabled: true,
@@ -229,7 +227,6 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
                 },
                 workflowContext: {
                     hasActiveTransforms: context.hasActiveTransforms,
-                    workflowNodes: context.workflowNodes
                 }
             },
             enabled: true,
@@ -256,7 +253,6 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
                 },
                 workflowContext: {
                     hasActiveTransforms: context.hasActiveTransforms,
-                    workflowNodes: context.workflowNodes
                 }
             },
             enabled: true,
@@ -283,7 +279,6 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
                 },
                 workflowContext: {
                     hasActiveTransforms: context.hasActiveTransforms,
-                    workflowNodes: context.workflowNodes
                 }
             },
             enabled: true,
@@ -310,7 +305,6 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
                 },
                 workflowContext: {
                     hasActiveTransforms: context.hasActiveTransforms,
-                    workflowNodes: context.workflowNodes
                 }
             },
             enabled: true,
@@ -345,7 +339,6 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
                         },
                         workflowContext: {
                             hasActiveTransforms: context.hasActiveTransforms,
-                            workflowNodes: context.workflowNodes
                         },
                         nextGroup: {
                             groupTitle: firstGroup.groupTitle,
@@ -402,7 +395,6 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
                         },
                         workflowContext: {
                             hasActiveTransforms: context.hasActiveTransforms,
-                            workflowNodes: context.workflowNodes
                         },
                         nextGroup: {
                             groupTitle: nextGroup.groupTitle,
@@ -478,7 +470,6 @@ function generateActionsFromContext(context: LineageBasedActionContext): ActionI
                     },
                     workflowContext: {
                         hasActiveTransforms: context.hasActiveTransforms,
-                        workflowNodes: context.workflowNodes
                     },
                     targetEpisode: {
                         episodeNumber: nextEpisodeForScript.episodeNumber,

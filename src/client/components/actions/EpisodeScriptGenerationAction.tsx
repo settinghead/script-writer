@@ -117,9 +117,7 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
                     {isGenerating ? '生成中...' : `生成第${targetEpisode.episodeNumber}集剧本`}
                 </SmartAIButton>
             </div>
-            <div style={{ textAlign: 'center', marginTop: 8 }}>
-                <Text type="secondary">基于分集大纲生成完整剧本内容</Text>
-            </div>
+
         </div>
     );
 };

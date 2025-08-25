@@ -132,7 +132,6 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
 
     return (
         <Space direction="vertical" style={{ width: '100%' }} size="large" id="episode-content-section">
-            <Title level={3}>分集内容</Title>
 
             {episodePairs.map((pair) => (
                 <Card
