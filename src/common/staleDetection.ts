@@ -20,6 +20,8 @@ export interface AffectedJsondoc {
     severity: 'high' | 'medium' | 'low';
     sourceChanges: DiffChange[];
     suggestedAction?: string;
+    // NEW: unique upstream sources that made this child stale
+    sources?: Array<{ id: string; schemaType: string }>;
 }
 
 export async function computeStaleJsondocs(
@@ -60,6 +62,13 @@ export async function computeStaleJsondocs(
                 ) {
                     existing.severity = impact.severity as 'high' | 'medium' | 'low';
                 }
+                // Track unique upstream sources
+                const srcId = sourceJsondoc.id;
+                const srcType = sourceJsondoc.schema_type as string;
+                const hasSource = (existing.sources || []).some(s => s.id === srcId);
+                if (!hasSource) {
+                    existing.sources = [...(existing.sources || []), { id: srcId, schemaType: srcType }];
+                }
             } else {
                 affectedMap.set(child.id, {
                     jsondocId: child.id,
@@ -68,7 +77,8 @@ export async function computeStaleJsondocs(
                     affectedPaths: impact.affectedPaths,
                     severity: impact.severity as 'high' | 'medium' | 'low',
                     sourceChanges: [diff],
-                    suggestedAction: generateSuggestedAction(child.schema_type)
+                    suggestedAction: generateSuggestedAction(child.schema_type),
+                    sources: [{ id: sourceJsondoc.id, schemaType: sourceJsondoc.schema_type as string }]
                 });
             }
         }

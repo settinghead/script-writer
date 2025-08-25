@@ -51,12 +51,9 @@ export class BatchAutoFixService {
 
         for (const item of items) {
             try {
-                // Resolve actual target for auto-fix: prefer downstream docs (e.g., chronicles) over upstream
-                const resolved = this.resolveAutoFixTarget(item, lineageGraph, jsondocs, transformInputs, transformOutputs);
-                if (!resolved) {
-                    throw new Error(`未找到下游目标用于自动修正（${item.schemaType} -> 无下游）。请先生成下游文档后再试。`);
-                }
-                const { targetJsondocId, targetSchemaType } = resolved;
+                // New default behavior: operate on the provided stale child directly
+                const targetJsondocId = item.jsondocId;
+                const targetSchemaType = item.schemaType as string;
 
                 const tool = createGenericEditToolDefinition(
                     targetSchemaType as any,
@@ -101,43 +98,14 @@ export class BatchAutoFixService {
     }
 
     // Resolve target (jsondocId, schemaType) for auto-fix
+    // Deprecated downstream-preference resolver retained for reference; not used by default
     private resolveAutoFixTarget(
         item: { jsondocId: string; schemaType: string },
-        lineageGraph: any,
-        jsondocs: any[],
-        transformInputs: any[],
-        transformOutputs: any[]
+        _lineageGraph: any,
+        _jsondocs: any[],
+        _transformInputs: any[],
+        _transformOutputs: any[]
     ): { targetJsondocId: string; targetSchemaType: string } | null {
-        const preferred = preferDownstreamTarget(item.schemaType);
-        if (preferred && preferred.length > 0) {
-            const candidates = findDirectAIChildrenOfTypes(item.jsondocId, lineageGraph, jsondocs, preferred);
-            if (candidates.length > 0) {
-                const chosen = candidates[0];
-                return { targetJsondocId: chosen.id, targetSchemaType: chosen.schema_type };
-            }
-            // Try BFS to nearest downstream
-            const nearest = findNearestDownstreamAIOfTypes(item.jsondocId, lineageGraph, jsondocs, preferred);
-            if (nearest) {
-                return { targetJsondocId: nearest.id, targetSchemaType: nearest.schema_type };
-            }
-            // Secondary discovery using raw transform inputs/outputs (in case graph missed edges)
-            const inputTransforms = transformInputs
-                .filter((ti: any) => ti.jsondoc_id === item.jsondocId)
-                .map((ti: any) => ti.transform_id);
-            if (inputTransforms.length > 0) {
-                const downstream = transformOutputs
-                    .filter((to: any) => inputTransforms.includes(to.transform_id))
-                    .map((to: any) => jsondocs.find(j => j.id === to.jsondoc_id))
-                    .filter((jd: any) => jd && jd.origin_type === 'ai_generated' && preferred.includes(jd.schema_type));
-                if (downstream.length > 0) {
-                    const chosen = downstream[0];
-                    return { targetJsondocId: chosen.id, targetSchemaType: chosen.schema_type };
-                }
-            }
-            // Explicitly do not fall back to original item when a downstream target is expected
-            return null;
-        }
-        // No preferred downstream mapping → operate on the provided item
         return { targetJsondocId: item.jsondocId, targetSchemaType: item.schemaType };
     }
 }
@@ -207,15 +175,8 @@ function findNearestDownstreamAIOfTypes(
 }
 
 // Prefer editing downstream docs during auto-fix
-function preferDownstreamTarget(schemaType: string): string[] | null {
-    switch (schemaType) {
-        case '灵感创意':
-            return ['故事设定'];
-        case '故事设定':
-            return ['chronicles'];
-        default:
-            return null;
-    }
+function preferDownstreamTarget(_schemaType: string): string[] | null {
+    return null;
 }
 
 // (no prototype augmentation; use class method above)
