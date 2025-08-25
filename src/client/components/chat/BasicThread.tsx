@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { List, Empty, Spin, Typography, Tag, Avatar, Card, Tooltip } from 'antd';
-import { UserOutlined, MessageOutlined, EditOutlined, PlayCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined} from '@ant-design/icons';
+import { UserOutlined, MessageOutlined, EditOutlined, PlayCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { Cpu } from 'iconoir-react';
 import { useChatMessages } from '../../hooks/useChatMessages';
 import { useProjectChatRuntime } from '../../hooks/useProjectChatRuntime';
@@ -506,7 +506,7 @@ export const BasicThread: React.FC<BasicThreadProps> = ({ projectId }) => {
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    padding: '20px 16px',
+                    padding: '5px 16px',
                     background: 'rgba(0, 0, 0, 0.8)',
                     backdropFilter: 'blur(10px)',
                     borderTop: '1px solid rgba(255, 255, 255, 0.1)',

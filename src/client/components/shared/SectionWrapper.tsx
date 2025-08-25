@@ -192,12 +192,31 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
 
     return (
         <>
+            {/* CSS for pulse background animation */}
+            <style>{`
+                @keyframes pulse-background {
+                    0%, 100% {
+                        background-color: #1a1a1a;
+                    }
+                    50% {
+                        background-color: rgba(109, 40, 217, 0.35);
+                    }
+                }
+                .pulsing-section {
+                    animation: pulse-background 2s ease-in-out infinite;
+                }
+            `}</style>
+
             <SectionTitle
                 title={titleString}
                 id={finalSectionId}
                 mode={detectedMode}
             />
-            <section id={finalSectionId}>
+            <section
+                id={finalSectionId}
+                className="pulsing-section"
+                style={{ transition: 'background-color 0.3s ease' }}
+            >
                 {children}
             </section>
         </>
@@ -267,7 +286,7 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             <div
                 id={id}
                 style={{
-                    margin: '10px 0',
+                    margin: '0px 0',
                     padding: '10px 0',
                     borderTop: colorScheme.borderTop,
                     borderBottom: colorScheme.borderBottom,

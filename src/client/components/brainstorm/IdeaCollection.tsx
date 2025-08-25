@@ -436,12 +436,10 @@ export default function IdeaCollection(props: IdeaCollection = {}) {
                   }}
                 >
                   <Text style={{ color: '#1890ff', fontSize: '14px', fontWeight: 500 }}>
-                    已选择创意: {collectionIdeasWhenChosen[0]?.title || '创意'}
+                    已选择创意: {collectionIdeasWhenChosen[0]?.title || '创意'} (点击展开看全部创意) <DownOutlined style={{ marginLeft: 4 }} />
                   </Text>
                 </div>
-                <div style={{ marginTop: '8px' }}>
-                  <Text className="text-gray-400">头脑风暴已完成。点击上方卡片展开原始创意</Text>
-                </div>
+
               </div>
             )}
 
