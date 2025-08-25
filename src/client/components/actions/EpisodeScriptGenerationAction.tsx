@@ -58,7 +58,7 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
                 }
             );
 
-            message.success(`第${targetEpisode.episodeNumber}集剧本生成已启动`);
+            message.success(`第${targetEpisode.episodeNumber}集剧本生成已完成`);
             onSuccess?.();
         } catch (error) {
             console.error('Error generating episode script:', error);

@@ -28,7 +28,7 @@ const EpisodeGenerationAction: React.FC<EpisodeGenerationActionProps> = (props) 
         try {
             await apiService.generateEpisodesFromChronicles(projectId, latestChronicles.id);
 
-            message.success('单集大纲生成已启动');
+            message.success('单集大纲生成已完成');
             onSuccess?.();
         } catch (error) {
             console.error('Error generating episodes:', error);

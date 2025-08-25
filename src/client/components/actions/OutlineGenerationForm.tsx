@@ -90,7 +90,7 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
                 values.requirements || ''
             );
 
-            message.success('大纲生成已启动');
+            message.success('大纲生成已完成');
             onSuccess?.();
         } catch (error) {
             console.error('[OutlineGenerationForm] Error generating outline:', error);

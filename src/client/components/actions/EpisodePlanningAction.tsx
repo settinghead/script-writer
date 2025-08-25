@@ -50,7 +50,7 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
                 );
             }
 
-            message.success('分集结构生成已启动');
+            message.success('分集结构生成已完成');
             onSuccess?.();
         } catch (error) {
             console.error('Error generating episode planning:', error);
@@ -90,7 +90,7 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
 
     return (
         <Space direction="vertical" style={{ width: '100%' }}>
-
+            <Typography.Title level={4}>生成分集结构</Typography.Title>
 
             <Form layout="vertical" style={{ marginTop: 4 }}>
                 <Row gutter={[12, 8]} wrap={false} style={{ flexWrap: 'nowrap', alignItems: 'stretch' }}>

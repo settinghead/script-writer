@@ -41,7 +41,7 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
                 additionalInstructions
             );
 
-            message.success('时间顺序大纲生成已启动');
+            message.success('时间顺序大纲生成已完成');
             onSuccess?.();
         } catch (error) {
             console.error('Error generating chronicles:', error);

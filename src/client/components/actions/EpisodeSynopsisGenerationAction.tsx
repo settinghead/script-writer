@@ -57,7 +57,7 @@ const EpisodeSynopsisGenerationAction: React.FC<EpisodeSynopsisGenerationActionP
                 }
             );
 
-            message.success(`第${nextGroup.episodeRange}集大纲生成已启动`);
+            message.success(`第${nextGroup.episodeRange}集大纲生成已完成`);
             onSuccess?.();
         } catch (error) {
             console.error('Error generating episode synopsis:', error);

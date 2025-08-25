@@ -44,7 +44,7 @@ export class AgentService {
             'processing': '角色们正在排练',
             'generating': '创意火花四溅中',
             'completing': '最后润色，马上完工',
-            'error': '❌ 剧本卡壳了'
+            'error': '❌ 创作卡壳了'
         };
 
         return `${icon} ${phases[phase as keyof typeof phases] || '正在进行相关计算'}...`;
