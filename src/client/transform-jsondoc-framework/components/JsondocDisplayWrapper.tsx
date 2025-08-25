@@ -56,6 +56,26 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
     const [diffOpen, setDiffOpen] = useState(false);
     const [beforeAfter, setBeforeAfter] = useState<{ before?: string; after?: string }>({});
 
+    // Whether there is an immediate parent jsondoc with the same schema type
+    const hasSameTypeParent = useMemo(() => {
+        try {
+            if (!jsondoc || !projectData) return false;
+            const graph = projectData.lineageGraph && projectData.lineageGraph !== 'pending' && projectData.lineageGraph !== 'error' ? projectData.lineageGraph as any : null;
+            const all = Array.isArray(projectData.jsondocs) ? projectData.jsondocs as any[] : [];
+            if (!graph || !graph.nodes || !graph.nodes.get) return false;
+            const node = graph.nodes.get(jsondoc.id);
+            if (!node || node.type !== 'jsondoc' || !node.sourceTransform || node.sourceTransform === 'none') return false;
+            const candidates = node.sourceTransform.sourceJsondocs || [];
+            const match = candidates.find((n: any) => {
+                const j = all.find(a => a.id === n.jsondocId);
+                return j && j.schema_type === jsondoc.schema_type;
+            });
+            return Boolean(match);
+        } catch {
+            return false;
+        }
+    }, [jsondoc, projectData]);
+
     // Use universal component state system
     const componentState = useMemo(() => {
         if (!jsondoc) return null;
@@ -204,7 +224,7 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                         </div>
                     </div>
                     {/* Diff icon button top-right when editable summary exists */}
-                    {jsondoc?.id && (
+                    {jsondoc?.id && hasSameTypeParent && (
                         <Button
                             type="default"
                             ghost
@@ -223,34 +243,19 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                                         const node = graph.nodes.get(jsondoc.id);
                                         if (node && node.type === 'jsondoc' && node.sourceTransform && node.sourceTransform !== 'none') {
                                             const candidates = node.sourceTransform.sourceJsondocs || [];
-                                            // Prefer parent with same schema type
+                                            // Only allow parent with same schema type
                                             const match = candidates.find((n: any) => {
                                                 const j = all.find(a => a.id === n.jsondocId);
                                                 return j && j.schema_type === jsondoc.schema_type;
                                             });
-                                            const first = candidates[0];
-                                            const chosen = match || first;
-                                            if (chosen) {
-                                                beforeId = chosen.jsondocId;
-                                            }
-                                        }
-                                    }
-                                    // Fallback: call server helper (may miss due to path mismatch)
-                                    if (!beforeId) {
-                                        const resp = await fetch(`/api/jsondocs/${jsondoc.id}/human-transform?path=$`, {
-                                            headers: { 'Authorization': 'Bearer debug-auth-token-script-writer-dev' },
-                                            credentials: 'include'
-                                        });
-                                        if (resp.ok) {
-                                            const ht = await resp.json();
-                                            beforeId = ht?.source_jsondoc_id;
+                                            if (match) beforeId = match.jsondocId;
                                         }
                                     }
                                     if (beforeId) {
                                         setBeforeAfter({ before: beforeId, after: jsondoc.id });
                                         setDiffOpen(true);
                                     } else {
-                                        message.info('未找到上一版本用于对比');
+                                        message.info('未找到同类型上一版本用于对比');
                                     }
                                 } catch (e) {
                                     message.error('加载对比失败');

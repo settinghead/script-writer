@@ -76,9 +76,22 @@ interface StreamingChunk {
     patchCount?: number;
 }
 
+// Normalize legacy tool names to current names
+const normalizeToolName = (toolName: string): string => {
+    switch (toolName) {
+        case 'edit_剧本设定':
+            return 'edit_故事设定';
+        case 'generate_剧本设定':
+            return 'generate_故事设定';
+        default:
+            return toolName;
+    }
+};
+
 // Helper function to provide default parameters for tools
 const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
-    switch (toolName) {
+    const name = normalizeToolName(toolName);
+    switch (name) {
         case 'edit_灵感创意':
             return {
                 editRequirements: '调整故事内容，增强吸引力',
@@ -127,7 +140,8 @@ const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
 
 // Helper function to get expected jsondoc types for tools
 const getExpectedJsondocTypes = (toolName: string): string[] => {
-    switch (toolName) {
+    const name = normalizeToolName(toolName);
+    switch (name) {
         case 'edit_灵感创意':
             return ['brainstorm_collection', '灵感创意'];
         case 'generate_灵感创意s':
@@ -234,6 +248,8 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
             return null;
         }
 
+        const normalizedTool = normalizeToolName(selectedTool);
+
         if (selectedJsondocs.length === 0) {
             return null;
         }
@@ -253,7 +269,7 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
         }
 
         // Add default values for commonly required fields
-        const defaultParams = getDefaultParamsForTool(selectedTool);
+        const defaultParams = getDefaultParamsForTool(normalizedTool);
         const mergedParams = { ...defaultParams, ...parsedParams };
 
         // Prepare jsondocs array for the request
@@ -293,7 +309,7 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
         // Auto-enrich params with affectedContext diffs when using edit_故事设定
         let enrichedParams = { ...mergedParams } as any;
         try {
-            const isOutlineEdit = selectedTool === 'edit_故事设定';
+            const isOutlineEdit = normalizedTool === 'edit_故事设定';
             if (isOutlineEdit && lineageGraph !== 'pending' && lineageGraph !== 'error' && Array.isArray(rawJsondocs)) {
                 // Determine the outline jsondoc from selection
                 const outlineSelectionId = validSelectedJsondocs.find((id) => {
@@ -340,7 +356,7 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
         }
 
         const payload = {
-            toolName: selectedTool,
+            toolName: normalizedTool,
             jsondocs: jsondocsArray,
             additionalParams: enrichedParams
         };
@@ -368,6 +384,12 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
     // Populate default parameters when tool changes
     useEffect(() => {
         if (selectedTool) {
+            // Auto-normalize legacy tool names saved in params
+            const normalized = normalizeToolName(selectedTool);
+            if (normalized !== selectedTool) {
+                setSelectedTool(normalized);
+                return;
+            }
             const defaultParams = getDefaultParamsForTool(selectedTool);
             if (Object.keys(defaultParams).length > 0) {
                 // Only set if additionalParams is empty or just '{}'
@@ -1004,7 +1026,7 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                             const defaultParams = getDefaultParamsForTool(selectedTool);
                             const mergedParams = { ...defaultParams, ...parsedParams };
 
-                            runNonPersistentRun(selectedTool, {
+                            runNonPersistentRun(normalizeToolName(selectedTool), {
                                 jsondocs: selectedJsondocs.map(id => {
                                     const jsondoc = jsondocs.find(j => j.id === id);
                                     if (!jsondoc) {

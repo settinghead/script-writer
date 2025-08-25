@@ -518,17 +518,17 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         });
     }
 
-    // Only show idea collection if we have a brainstorm collection (not individual ideas)
+    // Show idea collection whenever it exists. If a chosen idea exists, render as read-only and disable selection.
     if (context.canonicalContext.canonicalBrainstormCollection && context.brainstormIdeas.length > 0) {
         const componentState = computeComponentState(context.canonicalContext.canonicalBrainstormCollection, context.projectData);
 
         components.push({
             id: 'idea-collection',
             component: getComponentById('idea-collection'),
-            mode: isInteractive(componentState.state) ? 'editable' : 'readonly',
+            mode: context.chosenIdea ? 'readonly' : (isInteractive(componentState.state) ? 'editable' : 'readonly'),
             props: {
                 componentState, // Pass state info
-                selectionMode: true,
+                selectionMode: !context.chosenIdea, // disable selection when idea chosen
                 isLoading: componentState.state === ComponentState.LOADING || componentState.state === ComponentState.PENDING_PARENT_TRANSFORM
             },
             priority: componentOrder['idea-collection']
