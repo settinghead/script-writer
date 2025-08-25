@@ -195,20 +195,24 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             {/* CSS for smooth moving linear gradient animation */}
             <style>{`
                 @keyframes moving-gradient {
-                    0% { background-position: -500px 0; }
-                    100% { background-position: 500px 0; }
+                    0% { background-position: -800px 0; }
+                    100% { background-position: 800px 0; }
                 }
                 .gradient-section {
                     /* Darker purple-tinted background for better contrast */
                     background-color: rgba(12, 8, 22, 1); /* much darker purple base */
-                    /* Transparent overlay gradient that loops seamlessly */
+                    /* Gradient that tiles seamlessly - purple at edges and middle */
                     background-image: linear-gradient(
                         90deg,
-                        rgba(139, 69, 255, 0) 0%,
-
-                        rgba(139, 69, 255, 0.25) 50%,
-
-                        rgba(139, 69, 255, 0) 100%
+                        rgba(139, 69, 255, 0.25) 0%,
+                        rgba(139, 69, 255, 0.15) 12.5%,
+                        rgba(139, 69, 255, 0) 25%,
+                        rgba(139, 69, 255, 0) 37.5%,
+                        rgba(139, 69, 255, 0.15) 50%,
+                        rgba(139, 69, 255, 0.25) 62.5%,
+                        rgba(139, 69, 255, 0.15) 75%,
+                        rgba(139, 69, 255, 0) 87.5%,
+                        rgba(139, 69, 255, 0.25) 100%
                     );
                     background-size: 800px 100%;
                     animation: moving-gradient 6s linear infinite;
