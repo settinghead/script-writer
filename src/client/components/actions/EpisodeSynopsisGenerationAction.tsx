@@ -116,9 +116,7 @@ const EpisodeSynopsisGenerationAction: React.FC<EpisodeSynopsisGenerationActionP
                     {isGenerating ? '生成中...' : `生成第${nextGroup.episodeRange}集单集大纲`}
                 </SmartAIButton>
             </div>
-            <div style={{ textAlign: 'center', marginTop: 8 }}>
-                <Text type="secondary">将为"{nextGroup.groupTitle}"生成详细的单集大纲</Text>
-            </div>
+
         </div>
     );
 };
