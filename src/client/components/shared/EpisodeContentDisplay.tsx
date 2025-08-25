@@ -1,5 +1,6 @@
 import React from 'react';
-import { Card, Typography, Space, Tag, Collapse } from 'antd';
+import { Card, Typography, Space, Tag, Collapse, Button, message } from 'antd';
+import { apiService } from '../../services/apiService';
 import { ElectricJsondoc } from '@/common/transform-jsondoc-types';
 import { JsondocDisplayWrapper } from '../../transform-jsondoc-framework/components/JsondocDisplayWrapper';
 import EditableEpisodeScriptForm from './EditableEpisodeScriptForm';
@@ -129,6 +130,58 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
         return Array.from(pairs.values()).sort((a, b) => a.episodeNumber - b.episodeNumber);
     }, [synopsisItems, scriptItems]);
 
+    // Determine which episode should display the inline "生成本集剧本" button
+    const nextEpisodeNeedingScript = React.useMemo(() => {
+        // Episodes that have synopses
+        const synopsisEpisodes: number[] = [];
+        // Episodes that already have scripts
+        const scriptEpisodes: Set<number> = new Set();
+
+        synopsisItems.forEach(item => {
+            try {
+                const data = typeof item.jsondoc.data === 'string' ? JSON.parse(item.jsondoc.data) : item.jsondoc.data;
+                const ep = data?.episodeNumber;
+                if (typeof ep === 'number') synopsisEpisodes.push(ep);
+            } catch { }
+        });
+        scriptItems.forEach(item => {
+            try {
+                const data = typeof item.jsondoc.data === 'string' ? JSON.parse(item.jsondoc.data) : item.jsondoc.data;
+                const ep = data?.episodeNumber;
+                if (typeof ep === 'number') scriptEpisodes.add(ep);
+            } catch { }
+        });
+
+        const missing = synopsisEpisodes
+            .filter(ep => !scriptEpisodes.has(ep))
+            .sort((a, b) => a - b);
+        return missing.length > 0 ? missing[0] : null;
+    }, [synopsisItems, scriptItems]);
+
+    const [inlineGeneratingEpisode, setInlineGeneratingEpisode] = React.useState<number | null>(null);
+
+    const triggerInlineScriptGeneration = React.useCallback(async (episodeNumber: number, synopsisId: string, projectId: string) => {
+        try {
+            setInlineGeneratingEpisode(episodeNumber);
+            const conversationId = await (apiService as any).getOrCreateConversation(projectId);
+            await apiService.sendChatMessage(
+                projectId,
+                conversationId,
+                `生成第${episodeNumber}集剧本。`,
+                {
+                    intent: 'generate_episode_script',
+                    episodeNumber,
+                    episodeSynopsisJsondocId: synopsisId
+                }
+            );
+            message.success(`第${episodeNumber}集剧本生成已开始`);
+        } catch (error) {
+            message.error('触发剧本生成失败');
+        } finally {
+            setInlineGeneratingEpisode(null);
+        }
+    }, []);
+
     // Register scroll handler for episode content navigation
     React.useEffect(() => {
         const scrollHandler = (subId?: string) => {
@@ -247,6 +300,21 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
                                                     editableComponent={EditableEpisodeSynopsisForm}
                                                     schemaType="单集大纲"
                                                     enableClickToEdit={pair.synopsis.isClickToEditable}
+                                                    extraRight={(!pair.script && nextEpisodeNeedingScript === pair.episodeNumber) ? (
+                                                        <Button
+                                                            type="primary"
+                                                            size="small"
+                                                            loading={inlineGeneratingEpisode === pair.episodeNumber || generatingEpisodes.has(pair.episodeNumber)}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const synopsisId = pair.synopsis!.jsondoc.id as string;
+                                                                const projectId = (pair.synopsis!.jsondoc as any).project_id as string;
+                                                                triggerInlineScriptGeneration(pair.episodeNumber, synopsisId, projectId);
+                                                            }}
+                                                        >
+                                                            生成本集剧本
+                                                        </Button>
+                                                    ) : undefined}
                                                 />
                                             </Panel>
                                         </Collapse>
@@ -260,6 +328,21 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
                                                 editableComponent={EditableEpisodeSynopsisForm}
                                                 schemaType="单集大纲"
                                                 enableClickToEdit={pair.synopsis.isClickToEditable}
+                                                extraRight={(!pair.script && nextEpisodeNeedingScript === pair.episodeNumber) ? (
+                                                    <Button
+                                                        type="primary"
+                                                        size="small"
+                                                        loading={inlineGeneratingEpisode === pair.episodeNumber || generatingEpisodes.has(pair.episodeNumber)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            const synopsisId = pair.synopsis!.jsondoc.id as string;
+                                                            const projectId = (pair.synopsis!.jsondoc as any).project_id as string;
+                                                            triggerInlineScriptGeneration(pair.episodeNumber, synopsisId, projectId);
+                                                        }}
+                                                    >
+                                                        生成本集剧本
+                                                    </Button>
+                                                ) : undefined}
                                             />
                                         </div>
                                     )}

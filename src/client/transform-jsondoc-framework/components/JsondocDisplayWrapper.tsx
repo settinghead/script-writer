@@ -28,6 +28,8 @@ interface JsondocDisplayWrapperProps {
     // NEW: Support for hierarchical context
     parentJsondocId?: string;
     jsondocPath?: string;
+    // Optional extra right-side content in the header row (e.g., action button)
+    extraRight?: React.ReactNode;
 }
 
 /**
@@ -46,7 +48,8 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
     onClickToEdit,
     clickToEditLoading = false,
     parentJsondocId,
-    jsondocPath
+    jsondocPath,
+    extraRight
 }) => {
 
 
@@ -222,46 +225,50 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                             </Text>
                         </div>
                     </div>
-                    {/* Diff icon button top-right when editable summary exists */}
-                    {jsondoc?.id && hasSameTypeParent && (
-                        <Button
-                            type="default"
-                            ghost
-                            size="small"
-                            shape="circle"
-                            icon={<DiffOutlined />}
-                            aria-label="查看修改总结"
-                            style={{ color: '#52c41a', borderColor: '#52c41a' }}
-                            onClick={async () => {
-                                try {
-                                    // Prefer lineage graph locally to resolve immediate parent
-                                    const graph = projectData.lineageGraph && projectData.lineageGraph !== 'pending' && projectData.lineageGraph !== 'error' ? projectData.lineageGraph as any : null;
-                                    const all = Array.isArray(projectData.jsondocs) ? projectData.jsondocs as any[] : [];
-                                    let beforeId: string | undefined;
-                                    if (graph && graph.nodes && graph.nodes.get) {
-                                        const node = graph.nodes.get(jsondoc.id);
-                                        if (node && node.type === 'jsondoc' && node.sourceTransform && node.sourceTransform !== 'none') {
-                                            const candidates = node.sourceTransform.sourceJsondocs || [];
-                                            // Only allow parent with same schema type
-                                            const match = candidates.find((n: any) => {
-                                                const j = all.find(a => a.id === n.jsondocId);
-                                                return j && j.schema_type === jsondoc.schema_type;
-                                            });
-                                            if (match) beforeId = match.jsondocId;
+                    {/* Right-side header actions */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {extraRight}
+                        {/* Diff icon button top-right when editable summary exists */}
+                        {jsondoc?.id && hasSameTypeParent && (
+                            <Button
+                                type="default"
+                                ghost
+                                size="small"
+                                shape="circle"
+                                icon={<DiffOutlined />}
+                                aria-label="查看修改总结"
+                                style={{ color: '#52c41a', borderColor: '#52c41a' }}
+                                onClick={async () => {
+                                    try {
+                                        // Prefer lineage graph locally to resolve immediate parent
+                                        const graph = projectData.lineageGraph && projectData.lineageGraph !== 'pending' && projectData.lineageGraph !== 'error' ? projectData.lineageGraph as any : null;
+                                        const all = Array.isArray(projectData.jsondocs) ? projectData.jsondocs as any[] : [];
+                                        let beforeId: string | undefined;
+                                        if (graph && graph.nodes && graph.nodes.get) {
+                                            const node = graph.nodes.get(jsondoc.id);
+                                            if (node && node.type === 'jsondoc' && node.sourceTransform && node.sourceTransform !== 'none') {
+                                                const candidates = node.sourceTransform.sourceJsondocs || [];
+                                                // Only allow parent with same schema type
+                                                const match = candidates.find((n: any) => {
+                                                    const j = all.find(a => a.id === n.jsondocId);
+                                                    return j && j.schema_type === jsondoc.schema_type;
+                                                });
+                                                if (match) beforeId = match.jsondocId;
+                                            }
                                         }
+                                        if (beforeId) {
+                                            setBeforeAfter({ before: beforeId, after: jsondoc.id });
+                                            setDiffOpen(true);
+                                        } else {
+                                            message.info('未找到同类型上一版本用于对比');
+                                        }
+                                    } catch (e) {
+                                        message.error('加载对比失败');
                                     }
-                                    if (beforeId) {
-                                        setBeforeAfter({ before: beforeId, after: jsondoc.id });
-                                        setDiffOpen(true);
-                                    } else {
-                                        message.info('未找到同类型上一版本用于对比');
-                                    }
-                                } catch (e) {
-                                    message.error('加载对比失败');
-                                }
-                            }}
-                        />
-                    )}
+                                }}
+                            />
+                        )}
+                    </div>
                 </div>
 
                 {/* Editable Content */}
@@ -328,22 +335,25 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                     </div>
 
                     {/* Edit button for click-to-edit */}
-                    {clickToEditAvailable && (
-                        <Button
-                            type="text"
-                            icon={effectiveLoading ? <LoadingOutlined /> : <EditOutlined />}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (!effectiveLoading) {
-                                    handleCreateEditableVersion();
-                                }
-                            }}
-                            disabled={effectiveLoading}
-                            style={{ color: '#52c41a' }}
-                        >
-                            {effectiveLoading ? '创建中...' : '编辑'}
-                        </Button>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {extraRight}
+                        {clickToEditAvailable && (
+                            <Button
+                                type="text"
+                                icon={effectiveLoading ? <LoadingOutlined /> : <EditOutlined />}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!effectiveLoading) {
+                                        handleCreateEditableVersion();
+                                    }
+                                }}
+                                disabled={effectiveLoading}
+                                style={{ color: '#52c41a' }}
+                            >
+                                {effectiveLoading ? '创建中...' : '编辑'}
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Read-only Content */}
