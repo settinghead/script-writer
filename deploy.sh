@@ -70,8 +70,8 @@ pm2 delete script-writer-api || true
 cd $DEPLOY_DIR
 NODE_ENV=production pm2 start dist-server/server/index.js --name script-writer-api
 
-# Keep only the 5 most recent deployments
+# Keep only the 30 most recent deployments
 cd /var/www
-ls -dt script-writer-20* | tail -n +6 | xargs rm -rf
+ls -dt script-writer-20* | tail -n +31 | xargs rm -rf
 
 echo "Deployment completed successfully"
