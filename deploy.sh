@@ -70,8 +70,14 @@ pm2 delete script-writer-api || true
 cd $DEPLOY_DIR
 NODE_ENV=production pm2 start dist-server/server/index.js --name script-writer-api
 
-# Keep only the 30 most recent deployments
+# Verify deployment is online before cleaning up old deployments
+sleep 3
+if pm2 describe script-writer-api | grep -qi "status.*online"; then
 cd /var/www
-ls -dt script-writer-20* | tail -n +11 | xargs rm -rf
+# Keep only the 30 most recent deployments
+ls -dt script-writer-20* | tail -n +31 | xargs rm -rf
+else
+echo "Skipping cleanup: deployment not verified as online."
+fi
 
 echo "Deployment completed successfully"
