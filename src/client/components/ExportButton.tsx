@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Button } from 'antd';
-import { ExportOutlined } from '@ant-design/icons';
-import { ExportModal } from './ExportModal';
+import { ExportOutlined, SettingOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
-import { SettingOutlined } from '@ant-design/icons';
+import { ExportModal } from './ExportModal';
 
 interface ExportButtonProps {
     projectId: string;
@@ -37,6 +36,19 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
         return null;
     }
 
+    // On mobile, these actions live in the burger menu; avoid rendering inline buttons
+    if (isMobile) {
+        return (
+            <>
+                <ExportModal
+                    visible={showExportModal}
+                    onClose={handleCloseModal}
+                    projectId={projectId}
+                />
+            </>
+        );
+    }
+
     return (
         <>
             <Button
@@ -46,9 +58,9 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
                 style={{
                     color: '#1890ff'
                 }}
-                size={isMobile ? 'small' : 'middle'}
+                size={'middle'}
             >
-                {isMobile ? '' : '导出'}
+                导出
             </Button>
 
             {/* Quick access to project settings via URL param toggle */}
@@ -64,9 +76,9 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
                     window.dispatchEvent(new PopStateEvent('popstate'));
                 }}
                 style={{ color: '#1890ff' }}
-                size={isMobile ? 'small' : 'middle'}
+                size={'middle'}
             >
-                {isMobile ? '' : '设置'}
+                设置
             </Button>
 
             <ExportModal

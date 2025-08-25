@@ -66,7 +66,7 @@ const SmartAIButton: React.FC<SmartAIButtonProps> = ({
 
     // Determine if button should be disabled
     const isDisabledByGeneration = !allowClickDuringGeneration && isAnyGenerating;
-    const isDisabled = manuallyDisabled || isDisabledByGeneration || props.loading;
+    const isDisabled = manuallyDisabled || isDisabledByGeneration || !!props.loading;
 
     // Determine button text
     const buttonText = isDisabledByGeneration ? generatingText : children;

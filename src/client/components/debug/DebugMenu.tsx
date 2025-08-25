@@ -97,25 +97,32 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
         setSearchParams(newSearchParams);
     }, [showParticleDebug, searchParams, setSearchParams]);
 
+    // On mobile, hide the toolbar icons entirely (we'll expose these in burger menu)
+    if (isMobile) {
+        return (
+            <Space size={'small'}>
+                {onMobileRightDrawerOpen && (
+                    <Button
+                        type="text"
+                        icon={<NodeIndexOutlined />}
+                        onClick={onMobileRightDrawerOpen}
+                        style={{ color: '#1890ff' }}
+                        size="small"
+                    />
+                )}
+            </Space>
+        );
+    }
+
     return (
-        <Space size={isMobile ? 'small' : 'middle'}>
-            {isMobile && onMobileRightDrawerOpen && (
-                <Button
-                    type="text"
-                    icon={<NodeIndexOutlined />}
-                    onClick={onMobileRightDrawerOpen}
-                    style={{ color: '#1890ff' }}
-                    size="small"
-                />
-            )}
+        <Space size={'middle'}>
             <Button
                 type="text"
                 icon={<NodeIndexOutlined />}
                 onClick={toggleRawGraph}
                 style={{ color: showRawGraph ? '#52c41a' : '#1890ff' }}
-                size={isMobile ? 'small' : 'middle'}
             >
-                {isMobile ? '' : (showRawGraph ? '关闭图谱' : '打开图谱')}
+                {showRawGraph ? '关闭图谱' : '打开图谱'}
             </Button>
 
             <Button
@@ -123,27 +130,24 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
                 icon={<ToolOutlined />}
                 onClick={toggleAgentContext}
                 style={{ color: showAgentContext ? '#52c41a' : '#1890ff' }}
-                size={isMobile ? 'small' : 'middle'}
             >
-                {isMobile ? '' : (showAgentContext ? '关闭Agent上下文' : 'Agent上下文')}
+                {showAgentContext ? '关闭Agent上下文' : 'Agent上下文'}
             </Button>
             <Button
                 type="text"
                 icon={<FileTextOutlined />}
                 onClick={toggleRawContext}
                 style={{ color: showRawContext ? '#52c41a' : '#1890ff' }}
-                size={isMobile ? 'small' : 'middle'}
             >
-                {isMobile ? '' : (showRawContext ? '关闭工具调用' : '工具调用')}
+                {showRawContext ? '关闭工具调用' : '工具调用'}
             </Button>
             <Button
                 type="text"
                 icon={<MessageOutlined />}
                 onClick={toggleRawChat}
                 style={{ color: showRawChat ? '#52c41a' : '#1890ff' }}
-                size={isMobile ? 'small' : 'middle'}
             >
-                {isMobile ? '' : (showRawChat ? '关闭内部对话' : '打开内部对话')}
+                {showRawChat ? '关闭内部对话' : '打开内部对话'}
             </Button>
 
 
@@ -152,9 +156,8 @@ export const DebugMenu: React.FC<DebugMenuProps> = ({
                 icon={<SearchOutlined />}
                 onClick={toggleParticleDebug}
                 style={{ color: showParticleDebug ? '#52c41a' : '#1890ff' }}
-                size={isMobile ? 'small' : 'middle'}
             >
-                {isMobile ? '' : (showParticleDebug ? '关闭粒子搜索' : '粒子搜索')}
+                {showParticleDebug ? '关闭粒子搜索' : '粒子搜索'}
             </Button>
 
         </Space>

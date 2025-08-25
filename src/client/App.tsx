@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '@ant-design/v5-patch-for-react-19';
 
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Layout, Button, Drawer, Menu, Dropdown, Avatar, App as AntdApp } from 'antd';
@@ -83,6 +83,7 @@ const AppContent: React.FC = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [menuVisible, setMenuVisible] = useState(false);
   const { isAuthenticated, user, logout } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     const handleResize = () => {
@@ -108,6 +109,31 @@ const AppContent: React.FC = () => {
   const handleLogin = () => {
     navigate('/login');
   };
+
+  // Debug state from URL params
+  const showRawGraph = searchParams.get('raw-graph') === '1';
+  const showRawChat = searchParams.get('raw-chat') === '1';
+  const showRawContext = searchParams.get('raw-context') === '1';
+  const showParticleDebug = searchParams.get('particle-debug') === '1';
+  const showAgentContext = searchParams.get('agent-context') === '1';
+
+  // Toggle helpers mirroring DebugMenu behavior
+  const toggleParam = (key: string, onKeysToClear: string[] = []) => {
+    const next = new URLSearchParams(searchParams);
+    if (next.get(key) === '1') {
+      next.delete(key);
+    } else {
+      next.set(key, '1');
+      onKeysToClear.forEach(k => next.delete(k));
+    }
+    setSearchParams(next);
+  };
+
+  const toggleRawGraph = () => toggleParam('raw-graph', ['raw-chat', 'raw-context', 'agent-context', 'particle-debug']);
+  const toggleRawChat = () => toggleParam('raw-chat', ['raw-graph', 'raw-context', 'agent-context', 'particle-debug']);
+  const toggleRawContext = () => toggleParam('raw-context', ['raw-graph', 'raw-chat', 'agent-context', 'particle-debug']);
+  const toggleAgentContext = () => toggleParam('agent-context', ['raw-graph', 'raw-chat', 'raw-context', 'particle-debug']);
+  const toggleParticleDebug = () => toggleParam('particle-debug', ['raw-graph', 'raw-chat', 'raw-context', 'agent-context']);
 
   // Core app navigation items
   const menuItems = [
@@ -136,6 +162,20 @@ const AppContent: React.FC = () => {
   // Drawer items for mobile (include auth actions)
   const drawerItems = (() => {
     if (isMobile) {
+      const debugItems = [
+        { type: 'divider' as const },
+        { key: 'debug-title', label: '调试', disabled: true as const },
+        { key: 'debug-raw-graph', label: showRawGraph ? '关闭图谱' : '打开图谱', onClick: toggleRawGraph },
+        { key: 'debug-agent-context', label: showAgentContext ? '关闭Agent上下文' : 'Agent上下文', onClick: toggleAgentContext },
+        { key: 'debug-raw-context', label: showRawContext ? '关闭工具调用' : '工具调用', onClick: toggleRawContext },
+        { key: 'debug-raw-chat', label: showRawChat ? '关闭内部对话' : '打开内部对话', onClick: toggleRawChat },
+        { key: 'debug-particle', label: showParticleDebug ? '关闭粒子搜索' : '粒子搜索', onClick: toggleParticleDebug },
+        { type: 'divider' as const },
+        { key: 'actions-title', label: '项目', disabled: true as const },
+        { key: 'mobile-open-tree', label: '目录/地图', onClick: () => setMenuVisible(false) || (window.history.replaceState(null, '', `${location.pathname}?rightDrawer=1`), window.dispatchEvent(new PopStateEvent('popstate'))) },
+        { key: 'mobile-export', label: '导出', onClick: () => setMenuVisible(false) || (toggleParam('export')) },
+        { key: 'mobile-settings', label: '设置', onClick: () => setMenuVisible(false) || (toggleParam('projectSettings')) },
+      ];
       if (isAuthenticated && user) {
         return [
           {
@@ -157,6 +197,7 @@ const AppContent: React.FC = () => {
           },
           { type: 'divider' as const },
           ...menuItems,
+          ...debugItems,
         ];
       }
       return [
@@ -168,6 +209,7 @@ const AppContent: React.FC = () => {
         },
         { type: 'divider' as const },
         ...menuItems,
+        ...debugItems,
       ];
     }
     return menuItems;

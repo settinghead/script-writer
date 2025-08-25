@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { Outlet, useParams, useNavigate } from 'react-router-dom';
+import { Outlet, useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout, Typography, Space, Button, Drawer, Grid, Tabs, Alert, Spin } from 'antd';
 import { EyeInvisibleOutlined, ApartmentOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { useProjectData } from '../contexts/ProjectDataContext';
@@ -432,14 +432,14 @@ const ProjectHeader: React.FC<{
             alignItems: 'center',
             height: '60px'
         }}>
-            <DebugMenu
-                isMobile={isMobile}
-                onMobileRightDrawerOpen={onMobileRightDrawerOpen}
-            />
-            <ExportButton
-                projectId={projectId}
-                isMobile={isMobile}
-            />
+            {!isMobile && (
+                <>
+                    <DebugMenu />
+                    <ExportButton
+                        projectId={projectId}
+                    />
+                </>
+            )}
             {/* Project settings modal is controlled via URL param (?projectSettings=1) */}
             <ProjectSettingsModal projectId={projectId} />
         </div>
@@ -482,7 +482,7 @@ const MainContentArea: React.FC<{
                     <div
                         style={{
                             marginTop: isMobile ? "12px" : "20vh",
-                            marginBottom: "20px",
+                            marginBottom: isMobile ? "8px" : "20px",
                             textAlign: "center",
                             color: "#888",
                             fontStyle: "italic",
@@ -522,6 +522,7 @@ const ProjectLayout: React.FC = () => {
     // Responsive breakpoints
     const screens = useBreakpoint();
     const isMobile = !screens.md; // Mobile when smaller than md breakpoint (768px)
+    const [searchParams, setSearchParams] = useSearchParams();
 
 
     // Debug: Log when right sidebar is rendered
@@ -637,6 +638,16 @@ const ProjectLayout: React.FC = () => {
     const hideMobileRightDrawer = () => {
         setMobileRightDrawerOpen(false);
     };
+
+    // Open right drawer on mobile via URL param (?rightDrawer=1) and then clear the param
+    useEffect(() => {
+        if (isMobile && searchParams.get('rightDrawer') === '1') {
+            setMobileRightDrawerOpen(true);
+            const next = new URLSearchParams(searchParams);
+            next.delete('rightDrawer');
+            setSearchParams(next, { replace: true });
+        }
+    }, [isMobile, searchParams, setSearchParams]);
 
     return (
         <ScrollSyncProvider>
