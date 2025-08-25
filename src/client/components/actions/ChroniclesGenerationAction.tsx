@@ -115,8 +115,6 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
                 loading={isLocalGenerating}
                 generatingText="生成完成后可点击"
                 style={{
-                    width: '200px',
-                    height: '48px',
                     fontSize: '16px',
                 }}
             >

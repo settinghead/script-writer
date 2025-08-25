@@ -92,8 +92,9 @@ const SmartAIButton: React.FC<SmartAIButtonProps> = ({
         transition: 'all 0.3s ease',
         position: 'relative',
         overflow: 'hidden',
-        fontSize: isMobile ? '14px' : '18px',
-        padding: isMobile ? '0 12px' : '0 16px',
+        fontSize: isMobile ? '12px' : '18px',
+        padding: isMobile ? '8px 16px' : '12px 24px',
+        minWidth: isMobile ? 'auto' : '140px',
         opacity: isDisabled ? 0.7 : 1,
         cursor: isDisabled ? 'not-allowed' : 'pointer',
         ...style
@@ -149,7 +150,7 @@ const SmartAIButton: React.FC<SmartAIButtonProps> = ({
             onClick={handleClick}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
-            icon={showIcon ? <Cpu style={{ fontSize: '12px', opacity: 1 }} /> : undefined}
+            icon={showIcon ? <Cpu style={{ fontSize: isMobile ? '10px' : '12px', opacity: 1 }} /> : undefined}
         >
             {buttonText}
         </Button>

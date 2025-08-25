@@ -111,7 +111,7 @@ const EpisodeSynopsisGenerationAction: React.FC<EpisodeSynopsisGenerationActionP
                     onClick={handleGenerate}
                     loading={isLocalGenerating}
                     generatingText="生成完成后可点击"
-                    style={{ width: '200px', height: 48, fontSize: '16px' }}
+                    style={{ fontSize: '16px' }}
                 >
                     {isGenerating ? '生成中...' : `生成第${nextGroup.episodeRange}集单集大纲`}
                 </SmartAIButton>

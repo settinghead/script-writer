@@ -486,7 +486,7 @@ const MainContentArea: React.FC<{
                     <Outlet />
                     <div
                         style={{
-                            marginTop: isMobile ? "12px" : "20vh",
+                            marginTop: isMobile ? "12px" : "10vh",
                             marginBottom: isMobile ? "8px" : "20px",
                             textAlign: "center",
                             color: "#888",

@@ -152,7 +152,7 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
                     onClick={handleGoBack}
                     style={{
                         minWidth: '120px',
-                        height: '40px'
+                        padding: '8px 16px'
                     }}
                 >
                     {isDeleting ? '返回中...' : '返回'}
@@ -192,10 +192,6 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
                 loading={isGenerating}
                 manuallyDisabled={isDeleting}
                 generatingText="生成中..."
-                style={{
-                    minWidth: '140px',
-                    height: '40px'
-                }}
             >
                 <> 生成故事设定 <RightOutlined /></>
             </SmartAIButton>
