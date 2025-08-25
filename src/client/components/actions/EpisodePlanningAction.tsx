@@ -1,14 +1,13 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import { Typography, Alert, message, Form, InputNumber, Space, Row, Col } from 'antd';
 import TextareaAutosize from 'react-textarea-autosize';
-import { VideoCameraOutlined } from '@ant-design/icons';
 import { BaseActionProps } from './index';
 import { ActionComponentProps } from '../../utils/lineageBasedActionComputation';
 import { apiService } from '../../services/apiService';
 import { SmartAIButton } from '../shared';
 import { MIN_EPISODES, MAX_EPISODES, DEFAULT_EPISODES } from '@/common/config/constants';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 // Support both old BaseActionProps and new ActionComponentProps
 type EpisodePlanningActionProps = BaseActionProps | ActionComponentProps;
@@ -91,21 +90,13 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
 
     return (
         <Space direction="vertical" style={{ width: '100%' }}>
-            <Title level={4}>
-                <VideoCameraOutlined style={{ color: '#722ed1' }} />
-                生成分集结构
-            </Title>
 
-            <Text type="secondary">
-                基于时间顺序大纲（{stagesCount}个阶段）生成适合抖音短剧的分集结构，优化观看顺序和情感节奏
-            </Text>
 
-            <Form layout="vertical">
-                <Row gutter={[16, 8]} wrap={false} style={{ flexWrap: 'nowrap' }}>
+            <Form layout="vertical" style={{ marginTop: 4 }}>
+                <Row gutter={[12, 8]} wrap={false} style={{ flexWrap: 'nowrap', alignItems: 'stretch' }}>
                     <Col flex="200px">
                         <Form.Item
                             label="总集数"
-                            help="建议根据故事复杂度设置，每集约2分钟"
                             style={{ marginBottom: 0 }}
                         >
                             <InputNumber
@@ -119,7 +110,7 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
                             />
                         </Form.Item>
                     </Col>
-                    <Col flex="auto" >
+                    <Col flex="auto">
                         <Form.Item label="补充要求（可选）" style={{ marginBottom: 0 }}>
                             <TextareaAutosize
                                 placeholder="例如：强调反转更密集；第一阶段尽量在第6集结束；注意女主的成长线更明显等"
@@ -146,21 +137,22 @@ const EpisodePlanningAction: React.FC<EpisodePlanningActionProps> = (props) => {
                             />
                         </Form.Item>
                     </Col>
+                    <Col flex="220px" style={{ display: 'flex', alignItems: 'flex-end' }}>
+                        <SmartAIButton
+                            componentId="episode-planning"
+                            type="primary"
+                            loading={isGenerating}
+                            onClick={handleGenerateEpisodePlanning}
+                            manuallyDisabled={!latestChronicles || numberOfEpisodes < MIN_EPISODES || numberOfEpisodes > MAX_EPISODES}
+                            generatingText="正在生成分集结构..."
+                            style={{ width: '100%' }}
+                            data-testid="generate-episode-planning-btn"
+                        >
+                            生成分集结构
+                        </SmartAIButton>
+                    </Col>
                 </Row>
             </Form>
-
-            <SmartAIButton
-                componentId="episode-planning"
-                type="primary"
-                loading={isGenerating}
-                onClick={handleGenerateEpisodePlanning}
-                manuallyDisabled={!latestChronicles || numberOfEpisodes < MIN_EPISODES || numberOfEpisodes > MAX_EPISODES}
-                generatingText="正在生成分集结构..."
-                style={{ width: '100%' }}
-                data-testid="generate-episode-planning-btn"
-            >
-                生成分集结构
-            </SmartAIButton>
         </Space>
     );
 };

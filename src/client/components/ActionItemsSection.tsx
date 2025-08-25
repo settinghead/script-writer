@@ -168,15 +168,15 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
         <div
             style={{
                 display: 'flex',
-                alignItems: 'flex-start',
-                gap: isMobile ? '12px' : '24px',
+                alignItems: 'center',
+                gap: isMobile ? '8px' : '16px',
                 width: '100%',
-                padding: isMobile ? '16px 12px' : '36px 32px',
+                padding: isMobile ? '8px 12px' : '12px 16px',
                 background: 'linear-gradient(145deg, #232323 60%, #181818 100%)',
                 borderRadius: '12px',
                 boxShadow:
-                    '0 12px 36px 0 rgba(0,0,0,0.60), 0 4px 16px 0 rgba(80,80,80,0.22), 0 2px 8px 0 rgba(255,255,255,0.06) inset',
-                border: '2.5px solid #232323',
+                    '0 6px 18px 0 rgba(0,0,0,0.45), 0 2px 8px 0 rgba(80,80,80,0.18), 0 1px 4px 0 rgba(255,255,255,0.04) inset',
+                border: '2px solid #232323',
                 transition: 'box-shadow 0.2s cubic-bezier(.4,2,.6,1)'
             }}
         >
@@ -195,17 +195,16 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                     <div style={{
                         display: 'flex',
                         gap: '12px',
-                        justifyContent: 'center',
-                        alignItems: 'stretch',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
                         flexWrap: 'wrap',
-                        width: '100%',
-                        maxWidth: actions.length === 2 ? '600px' : '100%'
+                        width: '100%'
                     }}>
                         {actions.map((action: any, index: number) => (
                             <div key={`${action.type}-${index}`} style={{
-                                flex: actions.length === 2 ? '1 1 0' : '0 1 auto',
-                                minWidth: actions.length === 2 ? 0 : '260px',
-                                maxWidth: actions.length === 2 ? '100%' : '320px'
+                                flex: '1 1 260px',
+                                minWidth: 220,
+                                maxWidth: '100%'
                             }}>
                                 <ActionItemRenderer
                                     action={action}
