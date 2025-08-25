@@ -137,10 +137,9 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
             }
 
             await response.json();
-            message.success('已创建可编辑版本');
         } catch (error) {
             console.error('Failed to create editable version:', error);
-            message.error('创建可编辑版本失败');
+            message.error('编辑失败');
         } finally {
             setIsCreatingTransform(false);
         }

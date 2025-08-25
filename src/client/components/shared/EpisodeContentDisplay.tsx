@@ -35,46 +35,57 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
     const { registerScrollHandler, unregisterScrollHandler } = useScrollSync();
     const projectData = useProjectData();
 
-    // Determine if any relevant transforms (单集大纲/单集剧本) are currently running
-    const isEpisodeGenerating = React.useMemo(() => {
+    // Determine per-episode generating state based on running transforms and their inputs/outputs
+    const generatingEpisodes = React.useMemo(() => {
+        const set = new Set<number>();
         const transforms = projectData.transforms;
         const transformOutputs = projectData.transformOutputs;
+        const transformInputs = projectData.transformInputs;
         const getJsondocById = projectData.getJsondocById;
 
         if (transforms === 'pending' || transforms === 'error') {
-            return false;
+            return set;
         }
 
-        const runningTransforms = transforms.filter(t => t.status === 'running' || t.status === 'pending');
-        if (runningTransforms.length === 0) {
-            return false;
-        }
+        const running = transforms.filter(t => t.status === 'running' || t.status === 'pending');
+        if (running.length === 0) return set;
 
-        // Check outputs for schema types
+        // Check outputs for episode numbers
         if (transformOutputs !== 'pending' && transformOutputs !== 'error') {
-            for (const t of runningTransforms) {
-                const outputs = transformOutputs.filter(o => o.transform_id === t.id);
-                for (const o of outputs) {
-                    const out = getJsondocById(o.jsondoc_id);
-                    if (out && (out.schema_type === '单集大纲' || out.schema_type === '单集剧本')) {
-                        return true;
+            for (const t of running) {
+                const outs = transformOutputs.filter(o => o.transform_id === t.id);
+                for (const o of outs) {
+                    const jd = getJsondocById(o.jsondoc_id);
+                    if (jd && (jd.schema_type === '单集大纲' || jd.schema_type === '单集剧本')) {
+                        try {
+                            const data = typeof jd.data === 'string' ? JSON.parse(jd.data) : jd.data;
+                            const ep = data?.episodeNumber;
+                            if (typeof ep === 'number') set.add(ep);
+                        } catch { }
                     }
                 }
             }
         }
 
-        // Heuristic by transform name when outputs are not available yet
-        return runningTransforms.some(t => {
-            const name = t.transform_name;
-            return typeof name === 'string' && (
-                name.includes('单集大纲') ||
-                name.includes('单集剧本') ||
-                name.toLowerCase().includes('episode') ||
-                name.includes('剧本') ||
-                name.toLowerCase().includes('synopsis')
-            );
-        });
-    }, [projectData.transforms, projectData.transformOutputs, projectData.getJsondocById]);
+        // Also check inputs when outputs are not yet materialized
+        if (transformInputs !== 'pending' && transformInputs !== 'error') {
+            for (const t of running) {
+                const ins = transformInputs.filter(i => i.transform_id === t.id);
+                for (const i of ins) {
+                    const jd = getJsondocById(i.jsondoc_id);
+                    if (jd && (jd.schema_type === '单集大纲' || jd.schema_type === '单集剧本')) {
+                        try {
+                            const data = typeof jd.data === 'string' ? JSON.parse(jd.data) : jd.data;
+                            const ep = data?.episodeNumber;
+                            if (typeof ep === 'number') set.add(ep);
+                        } catch { }
+                    }
+                }
+            }
+        }
+
+        return set;
+    }, [projectData.transforms, projectData.transformOutputs, projectData.transformInputs, projectData.getJsondocById]);
 
     // Group items by episode number and create pairs
     const episodePairs = React.useMemo(() => {
@@ -176,28 +187,28 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
     }
 
     return (
-        <SectionWrapper schemaType={"单集剧本"} title="分集内容" sectionId="episode-content-section" mode={isEpisodeGenerating ? 'loading' : 'normal'}>
-            <Space direction="vertical" style={{ width: '100%' }} size="large">
+        <Space direction="vertical" style={{ width: '100%' }} size="large" id="episode-content-section">
 
-                {episodePairs.map((pair) => (
+            {episodePairs.map((pair) => (
+                <SectionWrapper
+                    key={pair.episodeNumber}
+                    schemaType={"单集剧本"}
+                    title={`第${pair.episodeNumber}集`}
+                    sectionId={`episode-${pair.episodeNumber}`}
+                    mode={generatingEpisodes.has(pair.episodeNumber) ? 'loading' : 'normal'}
+                >
                     <Card
-                        key={pair.episodeNumber}
-                        id={`episode-${pair.episodeNumber}`}
-                        title={
-                            <Space>
-                                <span style={{ fontSize: '18px', fontWeight: 'bold' }}>第{pair.episodeNumber}集</span>
-                                {pair.synopsis && <Tag color="blue">大纲</Tag>}
-                                {pair.script && <Tag color="green">剧本</Tag>}
-                            </Space>
-                        }
                         style={{
                             border: '2px solid #434343',
                             borderRadius: '8px',
                             marginBottom: '20px',
                             backgroundColor: 'transparent'
                         }}
-
                     >
+                        <div style={{ marginBottom: '8px' }}>
+                            {pair.synopsis && <Tag color="blue">大纲</Tag>}
+                            {pair.script && <Tag color="green" style={{ marginLeft: 8 }}>剧本</Tag>}
+                        </div>
                         <Space direction="vertical" style={{ width: '100%' }} size="middle">
                             {/* Episode Synopsis */}
                             {pair.synopsis && (
@@ -271,11 +282,11 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
                             )}
                         </Space>
                     </Card>
-                ))}
+                </SectionWrapper>
+            ))}
 
-                {/* Remove the divider since we now have card separation */}
-            </Space>
-        </SectionWrapper>
+            {/* Remove the divider since we now have card separation */}
+        </Space>
     );
 };
 
