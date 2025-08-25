@@ -71,9 +71,22 @@ export const ExportModal: React.FC<ExportModalProps> = ({
         const idSet = new Set(exportableItems.map(i => i.id));
         const persistedSelected = (persisted?.selectedItems || []).filter(id => idSet.has(id));
 
-        const initialSelected = persistedSelected.length > 0
+        const initialSelectedRaw = persistedSelected.length > 0
             ? persistedSelected
             : exportableItems.filter(item => item.defaultSelected).map(item => item.id);
+
+        // Map episode group IDs to sub-item IDs (synopsis/script)
+        const episodeGroupMap = new Map(
+            episodeGroups.map(g => [
+                g.id,
+                [
+                    ...(g.hasSynopsis ? [`${g.id}-synopsis`] : []),
+                    ...(g.hasScript ? [`${g.id}-script`] : [])
+                ] as string[]
+            ])
+        );
+
+        const initialSelected = initialSelectedRaw.flatMap(id => episodeGroupMap.get(id) || [id]);
         setSelectedItems(initialSelected);
 
         const desiredFormat = persisted?.format || format;
@@ -132,7 +145,15 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     };
 
     const handleSelectAll = () => {
-        setSelectedItems(exportableItems.map(item => item.id));
+        // Select all regular items plus all available episode sub-items
+        const allIds: string[] = [
+            ...regularItems.map(item => item.id),
+            ...episodeGroups.flatMap(item => [
+                ...(item.hasSynopsis ? [`${item.id}-synopsis`] : []),
+                ...(item.hasScript ? [`${item.id}-script`] : [])
+            ])
+        ];
+        setSelectedItems(allIds);
     };
 
     const handleSelectNone = () => {
@@ -140,21 +161,37 @@ export const ExportModal: React.FC<ExportModalProps> = ({
     };
 
     const handleSelectDefault = () => {
-        const defaultSelected = exportableItems
-            .filter(item => item.defaultSelected)
-            .map(item => item.id);
-        setSelectedItems(defaultSelected);
+        // Default: regular defaults + for episode groups marked default, select their available sub-items
+        const regularDefaults = regularItems.filter(i => i.defaultSelected).map(i => i.id);
+        const episodeDefaults = episodeGroups.flatMap(item =>
+            item.defaultSelected
+                ? [
+                    ...(item.hasSynopsis ? [`${item.id}-synopsis`] : []),
+                    ...(item.hasScript ? [`${item.id}-script`] : [])
+                ]
+                : []
+        );
+        setSelectedItems([...regularDefaults, ...episodeDefaults]);
     };
 
     const handleSelectAllEpisodes = () => {
-        const episodeIds = episodeGroups.map(item => item.id);
-        const nonEpisodeSelected = selectedItems.filter(id => !episodeIds.includes(id));
-        setSelectedItems([...nonEpisodeSelected, ...episodeIds]);
+        const episodeSubIds = episodeGroups.flatMap(item => [
+            ...(item.hasSynopsis ? [`${item.id}-synopsis`] : []),
+            ...(item.hasScript ? [`${item.id}-script`] : [])
+        ]);
+        const episodeSubIdSet = new Set(episodeSubIds);
+        const nonEpisodeSelected = selectedItems.filter(id => !episodeSubIdSet.has(id));
+        setSelectedItems([...nonEpisodeSelected, ...episodeSubIds]);
     };
 
     const handleSelectNoEpisodes = () => {
-        const episodeIds = episodeGroups.map(item => item.id);
-        setSelectedItems(selectedItems.filter(id => !episodeIds.includes(id)));
+        const episodeSubIds = new Set(
+            episodeGroups.flatMap(item => [
+                ...(item.hasSynopsis ? [`${item.id}-synopsis`] : []),
+                ...(item.hasScript ? [`${item.id}-script`] : [])
+            ])
+        );
+        setSelectedItems(selectedItems.filter(id => !episodeSubIds.has(id)));
     };
 
     const handlePreview = async () => {
@@ -311,68 +348,59 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                                             </Space>
                                         </div>
                                         <Row gutter={[12, 12]}>
-                                            {episodeGroups.map(item => (
-                                                <Col xs={24} sm={12} md={8} lg={6} key={item.id}>
-                                                    <Card
-                                                        size="small"
-                                                        style={{
-                                                            cursor: 'pointer',
-                                                            border: selectedItems.includes(item.id) ? '1px solid #434343' : '1px solid #303030',
-                                                            backgroundColor: '#141414',
-                                                            color: '#fff'
-                                                        }}
-                                                        onClick={() => handleItemChange(item.id, !selectedItems.includes(item.id))}
-                                                        hoverable
-                                                    >
-                                                        <div>
-                                                            <div style={{ fontWeight: 'bold', marginBottom: 8 }}>
-                                                                {item.name}
+                                            {episodeGroups.map(item => {
+                                                const subSelected = selectedItems.includes(`${item.id}-synopsis`) || selectedItems.includes(`${item.id}-script`);
+                                                return (
+                                                    <Col xs={24} sm={12} md={8} lg={6} key={item.id}>
+                                                        <Card
+                                                            size="small"
+                                                            style={{
+                                                                border: subSelected ? '1px solid #434343' : '1px solid #303030',
+                                                                backgroundColor: '#141414',
+                                                                color: '#fff'
+                                                            }}
+                                                            hoverable
+                                                        >
+                                                            <div>
+                                                                <div style={{ fontWeight: 'bold', marginBottom: 8 }}>
+                                                                    {item.name}
+                                                                </div>
+                                                                <Space direction="vertical" size="small">
+                                                                    {item.hasSynopsis && (
+                                                                        <Checkbox
+                                                                            checked={selectedItems.includes(`${item.id}-synopsis`)}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleItemChange(`${item.id}-synopsis`, e.target.checked);
+                                                                            }}
+                                                                            style={{ color: '#fff' }}
+                                                                        >
+                                                                            <FileTextOutlined /> 大纲
+                                                                        </Checkbox>
+                                                                    )}
+                                                                    {item.hasScript && (
+                                                                        <Checkbox
+                                                                            checked={selectedItems.includes(`${item.id}-script`)}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleItemChange(`${item.id}-script`, e.target.checked);
+                                                                            }}
+                                                                            style={{ color: '#fff' }}
+                                                                        >
+                                                                            <VideoCameraOutlined /> 剧本
+                                                                        </Checkbox>
+                                                                    )}
+                                                                    {!item.hasSynopsis && !item.hasScript && (
+                                                                        <div style={{ fontSize: '12px', color: '#999' }}>
+                                                                            暂无内容
+                                                                        </div>
+                                                                    )}
+                                                                </Space>
                                                             </div>
-                                                            <Space direction="vertical" size="small">
-                                                                <Checkbox
-                                                                    checked={selectedItems.includes(item.id)}
-                                                                    onChange={(e) => {
-                                                                        e.stopPropagation();
-                                                                        handleItemChange(item.id, e.target.checked);
-                                                                    }}
-                                                                    style={{ color: '#fff' }}
-                                                                >
-                                                                    整集（大纲+剧本）
-                                                                </Checkbox>
-                                                                {item.hasSynopsis && (
-                                                                    <Checkbox
-                                                                        checked={selectedItems.includes(`${item.id}-synopsis`)}
-                                                                        onChange={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleItemChange(`${item.id}-synopsis`, e.target.checked);
-                                                                        }}
-                                                                        style={{ color: '#fff' }}
-                                                                    >
-                                                                        <FileTextOutlined /> 大纲
-                                                                    </Checkbox>
-                                                                )}
-                                                                {item.hasScript && (
-                                                                    <Checkbox
-                                                                        checked={selectedItems.includes(`${item.id}-script`)}
-                                                                        onChange={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleItemChange(`${item.id}-script`, e.target.checked);
-                                                                        }}
-                                                                        style={{ color: '#fff' }}
-                                                                    >
-                                                                        <VideoCameraOutlined /> 剧本
-                                                                    </Checkbox>
-                                                                )}
-                                                                {!item.hasSynopsis && !item.hasScript && (
-                                                                    <div style={{ fontSize: '12px', color: '#999' }}>
-                                                                        暂无内容
-                                                                    </div>
-                                                                )}
-                                                            </Space>
-                                                        </div>
-                                                    </Card>
-                                                </Col>
-                                            ))}
+                                                        </Card>
+                                                    </Col>
+                                                );
+                                            })}
                                         </Row>
                                     </div>
                                 )}
