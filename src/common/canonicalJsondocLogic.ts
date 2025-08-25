@@ -68,11 +68,13 @@ export function computeCanonicalJsondocsFromLineage(
     let canonicalBrainstormCollection = findCanonicalJsondocByType(lineageGraph, jsondocs, 'brainstorm_collection');
     let canonicalBrainstormInput = findCanonicalJsondocByType(lineageGraph, jsondocs, 'brainstorm_input_params');
 
-    // BUSINESS RULE UPDATE: Keep brainstorm collection visible for read-only review
-    // When a brainstorm idea has been selected, we still show the collection in UI (read-only),
-    // but we will continue to hide the brainstorm input params.
-    if (canonicalBrainstormIdea && canonicalBrainstormInput) {
-        canonicalBrainstormInput = null;
+    // BUSINESS RULE: Hide brainstorm_collection and brainstorm_input when a canonical idea exists
+    // The collection should not be considered canonical once an idea is chosen.
+    if (canonicalBrainstormIdea) {
+        canonicalBrainstormCollection = null;
+        if (canonicalBrainstormInput) {
+            canonicalBrainstormInput = null;
+        }
     }
     const canonicalOutlineSettings = findCanonicalJsondocByType(lineageGraph, jsondocs, '故事设定');
     const canonicalChronicles = findCanonicalJsondocByType(lineageGraph, jsondocs, 'chronicles');
