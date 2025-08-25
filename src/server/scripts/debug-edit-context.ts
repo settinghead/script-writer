@@ -53,7 +53,7 @@ async function main() {
         let targetId = targetIdArg;
         if (!targetId) {
             if (schemaType === 'chronicles') targetId = canonical.canonicalChronicles?.id || '';
-            else if (schemaType === '剧本设定') targetId = canonical.canonicalOutlineSettings?.id || '';
+            else if (schemaType === '故事设定') targetId = canonical.canonicalOutlineSettings?.id || '';
             else if (schemaType === '分集结构') targetId = canonical.canonicalEpisodePlanning?.id || '';
         }
 

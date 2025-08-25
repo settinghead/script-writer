@@ -98,7 +98,7 @@ export async function computeAffectedContextForOutline(
 }
 
 /**
- * Compute affected context for chronicles edits based on upstream 剧本设定 changes.
+ * Compute affected context for chronicles edits based on upstream 故事设定 changes.
  * Compares the outline settings that originally produced this chronicles vs the canonical outline settings.
  */
 export async function computeAffectedContextForChronicles(
@@ -138,7 +138,7 @@ export async function computeAffectedContextForChronicles(
         if (!chronicles) return [];
 
         // Upstream parent outline settings used to create this chronicles
-        const parents = findParentJsondocsBySchemaType(chroniclesJsondocId, '剧本设定', lineageGraph, jsondocs);
+        const parents = findParentJsondocsBySchemaType(chroniclesJsondocId, '故事设定', lineageGraph, jsondocs);
         const parentOutline = parents && parents.length > 0 ? parents[0] : undefined;
         const canonicalOutline = canonical.canonicalOutlineSettings
             ? jsondocMap.get(canonical.canonicalOutlineSettings.id)
@@ -165,8 +165,8 @@ export async function computeAffectedContextForChronicles(
 
         return [{
             jsondocId: canonicalOutline.id,
-            schemaType: '剧本设定',
-            reason: '上游剧本设定已更新',
+            schemaType: '故事设定',
+            reason: '上游故事设定已更新',
             diffs
         }];
     } catch (error) {
@@ -300,7 +300,7 @@ function canonicalToMap(canonical: any, jsondocMap: Map<string, any>): Map<strin
         ['brainstorm_input_params', canonical.canonicalBrainstormInput || null],
         ['灵感创意', canonical.canonicalBrainstormIdea || null],
         ['brainstorm_collection', canonical.canonicalBrainstormCollection || null],
-        ['剧本设定', canonical.canonicalOutlineSettings || null],
+        ['故事设定', canonical.canonicalOutlineSettings || null],
         ['chronicles', canonical.canonicalChronicles || null],
         ['分集结构', canonical.canonicalEpisodePlanning || null]
     ];

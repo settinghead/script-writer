@@ -241,8 +241,8 @@ export const ReadOnlyJsondocDisplay: React.FC<ReadOnlyJsondocDisplayProps> = ({ 
         );
     }
 
-    // Render 剧本设定 specific layout
-    if (schemaType === '剧本设定') {
+    // Render 故事设定 specific layout
+    if (schemaType === '故事设定') {
         return (
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 {/* Basic Information */}

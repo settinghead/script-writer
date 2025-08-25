@@ -14,7 +14,7 @@ import {
 } from './outlineSchemas';
 
 // Import schemas from streaming.ts 
-import { IdeaSchema} from './streaming';
+import { IdeaSchema } from './streaming';
 
 // Import JSON patch schema from transforms
 import { JsonPatchOperationsSchema } from './transforms';
@@ -61,8 +61,8 @@ export const JsondocSchemaRegistry = {
   'brainstorm_input_params': BrainstormToolInputSchema,
 
   // New outline schemas
-  '剧本设定_input': OutlineSettingsInputSchema,
-  '剧本设定': OutlineSettingsOutputSchema,
+  '故事设定_input': OutlineSettingsInputSchema,
+  '故事设定': OutlineSettingsOutputSchema,
   'chronicles_input': ChroniclesInputSchema,
   'chronicles': ChroniclesOutputSchema,
 

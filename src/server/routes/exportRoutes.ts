@@ -25,7 +25,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
         id: string;
         name: string;
         content: any;
-        type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '剧本设定' | 'chronicles' | '分集结构' | 'episode_group' | '单集大纲' | '单集剧本';
+        type: 'brainstorm_input' | 'idea_collection' | 'chosen_idea' | '故事设定' | 'chronicles' | '分集结构' | 'episode_group' | '单集大纲' | '单集剧本';
         defaultSelected: boolean;
         // For episode groups
         episodeNumber?: number;
@@ -134,13 +134,13 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
             });
         }
 
-        // Add 剧本设定 if exists
+        // Add 故事设定 if exists
         if (canonicalContext.canonicalOutlineSettings) {
             items.push({
-                id: '剧本设定-display',
-                name: '剧本设定',
+                id: '故事设定-display',
+                name: '故事设定',
                 content: canonicalContext.canonicalOutlineSettings,
-                type: '剧本设定',
+                type: '故事设定',
                 defaultSelected: true
             });
         }
@@ -263,7 +263,7 @@ export const createExportRoutes = (authMiddleware: AuthMiddleware) => {
                     return formatIdeaCollection(item.content);
                 case 'chosen_idea':
                     return formatChosenIdea(item.content);
-                case '剧本设定':
+                case '故事设定':
                     return formatOutlineSettings(item.content);
                 case 'chronicles':
                     return formatChronicles(item.content);

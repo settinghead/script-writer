@@ -32,7 +32,7 @@ export const particlePathsRegistry: Record<string, ParticlePathDefinition[]> = {
         // Empty array means default to root '$' as single particle  
     ],
 
-    '剧本设定': [
+    '故事设定': [
         {
             path: '$.characters[*]',
             type: '人物',
@@ -132,7 +132,7 @@ function getDefaultParticleType(schemaType: string): string {
         'brainstorm_input_params': '头脑风暴参数',
         '灵感创意': '创意',
         'brainstorm_collection': '创意集合',
-        '剧本设定': '剧本设定',
+        '故事设定': '故事设定',
         'chronicles': '时间顺序大纲',
         '分集结构': '分集结构',
         '单集大纲': '单集大纲',
@@ -150,7 +150,7 @@ function getDefaultParticleTitle(schemaType: string): string {
         'brainstorm_input_params': '头脑风暴参数',
         '灵感创意': '创意',
         'brainstorm_collection': '创意集合',
-        '剧本设定': '剧本设定',
+        '故事设定': '故事设定',
         'chronicles': '时间顺序大纲',
         '分集结构': '分集结构',
         '单集大纲': '单集大纲',

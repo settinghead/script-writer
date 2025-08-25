@@ -8,7 +8,7 @@ export interface ExportableItem {
     | 'brainstorm_input'
     | 'idea_collection'
     | 'chosen_idea'
-    | '剧本设定'
+    | '故事设定'
     | 'chronicles'
     | '分集结构'
     | 'episode_group'

@@ -84,7 +84,7 @@ async function extractSourceChroniclesData(
             stageCount = sourceData.stages ? sourceData.stages.length : 0;
             firstStageTitle = sourceData.stages && sourceData.stages.length > 0 ? sourceData.stages[0].title || '' : '';
         } else {
-            // Additional contexts (e.g., updated 剧本设定)
+            // Additional contexts (e.g., updated 故事设定)
             additionalContexts.push({
                 description: jsondocRef.description,
                 data: sourceData

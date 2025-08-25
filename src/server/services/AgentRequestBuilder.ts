@@ -90,7 +90,7 @@ export async function buildContextForRequestType(
 
     // Outline settings
     if (canonicalContext.canonicalOutlineSettings) {
-        formatJsondocForContext(canonicalContext.canonicalOutlineSettings, '剧本设定');
+        formatJsondocForContext(canonicalContext.canonicalOutlineSettings, '故事设定');
     }
 
     // Chronicles
@@ -133,7 +133,7 @@ export function buildPromptForRequestType(
 1. **头脑风暴输入 (brainstorm_input)**：用户提供创意参数，包括平台类型（抖音、快手、小红书等）、题材偏好、目标受众等基础信息
 2. **故事创意生成 (灵感创意)**：AI基于头脑风暴参数生成多个故事想法，用户可以选择最满意的创意，或者手动输入单个创意
 3. **创意选择与编辑**：用户从AI生成的多个创意中选择一个，或者对选定的创意进行进一步编辑和完善
-4. **剧本设定生成 (剧本设定)**：基于选定的创意生成详细的剧本框架，包括人物角色设定、故事背景、商业卖点、爽点设计等
+4. **故事设定生成 (故事设定)**：基于选定的创意生成详细的剧本框架，包括人物角色设定、故事背景、商业卖点、爽点设计等
 5. **时间顺序大纲生成 (chronicles)**：创建完整的故事时序结构，按照故事内在逻辑顺序（非播出顺序）梳理剧情发展脉络
 6. **分集结构生成 (分集结构)**：基于时间顺序大纲，重新组织内容为适合短视频平台的分集结构，优化观看节奏和悬念设置
 7. **分集大纲生成 (单集大纲)**：为每个剧集组生成详细的单集大纲，包含具体情节和转折点
@@ -146,7 +146,7 @@ export function buildPromptForRequestType(
 意图分类：修改
 你的动作：
 1. 使用queryJsondocs查询目前的人物角色设定（比如：“男主 恋爱对象”）
-2. 根据历史信息，用"edit_剧本设定"工具，创建新人物，比如”小花“，给工具的instruction: “添加一个新人物，名叫小花。小花在李成被罚钱时出现，并且帮助了他，而且对李成有好感”
+2. 根据历史信息，用"edit_故事设定"工具，创建新人物，比如”小花“，给工具的instruction: “添加一个新人物，名叫小花。小花在李成被罚钱时出现，并且帮助了他，而且对李成有好感”
 3. 回复一个友好的消息，{ "humanReadableMessage"：“好的，已经添加了新人物小花，并且让小花在李成最低谷时出现，帮助了他...” }
 
 
@@ -276,10 +276,10 @@ export function computeAvailableToolsFromCanonicalContext(
             case 'edit_灵感创意':
                 addTool(() => createBrainstormEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
                 break;
-            case 'generate_剧本设定':
+            case 'generate_故事设定':
                 addTool(() => createOutlineSettingsToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
                 break;
-            case 'edit_剧本设定':
+            case 'edit_故事设定':
                 addTool(() => createOutlineSettingsEditToolDefinition(transformRepo, jsondocRepo, projectId, userId, cachingOptions));
                 break;
             case 'generate_chronicles':

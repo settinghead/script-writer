@@ -1371,7 +1371,7 @@ function traceForwardFromJsondoc(
             const isMainWorkflowJsondoc =
                 nextJsondoc.schema_type === 'brainstorm_collection' ||
                 nextJsondoc.schema_type === '灵感创意' ||
-                nextJsondoc.schema_type === '剧本设定' ||
+                nextJsondoc.schema_type === '故事设定' ||
                 nextJsondoc.schema_type === 'chronicles' ||
                 nextJsondoc.schema_type === '分集结构';
 
@@ -1424,8 +1424,8 @@ function createWorkflowNodeFromJsondoc(
 
         navigationTarget = '#selected-idea';
     } else if (
-        jsondoc.schema_type === '剧本设定') {
-        nodeType = '剧本设定';
+        jsondoc.schema_type === '故事设定') {
+        nodeType = '故事设定';
 
         // Try to extract title from outline data
         try {

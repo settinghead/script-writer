@@ -269,9 +269,9 @@ export function useCharactersFromLineage(sourceJsondocId: string | null): {
             }
 
 
-            // Also check for 剧本设定 (剧本设定)
+            // Also check for 故事设定 (故事设定)
             const outlineSettingsJsondocs = findParentJsondocsBySchemaType(
-                sourceJsondocId, '剧本设定',
+                sourceJsondocId, '故事设定',
                 projectData.lineageGraph,
                 projectData.jsondocs
             );

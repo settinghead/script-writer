@@ -1,6 +1,6 @@
 /**
  * Deduce project title from lineage graph by finding the most relevant title
- * Priority order: 分集结构 > chronicles > 剧本设定 > chosen_idea > 灵感创意
+ * Priority order: 分集结构 > chronicles > 故事设定 > chosen_idea > 灵感创意
  */
 export function deduceProjectTitle(lineageGraph: any, jsondocs: any[]): string {
     if (!lineageGraph || !jsondocs || jsondocs.length === 0) {
@@ -11,7 +11,7 @@ export function deduceProjectTitle(lineageGraph: any, jsondocs: any[]): string {
     const titlePriority = [
         '分集结构',
         'chronicles',
-        '剧本设定',
+        '故事设定',
         '灵感创意'
     ];
 
@@ -71,7 +71,7 @@ function extractTitleFromJsondoc(jsondoc: any): string | null {
             case 'chronicles':
                 return data.title || data.project_title || null;
 
-            case '剧本设定':
+            case '故事设定':
                 return data.title || data.project_title || null;
 
             case '灵感创意':

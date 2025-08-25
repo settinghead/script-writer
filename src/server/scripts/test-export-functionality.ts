@@ -77,10 +77,10 @@ async function testExportFunctionality() {
             'user_input'
         );
 
-        // Create 剧本设定
+        // Create 故事设定
         await jsondocRepo.createJsondoc(
             testProjectId,
-            '剧本设定',
+            '故事设定',
             {
                 title: '误爱成宠',
                 genre: '现代甜宠',

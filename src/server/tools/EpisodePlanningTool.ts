@@ -66,7 +66,7 @@ async function extractSourceEpisodePlanningData(
             totalEpisodes = sourceData.totalEpisodes || 0;
             firstGroupTitle = sourceData.episodeGroups && sourceData.episodeGroups.length > 0 ? sourceData.episodeGroups[0].groupTitle || '' : '';
         } else {
-            // Additional contexts (e.g., updated chronicles, 剧本设定)
+            // Additional contexts (e.g., updated chronicles, 故事设定)
             additionalContexts.push({
                 description: jsondocRef.description,
                 data: sourceData

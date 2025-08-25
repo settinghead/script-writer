@@ -165,7 +165,7 @@ function generateAISDKToolFormat(toolName: string): any {
             },
             required: ['jsondocs', 'editRequirements']
         },
-        'generate_剧本设定': {
+        'generate_故事设定': {
             type: 'object',
             properties: {
                 jsondocs: {
@@ -192,7 +192,7 @@ function generateAISDKToolFormat(toolName: string): any {
             },
             required: ['jsondocs', 'title', 'requirements']
         },
-        'edit_剧本设定': {
+        'edit_故事设定': {
             type: 'object',
             properties: {
                 jsondocs: {
@@ -646,7 +646,7 @@ export const AgentContextView: React.FC<AgentContextViewProps> = ({ projectId })
                             <Tag color="purple" style={{ marginBottom: '4px' }}>单个创意</Tag>
                         )}
                         {canonicalContext.canonicalOutlineSettings && (
-                            <Tag color="blue" style={{ marginBottom: '4px' }}>剧本设定</Tag>
+                            <Tag color="blue" style={{ marginBottom: '4px' }}>故事设定</Tag>
                         )}
                         {canonicalContext.canonicalChronicles && (
                             <Tag color="cyan" style={{ marginBottom: '4px' }}>时间顺序大纲</Tag>

@@ -102,7 +102,7 @@ export class ProjectService {
                     // Try to get some content for preview
                     const userInput = jsondocs.find(a => a.schema_type === '灵感创意');
                     const brainstormIdea = jsondocs.find(a => a.schema_type === '灵感创意');
-                    const outlineTitle = jsondocs.find(a => a.schema_type === '剧本设定');
+                    const outlineTitle = jsondocs.find(a => a.schema_type === '故事设定');
 
                     if (outlineTitle) {
                         previewContent = outlineTitle.data.title;

@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import { CacheReader, CachedResponse } from '../utils/cacheReader';
-import { generateCacheKey, generateSchemaHash} from '@/common/transform-jsondoc-framework/cacheKeyGenerator';
+import { generateCacheKey, generateSchemaHash } from '@/common/transform-jsondoc-framework/cacheKeyGenerator';
 import { z } from 'zod';
 
 const cacheReader = new CacheReader();
@@ -48,16 +48,16 @@ export function createCachedStreamObjectMock() {
             console.warn(`No cached response found for key: ${cacheKey.substring(0, 8)}...`);
             const prompt = options.messages?.map(m => m.content).join('\n') || 'default-prompt';
             console.log(`[Mock] Checking prompt for fallback detection: ${prompt.substring(0, 200)}...`);
-            console.log(`[Mock] Contains '剧本设定'?`, prompt.includes('剧本设定'));
+            console.log(`[Mock] Contains '故事设定'?`, prompt.includes('故事设定'));
             console.log(`[Mock] Contains 'chronicles'?`, prompt.includes('chronicles'));
             console.log(`[Mock] Contains '时间线编年史'?`, prompt.includes('时间线编年史'));
-            console.log(`[Mock] Contains '剧本设定'?`, prompt.includes('剧本设定'));
+            console.log(`[Mock] Contains '故事设定'?`, prompt.includes('故事设定'));
             console.log(`[Mock] Contains '故事创意'?`, prompt.includes('故事创意'));
             console.log(`[Mock] Contains '时间顺序'?`, prompt.includes('时间顺序'));
 
             // Check for template names first - most specific patterns
-            if (prompt.includes('templateName: 剧本设定') || prompt.includes('template: 剧本设定')) {
-                console.log('[Mock] Using 剧本设定 fallback (template name match)');
+            if (prompt.includes('templateName: 故事设定') || prompt.includes('template: 故事设定')) {
+                console.log('[Mock] Using 故事设定 fallback (template name match)');
                 return createFallbackOutlineObject();
             } else if (prompt.includes('templateName: chronicles') || prompt.includes('template: chronicles')) {
                 console.log('[Mock] Using chronicles fallback (template name match)');
@@ -71,8 +71,8 @@ export function createCachedStreamObjectMock() {
             } else if (prompt.includes('时间顺序大纲') || prompt.includes('时间线编年史') || prompt.includes('timeline') || prompt.includes('时间顺序') || prompt.includes('编年史')) {
                 console.log('[Mock] Using chronicles fallback (content match)');
                 return createFallbackChroniclesObject();
-            } else if (prompt.includes('剧本设定') || (prompt.includes('故事创意') && prompt.includes('制定详细的剧本设定'))) {
-                console.log('[Mock] Using 剧本设定 fallback (content match)');
+            } else if (prompt.includes('故事设定') || (prompt.includes('故事创意') && prompt.includes('制定详细的故事设定'))) {
+                console.log('[Mock] Using 故事设定 fallback (content match)');
                 return createFallbackOutlineObject();
             } else if (prompt.includes('outline') || prompt.includes('Outline') || prompt.includes('大纲')) {
                 console.log('[Mock] Using generic outline fallback');
@@ -448,7 +448,7 @@ function createFallbackEpisodePlanningObject() {
 }
 
 /**
- * Fallback mock for 剧本设定 generation (matches OutlineSettingsOutputSchema)
+ * Fallback mock for 故事设定 generation (matches OutlineSettingsOutputSchema)
  */
 function createFallbackOutlineObject() {
     const mockOutlineSettingsData = {

@@ -68,17 +68,17 @@ export function createAdminRoutes(
                         outputSchema: () => Promise.resolve(JsonPatchOperationsSchema)
                     }
                 },
-                'generate_剧本设定': {
-                    templateName: '剧本设定',
-                    outputJsondocType: '剧本设定',
+                'generate_故事设定': {
+                    templateName: '故事设定',
+                    outputJsondocType: '故事设定',
                     schemas: {
                         inputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.OutlineSettingsInputSchema),
                         outputSchema: () => import('@/common/schemas/outlineSchemas.js').then(m => m.OutlineSettingsOutputSchema)
                     }
                 },
-                'edit_剧本设定': {
-                    templateName: '剧本设定_edit_diff',
-                    outputJsondocType: '剧本设定',
+                'edit_故事设定': {
+                    templateName: '故事设定_edit_diff',
+                    outputJsondocType: '故事设定',
                     schemas: {
                         inputSchema: () => import('@/common/schemas/transforms.js').then(m => m.OutlineSettingsEditInputSchema),
                         outputSchema: () => Promise.resolve(JsonPatchOperationsSchema)
@@ -194,8 +194,8 @@ export function createAdminRoutes(
             const templates = [
                 'brainstorming',
                 'brainstorm_edit_diff',
-                '剧本设定',
-                '剧本设定_edit_diff',
+                '故事设定',
+                '故事设定_edit_diff',
                 'chronicles',
                 'chronicles_edit_diff',
                 '分集结构',
@@ -255,21 +255,21 @@ export function createAdminRoutes(
                     category: '内容编辑'
                 },
                 {
-                    value: 'generate_剧本设定',
-                    label: '生成剧本设定',
+                    value: 'generate_故事设定',
+                    label: '生成故事设定',
                     description: '基于故事创意生成角色、背景和商业设定',
                     category: '设定生成'
                 },
                 {
-                    value: 'edit_剧本设定',
-                    label: '编辑剧本设定',
-                    description: '修改现有的剧本设定内容',
+                    value: 'edit_故事设定',
+                    label: '编辑故事设定',
+                    description: '修改现有的故事设定内容',
                     category: '内容编辑'
                 },
                 {
                     value: 'generate_chronicles',
                     label: '生成时间顺序大纲',
-                    description: '基于剧本设定创建故事时序结构',
+                    description: '基于故事设定创建故事时序结构',
                     category: '结构生成'
                 },
                 {

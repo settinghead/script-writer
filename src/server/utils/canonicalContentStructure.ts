@@ -63,7 +63,7 @@ export function generateCanonicalContentStructure(
         { key: 'canonicalBrainstormInput', name: 'brainstorm_input_params', desc: '头脑风暴输入' },
         { key: 'canonicalBrainstormIdea', name: '灵感创意', desc: '选中创意' },
         { key: 'canonicalBrainstormCollection', name: 'brainstorm_collection', desc: '创意集合' },
-        { key: 'canonicalOutlineSettings', name: '剧本设定', desc: '故事框架' },
+        { key: 'canonicalOutlineSettings', name: '故事设定', desc: '故事框架' },
         { key: 'canonicalChronicles', name: 'chronicles', desc: '时间顺序大纲' },
         { key: 'canonicalEpisodePlanning', name: '分集结构', desc: '分集结构' }
     ];

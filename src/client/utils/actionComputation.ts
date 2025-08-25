@@ -495,7 +495,7 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         'brainstorm-input-editor': 1,
         'idea-collection': 2,
         'single-idea-editor': 3,
-        '剧本设定-display': 4,
+        '故事设定-display': 4,
         'chronicles-display': 5,
         'episode-planning-display': 6,
         'episode-content-display': 7
@@ -555,14 +555,14 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
         const componentState = computeComponentState(context.outlineSettings, context.projectData);
 
         components.push({
-            id: '剧本设定-display',
-            component: getComponentById('剧本设定-display'),
+            id: '故事设定-display',
+            component: getComponentById('故事设定-display'),
             mode: isInteractive(componentState.state) ? 'editable' : 'readonly',
             props: {
                 outlineSettings: context.outlineSettings,
                 componentState // Pass state info instead of isEditable
             },
-            priority: componentOrder['剧本设定-display']
+            priority: componentOrder['故事设定-display']
         });
     }
 
@@ -698,7 +698,7 @@ export function computeAgentContext(
 
     // Outline settings
     if (context.outlineSettings) {
-        agentContext.剧本设定 = getFullData(context.outlineSettings);
+        agentContext.故事设定 = getFullData(context.outlineSettings);
     }
 
     // Chronicles

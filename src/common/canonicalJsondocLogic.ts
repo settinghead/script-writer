@@ -76,7 +76,7 @@ export function computeCanonicalJsondocsFromLineage(
     if (canonicalBrainstormIdea && canonicalBrainstormInput) {
         canonicalBrainstormInput = null;
     }
-    const canonicalOutlineSettings = findCanonicalJsondocByType(lineageGraph, jsondocs, '剧本设定');
+    const canonicalOutlineSettings = findCanonicalJsondocByType(lineageGraph, jsondocs, '故事设定');
     const canonicalChronicles = findCanonicalJsondocByType(lineageGraph, jsondocs, 'chronicles');
     const canonicalEpisodePlanning = findCanonicalJsondocByType(lineageGraph, jsondocs, '分集结构');
 

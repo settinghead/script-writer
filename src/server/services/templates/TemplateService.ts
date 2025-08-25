@@ -207,7 +207,7 @@ export class TemplateService {
         // Create a more descriptive label based on schema type
         const schemaTypeLabels: Record<string, string> = {
           'brainstorm_idea_collection': '故事创意集合',
-          'outline_settings': '剧本设定',
+          'outline_settings': '故事设定',
           'chronicles': '时间顺序大纲',
           '分集结构': '分集结构',
           '单集大纲': '剧集梗概',
