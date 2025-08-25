@@ -242,7 +242,7 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
                                                 <JsondocDisplayWrapper
                                                     jsondoc={pair.synopsis.jsondoc}
                                                     isEditable={pair.synopsis.isEditable}
-                                                    title="大纲详情"
+                                                    title={`第${pair.episodeNumber}集大纲`}
                                                     icon="🗒️"
                                                     editableComponent={EditableEpisodeSynopsisForm}
                                                     schemaType="单集大纲"
@@ -255,7 +255,7 @@ export const EpisodeContentDisplay: React.FC<EpisodeContentDisplayProps> = ({
                                             <JsondocDisplayWrapper
                                                 jsondoc={pair.synopsis.jsondoc}
                                                 isEditable={pair.synopsis.isEditable}
-                                                title="大纲详情"
+                                                title={`第${pair.episodeNumber}集大纲`}
                                                 icon="🗒️"
                                                 editableComponent={EditableEpisodeSynopsisForm}
                                                 schemaType="单集大纲"
