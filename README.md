@@ -12,13 +12,13 @@ A collaborative Chinese short drama script writing application built on the [Tra
 - **Chinese Short Drama Focus** - Specialized for 抖音, 快手, and other Chinese platforms
 - **去脸谱化 Content** - Emphasizes modern, non-stereotypical characters and plots
 - **Real-time Collaboration** - YJS-powered collaborative editing with conflict resolution
-- **Complete Project Workflow** - 灵感 → 剧本设定 → 时间顺序大纲 → 分集结构 → 剧本 pipeline
+- **Complete Project Workflow** - 灵感 → 故事设定 → 时间顺序大纲 → 分集结构 → 剧本 pipeline
 
 ## Application-Specific Features
 
 ### 🎭 Script Creation Pipeline
 
-**Complete Workflow**: 灵感生成 → 剧本设定 → 时间顺序大纲 → 分集结构 → 剧本生成
+**Complete Workflow**: 灵感生成 → 故事设定 → 时间顺序大纲 → 分集结构 → 剧本生成
 
 **Brainstorming (灵感生成)**:
 - **Platform-Specific Generation** - Optimized for 抖音, 快手, 小红书, etc.
@@ -27,18 +27,18 @@ A collaborative Chinese short drama script writing application built on the [Tra
 - **AI-Powered Editing** - "让这些故事更现代一些，加入一些科技元素"
 - **Real-time Streaming** - Ideas appear as they're generated
 
-**Outline Settings (剧本设定)**:
+**Outline Settings (故事设定)**:
 - **Character Development** - Normalized character types (male_lead, female_lead, etc.) with detailed backgrounds
 - **Story Foundation** - Genre, target audience, platform settings, and commercial positioning
 - **Setting & Context** - Time period, location, and social background for the story
 - **Commercial Elements** - Selling points (卖点) and satisfaction points (爽点) for audience engagement
-- **Seamless Integration** - "生成剧本设定" workflow from brainstorm to settings
+- **Seamless Integration** - "生成故事设定" workflow from brainstorm to settings
 
 **Chronicles (时间顺序大纲)**:
 - **Chronological Structure** - Complete story timeline from earliest events to conclusion (story order, not broadcast order)
 - **Episode Planning** - Staged progression with detailed synopsis for each story phase
-- **Context-Aware Generation** - References 剧本设定 for consistent character and world development
-- **Sequential Workflow** - Generated after 剧本设定 are established
+- **Context-Aware Generation** - References 故事设定 for consistent character and world development
+- **Sequential Workflow** - Generated after 故事设定 are established
 - **Individual Stage Editing** - Granular editing of individual chronicle stages with full field support
 - **Stage-Level Human Transforms** - Each stage can be independently edited while preserving the overall chronicles structure
 - **Complete Field Editing** - All stage fields editable: title, synopsis, events, emotion arcs, relationship developments, insights
@@ -230,7 +230,7 @@ type ComponentId =
   | 'brainstorm-input-editor' 
   | 'idea-colletion'
   | 'single-idea-editor'
-  | '剧本设定-display'
+  | '故事设定-display'
   | 'chronicles-display';
 
 // Discriminated union modes (no optional parameters)
@@ -259,7 +259,7 @@ export const componentRegistry: Record<ComponentId, React.ComponentType<any>> = 
   'brainstorm-input-editor': BrainstormInputEditor,
   'idea-colletion': ProjectBrainstormPage,
   'single-idea-editor': SingleBrainstormIdeaEditor,
-  '剧本设定-display': OutlineSettingsDisplay,
+  '故事设定-display': OutlineSettingsDisplay,
   'chronicles-display': ChroniclesDisplay
 };
 
@@ -379,12 +379,12 @@ This unified system provides a solid foundation for the Chinese short drama scri
 The application supports two distinct paths for script creation, each optimized for different creative approaches:
 
 ### Path 1: Manual Entry Path (手动输入路径)
-**User Flow**: Manual idea entry → Edit → Generate 剧本设定 → Generate chronicles → Generate episode planning → Generate scripts
+**User Flow**: Manual idea entry → Edit → Generate 故事设定 → Generate chronicles → Generate episode planning → Generate scripts
 
 **Stages**:
 1. **手动创意输入 (Manual Idea Entry)** - User manually enters a single story concept
 2. **创意编辑 (Idea Editing)** - Refine and develop the manually entered idea
-3. **剧本设定生成 (Outline Settings Generation)** - Generate characters, setting, and commercial elements
+3. **故事设定生成 (Outline Settings Generation)** - Generate characters, setting, and commercial elements
 4. **时间顺序大纲生成 (Chronicles Generation)** - Create chronological story progression
 5. **分集结构 (Episode Planning)** - Transform chronicles into TikTok-optimized episode structure
 6. **剧本创作 (Script Writing)** - Generate detailed scripts with dialogue
@@ -395,14 +395,14 @@ The application supports two distinct paths for script creation, each optimized 
 - **Streamlined Flow** - No selection step required, faster progression
 
 ### Path 2: AI Brainstorm Path (AI头脑风暴路径)
-**User Flow**: Brainstorm input → AI generates multiple ideas → Select best idea → Edit → Generate 剧本设定 → Generate chronicles → Generate episode planning → Generate scripts
+**User Flow**: Brainstorm input → AI generates multiple ideas → Select best idea → Edit → Generate 故事设定 → Generate chronicles → Generate episode planning → Generate scripts
 
 **Stages**:
 1. **头脑风暴输入 (Brainstorm Input)** - User provides creative brief and requirements
 2. **AI创意生成 (AI Idea Generation)** - AI generates multiple story concepts based on input
 3. **创意选择 (Idea Selection)** - User selects the most promising idea from AI-generated options
 4. **创意编辑 (Idea Editing)** - Refine and develop the selected idea
-5. **剧本设定生成 (Outline Settings Generation)** - Generate characters, setting, and commercial elements
+5. **故事设定生成 (Outline Settings Generation)** - Generate characters, setting, and commercial elements
 6. **时间顺序大纲生成 (Chronicles Generation)** - Create chronological story progression
 7. **分集结构 (Episode Planning)** - Transform chronicles into TikTok-optimized episode structure
 8. **剧本创作 (Script Writing)** - Generate detailed scripts with dialogue
@@ -441,7 +441,7 @@ const actions = computeActionsFromLineage(currentStage, context);
 - `brainstorm_input` - Brainstorm input created, ready for AI generation
 - `brainstorm_selection` - Multiple AI ideas generated, user must select one
 - `idea_editing` - Single idea available (manual or selected), ready for editing
-- `outline_generation` - Idea finalized, ready for 剧本设定 generation
+- `outline_generation` - Idea finalized, ready for 故事设定 generation
 - `chronicles_generation` - Outline settings complete, ready for chronicles
 - `分集结构` - Chronicles complete, ready for episode planning generation
 - `单集剧本_generation` - Episode planning complete, ready for sequential script generation
@@ -597,7 +597,7 @@ yText.insert(0, 'Hello collaborative world!');
 ### Benefits Achieved
 
 **Real-time Collaboration**:
-- Multiple users can edit brainstorm requirements, story ideas, and 剧本设定 simultaneously
+- Multiple users can edit brainstorm requirements, story ideas, and 故事设定 simultaneously
 - Immediate visual feedback during collaboration
 - Automatic conflict resolution without user intervention
 
@@ -975,8 +975,8 @@ export const IdeaSchema = z.object({
 **Outline Settings Schema**:
 ```typescript
 export const JsondocSchemaRegistry = {
-  '剧本设定': OutlineSettingsOutputSchema,
-  '剧本设定_input': OutlineSettingsInputSchema,
+  '故事设定': OutlineSettingsOutputSchema,
+  '故事设定_input': OutlineSettingsInputSchema,
   // ... other schemas
 } as const;
 
@@ -1570,7 +1570,7 @@ npm run dev
 1. **Login** - Use dropdown to select test user (xiyang, xiaolin)
 2. **Create Project** - Start with a new script project
 3. **Brainstorm Ideas** - Generate initial story concepts
-4. **Generate Outline Settings** - Use "生成剧本设定" to create character and story foundation
+4. **Generate Outline Settings** - Use "生成故事设定" to create character and story foundation
 5. **Create Chronicles** - Generate chronological story timeline and episode progression
 6. **Generate Episode Planning** - Create TikTok-optimized episode structure with "pulsing" emotional rhythm
 7. **Generate Episode Scripts** - Sequentially generate complete scripts with dialogue, actions, and scene descriptions
@@ -1707,8 +1707,8 @@ fetch('/api/chat', {
 ### Content Management
 - `POST /api/jsondocs/:id/human-transform` - Execute human edit transform (supports chronicle stage editing, field edits, etc.)
 - `GET /api/jsondocs` - List jsondocs with filtering
-- `GET /api/projects/:projectId/剧本设定` - Get 剧本设定 for brainstorm ideas
-- `GET /api/projects/:projectId/chronicles` - Get chronicles for 剧本设定
+- `GET /api/projects/:projectId/故事设定` - Get 故事设定 for brainstorm ideas
+- `GET /api/projects/:projectId/chronicles` - Get chronicles for 故事设定
 - `POST /api/projects/:projectId/episode-planning` - Generate episode planning from chronicles
 - `GET /api/projects/:projectId/episode-planning` - Get episode planning for project
 - `POST /api/chat/:projectId/messages` - Generate episode scripts (via agent chat with action metadata)
@@ -1730,7 +1730,7 @@ POST /api/jsondocs/chronicles-jsondoc-id/human-transform
   "fieldUpdates": {}
 }
 
-# Edit specific fields in 剧本设定
+# Edit specific fields in 故事设定
 POST /api/jsondocs/outline-jsondoc-id/human-transform
 {
   "transformName": "edit_outline_field",

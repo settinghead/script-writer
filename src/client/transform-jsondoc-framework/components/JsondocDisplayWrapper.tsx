@@ -212,6 +212,7 @@ export const JsondocDisplayWrapper: React.FC<JsondocDisplayWrapperProps> = ({
                             shape="circle"
                             icon={<DiffOutlined />}
                             aria-label="查看修改总结"
+                            style={{ color: '#52c41a', borderColor: '#52c41a' }}
                             onClick={async () => {
                                 try {
                                     // Prefer lineage graph locally to resolve immediate parent

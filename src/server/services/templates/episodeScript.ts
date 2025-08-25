@@ -11,7 +11,7 @@ export const episodeScriptTemplate: LLMTemplate = {
 
 **主要内容来源：**
 - **[jsondoc] 分集大纲** - 这是你创作剧本的主要依据，包含开场钩子、主要剧情、情感高潮和结尾悬念
-- **[jsondoc] 剧本设定** - 提供角色设定、世界观、商业定位等框架信息
+- **[jsondoc] 故事设定** - 提供角色设定、世界观、商业定位等框架信息
 - **[jsondoc] 前集剧本** - 提供前面已生成的剧本，确保连贯性和一致性（如果存在）
 
 %%jsondocs%%

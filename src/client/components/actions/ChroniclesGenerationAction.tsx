@@ -23,13 +23,13 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
         setLocalGenerating
     } = useGenerationState('chronicles-generation');
 
-    // Get 剧本设定 from props (new way) or null (old way)
+    // Get 故事设定 from props (new way) or null (old way)
     const latestOutlineSettings = 'jsondocs' in props ? props.jsondocs.outlineSettings : null;
 
     // Handle chronicles generation
     const handleGenerateChronicles = useCallback(async () => {
         if (!latestOutlineSettings) {
-            message.error('未找到剧本设定');
+            message.error('未找到故事设定');
             return;
         }
 
@@ -53,12 +53,12 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
         }
     }, [latestOutlineSettings, projectId, onSuccess, onError, additionalInstructions, setLocalGenerating]);
 
-    // Show error if no 剧本设定 found
+    // Show error if no 故事设定 found
     if (!latestOutlineSettings) {
         return (
             <Alert
-                message="需要先生成剧本设定"
-                description="请先完成剧本设定，然后再生成时间顺序大纲"
+                message="需要先生成故事设定"
+                description="请先完成故事设定，然后再生成时间顺序大纲"
                 type="warning"
                 showIcon
                 style={{ margin: '16px 0' }}
@@ -66,7 +66,7 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
         );
     }
 
-    // Get 剧本设定 data for display
+    // Get 故事设定 data for display
     const outlineData = useMemo(() => {
         if (!latestOutlineSettings?.data) return null;
         try {
@@ -74,7 +74,7 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
                 ? JSON.parse(latestOutlineSettings.data)
                 : latestOutlineSettings.data;
         } catch (error) {
-            console.warn('Failed to parse 剧本设定 data:', error);
+            console.warn('Failed to parse 故事设定 data:', error);
             return null;
         }
     }, [latestOutlineSettings]);

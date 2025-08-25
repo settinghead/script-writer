@@ -37,14 +37,14 @@ type SupportedSchemaType = keyof typeof JsondocSchemaRegistry;
 
 const schemaTypeToTemplateId: Partial<Record<SupportedSchemaType, string>> = {
     '灵感创意': 'brainstorm_edit_diff',
-    '剧本设定': '剧本设定_edit_diff',
+    '故事设定': '故事设定_edit_diff',
     'chronicles': 'chronicles_edit_diff',
     '分集结构': '分集结构_edit_diff'
 };
 
 const schemaTypeDisplayName: Partial<Record<SupportedSchemaType, string>> = {
     '灵感创意': '故事创意',
-    '剧本设定': '剧本设定',
+    '故事设定': '故事设定',
     'chronicles': '编年史',
     '分集结构': '分集结构'
 };

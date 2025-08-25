@@ -31,7 +31,7 @@ describe('staleDetection', () => {
 
         const jsondocs = [
             { id: 'idea-1', schema_type: '灵感创意', origin_type: 'user_input', data: '{}', created_at: new Date().toISOString() } as any,
-            { id: 'outline-1', schema_type: '剧本设定', origin_type: 'ai_generated', data: '{}', created_at: new Date().toISOString() } as any
+            { id: 'outline-1', schema_type: '故事设定', origin_type: 'ai_generated', data: '{}', created_at: new Date().toISOString() } as any
         ];
 
         const affected = await computeStaleJsondocs(diffs, lineageGraph as any, jsondocs as any);

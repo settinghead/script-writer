@@ -19,7 +19,7 @@ vi.mock('../lineageBasedActionComputation', () => ({
                 a.schema_type === '灵感创意'
             );
             const hasOutlineSettings = jsondocs.some(a =>
-                a.schema_type === '剧本设定'
+                a.schema_type === '故事设定'
             );
             const hasChronicles = jsondocs.some(a =>
                 a.schema_type === 'chronicles'

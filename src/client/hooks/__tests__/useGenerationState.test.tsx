@@ -147,7 +147,7 @@ describe('useGenerationState', () => {
         // Start with project-wide generation
         const activeTransforms = [{
             id: 'transform-1',
-            transform_name: '剧本设定生成',
+            transform_name: '故事设定生成',
             status: 'running' as const
         }];
 

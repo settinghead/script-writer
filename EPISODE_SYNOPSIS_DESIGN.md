@@ -187,7 +187,7 @@ function computeDisplayComponentsFromContext(context: UnifiedComputationContext)
     'brainstorm-input-editor': 1,
     'idea-collection': 2,
     'single-idea-editor': 3,
-    '剧本设定-display': 4,
+    '故事设定-display': 4,
     'chronicles-display': 5,
     'episode-planning-display': 6,
     'episode-synopsis-display': 7 // Add after episode planning

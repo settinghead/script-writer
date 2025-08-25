@@ -313,7 +313,7 @@ class ApiService {
     }
 
     async generateOutlineFromIdea(projectId: string, ideaJsondocId: string, title: string, requirements: string = ''): Promise<any> {
-        const content = `请基于创意生成剧本设定。源创意ID: ${ideaJsondocId}，标题: ${title}，要求: ${requirements || '无特殊要求'}`;
+        const content = `请基于创意生成故事设定。源创意ID: ${ideaJsondocId}，标题: ${title}，要求: ${requirements || '无特殊要求'}`;
         const conversationId = await this.getOrCreateConversation(projectId);
 
         return this.sendChatMessage(projectId, conversationId, content, {
@@ -325,7 +325,7 @@ class ApiService {
     }
 
     async generateChroniclesFromOutline(projectId: string, outlineJsondocId: string, requirements: string = ''): Promise<any> {
-        const content = `请基于剧本设定生成时间顺序大纲。源剧本设定ID: ${outlineJsondocId}，要求: ${requirements || '无特殊要求'}`;
+        const content = `请基于故事设定生成时间顺序大纲。源故事设定ID: ${outlineJsondocId}，要求: ${requirements || '无特殊要求'}`;
         const conversationId = await this.getOrCreateConversation(projectId);
 
         return this.sendChatMessage(projectId, conversationId, content, {

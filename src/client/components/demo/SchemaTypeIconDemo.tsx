@@ -9,7 +9,7 @@ export const SchemaTypeIconDemo: React.FC = () => {
         { type: '灵感创意', originType: 'llm' },
         { type: 'brainstorm_collection', originType: 'llm' },
         { type: 'brainstorm_input_params', originType: 'human' },
-        { type: '剧本设定', originType: 'llm' },
+        { type: '故事设定', originType: 'llm' },
         { type: 'chronicles', originType: 'llm' },
         { type: '分集结构', originType: 'llm' },
         { type: '单集大纲', originType: 'llm' },

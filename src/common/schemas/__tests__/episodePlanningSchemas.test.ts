@@ -191,7 +191,7 @@ describe('Episode Planning Schemas', () => {
                     {
                         jsondocId: 'outline-456',
                         description: 'Outline settings',
-                        schemaType: '剧本设定'
+                        schemaType: '故事设定'
                     }
                 ]
             };

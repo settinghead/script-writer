@@ -197,7 +197,7 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
                     height: '40px'
                 }}
             >
-                <> 生成剧本设定 <RightOutlined /></>
+                <> 生成故事设定 <RightOutlined /></>
             </SmartAIButton>
         </div>
     );

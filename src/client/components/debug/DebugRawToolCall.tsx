@@ -88,13 +88,13 @@ const getDefaultParamsForTool = (toolName: string): Record<string, any> => {
             return {
                 otherRequirements: '生成有创意的故事想法，快节奏，高颜值主角'
             };
-        case 'generate_剧本设定':
+        case 'generate_故事设定':
             return {
                 '其他要求': ''
             };
-        case 'edit_剧本设定':
+        case 'edit_故事设定':
             return {
-                editRequirements: '调整剧本设定，优化角色设定和故事背景'
+                editRequirements: '调整故事设定，优化角色设定和故事背景'
             };
         case 'generate_chronicles':
             return {
@@ -132,16 +132,16 @@ const getExpectedJsondocTypes = (toolName: string): string[] => {
             return ['brainstorm_collection', '灵感创意'];
         case 'generate_灵感创意s':
             return ['brainstorm_input_params'];
-        case 'generate_剧本设定':
+        case 'generate_故事设定':
             return ['brainstorm_collection', '灵感创意'];
-        case 'edit_剧本设定':
-            return ['剧本设定'];
+        case 'edit_故事设定':
+            return ['故事设定'];
         case 'generate_chronicles':
-            return ['剧本设定', 'brainstorm_collection'];
+            return ['故事设定', 'brainstorm_collection'];
         case 'edit_时间顺序大纲':
             return ['chronicles'];
         case 'generate_分集结构':
-            return ['chronicles', '剧本设定'];
+            return ['chronicles', '故事设定'];
         case 'edit_分集结构':
             return ['分集结构'];
         case 'generate_单集大纲':
@@ -290,15 +290,15 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
             };
         });
 
-        // Auto-enrich params with affectedContext diffs when using edit_剧本设定
+        // Auto-enrich params with affectedContext diffs when using edit_故事设定
         let enrichedParams = { ...mergedParams } as any;
         try {
-            const isOutlineEdit = selectedTool === 'edit_剧本设定';
+            const isOutlineEdit = selectedTool === 'edit_故事设定';
             if (isOutlineEdit && lineageGraph !== 'pending' && lineageGraph !== 'error' && Array.isArray(rawJsondocs)) {
                 // Determine the outline jsondoc from selection
                 const outlineSelectionId = validSelectedJsondocs.find((id) => {
                     const j = rawJsondocs.find((r: any) => r.id === id);
-                    return j && j.schema_type === '剧本设定';
+                    return j && j.schema_type === '故事设定';
                 }) || validSelectedJsondocs[0];
 
                 const outlineJsondoc = rawJsondocs.find((r: any) => r.id === outlineSelectionId);
@@ -462,7 +462,7 @@ const RawTooLCall: React.FC<RawAgentContextProps> = ({ projectId }) => {
                         } else if (j.schema_type === '灵感创意') {
                             const title = data.title || '';
                             dataPreview = title.length > 25 ? `${title.substring(0, 25)}...` : title;
-                        } else if (j.schema_type === '剧本设定') {
+                        } else if (j.schema_type === '故事设定') {
                             const outlineTitle = data.title || data.synopsis || '';
                             dataPreview = outlineTitle.length > 25 ? `${outlineTitle.substring(0, 25)}...` : outlineTitle;
                         } else {

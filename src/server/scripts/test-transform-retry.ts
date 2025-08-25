@@ -13,7 +13,7 @@ async function testTransformRetry() {
 
     // Create a mock config that will fail schema validation
     const config = {
-        templateName: '剧本设定',
+        templateName: '故事设定',
         inputSchema: OutlineSettingsInputSchema,
         outputSchema: OutlineSettingsOutputSchema,
         prepareTemplateVariables: (input: any) => ({
@@ -50,7 +50,7 @@ async function testTransformRetry() {
             userId,
             transformRepo,
             jsondocRepo,
-            outputJsondocType: '剧本设定',
+            outputJsondocType: '故事设定',
             executionMode: { mode: 'full-object' },
             transformMetadata: {
                 test: true

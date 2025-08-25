@@ -230,8 +230,8 @@ describe('ChroniclesDisplay', () => {
             jsondocs: [
                 {
                     id: 'other-jsondoc',
-                    schema_type: '剧本设定',
-                    type: '剧本设定',
+                    schema_type: '故事设定',
+                    type: '故事设定',
                     data: { title: 'Some outline' }
                 }
             ],

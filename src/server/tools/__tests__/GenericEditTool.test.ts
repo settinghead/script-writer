@@ -11,12 +11,12 @@ class RepoMock {
 describe('GenericEditTool', () => {
     it('returns direct-edit message for user_input jsondoc', async () => {
         const jsondocId = 'doc-1';
-        const jsondoc = { id: jsondocId, schema_type: '剧本设定', origin_type: 'user_input', data: '{}' };
+        const jsondoc = { id: jsondocId, schema_type: '故事设定', origin_type: 'user_input', data: '{}' };
         const jsondocRepo: any = new RepoMock({ [jsondocId]: jsondoc });
         const transformRepo: any = {};
 
         const tool = createGenericEditToolDefinition(
-            '剧本设定',
+            '故事设定',
             transformRepo,
             jsondocRepo,
             'p1',

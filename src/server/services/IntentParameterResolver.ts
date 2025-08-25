@@ -217,8 +217,8 @@ export function createIntentParameterResolver(dependencies: ParameterResolverDep
             synopsisEpisodeNumber = undefined;
         }
 
-        // Also include canonical 剧本设定 as context for characters/world
-        const outlineSettingsList = await findCanonicalJsondocsByType(context.projectId, '剧本设定');
+        // Also include canonical 故事设定 as context for characters/world
+        const outlineSettingsList = await findCanonicalJsondocsByType(context.projectId, '故事设定');
         const outlineSettings = outlineSettingsList[0];
 
         return {
@@ -231,7 +231,7 @@ export function createIntentParameterResolver(dependencies: ParameterResolverDep
             userRequirements: (context.metadata as any)?.userRequirements || '',
             jsondocs: [
                 createJsondocReference(synopsis!.id, '单集大纲', synopsis!.schema_type),
-                ...(outlineSettings ? [createJsondocReference(outlineSettings.id, '剧本设定', outlineSettings.schema_type)] : [])
+                ...(outlineSettings ? [createJsondocReference(outlineSettings.id, '故事设定', outlineSettings.schema_type)] : [])
             ]
         };
     };

@@ -109,11 +109,11 @@ function findDirectChildren(
 
 const SCHEMA_IMPACT_MAP: Record<string, Record<string, { impactedSchemas: string[]; severity: 'high' | 'medium' }>> = {
     '灵感创意': {
-        '$.title': { impactedSchemas: ['剧本设定'], severity: 'high' },
-        '$.genre': { impactedSchemas: ['剧本设定'], severity: 'high' },
-        '$.body': { impactedSchemas: ['剧本设定', 'chronicles'], severity: 'medium' }
+        '$.title': { impactedSchemas: ['故事设定'], severity: 'high' },
+        '$.genre': { impactedSchemas: ['故事设定'], severity: 'high' },
+        '$.body': { impactedSchemas: ['故事设定', 'chronicles'], severity: 'medium' }
     },
-    '剧本设定': {
+    '故事设定': {
         '$.characters': { impactedSchemas: ['chronicles', '分集结构'], severity: 'high' },
         '$.synopsis': { impactedSchemas: ['chronicles'], severity: 'medium' }
     },
@@ -141,7 +141,7 @@ function generateReason(sourceSchema: string, diff: DiffChange, targetSchema: st
 
 function generateSuggestedAction(schemaType: string): string {
     const actions: Record<string, string> = {
-        '剧本设定': '根据新的故事创意更新剧本设定',
+        '故事设定': '根据新的故事创意更新故事设定',
         'chronicles': '调整时间线以匹配新的剧情发展',
         '分集结构': '重新划分集数以适应新的故事节奏'
     };

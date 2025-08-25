@@ -66,7 +66,7 @@ describe('SmartAIButton', () => {
         mockUseGenerationState.mockReturnValue({
             ...mockGenerationState,
             isAnyGenerating: true,
-            getDisabledReason: () => '剧本设定生成 生成中，生成完成后可点击'
+            getDisabledReason: () => '故事设定生成 生成中，生成完成后可点击'
         });
 
         render(

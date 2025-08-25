@@ -238,7 +238,7 @@ export type TypedJsondoc =
     | JsondocWithData<'灵感创意', 'v1', BrainstormIdeaV1>
     | JsondocWithData<'brainstorm_input_params', 'v1', BrainstormParamsV1>
     | JsondocWithData<'brainstorm_input', 'v1', BrainstormParamsV1>
-    | JsondocWithData<'剧本设定', 'v1', OutlineSettingV1>
+    | JsondocWithData<'故事设定', 'v1', OutlineSettingV1>
     | JsondocWithData<'chronicles', 'v1', ChroniclesV1>
     | JsondocWithData<'分集结构', 'v1', EpisodePlanningV1>
     | JsondocWithData<'分集结构_input', 'v1', EpisodePlanningInputV1>
@@ -271,7 +271,7 @@ export function getJsondocTextContent(jsondoc: TypedJsondoc): string {
         )
 
         // Outline related types
-        .with({ schema_type: '剧本设定' }, (doc) => doc.data.setting || '')
+        .with({ schema_type: '故事设定' }, (doc) => doc.data.setting || '')
         .with({ schema_type: 'outline_title' }, (doc) => doc.data.title || '')
         .with({ schema_type: 'outline_genre' }, (doc) => doc.data.genre || '')
         .with({ schema_type: 'outline_selling_points' }, (doc) => doc.data.selling_points || '')

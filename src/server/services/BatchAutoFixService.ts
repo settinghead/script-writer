@@ -6,7 +6,7 @@ import { buildLineageGraph } from '../../common/transform-jsondoc-framework/line
 
 interface AutoFixItem {
     jsondocId: string;
-    schemaType: '灵感创意' | '剧本设定' | 'chronicles' | '分集结构';
+    schemaType: '灵感创意' | '故事设定' | 'chronicles' | '分集结构';
     editRequirements: string;
 }
 
@@ -71,7 +71,7 @@ export class BatchAutoFixService {
                 }
                 // Compute affected context on server for outline edits
                 let computedAffected: any[] | undefined;
-                if (targetSchemaType === '剧本设定') {
+                if (targetSchemaType === '故事设定') {
                     computedAffected = await computeAffectedContextForOutline(
                         this.projectId,
                         targetJsondocId,
@@ -210,8 +210,8 @@ function findNearestDownstreamAIOfTypes(
 function preferDownstreamTarget(schemaType: string): string[] | null {
     switch (schemaType) {
         case '灵感创意':
-            return ['剧本设定'];
-        case '剧本设定':
+            return ['故事设定'];
+        case '故事设定':
             return ['chronicles'];
         default:
             return null;

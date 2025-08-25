@@ -57,7 +57,7 @@ export const ActionItemsSection: React.FC<ActionItemsSectionProps> = ({ projectI
                     const canonicalIdeaId = canonical?.canonicalBrainstormIdea?.id || null;
                     if (canonicalIdeaId) {
                         const jsondocsArr = projectData.jsondocs as any[];
-                        const outlines = jsondocsArr.filter(j => j.schema_type === '剧本设定' && j.origin_type === 'ai_generated');
+                        const outlines = jsondocsArr.filter(j => j.schema_type === '故事设定' && j.origin_type === 'ai_generated');
                         for (const outline of outlines) {
                             const parents = findParentJsondocsBySchemaType(outline.id, '灵感创意', lineageGraph, jsondocsArr);
                             const parentIdeaId = parents && parents.length > 0 ? parents[0].id : null;

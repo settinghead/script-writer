@@ -28,7 +28,7 @@ describe('computeComponentState with new rules', () => {
         // Descendant exists (but should not block)
         projectData.transformInputs = [{ jsondoc_id: 'ai-1', transform_id: 't2' }];
 
-        const jsondoc = { id: 'ai-1', origin_type: 'ai_generated', schema_type: '剧本设定' } as any;
+        const jsondoc = { id: 'ai-1', origin_type: 'ai_generated', schema_type: '故事设定' } as any;
 
         const result = computeComponentState(jsondoc, projectData);
         expect(result.state).toBe(ComponentState.CLICK_TO_EDIT);

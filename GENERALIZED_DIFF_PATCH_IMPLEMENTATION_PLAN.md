@@ -44,7 +44,7 @@ ComponentState {
 **Current Transform Names:**
 - `edit_brainstorm_input_params`
 - `edit_灵感创意`
-- `edit_剧本设定`
+- `edit_故事设定`
 - `edit_chronicles`
 - `edit_分集结构`
 - `edit_单集大纲`
@@ -322,7 +322,7 @@ describe('computeComponentState with new rules', () => {
         const jsondoc = {
             id: 'ai-1',
             origin_type: 'ai_generated',
-            schema_type: '剧本设定'
+            schema_type: '故事设定'
         };
         
         const projectData = {
@@ -400,7 +400,7 @@ export interface DiffChange {
  */
 export interface AffectedJsondoc {
   jsondocId: string;           // ID of affected jsondoc
-  schemaType: string;          // Schema type (e.g., "剧本设定", "chronicles")
+  schemaType: string;          // Schema type (e.g., "故事设定", "chronicles")
   reason: string;              // Human-readable reason in Chinese
   affectedPaths?: string[];    // Specific paths that might need updates
   severity: 'high' | 'medium' | 'low';
@@ -517,11 +517,11 @@ function findDirectChildren(
 // Schema impact mapping configuration
 const SCHEMA_IMPACT_MAP = {
   '灵感创意': {
-    '$.title': { impactedSchemas: ['剧本设定'], severity: 'high' },
-    '$.genre': { impactedSchemas: ['剧本设定'], severity: 'high' },
-    '$.body': { impactedSchemas: ['剧本设定', 'chronicles'], severity: 'medium' }
+    '$.title': { impactedSchemas: ['故事设定'], severity: 'high' },
+    '$.genre': { impactedSchemas: ['故事设定'], severity: 'high' },
+    '$.body': { impactedSchemas: ['故事设定', 'chronicles'], severity: 'medium' }
   },
-  '剧本设定': {
+  '故事设定': {
     '$.characters': { impactedSchemas: ['chronicles', '分集结构'], severity: 'high' },
     '$.synopsis': { impactedSchemas: ['chronicles'], severity: 'medium' }
   },
@@ -549,7 +549,7 @@ function generateReason(sourceSchema: string, diff: DiffChange, targetSchema: st
 
 function generateSuggestedAction(schemaType: string): string {
   const actions = {
-    '剧本设定': '根据新的故事创意更新剧本设定',
+    '故事设定': '根据新的故事创意更新故事设定',
     'chronicles': '调整时间线以匹配新的剧情发展',
     '分集结构': '重新划分集数以适应新的故事节奏'
   };
@@ -614,7 +614,7 @@ describe('staleDetection', () => {
     
     const jsondocs = [
       { id: 'idea-1', schema_type: '灵感创意', origin_type: 'user_input' },
-      { id: 'outline-1', schema_type: '剧本设定', origin_type: 'ai_generated' }
+      { id: 'outline-1', schema_type: '故事设定', origin_type: 'ai_generated' }
     ];
     
     const affected = await computeStaleJsondocs(diffs, lineageGraph, jsondocs);
@@ -654,9 +654,9 @@ const SCHEMA_REGISTRY: Record<string, {
       '保持故事的核心吸引力和商业价值'
     ]
   },
-  '剧本设定': {
+  '故事设定': {
     schema: OutlineSettingsSchema,
-    displayName: '剧本设定',
+    displayName: '故事设定',
     editInstructions: [
       '保持角色设定的一致性',
       '确保剧情逻辑通顺'
@@ -1100,11 +1100,11 @@ export function generateSchemaSpecificInstructions(schemaType: string): string[]
 1. User clicks on AI-generated 灵感创意
 2. System creates human transform → editable version
 3. User changes plot
-4. System detects 剧本设定 is affected
+4. System detects 故事设定 is affected
 5. User clicks "自动修正"
-6. System generates patch for 剧本设定
+6. System generates patch for 故事设定
 7. User approves patch
-8. 剧本设定 updated to match new plot
+8. 故事设定 updated to match new plot
 
 ### Scenario 2: Edit Chronicle
 1. User edits chronicles timeline
