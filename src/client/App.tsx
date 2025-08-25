@@ -172,9 +172,9 @@ const AppContent: React.FC = () => {
         { key: 'debug-particle', label: showParticleDebug ? '关闭粒子搜索' : '粒子搜索', onClick: toggleParticleDebug },
         { type: 'divider' as const },
         { key: 'actions-title', label: '项目', disabled: true as const },
-        { key: 'mobile-open-tree', label: '目录/地图', onClick: () => setMenuVisible(false) || (window.history.replaceState(null, '', `${location.pathname}?rightDrawer=1`), window.dispatchEvent(new PopStateEvent('popstate'))) },
-        { key: 'mobile-export', label: '导出', onClick: () => setMenuVisible(false) || (toggleParam('export')) },
-        { key: 'mobile-settings', label: '设置', onClick: () => setMenuVisible(false) || (toggleParam('projectSettings')) },
+        { key: 'mobile-open-tree', label: '目录/地图', onClick: () => { setMenuVisible(false); window.history.replaceState(null, '', `${location.pathname}?rightDrawer=1`); window.dispatchEvent(new PopStateEvent('popstate')); } },
+        { key: 'mobile-export', label: '导出', onClick: () => { setMenuVisible(false); toggleParam('export'); } },
+        { key: 'mobile-settings', label: '设置', onClick: () => { setMenuVisible(false); toggleParam('projectSettings'); } },
       ];
       if (isAuthenticated && user) {
         return [
