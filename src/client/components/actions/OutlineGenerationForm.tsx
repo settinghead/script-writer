@@ -161,7 +161,7 @@ const OutlineGenerationForm: React.FC<OutlineGenerationFormProps> = (props) => {
 
             {/* Additional instructions input (autosized textarea) */}
             <TextareaAutosize
-                placeholder="补充说明（可选）"
+                placeholder="补充要求（可选）"
                 value={additionalInstructions}
                 onChange={(e) => setAdditionalInstructions(e.target.value)}
                 minRows={1}

@@ -79,7 +79,7 @@ const EpisodeSynopsisGenerationAction: React.FC<EpisodeSynopsisGenerationActionP
         <div style={{ width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center' }}>
                 <TextareaAutosize
-                    placeholder={isAnyGenerating ? '生成中，请稍等...' : '补充说明（可选）：例如强调开场钩子更强、埋更清晰的悬念、增加角色情感冲突等。按 Ctrl/⌘+Enter 立即生成。'}
+                    placeholder={isAnyGenerating ? '生成中，请稍等...' : '补充要求（可选）：例如强调开场钩子更强、埋更清晰的悬念、增加角色情感冲突等。按 Ctrl/⌘+Enter 立即生成。'}
                     value={additionalInstructions}
                     onChange={(e) => setAdditionalInstructions(e.target.value)}
                     disabled={isAnyGenerating}

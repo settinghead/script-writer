@@ -418,13 +418,24 @@ const ProjectHeader: React.FC<{
     rightSidebarWidth: number;
     onMobileRightDrawerOpen: () => void;
 }> = ({ projectId, isMobile, sidebarWidth, rightSidebarVisible, rightSidebarWidth, onMobileRightDrawerOpen }) => {
+    // On mobile, avoid rendering a fixed-height wrapper; just mount modals
+    if (isMobile) {
+        return (
+            <>
+                {/* Keep settings modal mounted for URL-triggered open */}
+                <ProjectSettingsModal projectId={projectId} />
+            </>
+        );
+    }
+
+    // Desktop header with debug menu and export actions
     return (
         <div style={{
             top: 0,
-            left: isMobile ? 0 : sidebarWidth + 6,
-            right: !isMobile && rightSidebarVisible ? rightSidebarWidth + 6 : 0,
+            left: sidebarWidth + 6,
+            right: rightSidebarVisible ? rightSidebarWidth + 6 : 0,
             zIndex: 100,
-            padding: isMobile ? '8px 12px' : '12px 16px',
+            padding: '12px 16px',
             borderBottom: '1px solid #333',
             background: '#1a1a1a',
             display: 'flex',
@@ -432,14 +443,8 @@ const ProjectHeader: React.FC<{
             alignItems: 'center',
             height: '60px'
         }}>
-            {!isMobile && (
-                <>
-                    <DebugMenu />
-                    <ExportButton
-                        projectId={projectId}
-                    />
-                </>
-            )}
+            <DebugMenu />
+            <ExportButton projectId={projectId} />
             {/* Project settings modal is controlled via URL param (?projectSettings=1) */}
             <ProjectSettingsModal projectId={projectId} />
         </div>

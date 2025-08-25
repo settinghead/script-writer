@@ -59,7 +59,7 @@ describe('ChroniclesGenerationAction', () => {
         render(<ChroniclesGenerationAction {...mockProps} />);
 
         // Initial state - components should be enabled
-        const textarea = screen.getByPlaceholderText('补充说明（可选）');
+        const textarea = screen.getByPlaceholderText('补充要求（可选）');
         const button = screen.getByRole('button', { name: /生成时间顺序大纲/ });
 
         expect(textarea).not.toBeDisabled();
@@ -106,7 +106,7 @@ describe('ChroniclesGenerationAction', () => {
         // First render without generation
         const { rerender } = render(<ChroniclesGenerationAction {...mockProps} />);
 
-        let textarea = screen.getByPlaceholderText('补充说明（可选）');
+        let textarea = screen.getByPlaceholderText('补充要求（可选）');
 
         // Check initial styling
         expect(textarea).toHaveStyle({ opacity: '1' });

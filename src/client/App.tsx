@@ -371,6 +371,13 @@ const AppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
@@ -387,7 +394,7 @@ const App: React.FC = () => {
           </HealthCheck>
         </AntdApp>
       </ThemeProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {!isMobile && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   );
 };

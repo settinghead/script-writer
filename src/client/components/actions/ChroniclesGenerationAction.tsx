@@ -82,7 +82,7 @@ const ChroniclesGenerationAction: React.FC<ChroniclesGenerationActionProps> = (p
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center' }}>
             <TextareaAutosize
-                placeholder={isAnyGenerating ? "生成中，请稍等..." : "补充说明（可选）"}
+                placeholder={isAnyGenerating ? "生成中，请稍等..." : "补充要求（可选）"}
                 value={additionalInstructions}
                 onChange={(e) => setAdditionalInstructions(e.target.value)}
                 disabled={isAnyGenerating}

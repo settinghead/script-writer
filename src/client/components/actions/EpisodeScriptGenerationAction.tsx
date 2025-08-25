@@ -80,7 +80,7 @@ const EpisodeScriptGenerationAction: React.FC<EpisodeScriptGenerationActionProps
         <div style={{ width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center' }}>
                 <TextareaAutosize
-                    placeholder={isAnyGenerating ? '生成中，请稍等...' : '补充说明（可选）：例如台词风格、场景要求、镜头节奏、表演语气等。按 Ctrl/⌘+Enter 立即生成。'}
+                    placeholder={isAnyGenerating ? '生成中，请稍等...' : '补充要求（可选）：例如台词风格、场景要求、镜头节奏、表演语气等。按 Ctrl/⌘+Enter 立即生成。'}
                     value={additionalInstructions}
                     onChange={(e) => setAdditionalInstructions(e.target.value)}
                     disabled={isAnyGenerating}
