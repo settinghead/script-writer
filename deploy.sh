@@ -72,6 +72,6 @@ NODE_ENV=production pm2 start dist-server/server/index.js --name script-writer-a
 
 # Keep only the 30 most recent deployments
 cd /var/www
-ls -dt script-writer-20* | tail -n +31 | xargs rm -rf
+ls -dt script-writer-20* | tail -n +11 | xargs rm -rf
 
 echo "Deployment completed successfully"
