@@ -241,6 +241,15 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     pathPattern: '^\\$(\\..*)?$', // Root or any path like $.title, $.openingHook, $.mainPlot, etc.
     instantiationFunction: 'createEpisodeSynopsisFromEpisodeSynopsis'
   },
+  // Alias to align with client click-to-edit convention
+  'edit_单集大纲': {
+    name: 'edit_单集大纲',
+    description: 'Edit episode synopsis document with whole-document editing',
+    sourceJsondocType: '单集大纲',
+    targetJsondocType: '单集大纲',
+    pathPattern: '^\\$(\\..*)?$',
+    instantiationFunction: 'createEpisodeSynopsisFromEpisodeSynopsis'
+  },
   'edit_单集剧本': {
     name: 'edit_单集剧本',
     description: 'Edit episode script document with whole-document editing',

@@ -217,6 +217,66 @@ export const ReadOnlyJsondocDisplay: React.FC<ReadOnlyJsondocDisplayProps> = ({ 
         );
     }
 
+    // Render episode synopsis specific layout
+    if (schemaType === '单集大纲') {
+        return (
+            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                {/* Title */}
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                        📝 标题
+                    </Text>
+                    {renderTextField(parsedData.title, '未设置标题')}
+                </div>
+
+                {/* Opening Hook */}
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                        🪝 开场钩子
+                    </Text>
+                    {renderMultilineText(parsedData.openingHook, '未设置开场钩子')}
+                </div>
+
+                {/* Main Plot */}
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                        🎬 主要剧情
+                    </Text>
+                    {renderMultilineText(parsedData.mainPlot, '未设置主要剧情')}
+                </div>
+
+                {/* Emotional Climax */}
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                        💥 情感高潮
+                    </Text>
+                    {renderMultilineText(parsedData.emotionalClimax, '未设置情感高潮')}
+                </div>
+
+                {/* Cliffhanger */}
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                        ❓ 结尾悬念
+                    </Text>
+                    {renderMultilineText(parsedData.cliffhanger, '未设置结尾悬念')}
+                </div>
+
+                {/* Suspense Elements */}
+                <div>
+                    <Text strong style={{ fontSize: '16px', color: '#fff', display: 'block', marginBottom: '8px' }}>
+                        🔍 悬念元素
+                    </Text>
+                    {renderArrayField(parsedData.suspenseElements, '暂无悬念元素')}
+                </div>
+
+                {/* Estimated Duration */}
+                <div>
+                    <Tag color="cyan">{parsedData.estimatedDuration || 120}秒</Tag>
+                </div>
+            </Space>
+        );
+    }
+
     // Render brainstorm idea specific layout
     if (schemaType === '灵感创意') {
         return (
