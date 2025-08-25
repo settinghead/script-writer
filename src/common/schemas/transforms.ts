@@ -225,6 +225,15 @@ export const HUMAN_TRANSFORM_DEFINITIONS: Record<string, HumanTransformDefinitio
     pathPattern: '^\\$(\\..*)?$', // Root or any path like $.stages[0].title, $.stages[1].event, etc.
     instantiationFunction: 'createChroniclesFromChronicles'
   },
+  // Backward-compatibility alias for legacy client usage
+  'edit_chronicles': {
+    name: 'edit_chronicles',
+    description: 'Edit chronicles document (alias of 编辑_时间顺序大纲)',
+    sourceJsondocType: 'chronicles',
+    targetJsondocType: 'chronicles',
+    pathPattern: '^\\$(\\..*)?$',
+    instantiationFunction: 'createChroniclesFromChronicles'
+  },
   'edit_分集结构': {
     name: 'edit_分集结构',
     description: 'Edit episode planning document with whole-document editing',
